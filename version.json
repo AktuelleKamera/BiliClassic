@@ -1,0 +1,8 @@
+{
+    "version_code": 10,
+    "version_name": "0.2.6",
+    "update_log": "0.2.6 更新日志\n\n- 新增 MoboPlayer 播放器支持\n- 新增 RockPlayer Lite 播放器支持\n- 修复多个判空问题\n- 更新了帮助页面",
+    "download_url": "http://biliclassic.cn/download/BiliClassic_0.2.6.apk",
+    "force_update": false,
+    "file_size": "1.68 MB"
+}
