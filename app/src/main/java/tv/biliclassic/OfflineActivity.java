@@ -11,6 +11,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.StatFs;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -23,10 +24,11 @@ import android.widget.Toast;
 import android.widget.AbsListView;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -34,10 +36,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 import tv.biliclassic.download.VideoDownloadEntry;
 import tv.biliclassic.download.VideoDownloadEnvironment;
-import tv.biliclassic.download.VideoDownloadService;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.player.BiliPlayerActivity;
 
@@ -61,7 +64,6 @@ public class OfflineActivity extends BaseActivity {
     private Handler mRefreshHandler = new Handler();
     private Runnable mRefreshRunnable;
     private static final int REFRESH_INTERVAL = 2000;
-    private HashSet<Long> mPausedKeys = new HashSet<Long>(); // 跟踪被暂停的下载 // 下载中每2秒刷新
 
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
@@ -70,7 +72,9 @@ public class OfflineActivity extends BaseActivity {
 
     private int getConfiguredThreadCount() {
         int savedThreads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
-        if (savedThreads > 0) return savedThreads;
+        if (savedThreads > 0) {
+            return savedThreads;
+        }
         return isLowMemoryDevice() ? 1 : 3;
     }
 
@@ -123,6 +127,7 @@ public class OfflineActivity extends BaseActivity {
                     isScrolling = true;
                 }
             }
+
             @Override
             public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
             }
@@ -131,10 +136,9 @@ public class OfflineActivity extends BaseActivity {
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                // 点击列表项 → 进入离线详情页
                 OfflineItem item = videoList.get(position);
                 if (item != null) {
-                    openOfflineDetail(item);
+                    playVideo(item);
                 }
             }
         });
@@ -155,28 +159,50 @@ public class OfflineActivity extends BaseActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        refreshList();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stopAutoRefresh();
+        mRefreshHandler.removeCallbacksAndMessages(null);
+        if (adapter != null) {
+            for (SoftReference<Bitmap> ref : imageCache.values()) {
+                Bitmap bmp = ref.get();
+                if (bmp != null && !bmp.isRecycled()) {
+                    bmp.recycle();
+                }
+            }
+            imageCache.clear();
+            loadingMap.clear();
+        }
+        if (executor != null && !executor.isShutdown()) {
+            executor.shutdownNow();
+        }
+    }
+
+    @Override
     public void onBackPressed() {
         finish();
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        // 从详情页回来时刷新列表和存储空间
-        refreshList();
-    }
-
-    // ========== 播放 ==========
-
+    // 播放视频
     private void playVideo(OfflineItem item) {
-        File videoFile = item.videoFile;
+        if (item.videoFile == null || !item.videoFile.exists()) {
+            Toast.makeText(this, "视频文件不存在", Toast.LENGTH_SHORT).show();
+            refreshList();
+            return;
+        }
 
         if (SettingsActivity.getPlayerPreference() == 8) {
             Intent intent = new Intent(this, BiliPlayerActivity.class);
             String displayTitle = (item.pageTitle != null && item.pageTitle.length() > 0)
                     ? item.pageTitle : item.title;
             intent.putExtra("video_title", displayTitle);
-            intent.putExtra("cache_path", videoFile.getAbsolutePath());
+            intent.putExtra("cache_path", item.videoFile.getAbsolutePath());
             if (item.danmakuFile != null && item.danmakuFile.exists()) {
                 intent.putExtra("danmaku_cache_path", item.danmakuFile.getAbsolutePath());
             }
@@ -193,7 +219,7 @@ public class OfflineActivity extends BaseActivity {
         }
 
         Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setDataAndType(Uri.fromFile(videoFile), "video/mp4");
+        intent.setDataAndType(Uri.fromFile(item.videoFile), "video/mp4");
         String preferredPlayer = SettingsActivity.getPlayerPackageName();
         if (preferredPlayer != null) {
             intent.setPackage(preferredPlayer);
@@ -210,25 +236,9 @@ public class OfflineActivity extends BaseActivity {
         }
     }
 
-    // ========== 离线详情页 ==========
-
-    private void openOfflineDetail(OfflineItem item) {
-        if (item.env == null) {
-            // 兼容旧版：直接播放
-            playVideo(item);
-            return;
-        }
-        // 跳转到视频详情页（离线模式）
-        Intent intent = new Intent(this, VideoDetailActivity.class);
-        intent.putExtra("aid", item.env.avid);
-        intent.putExtra("offline_mode", true);
-        startActivity(intent);
-    }
-
-    // ========== 删除 ==========
-
+    // 删除对话框
     private void showDeleteDialog(final OfflineItem item) {
-        String displayTitle = item.pageTitle != null && item.pageTitle.length() > 0
+        String displayTitle = (item.pageTitle != null && item.pageTitle.length() > 0)
                 ? item.pageTitle : item.title;
         new AlertDialog.Builder(this)
                 .setTitle("删除视频")
@@ -243,17 +253,29 @@ public class OfflineActivity extends BaseActivity {
                 .show();
     }
 
+    // 删除视频
     private void deleteVideo(OfflineItem item) {
         try {
-            String cacheKey = item.getCacheKey();
-            SoftReference<Bitmap> ref = imageCache.remove(cacheKey);
+            boolean deleted = false;
+            if (item.videoFile != null && item.videoFile.exists()) {
+                deleted = item.videoFile.delete();
+            }
+            if (item.coverFile != null && item.coverFile.exists()) {
+                item.coverFile.delete();
+            }
+
+            SoftReference<Bitmap> ref = imageCache.remove(item.getCacheKey());
             if (ref != null) {
                 Bitmap bmp = ref.get();
-                if (bmp != null && !bmp.isRecycled()) bmp.recycle();
+                if (bmp != null && !bmp.isRecycled()) {
+                    bmp.recycle();
+                }
             }
-            if (item.env != null) {
-                item.env.deleteEntry();
+
+            if (deleted) {
                 Toast.makeText(this, "已删除: " + item.title, Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "删除失败", Toast.LENGTH_SHORT).show();
             }
             refreshList();
         } catch (Exception e) {
@@ -261,8 +283,7 @@ public class OfflineActivity extends BaseActivity {
         }
     }
 
-    // ========== 刷新列表 ==========
-
+    // 刷新列表
     private void refreshList() {
         progressBar.setVisibility(View.VISIBLE);
         emptyView.setVisibility(View.GONE);
@@ -272,14 +293,13 @@ public class OfflineActivity extends BaseActivity {
             @Override
             public void run() {
                 mDownloadDir = getDownloadDir();
-                final List<OfflineItem> items = scanOfflineItems();
-                final List<OfflineItem> grouped = groupCompletedItems(items);
+                final List<OfflineItem> items = scanAllItems();
                 final File downloadDir = mDownloadDir;
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         videoList.clear();
-                        videoList.addAll(grouped);
+                        videoList.addAll(items);
                         adapter.notifyDataSetChanged();
                         progressBar.setVisibility(View.GONE);
 
@@ -292,8 +312,6 @@ public class OfflineActivity extends BaseActivity {
                         }
 
                         updateStorageBar(downloadDir);
-
-                        // 如果有下载中的项，启动定时刷新
                         startAutoRefreshIfNeeded();
                     }
                 });
@@ -301,10 +319,66 @@ public class OfflineActivity extends BaseActivity {
         }).start();
     }
 
+    // 静默刷新
+    private void refreshListSilent() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                mDownloadDir = getDownloadDir();
+                final List<OfflineItem> items = scanAllItems();
+                final File downloadDir = mDownloadDir;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        videoList.clear();
+                        videoList.addAll(items);
+                        adapter.notifyDataSetChanged();
+                        updateStorageBar(downloadDir);
+                        startAutoRefreshIfNeeded();
+                    }
+                });
+            }
+        }).start();
+    }
+
+    // 更新存储空间显示
+    private void updateStorageBar(File downloadDir) {
+        try {
+            long totalBytes;
+            long availBytes;
+
+            try {
+                String path = downloadDir.exists() ? downloadDir.getAbsolutePath()
+                        : Environment.getExternalStorageDirectory().getPath();
+                StatFs stat = new StatFs(path);
+                totalBytes = ((long) stat.getBlockCount()) * ((long) stat.getBlockSize());
+                availBytes = ((long) stat.getAvailableBlocks()) * ((long) stat.getBlockSize());
+            } catch (Exception e) {
+                totalBytes = 0;
+                availBytes = 0;
+            }
+            long usedBytes = totalBytes - availBytes;
+
+            int percent = totalBytes > 0 ? (int) (usedBytes * 100 / totalBytes) : 0;
+            storageProgress.setProgress(percent);
+
+            String availStr = formatFileSize(availBytes);
+            String totalStr = formatFileSize(totalBytes);
+            storageText.setText("可用 " + availStr + " / 共 " + totalStr);
+        } catch (Exception e) {
+            storageText.setText("存储信息获取失败");
+        }
+    }
+
+    // 自动刷新
     private void startAutoRefreshIfNeeded() {
         boolean hasInProgress = false;
-        for (OfflineItem item : videoList) {
-            if (!item.isCompleted) { hasInProgress = true; break; }
+        for (int i = 0; i < videoList.size(); i++) {
+            OfflineItem item = videoList.get(i);
+            if (!item.isCompleted) {
+                hasInProgress = true;
+                break;
+            }
         }
         if (hasInProgress) {
             if (mRefreshRunnable == null) {
@@ -329,40 +403,38 @@ public class OfflineActivity extends BaseActivity {
         }
     }
 
-    /**
-     * 静默刷新（不显示加载中）——用于定时刷新进度
-     */
-    private void refreshListSilent() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                mDownloadDir = getDownloadDir();
-                final List<OfflineItem> items = scanOfflineItems();
-                final List<OfflineItem> grouped = groupCompletedItems(items);
-                final File downloadDir = mDownloadDir;
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        videoList.clear();
-                        videoList.addAll(grouped);
-                        adapter.notifyDataSetChanged();
-                        updateStorageBar(downloadDir);
-                        startAutoRefreshIfNeeded();
-                    }
-                });
-            }
-        }).start();
-    }
-
-    private List<OfflineItem> scanOfflineItems() {
+    // 统一扫描：新版 + 旧版 + 自动迁移封面
+    private List<OfflineItem> scanAllItems() {
         List<OfflineItem> items = new ArrayList<OfflineItem>();
         File downloadDir = mDownloadDir;
-        if (downloadDir == null || !downloadDir.isDirectory()) return items;
 
-        // 新目录结构（含下载中）
+        Log.d("OfflineActivity", "=== 开始扫描下载目录 ===");
+        Log.d("OfflineActivity", "目录路径: " + (downloadDir != null ? downloadDir.getAbsolutePath() : "null"));
+
+        if (downloadDir == null || !downloadDir.isDirectory()) {
+            Log.w("OfflineActivity", "下载目录无效或不存在");
+            return items;
+        }
+
+        File[] allFiles = downloadDir.listFiles();
+        if (allFiles == null) {
+            Log.w("OfflineActivity", "listFiles() 返回 null");
+            return items;
+        }
+
+        Log.d("OfflineActivity", "目录下总文件数: " + allFiles.length);
+        for (int i = 0; i < allFiles.length; i++) {
+            File f = allFiles[i];
+            Log.d("OfflineActivity", "  文件 " + i + ": " + f.getName() + " (目录:" + f.isDirectory() + ", 视频:" + isVideoFile(f) + ")");
+        }
+
+        // 1. 扫描新版（有 entry.json 的）
+        Log.d("OfflineActivity", "--- 扫描新版 ---");
         ArrayList<VideoDownloadEntry> entries = VideoDownloadEnvironment.loadAllEntries(downloadDir);
         if (entries != null) {
-            for (VideoDownloadEntry entry : entries) {
+            Log.d("OfflineActivity", "新版条目数: " + entries.size());
+            for (int i = 0; i < entries.size(); i++) {
+                VideoDownloadEntry entry = entries.get(i);
                 OfflineItem item = new OfflineItem();
                 item.env = entry.downloadEnv;
                 item.videoFile = entry.getVideoFile();
@@ -370,7 +442,7 @@ public class OfflineActivity extends BaseActivity {
                 item.danmakuFile = entry.getDanmakuFile();
                 item.title = (entry.bvid != null && entry.bvid.length() > 0)
                         ? entry.bvid : "av" + entry.avid;
-                item.mainTitle = entry.title;  // 视频主标题
+                item.mainTitle = entry.title;
                 item.pageTitle = entry.pageTitle;
                 item.bvid = entry.bvid;
                 item.cid = entry.cid;
@@ -380,95 +452,170 @@ public class OfflineActivity extends BaseActivity {
                 item.totalBytes = entry.totalBytes;
                 item.avid = entry.avid;
                 item.page = entry.page;
-                // 如果有视频文件或正在下载中都显示
                 if (item.videoFile != null && item.videoFile.exists()) {
                     item.size = item.videoFile.length();
                     items.add(item);
+                    Log.d("OfflineActivity", "  添加新版: " + item.videoFile.getName() + " (完成)");
                 } else if (!entry.isCompleted && item.videoFile != null) {
-                    // 下载中的也显示（显示进度）
                     item.size = entry.downloadedBytes;
+                    items.add(item);
+                    Log.d("OfflineActivity", "  添加新版: " + item.videoFile.getName() + " (下载中)");
+                } else {
+                    Log.d("OfflineActivity", "  跳过新版: " + (item.videoFile != null ? item.videoFile.getName() : "null") + " (文件不存在)");
+                }
+            }
+        } else {
+            Log.d("OfflineActivity", "新版条目: null");
+        }
+
+        // 2. 扫描旧版平面文件
+        Log.d("OfflineActivity", "--- 扫描旧版 ---");
+        int oldFileCount = 0;
+        for (int i = 0; i < allFiles.length; i++) {
+            File file = allFiles[i];
+            if (file.isFile() && isVideoFile(file)) {
+                oldFileCount++;
+                Log.d("OfflineActivity", "找到旧版视频文件: " + file.getName());
+
+                boolean alreadyFound = false;
+                for (int j = 0; j < items.size(); j++) {
+                    OfflineItem existing = items.get(j);
+                    if (existing.videoFile != null && existing.videoFile.equals(file)) {
+                        alreadyFound = true;
+                        Log.d("OfflineActivity", "  文件已在新版中: " + file.getName());
+                        break;
+                    }
+                }
+                if (!alreadyFound) {
+                    Log.d("OfflineActivity", "  添加旧版文件: " + file.getName());
+                    OfflineItem item = new OfflineItem();
+                    item.videoFile = file;
+                    String name = getFileNameWithoutExtension(file.getName());
+                    item.title = name;
+                    item.size = file.length();
+                    item.isCompleted = true;
+
+                    long avid = extractAvidFromFileName(name);
+                    if (avid > 0) {
+                        item.avid = avid;
+                        int page = extractPageFromFileName(name);
+                        if (page > 0) {
+                            item.page = page;
+                        }
+                        Log.d("OfflineActivity", "    提取 avid=" + avid + ", page=" + item.page);
+                    }
+
+                    item.coverFile = getUnifiedCoverFile(item, name);
+                    migrateOldCover(name, item.coverFile);
+
+                    items.add(item);
+                    Log.d("OfflineActivity", "  当前 items 总数: " + items.size());
+                }
+            }
+        }
+        Log.d("OfflineActivity", "旧版视频文件总数: " + oldFileCount);
+
+        // 3. 确保所有视频文件都被添加
+        Log.d("OfflineActivity", "--- 检查遗漏 ---");
+        int beforeCheck = items.size();
+        for (int i = 0; i < allFiles.length; i++) {
+            File file = allFiles[i];
+            if (file.isFile() && isVideoFile(file)) {
+                boolean found = false;
+                for (int j = 0; j < items.size(); j++) {
+                    OfflineItem existing = items.get(j);
+                    if (existing.videoFile != null && existing.videoFile.equals(file)) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    Log.d("OfflineActivity", "  补充添加遗漏文件: " + file.getName());
+                    OfflineItem item = new OfflineItem();
+                    item.videoFile = file;
+                    String name = getFileNameWithoutExtension(file.getName());
+                    item.title = name;
+                    item.size = file.length();
+                    item.isCompleted = true;
+                    item.coverFile = getUnifiedCoverFile(item, name);
+                    migrateOldCover(name, item.coverFile);
                     items.add(item);
                 }
             }
         }
+        Log.d("OfflineActivity", "检查前: " + beforeCheck + ", 检查后: " + items.size());
 
-        // 兼容旧版平面文件
-        File[] flatFiles = downloadDir.listFiles();
-        if (flatFiles != null) {
-            for (File file : flatFiles) {
-                if (file.isFile() && isVideoFile(file)) {
-                    boolean alreadyFound = false;
-                    for (OfflineItem item : items) {
-                        if (item.videoFile != null && item.videoFile.equals(file)) {
-                            alreadyFound = true;
-                            break;
-                        }
+        Log.d("OfflineActivity", "=== 扫描完成，共 " + items.size() + " 个条目 ===");
+
+        // 4. 合并多 P
+        List<OfflineItem> grouped = groupCompletedItems(items);
+        Log.d("OfflineActivity", "合并后: " + grouped.size() + " 个条目");
+        return grouped;
+    }
+
+    // 统一获取封面文件路径
+    private File getUnifiedCoverFile(OfflineItem item, String title) {
+        File downloadDir = getDownloadDir();
+        if (item.avid > 0) {
+            File avidDir = new File(downloadDir, String.valueOf(item.avid));
+            if (!avidDir.exists()) {
+                avidDir.mkdirs();
+            }
+            return new File(avidDir, "cover.jpg");
+        } else {
+            File coverDir = new File(downloadDir, "_covers");
+            if (!coverDir.exists()) {
+                coverDir.mkdirs();
+            }
+            String hash = String.valueOf(Math.abs(title.hashCode()));
+            return new File(coverDir, hash + ".jpg");
+        }
+    }
+
+    // 迁移旧版封面
+    private void migrateOldCover(String title, File targetFile) {
+        if (targetFile.exists()) {
+            return;
+        }
+
+        File oldCoverDir = new File(getCacheDir(), "offline_covers");
+        if (oldCoverDir.exists()) {
+            File oldCover = new File(oldCoverDir, title + ".jpg");
+            if (oldCover.exists()) {
+                try {
+                    FileInputStream fis = new FileInputStream(oldCover);
+                    FileOutputStream fos = new FileOutputStream(targetFile);
+                    byte[] buffer = new byte[8192];
+                    int len;
+                    while ((len = fis.read(buffer)) != -1) {
+                        fos.write(buffer, 0, len);
                     }
-                    if (!alreadyFound) {
-                        OfflineItem item = new OfflineItem();
-                        item.videoFile = file;
-                        item.title = getFileNameWithoutExtension(file.getName());
-                        item.size = file.length();
-                        item.isCompleted = true;
-                        File coverDir = new File(getCacheDir(), "offline_covers");
-                        item.coverFile = new File(coverDir, item.title + ".jpg");
-                        items.add(item);
-                    }
+                    fos.close();
+                    fis.close();
+                    oldCover.delete();
+                } catch (Exception e) {
+                    // 忽略
                 }
             }
         }
-
-        return items;
     }
 
-    private File getDownloadDir() {
-        if (isSDCardAvailable()) {
-            File sdDownload = new File(Environment.getExternalStorageDirectory(), "BiliClassic/Download");
-            if (sdDownload.exists()) return sdDownload;
-            sdDownload.mkdirs();
-            if (sdDownload.isDirectory()) return sdDownload;
-        }
-        File internalDownload = new File(getFilesDir(), "Download");
-        if (!internalDownload.exists()) internalDownload.mkdirs();
-        return internalDownload;
-    }
-
-    private boolean isVideoFile(File file) {
-        String name = file.getName().toLowerCase();
-        return name.endsWith(".mp4") || name.endsWith(".flv") || name.endsWith(".mkv")
-                || name.endsWith(".avi") || name.endsWith(".mov") || name.endsWith(".3gp");
-    }
-
-    private String getFileNameWithoutExtension(String fileName) {
-        int lastDot = fileName.lastIndexOf(".");
-        if (lastDot > 0) return fileName.substring(0, lastDot);
-        return fileName;
-    }
-
-    private boolean isSDCardAvailable() {
-        String state = Environment.getExternalStorageState();
-        return Environment.MEDIA_MOUNTED.equals(state);
-    }
-
-    /**
-     * 合并同一 avid 下已完成的多个分P为一个条目，下载中的保持独立
-     */
+    // 合并多 P
     private List<OfflineItem> groupCompletedItems(List<OfflineItem> items) {
         List<OfflineItem> result = new ArrayList<OfflineItem>();
         Map<Long, OfflineItem> completedGroups = new HashMap<Long, OfflineItem>();
         List<OfflineItem> inProgressList = new ArrayList<OfflineItem>();
 
-        for (OfflineItem item : items) {
+        for (int i = 0; i < items.size(); i++) {
+            OfflineItem item = items.get(i);
             if (!item.isCompleted) {
-                inProgressList.add(item); // 下载中的保持独立
+                inProgressList.add(item);
             } else if (item.avid > 0) {
                 OfflineItem group = completedGroups.get(item.avid);
                 if (group == null) {
-                    // 第一个完成的，直接放入结果
                     completedGroups.put(item.avid, item);
                     result.add(item);
                 } else {
-                    // 已有同 avid 的已完成条目，合并
                     if (group.pages == null) {
                         group.pages = new ArrayList<String>();
                         group.pagesFile = new ArrayList<File>();
@@ -480,69 +627,119 @@ public class OfflineActivity extends BaseActivity {
                     group.pages.add(item.pageTitle != null ? item.pageTitle : "P" + item.page);
                     group.pagesFile.add(item.videoFile);
                     group.totalPageCount++;
-                    group.size += item.size; // 累计大小
-                    // 用视频主标题代替单P标题
-                    group.pageTitle = null; // 清除单P标题，让外层显示 avid 编号
+                    group.size += item.size;
+                    group.pageTitle = null;
                 }
             } else {
-                result.add(item); // 旧版兼容
+                result.add(item);
             }
         }
 
-        // 下载中的放前面
         result.addAll(0, inProgressList);
         return result;
     }
 
-    // ========== 存储空间条 ==========
-
-    private void updateStorageBar(File downloadDir) {
-        try {
-            long totalBytes;
-            long availBytes;
-
+    // 提取 avid
+    private long extractAvidFromFileName(String name) {
+        Pattern p = Pattern.compile("av(\\d+)");
+        Matcher m = p.matcher(name);
+        if (m.find()) {
             try {
-                // 用下载目录所在文件系统的路径
-                String path = downloadDir.exists() ? downloadDir.getAbsolutePath()
-                        : Environment.getExternalStorageDirectory().getPath();
-                StatFs stat = new StatFs(path);
-                // 参考原版：先转long再乘，防止int溢出
-                totalBytes = ((long) stat.getBlockCount()) * ((long) stat.getBlockSize());
-                availBytes = ((long) stat.getAvailableBlocks()) * ((long) stat.getBlockSize());
-            } catch (Exception e) {
-                totalBytes = 0;
-                availBytes = 0;
+                return Long.parseLong(m.group(1));
+            } catch (NumberFormatException e) {}
+        }
+        p = Pattern.compile("\\[(\\d+)\\]");
+        m = p.matcher(name);
+        if (m.find()) {
+            try {
+                return Long.parseLong(m.group(1));
+            } catch (NumberFormatException e) {}
+        }
+        return 0;
+    }
+
+    // 提取 page
+    private int extractPageFromFileName(String name) {
+        Pattern p = Pattern.compile("[PpEe](\\d+)");
+        Matcher m = p.matcher(name);
+        if (m.find()) {
+            try {
+                return Integer.parseInt(m.group(1));
+            } catch (NumberFormatException e) {}
+        }
+        p = Pattern.compile("第(\\d+)话");
+        m = p.matcher(name);
+        if (m.find()) {
+            try {
+                return Integer.parseInt(m.group(1));
+            } catch (NumberFormatException e) {}
+        }
+        p = Pattern.compile("P(\\d+)");
+        m = p.matcher(name);
+        if (m.find()) {
+            try {
+                return Integer.parseInt(m.group(1));
+            } catch (NumberFormatException e) {}
+        }
+        return 1;
+    }
+
+    private File getDownloadDir() {
+        if (isSDCardAvailable()) {
+            File sdDownload = new File(Environment.getExternalStorageDirectory(), "BiliClassic/Download");
+            if (sdDownload.exists()) {
+                return sdDownload;
             }
-            long usedBytes = totalBytes - availBytes;
+            if (sdDownload.mkdirs()) {
+                return sdDownload;
+            }
+        }
+        File internalDownload = new File(getFilesDir(), "Download");
+        if (!internalDownload.exists()) {
+            internalDownload.mkdirs();
+        }
+        return internalDownload;
+    }
 
-            int percent = totalBytes > 0 ? (int) (usedBytes * 100 / totalBytes) : 0;
-            storageProgress.setProgress(percent);
+    private boolean isVideoFile(File file) {
+        String name = file.getName().toLowerCase();
+        return name.endsWith(".mp4") || name.endsWith(".flv") || name.endsWith(".mkv")
+                || name.endsWith(".avi") || name.endsWith(".mov") || name.endsWith(".3gp");
+    }
 
-            String availStr = formatFileSize(availBytes);
-            String totalStr = formatFileSize(totalBytes);
-            storageText.setText("可用 " + availStr + " / 共 " + totalStr);
-        } catch (Exception e) {
-            storageText.setText("存储信息获取失败");
+    private String getFileNameWithoutExtension(String fileName) {
+        int lastDot = fileName.lastIndexOf(".");
+        if (lastDot > 0) {
+            return fileName.substring(0, lastDot);
+        }
+        return fileName;
+    }
+
+    private boolean isSDCardAvailable() {
+        String state = Environment.getExternalStorageState();
+        return Environment.MEDIA_MOUNTED.equals(state);
+    }
+
+    private String formatFileSize(long size) {
+        if (size < 1024) {
+            return size + " B";
+        } else if (size < 1024 * 1024) {
+            return (size / 1024) + " KB";
+        } else if (size < 1024 * 1024 * 1024) {
+            return (size / 1024 / 1024) + " MB";
+        } else {
+            return (size / 1024 / 1024 / 1024) + " GB";
         }
     }
 
-    private long calculateDirSize(File dir) {
-        long size = 0;
-        if (dir == null || !dir.isDirectory()) return 0;
-        File[] files = dir.listFiles();
-        if (files == null) return 0;
-        for (File f : files) {
-            if (f.isFile()) {
-                size += f.length();
-            } else if (f.isDirectory()) {
-                size += calculateDirSize(f);
-            }
-        }
-        return size;
+    private String shortQualityName(String name) {
+        if (name == null) return "";
+        int spaceIdx = name.indexOf(' ');
+        if (spaceIdx > 0) return name.substring(0, spaceIdx);
+        return name;
     }
 
-    // ========== 封面加载 ==========
-
+    // 加载封面
     private void loadCoverFromLocal(final OfflineItem item, final ImageView coverView, final int position) {
         if (item == null || coverView == null) return;
         if (isScrolling) return;
@@ -559,75 +756,64 @@ public class OfflineActivity extends BaseActivity {
             }
         }
 
-        if (item.coverFile != null && item.coverFile.exists()) {
-            Boolean isLoading = loadingMap.get(position);
-            if (isLoading != null && isLoading) return;
+        if (item.coverFile == null || !item.coverFile.exists()) {
+            coverView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+            return;
+        }
 
-            loadingMap.put(position, true);
-            final ImageView imageView = coverView;
-            final String key = cacheKey;
+        Boolean isLoading = loadingMap.get(position);
+        if (isLoading != null && isLoading) {
+            return;
+        }
 
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        BitmapFactory.Options options = new BitmapFactory.Options();
-                        options.inSampleSize = 2;
-                        options.inPreferredConfig = Bitmap.Config.RGB_565;
-                        final Bitmap bitmap = BitmapFactory.decodeFile(item.coverFile.getAbsolutePath(), options);
-                        loadingMap.remove(position);
-                        if (bitmap != null && !bitmap.isRecycled()) {
-                            imageCache.put(key, new SoftReference<Bitmap>(bitmap));
-                            mainHandler.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    imageView.setImageBitmap(bitmap);
-                                }
-                            });
-                        }
-                    } catch (Exception e) {
-                        loadingMap.remove(position);
-                    } catch (OutOfMemoryError e) {
-                        loadingMap.remove(position);
+        loadingMap.put(position, true);
+        final ImageView imageView = coverView;
+        final String key = cacheKey;
+
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    BitmapFactory.Options options = new BitmapFactory.Options();
+                    options.inSampleSize = 2;
+                    options.inPreferredConfig = Bitmap.Config.RGB_565;
+                    final Bitmap bitmap = BitmapFactory.decodeFile(item.coverFile.getAbsolutePath(), options);
+                    loadingMap.remove(position);
+                    if (bitmap != null && !bitmap.isRecycled()) {
+                        imageCache.put(key, new SoftReference<Bitmap>(bitmap));
+                        mainHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                imageView.setImageBitmap(bitmap);
+                            }
+                        });
                     }
+                } catch (Exception e) {
+                    loadingMap.remove(position);
+                } catch (OutOfMemoryError e) {
+                    loadingMap.remove(position);
                 }
-            });
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        stopAutoRefresh();
-        mRefreshHandler.removeCallbacksAndMessages(null);
-        if (adapter != null) {
-            for (SoftReference<Bitmap> ref : imageCache.values()) {
-                Bitmap bmp = ref.get();
-                if (bmp != null && !bmp.isRecycled()) bmp.recycle();
             }
-            imageCache.clear();
-            loadingMap.clear();
-        }
-        if (executor != null && !executor.isShutdown()) {
-            executor.shutdownNow();
-        }
+        });
     }
 
-    // ========== Adapter ==========
-
+    // Adapter
     class OfflineAdapter extends BaseAdapter {
         @Override
         public int getCount() {
             return videoList.size();
         }
+
         @Override
         public Object getItem(int position) {
             return videoList.get(position);
         }
+
         @Override
         public long getItemId(int position) {
             return position;
         }
+
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
             ViewHolder holder;
@@ -647,7 +833,6 @@ public class OfflineActivity extends BaseActivity {
 
             final OfflineItem item = videoList.get(position);
             if (item != null) {
-                // 显示标题：合并的多P显示视频主标题，单P显示分P标题
                 String displayTitle;
                 if (item.totalPageCount > 1) {
                     displayTitle = (item.mainTitle != null && item.mainTitle.length() > 0)
@@ -660,14 +845,12 @@ public class OfflineActivity extends BaseActivity {
                 holder.title.setText(displayTitle);
                 holder.size.setText(formatFileSize(item.size));
 
-                // 画质 / av号标签
                 String stateText = item.title;
                 if (item.qualityName != null && item.qualityName.length() > 0) {
                     stateText = item.qualityName + "  |  " + stateText;
                 }
                 holder.state.setText(stateText);
 
-                // 下载进度条
                 if (holder.itemProgress != null) {
                     if (!item.isCompleted && item.totalBytes > 0) {
                         holder.itemProgress.setVisibility(View.VISIBLE);
@@ -679,80 +862,28 @@ public class OfflineActivity extends BaseActivity {
                     }
                 }
 
-                // 播放/暂停/停止按钮
                 if (holder.btnPlay != null) {
                     if (!item.isCompleted) {
-                        // 下载中或暂停中
-                        final long itemKey = item.getKey();
-                        final boolean isPaused = mPausedKeys.contains(itemKey);
-                        holder.btnPlay.setVisibility(View.VISIBLE);
-                        if (isPaused) {
-                            // 暂停中 → 显示继续按钮
-                            holder.btnPlay.setImageResource(android.R.drawable.ic_media_play);
-                        } else {
-                            // 下载中 → 显示暂停按钮
-                            holder.btnPlay.setImageResource(android.R.drawable.ic_media_pause);
-                        }
-                        holder.btnPlay.setOnClickListener(new View.OnClickListener() {
-                            @Override
-                            public void onClick(View v) {
-                                if (mPausedKeys.contains(itemKey)) {
-                                    // 继续特定任务
-                                    mPausedKeys.remove(itemKey);
-                                    Intent intent = new Intent(OfflineActivity.this,
-                                            VideoDownloadService.class);
-                                    intent.setAction(VideoDownloadService.ACTION_RESUME);
-                                    intent.putExtra("key", itemKey);
-                                    startService(intent);
-                                } else {
-                                    // 暂停
-                                    mPausedKeys.add(itemKey);
-                                    Intent intent = new Intent(OfflineActivity.this,
-                                            VideoDownloadService.class);
-                                    intent.setAction(VideoDownloadService.ACTION_PAUSE);
-                                    startService(intent);
-                                }
-                                adapter.notifyDataSetChanged();
-                            }
-                        });
+                        holder.btnPlay.setVisibility(View.GONE);
                     } else {
-                        // 完成 → 显示播放按钮
                         holder.btnPlay.setVisibility(View.VISIBLE);
                         holder.btnPlay.setImageResource(R.drawable.ic_btn_av_play_chroma);
                         holder.btnPlay.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            if (item != null && item.videoFile != null && item.videoFile.exists()) {
+                            @Override
+                            public void onClick(View v) {
                                 playVideo(item);
-                            } else {
-                                Toast.makeText(OfflineActivity.this, "视频文件不存在", Toast.LENGTH_SHORT).show();
                             }
-                        }
-                    });
+                        });
                     }
                 }
             }
+
             holder.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
             if (item != null && !isScrolling) {
                 loadCoverFromLocal(item, holder.cover, position);
             }
             return convertView;
         }
-    }
-
-    private String formatFileSize(long size) {
-        if (size < 1024) return size + " B";
-        else if (size < 1024 * 1024) return (size / 1024) + " KB";
-        else if (size < 1024 * 1024 * 1024) return (size / 1024 / 1024) + " MB";
-        else return (size / 1024 / 1024 / 1024) + " GB";
-    }
-
-    private static String shortQualityName(String name) {
-        if (name == null) return "";
-        // 360P 流畅 -> 360P, 720P 高清 -> 720P
-        int spaceIdx = name.indexOf(' ');
-        if (spaceIdx > 0) return name.substring(0, spaceIdx);
-        return name;
     }
 
     static class ViewHolder {
@@ -770,7 +901,7 @@ public class OfflineActivity extends BaseActivity {
         File coverFile;
         File danmakuFile;
         String title;
-        String mainTitle;   // 视频主标题
+        String mainTitle;
         String pageTitle;
         long cid;
         long avid;
@@ -781,18 +912,14 @@ public class OfflineActivity extends BaseActivity {
         long downloadedBytes;
         long totalBytes;
         boolean isCompleted;
-        List<String> pages;         // 多P的标题列表
-        List<File> pagesFile;       // 多P的视频文件
+        List<String> pages;
+        List<File> pagesFile;
         int totalPageCount;
 
         String getCacheKey() {
             if (env != null) return env.avid + "/" + env.page;
-            return title;
-        }
-
-        long getKey() {
-            return (avid << 32) | (page & 0xFFFFFFFFL);
+            if (title != null) return title;
+            return String.valueOf(System.identityHashCode(this));
         }
     }
 }
-

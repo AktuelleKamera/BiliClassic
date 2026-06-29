@@ -28,9 +28,11 @@ import java.net.URL;
 import tv.biliclassic.subsettings.DecoderSettingsActivity;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.UpdateUtil;
 
 public class SettingsActivity extends BaseActivity {
 
+    // 播放器偏好
     private static final String KEY_PLAYER_PREFERENCE = "player_preference";
     private static final String KEY_AUTO_CHECK_UPDATE = "auto_check_update";
     private static final String KEY_DEFAULT_TAB = "default_tab";
@@ -38,7 +40,7 @@ public class SettingsActivity extends BaseActivity {
     private static final String KEY_MODERN_MODE = "modern_mode";
     private static final String KEY_DECODER_TYPE = "decoder_type";
     private static final String KEY_BUILTIN_PLAYER = "use_builtin_player";
-    private static final String KEY_ONLINE_PLAY = "online_play";  // 在线播放开关
+    private static final String KEY_ONLINE_PLAY = "online_play";
 
     // 视频画质（B站 API 标准值）
     private static final int QUALITY_360P = 16;
@@ -61,9 +63,13 @@ public class SettingsActivity extends BaseActivity {
     private static final int TAB_PROFILE = 0;
     private static final int TAB_HOME = 1;
     private static final int TAB_NEW_ANIME = 2;
-    private static final int TAB_timeline = 3;
+    private static final int TAB_TIMELINE = 3;
     private static final int TAB_RECOMMEND = 4;
     private static final int TAB_ABOUT = 5;
+
+    // 解码方式
+    private static final int DECODER_SYSTEM = 0;
+    private static final int DECODER_IJK = 1;
 
     private TextView cacheSizeText;
     private LinearLayout clearCacheItem;
@@ -208,7 +214,7 @@ public class SettingsActivity extends BaseActivity {
             }
         }
 
-        // ========== 在线播放开关 ==========
+        // 在线播放开关
         checkboxOnlinePlay = (CheckBox) findViewById(R.id.checkbox_online_play);
         onlinePlayItem = (LinearLayout) findViewById(R.id.online_play_item);
 
@@ -405,24 +411,18 @@ public class SettingsActivity extends BaseActivity {
         }
     }
 
-    /**
-     * 获取在线播放状态
-     */
+    // 获取在线播放状态
     public static boolean isOnlinePlayEnabled() {
         return SharedPreferencesUtil.getBoolean(KEY_ONLINE_PLAY, false);
     }
 
-    /**
-     * 获取现代模式状态
-     */
+    // 获取现代模式状态
     public static boolean isModernModeEnabled() {
         return SharedPreferencesUtil.getBoolean(KEY_MODERN_MODE, false);
     }
 
-    /**
-     * 获取放送时间表 API URL
-     */
-    public static String gettimelineApiUrl() {
+    // 获取放送时间表 API URL
+    public static String getTimelineApiUrl() {
         if (isModernModeEnabled()) {
             return "http://www.biliclassic.cn/api/schedulereal.json";
         } else {
@@ -430,9 +430,7 @@ public class SettingsActivity extends BaseActivity {
         }
     }
 
-    /**
-     * 获取新番专题 API URL
-     */
+    // 获取新番专题 API URL
     public static String getNewAnimeApiUrl() {
         if (isModernModeEnabled()) {
             return "http://www.biliclassic.cn/api/newanimreal.json";
@@ -441,8 +439,7 @@ public class SettingsActivity extends BaseActivity {
         }
     }
 
-    // ========== 视频画质选择 ==========
-
+    // 视频画质选择
     private void showVideoQualityDialog() {
         final String[] qualities = {"360P 流畅", "480P 清晰", "720P 高清"};
         final int[] qualityValues = {QUALITY_360P, QUALITY_480P, QUALITY_720P};
@@ -489,8 +486,7 @@ public class SettingsActivity extends BaseActivity {
         return SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY, QUALITY_360P);
     }
 
-    // ========== 默认首页选择 ==========
-
+    // 默认首页选择
     public static int getDefaultTab() {
         return SharedPreferencesUtil.getInt(KEY_DEFAULT_TAB, TAB_NEW_ANIME);
     }
@@ -507,7 +503,7 @@ public class SettingsActivity extends BaseActivity {
 
     private void showDefaultTabDialog() {
         final String[] tabNames = {"个人中心", "分区导航", "新番专题", "放送时间表", "推荐视频", "关于我们"};
-        final int[] tabValues = {TAB_PROFILE, TAB_HOME, TAB_NEW_ANIME, TAB_timeline, TAB_RECOMMEND, TAB_ABOUT};
+        final int[] tabValues = {TAB_PROFILE, TAB_HOME, TAB_NEW_ANIME, TAB_TIMELINE, TAB_RECOMMEND, TAB_ABOUT};
         int currentIndex = getDefaultTab();
 
         int checkedIndex = 0;
@@ -536,8 +532,7 @@ public class SettingsActivity extends BaseActivity {
                 .show();
     }
 
-    // ========== 播放器选择 ==========
-
+    // 播放器选择
     public static String getPlayerPackageName() {
         int preference = SharedPreferencesUtil.getInt(KEY_PLAYER_PREFERENCE, PLAYER_BUILTIN);
         switch (preference) {
@@ -598,8 +593,7 @@ public class SettingsActivity extends BaseActivity {
         playerChoiceText.setText(displayName);
     }
 
-    // ========== 内置播放器 + 解码方式 ==========
-
+    // 内置播放器 + 解码方式
     public static boolean useBuiltinPlayer() {
         return SharedPreferencesUtil.getBoolean(KEY_BUILTIN_PLAYER, true);
     }
@@ -607,11 +601,6 @@ public class SettingsActivity extends BaseActivity {
     public static int getDecoderType() {
         return SharedPreferencesUtil.getInt(KEY_DECODER_TYPE, DECODER_IJK);
     }
-
-    private static final int DECODER_SYSTEM = 0;
-    private static final int DECODER_IJK = 1;
-
-    // ========== 播放器选择 ==========
 
     private void showPlayerChoiceDialog() {
         final String[] players = {"内置播放器", "自动检测", "MX Player (免费版)", "MX Player (专业版)", "MoboPlayer", "VLC", "VPlayer", "RockPlaye Liter", "QQ影音", "系统播放器"};
@@ -767,11 +756,7 @@ public class SettingsActivity extends BaseActivity {
         Toast.makeText(SettingsActivity.this, "重启应用后生效", Toast.LENGTH_SHORT).show();
     }
 
-    // ========== 缓存管理 ==========
-
-    /**
-     * 获取头像缓存文件
-     */
+    // 缓存管理
     private File getAvatarCacheFile() {
         if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
             try {
@@ -787,9 +772,6 @@ public class SettingsActivity extends BaseActivity {
         return new File(getCacheDir(), "avatar_cache.jpg");
     }
 
-    /**
-     * 获取头像缓存大小
-     */
     private long getAvatarCacheSize() {
         File avatarFile = getAvatarCacheFile();
         if (avatarFile.exists()) {
@@ -798,9 +780,6 @@ public class SettingsActivity extends BaseActivity {
         return 0;
     }
 
-    /**
-     * 获取番剧缓存大小
-     */
     private long getAnimeCacheSize() {
         try {
             File animeCacheDir = new File(getCacheDir(), "anime_cache");
@@ -813,9 +792,6 @@ public class SettingsActivity extends BaseActivity {
         }
     }
 
-    /**
-     * 获取文件夹大小
-     */
     private long getFolderSize(File dir) {
         if (dir == null || !dir.exists()) {
             return 0;
@@ -835,16 +811,10 @@ public class SettingsActivity extends BaseActivity {
         return size;
     }
 
-    /**
-     * 获取所有图片缓存总大小（头像 + 番剧封面等）
-     */
     private long getTotalCacheSize() {
         return getAvatarCacheSize() + getAnimeCacheSize();
     }
 
-    /**
-     * 更新缓存大小显示
-     */
     private void updateCacheSize() {
         long totalSize = getTotalCacheSize();
         if (totalSize > 0) {
@@ -854,9 +824,6 @@ public class SettingsActivity extends BaseActivity {
         }
     }
 
-    /**
-     * 显示清除缓存确认对话框
-     */
     private void showClearCacheDialog() {
         long totalSize = getTotalCacheSize();
         String sizeText = formatFileSize(totalSize);
@@ -873,15 +840,11 @@ public class SettingsActivity extends BaseActivity {
                 .show();
     }
 
-    /**
-     * 清除所有图片缓存
-     */
     private void clearAllCache() {
         try {
             long freedSize = 0;
             int deletedCount = 0;
 
-            // 1. 清除头像缓存
             File avatarFile = getAvatarCacheFile();
             if (avatarFile.exists()) {
                 freedSize += avatarFile.length();
@@ -890,7 +853,6 @@ public class SettingsActivity extends BaseActivity {
                 }
             }
 
-            // 2. 清除番剧缓存（anime_cache）
             File animeCacheDir = new File(getCacheDir(), "anime_cache");
             if (animeCacheDir.exists()) {
                 long size = getFolderSize(animeCacheDir);
@@ -907,9 +869,6 @@ public class SettingsActivity extends BaseActivity {
         }
     }
 
-    /**
-     * 递归删除文件/文件夹
-     */
     private void deleteRecursive(File file) {
         if (file == null || !file.exists()) {
             return;
@@ -1300,289 +1259,33 @@ public class SettingsActivity extends BaseActivity {
         }
     }
 
-    // ========== 检查更新 ==========
-
+    // 检查更新（使用 UpdateUtil）
     private void checkForUpdate() {
         checkUpdateText.setText("正在检查...");
         checkUpdateItem.setEnabled(false);
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                boolean success = false;
-                String versionJson = null;
-
-                try {
-                    java.net.URL url = new java.net.URL("http://www.biliclassic.cn/api/version.json");
-                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
-                    conn.setRequestMethod("GET");
-                    conn.setRequestProperty("User-Agent", "BiliClassic");
-
-                    int responseCode = conn.getResponseCode();
-                    if (responseCode == 200) {
-                        java.io.InputStream is = conn.getInputStream();
-                        java.io.BufferedReader reader = new java.io.BufferedReader(
-                                new java.io.InputStreamReader(is, "UTF-8"));
-                        StringBuilder sb = new StringBuilder();
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            sb.append(line);
-                        }
-                        reader.close();
-                        is.close();
-                        versionJson = sb.toString();
-                        success = true;
+        UpdateUtil.checkUpdate(this, currentVersionCode, currentVersionName,
+                new UpdateUtil.UpdateCallback() {
+                    @Override
+                    public void onCheckStart() {
+                        // UI 已经在调用前设置了
                     }
-                    conn.disconnect();
-                } catch (Exception e) {
-                }
 
-                if (!success) {
-                    try {
-                        java.net.URL url = new java.net.URL(
-                                "http://7891vip.top/biliclassic/update.php");
-                        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
-                        conn.setConnectTimeout(8000);
-                        conn.setReadTimeout(8000);
-                        conn.setRequestMethod("GET");
-                        conn.setRequestProperty("User-Agent", "BiliClassic");
-
-                        int responseCode = conn.getResponseCode();
-                        if (responseCode == 200) {
-                            java.io.InputStream is = conn.getInputStream();
-                            java.io.BufferedReader reader = new java.io.BufferedReader(
-                                    new java.io.InputStreamReader(is, "UTF-8"));
-                            StringBuilder sb = new StringBuilder();
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                sb.append(line);
-                            }
-                            reader.close();
-                            is.close();
-                            versionJson = sb.toString();
-                            success = true;
-                        }
-                        conn.disconnect();
-                    } catch (Exception e) {
-                    }
-                }
-
-                final String finalVersionJson = versionJson;
-                final boolean finalSuccess = success;
-
-                if (finalSuccess && finalVersionJson != null && finalVersionJson.length() > 0) {
-                    mainHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            handleUpdateCheckResult(finalVersionJson);
-                        }
-                    });
-                }
-            }
-        }).start();
-    }
-
-    private void handleUpdateCheckResult(String versionJson) {
-        try {
-            JSONObject json = new JSONObject(versionJson);
-
-            int latestVersionCode = json.optInt("version_code", 0);
-            if (latestVersionCode == 0) {
-                latestVersionCode = json.optInt("versionCode", 0);
-            }
-            String latestVersionName = json.optString("version", "");
-            String downloadUrl = json.optString("download_url", "");
-            boolean forceUpdate = json.optBoolean("force_update", false);
-            int minSdk = json.optInt("min_sdk", 0);
-
-            String changelog = "";
-            try {
-                org.json.JSONArray changelogArray = json.optJSONArray("changelog");
-                if (changelogArray != null && changelogArray.length() > 0) {
-                    StringBuilder logBuilder = new StringBuilder();
-                    for (int i = 0; i < changelogArray.length(); i++) {
-                        logBuilder.append("• ").append(changelogArray.getString(i));
-                        if (i < changelogArray.length() - 1) {
-                            logBuilder.append("\n");
+                    @Override
+                    public void onCheckComplete(boolean hasUpdate, String message) {
+                        checkUpdateText.setText("检查完成");
+                        checkUpdateItem.setEnabled(true);
+                        if (!hasUpdate) {
+                            Toast.makeText(SettingsActivity.this, message, Toast.LENGTH_SHORT).show();
                         }
                     }
-                    changelog = logBuilder.toString();
-                }
-            } catch (Exception e) {
-                changelog = json.optString("changelog", "");
-            }
 
-            checkUpdateText.setText("检查完成");
-
-            boolean hasUpdate = false;
-
-            if (latestVersionCode > 0) {
-                hasUpdate = (latestVersionCode > currentVersionCode);
-            } else {
-                hasUpdate = compareVersions(currentVersionName, latestVersionName);
-            }
-
-            int sdkVersion = android.os.Build.VERSION.SDK_INT;
-            if (minSdk > 0 && sdkVersion < minSdk) {
-                return;
-            }
-
-            if (hasUpdate) {
-                String detailInfo = "当前: " + currentVersionName + "\n" +
-                        "最新: " + latestVersionName + "\n\n";
-                showUpdateDialog(latestVersionName, detailInfo + changelog, downloadUrl, forceUpdate);
-            } else {
-                Toast.makeText(SettingsActivity.this, "已是最新版本 (" + currentVersionName + ")", Toast.LENGTH_SHORT).show();
-            }
-
-        } catch (Exception e) {
-            Toast.makeText(SettingsActivity.this, "解析更新信息失败", Toast.LENGTH_SHORT).show();
-            e.printStackTrace();
-        }
-    }
-
-    private boolean compareVersions(String current, String latest) {
-        if (current == null || latest == null || current.length() == 0 || latest.length() == 0) {
-            return false;
-        }
-
-        current = current.trim();
-        latest = latest.trim();
-
-        if (current.equals(latest)) {
-            return false;
-        }
-
-        String[] currentParts = splitVersion(current);
-        String[] latestParts = splitVersion(latest);
-
-        String currentBase = currentParts[0];
-        String latestBase = latestParts[0];
-        String currentSuffix = currentParts[1];
-        String latestSuffix = latestParts[1];
-
-        int cmp = compareVersionNumbers(currentBase, latestBase);
-        if (cmp != 0) {
-            return cmp < 0;
-        }
-
-        return compareSuffix(currentSuffix, latestSuffix) < 0;
-    }
-
-    private String[] splitVersion(String version) {
-        String base = version;
-        String suffix = "";
-
-        int rIndex = version.indexOf("-r");
-        if (rIndex > 0) {
-            base = version.substring(0, rIndex);
-            suffix = version.substring(rIndex + 1);
-        } else {
-            int fixIndex = version.indexOf("-fix");
-            if (fixIndex > 0) {
-                base = version.substring(0, fixIndex);
-                suffix = version.substring(fixIndex + 1);
-            }
-        }
-
-        return new String[]{base, suffix};
-    }
-
-    private int compareVersionNumbers(String v1, String v2) {
-        if (v1.indexOf('.') >= 0 || v2.indexOf('.') >= 0) {
-            String[] parts1 = v1.split("\\.");
-            String[] parts2 = v2.split("\\.");
-
-            int len = Math.max(parts1.length, parts2.length);
-            for (int i = 0; i < len; i++) {
-                int num1 = 0;
-                int num2 = 0;
-                try {
-                    if (i < parts1.length) num1 = Integer.parseInt(parts1[i]);
-                    if (i < parts2.length) num2 = Integer.parseInt(parts2[i]);
-                } catch (NumberFormatException e) {
-                    String s1 = (i < parts1.length) ? parts1[i] : "";
-                    String s2 = (i < parts2.length) ? parts2[i] : "";
-                    int cmp = s1.compareTo(s2);
-                    if (cmp != 0) return cmp;
-                    continue;
-                }
-                if (num1 != num2) {
-                    return num1 - num2;
-                }
-            }
-            return 0;
-        }
-
-        try {
-            int n1 = Integer.parseInt(v1);
-            int n2 = Integer.parseInt(v2);
-            return n1 - n2;
-        } catch (NumberFormatException e) {
-            return v1.compareTo(v2);
-        }
-    }
-
-    private int compareSuffix(String currentSuffix, String latestSuffix) {
-        if (currentSuffix != null && currentSuffix.length() > 0 &&
-                latestSuffix != null && latestSuffix.length() > 0) {
-
-            if (currentSuffix.startsWith("r") && latestSuffix.startsWith("r")) {
-                try {
-                    int n1 = Integer.parseInt(currentSuffix.substring(1));
-                    int n2 = Integer.parseInt(latestSuffix.substring(1));
-                    return n1 - n2;
-                } catch (NumberFormatException e) {
-                    return currentSuffix.compareTo(latestSuffix);
-                }
-            }
-
-            if (currentSuffix.startsWith("r") && latestSuffix.startsWith("fix")) {
-                return -1;
-            }
-            if (currentSuffix.startsWith("fix") && latestSuffix.startsWith("r")) {
-                return 1;
-            }
-
-            return currentSuffix.compareTo(latestSuffix);
-        }
-
-        if (currentSuffix != null && currentSuffix.length() > 0) {
-            return 1;
-        }
-
-        if (latestSuffix != null && latestSuffix.length() > 0) {
-            return -1;
-        }
-
-        return 0;
-    }
-
-    private void showUpdateDialog(String versionName, String changelog, final String downloadUrl, boolean forceUpdate) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("发现新版本: " + versionName);
-        builder.setMessage(changelog);
-
-        builder.setPositiveButton("立即更新", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                if (downloadUrl != null && downloadUrl.length() > 0) {
-                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setData(Uri.parse(downloadUrl));
-                    startActivity(intent);
-                } else {
-                    Toast.makeText(SettingsActivity.this, "下载地址无效", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
-
-        if (!forceUpdate) {
-            builder.setNegativeButton("稍后", null);
-        }
-
-        builder.setCancelable(!forceUpdate);
-        builder.show();
+                    @Override
+                    public void onCheckFailed(String error) {
+                        checkUpdateText.setText("检查完成");
+                        checkUpdateItem.setEnabled(true);
+                        Toast.makeText(SettingsActivity.this, error, Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 }

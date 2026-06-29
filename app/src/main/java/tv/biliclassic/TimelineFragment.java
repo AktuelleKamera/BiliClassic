@@ -76,7 +76,7 @@ public class TimelineFragment extends Fragment {
             @Override
             public void run() {
                 try {
-                    String url = SettingsActivity.gettimelineApiUrl();
+                    String url = SettingsActivity.getTimelineApiUrl();
 
                     HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
                     conn.setConnectTimeout(10000);

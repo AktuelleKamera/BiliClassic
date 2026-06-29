@@ -23,6 +23,16 @@
         android:textColor="#666666"
         android:layout_marginBottom="8dp" />
 
+    <TextView
+        android:id="@+id/hint_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="支持格式：\n• 浏览器复制的 Cookie 字符串\n• JSON 格式 { &quot;cookies&quot;: &quot;...&quot; }\n• 任意包含 SESSDATA 的文本"
+        android:textSize="12sp"
+        android:textColor="#888888"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone" />
+
     <EditText
         android:id="@+id/loginInput"
         android:layout_width="match_parent"
@@ -33,7 +43,7 @@
         android:textSize="11sp"
         android:inputType="textMultiLine"
         android:singleLine="false"
-        android:hint='示例：\n{"cookies":"DedeUserID=xxxx; bili_jct=xxx; SESSDATA=xxxx", "refresh_token":"xxxx"}\n\n提示：\n1. 可以从其他客户端复制Cookie\n2. 必须包含 DedeUserID 和 bili_jct\n3. 格式必须为有效的JSON'
+        android:hint='示例：\n{&quot;cookies&quot;:&quot;DedeUserID=xxxx; bili_jct=xxx; SESSDATA=xxxx&quot;, &quot;refresh_token&quot;:&quot;xxxx&quot;}\n\n提示：\n1. 可以从其他客户端复制Cookie\n2. 必须包含 DedeUserID 和 bili_jct\n3. 格式必须为有效的JSON'
         android:minLines="8" />
 
     <LinearLayout

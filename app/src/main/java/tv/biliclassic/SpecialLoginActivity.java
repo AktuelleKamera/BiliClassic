@@ -33,6 +33,7 @@ import org.json.JSONObject;
 
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.CookieHelper;
 
 public class SpecialLoginActivity extends FragmentActivity {
 
@@ -41,6 +42,7 @@ public class SpecialLoginActivity extends FragmentActivity {
     private Button refuseBtn;
     private Button copyBtn;
     private TextView descText;
+    private TextView hintText;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,12 +54,17 @@ public class SpecialLoginActivity extends FragmentActivity {
         refuseBtn = (Button) findViewById(R.id.refuse);
         copyBtn = (Button) findViewById(R.id.copy);
         descText = (TextView) findViewById(R.id.desc);
+        hintText = (TextView) findViewById(R.id.hint_text);
 
         final boolean fromSetup = getIntent().getBooleanExtra("from_setup", false);
         final boolean isLoginMode = getIntent().getBooleanExtra("login", true);
 
         if (isLoginMode) {
-            descText.setText("请输入JSON格式的登录信息：");
+            descText.setText("请粘贴登录信息");
+            if (hintText != null) {
+                hintText.setText("支持格式：\n• 浏览器复制的 Cookie 字符串\n• JSON 格式 { \"cookies\": \"...\" }\n• 任意包含 SESSDATA 的文本");
+                hintText.setVisibility(View.VISIBLE);
+            }
 
             refuseBtn.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
@@ -70,58 +77,72 @@ public class SpecialLoginActivity extends FragmentActivity {
 
             confirmBtn.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
-                    String loginInfo = textInput.getText().toString().trim();
-                    if (loginInfo == null || loginInfo.length() == 0) {
+                    String input = textInput.getText().toString().trim();
+                    if (input == null || input.length() == 0) {
                         Toast.makeText(SpecialLoginActivity.this, "请输入内容", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    try {
-                        JSONObject json = new JSONObject(loginInfo);
-                        String cookies = json.optString("cookies", "");
-                        String refreshToken = json.optString("refresh_token", "");
 
-                        if (cookies == null || cookies.length() == 0) {
-                            Toast.makeText(SpecialLoginActivity.this, "cookies 不能为空", Toast.LENGTH_SHORT).show();
+                    // 先尝试用 CookieHelper 智能解析
+                    String cookies = CookieHelper.parseAndBuildCookie(input);
+                    if (cookies == null) {
+                        // 如果智能解析失败，尝试 JSON 解析
+                        try {
+                            JSONObject json = new JSONObject(input);
+                            cookies = json.optString("cookies", "");
+                            if (cookies == null || cookies.length() == 0) {
+                                Toast.makeText(SpecialLoginActivity.this,
+                                        "未找到有效的登录凭证 (SESSDATA)", Toast.LENGTH_SHORT).show();
+                                return;
+                            }
+                        } catch (JSONException e) {
+                            Toast.makeText(SpecialLoginActivity.this,
+                                    "无法解析输入，请检查格式是否正确", Toast.LENGTH_SHORT).show();
                             return;
                         }
-
-                        String mid = NetWorkUtil.getInfoFromCookie("DedeUserID", cookies);
-                        String csrf = NetWorkUtil.getInfoFromCookie("bili_jct", cookies);
-
-                        if (mid != null && mid.length() > 0) {
-                            try {
-                                SharedPreferencesUtil.putLong(SharedPreferencesUtil.mid, Long.parseLong(mid));
-                            } catch (NumberFormatException e) {
-                            }
-                        }
-                        if (csrf != null && csrf.length() > 0) {
-                            SharedPreferencesUtil.putString(SharedPreferencesUtil.csrf, csrf);
-                        }
-                        SharedPreferencesUtil.putString("cookies", cookies);
-                        if (refreshToken != null && refreshToken.length() > 0) {
-                            SharedPreferencesUtil.putString(SharedPreferencesUtil.refresh_token, refreshToken);
-                        }
-
-                        NetWorkUtil.refreshHeaders();
-                        saveUserName();
-
-                        Toast.makeText(SpecialLoginActivity.this, "登录成功", Toast.LENGTH_SHORT).show();
-
-                        Intent intent = new Intent(SpecialLoginActivity.this, MainActivity.class);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                        startActivity(intent);
-                        finish();
-
-                    } catch (JSONException e) {
-                        Toast.makeText(SpecialLoginActivity.this, "JSON格式错误，请检查输入", Toast.LENGTH_SHORT).show();
                     }
+
+                    if (cookies == null || cookies.length() == 0) {
+                        Toast.makeText(SpecialLoginActivity.this,
+                                "未找到有效的登录凭证 (SESSDATA)", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    // 保存 Cookie
+                    String mid = NetWorkUtil.getInfoFromCookie("DedeUserID", cookies);
+                    String csrf = NetWorkUtil.getInfoFromCookie("bili_jct", cookies);
+
+                    if (mid != null && mid.length() > 0) {
+                        try {
+                            SharedPreferencesUtil.putLong(SharedPreferencesUtil.mid, Long.parseLong(mid));
+                        } catch (NumberFormatException e) {
+                            // 忽略
+                        }
+                    }
+                    if (csrf != null && csrf.length() > 0) {
+                        SharedPreferencesUtil.putString(SharedPreferencesUtil.csrf, csrf);
+                    }
+                    SharedPreferencesUtil.putString("cookies", cookies);
+
+                    NetWorkUtil.refreshHeaders();
+                    saveUserName();
+
+                    Toast.makeText(SpecialLoginActivity.this, "登录成功", Toast.LENGTH_SHORT).show();
+
+                    Intent intent = new Intent(SpecialLoginActivity.this, MainActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    startActivity(intent);
+                    finish();
                 }
             });
 
             copyBtn.setVisibility(View.GONE);
 
         } else {
-            descText.setText("当前登录信息（JSON格式）：");
+            descText.setText("当前登录信息：");
+            if (hintText != null) {
+                hintText.setVisibility(View.GONE);
+            }
 
             JSONObject json = new JSONObject();
             try {
@@ -166,7 +187,6 @@ public class SpecialLoginActivity extends FragmentActivity {
             copyBtn.setVisibility(View.VISIBLE);
             copyBtn.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
-                    // 使用 Android 2.1 兼容的 ClipboardManager
                     ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                     cm.setText(textInput.getText().toString());
                     Toast.makeText(SpecialLoginActivity.this, "已复制到剪贴板", Toast.LENGTH_SHORT).show();

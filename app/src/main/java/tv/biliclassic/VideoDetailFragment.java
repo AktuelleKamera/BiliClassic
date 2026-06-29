@@ -772,13 +772,13 @@ public class VideoDetailFragment extends Fragment {
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
                                 if (videoUrl != null && videoUrl.length() > 0) {
-                                        Intent intent = new Intent(getActivity(), PlayerAnimActivity.class);
-                                        intent.putExtra("video_url", videoUrl);
-                                        intent.putExtra("video_title", tempPartTitle);
-                                        intent.putExtra("aid", tempAid);
-                                        intent.putExtra("cid", targetCid);
-                                        putQualityExtras(intent, playerData);
-                                        startActivity(intent);
+                                    Intent intent = new Intent(getActivity(), PlayerAnimActivity.class);
+                                    intent.putExtra("video_url", videoUrl);
+                                    intent.putExtra("video_title", tempPartTitle);
+                                    intent.putExtra("aid", tempAid);
+                                    intent.putExtra("cid", targetCid);
+                                    putQualityExtras(intent, playerData);
+                                    startActivity(intent);
                                 } else {
                                     Toast.makeText(getActivity(), "获取播放地址失败", Toast.LENGTH_SHORT).show();
                                 }

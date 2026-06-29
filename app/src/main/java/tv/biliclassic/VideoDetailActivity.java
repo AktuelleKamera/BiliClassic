@@ -14,11 +14,18 @@ import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.PagerTabStrip;
 import android.support.v4.view.ViewPager;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
+import android.widget.CheckBox;
 import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 import tv.biliclassic.download.VideoDownloadService;
@@ -36,7 +43,7 @@ public class VideoDetailActivity extends BaseActivity {
     private boolean isCleaned = false;
     private int currentPagePosition = 0;
 
-    // 下载质量选择相关
+    // 下载选择相关
     private String mPendingVideoUrl;
     private String mPendingTitle;
     private String mPendingPageTitle;
@@ -51,6 +58,13 @@ public class VideoDetailActivity extends BaseActivity {
     private String mPendingDescription;
     private String mPendingTags;
     private boolean mOfflineMode;
+
+    // 下载对话框数据
+    private List<VideoDetailFragment.VideoPage> mPages;
+    private boolean[] mPageChecked;
+    private int mSelectedQuality = 64;
+    private String mSelectedQualityName = "720P 高清";
+    private AlertDialog mDownloadDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -109,7 +123,7 @@ public class VideoDetailActivity extends BaseActivity {
         ImageView btnDownload = (ImageView) findViewById(R.id.btn_download);
         if (btnDownload != null) {
             if (mOfflineMode) {
-                btnDownload.setVisibility(View.GONE);  // 离线模式隐藏下载按钮
+                btnDownload.setVisibility(View.GONE);
             } else {
                 btnDownload.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -175,6 +189,10 @@ public class VideoDetailActivity extends BaseActivity {
         cleanupHandler.removeCallbacksAndMessages(null);
         videoDetailFragment = null;
         fragmentReady = false;
+        if (mDownloadDialog != null && mDownloadDialog.isShowing()) {
+            mDownloadDialog.dismiss();
+            mDownloadDialog = null;
+        }
     }
 
     private void updateAvidDisplay() {
@@ -255,7 +273,7 @@ public class VideoDetailActivity extends BaseActivity {
         }
     }
 
-    // ========== 下载相关（新实现） ==========
+    // 下载相关
 
     private void showDownloadChoiceDialog() {
         if (!fragmentReady || videoDetailFragment == null) {
@@ -263,100 +281,140 @@ public class VideoDetailActivity extends BaseActivity {
             return;
         }
 
-        final List<VideoDetailFragment.VideoPage> pages = videoDetailFragment.getVideoPages();
-        if (pages == null || pages.size() == 0) {
+        mPages = videoDetailFragment.getVideoPages();
+        if (mPages == null || mPages.size() == 0) {
             Toast.makeText(this, "无法获取视频信息", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 构建自定义对话框：CheckBox选P + Radio选择画质
-        final String[] qualityNames = {"360P 流畅", "480P 清晰", "720P 高清"};
-        final int[] qualityValues = {16, 32, 64};
-        final boolean[] pageChecked = new boolean[pages.size()];
-        pageChecked[0] = true; // 默认选中第一P
+        mPageChecked = new boolean[mPages.size()];
+        mPageChecked[0] = true;
 
-        String[] pageNames = new String[pages.size()];
-        for (int i = 0; i < pages.size(); i++) {
-            String t = pages.get(i).title;
-            if (t == null || t.length() == 0) t = "P" + (i + 1);
-            pageNames[i] = (i + 1) + ". " + t;
+        // 构建自定义布局
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_download_choice, null);
+
+        ListView listView = (ListView) dialogView.findViewById(R.id.list_view);
+        final RadioGroup qualityGroup = (RadioGroup) dialogView.findViewById(R.id.quality_group);
+
+        // 设置默认画质
+        int defaultQuality = SettingsActivity.getVideoQuality();
+        if (defaultQuality == 16) {
+            qualityGroup.check(R.id.quality_360);
+        } else if (defaultQuality == 32) {
+            qualityGroup.check(R.id.quality_480);
+        } else {
+            qualityGroup.check(R.id.quality_720);
         }
 
-        final int[] selectedQuality = {SettingsActivity.getVideoQuality()};
-        // 找默认画质在列表中的索引
-        int defaultQnIdx = 0;
-        for (int i = 0; i < qualityValues.length; i++) {
-            if (qualityValues[i] == selectedQuality[0]) { defaultQnIdx = i; break; }
-        }
-        final int[] qualityIdx = {defaultQnIdx};
+        // 设置分P列表适配器
+        final PageListAdapter adapter = new PageListAdapter();
+        listView.setAdapter(adapter);
 
-        // 用单层列表: 先显示P列表(多选), 再显示画质列表(单选)
-        final int pageCount = pages.size();
-        final int totalItems = pageCount + 1 + 3; // P + 分隔标题 + 画质
-        String[] items = new String[totalItems];
-        final boolean[] checkedItems = new boolean[totalItems];
-        for (int i = 0; i < pageCount; i++) {
-            items[i] = pageNames[i];
-            checkedItems[i] = pageChecked[i];
-        }
-        items[pageCount] = "———— 选择画质 ————";
-        for (int i = 0; i < 3; i++) {
-            items[pageCount + 1 + i] = qualityNames[i];
-            checkedItems[pageCount + 1 + i] = (i == qualityIdx[0]);
-        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("选择分P和画质");
+        builder.setView(dialogView);
+        builder.setPositiveButton("下载", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                // 获取选中的画质
+                int checkedId = qualityGroup.getCheckedRadioButtonId();
+                if (checkedId == R.id.quality_360) {
+                    mSelectedQuality = 16;
+                    mSelectedQualityName = "360P 流畅";
+                } else if (checkedId == R.id.quality_480) {
+                    mSelectedQuality = 32;
+                    mSelectedQualityName = "480P 清晰";
+                } else {
+                    mSelectedQuality = 64;
+                    mSelectedQualityName = "720P 高清";
+                }
 
-        new AlertDialog.Builder(this)
-            .setTitle("选择分P和画质")
-            .setMultiChoiceItems(items, checkedItems, new DialogInterface.OnMultiChoiceClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which, boolean isChecked) {
-                    if (which < pageCount) {
-                        pageChecked[which] = isChecked;
-                    } else if (which > pageCount) {
-                        // 画质选择：取消其他画质项
-                        int qIdx = which - pageCount - 1;
-                        if (isChecked) {
-                            for (int i = 0; i < 3; i++) {
-                                int pos = pageCount + 1 + i;
-                                if (pos != which) {
-                                    checkedItems[pos] = false;
-                                    ((AlertDialog) dialog).getListView().setItemChecked(pos, false);
-                                } else {
-                                    qualityIdx[0] = qIdx;
-                                }
-                            }
-                        }
+                // 遍历选中的分P
+                for (int i = 0; i < mPages.size(); i++) {
+                    if (mPageChecked[i]) {
+                        videoDetailFragment.prepareDownload(mPages.get(i), mSelectedQuality, mSelectedQualityName);
                     }
                 }
-            })
-            .setPositiveButton("下载", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    for (int i = 0; i < pageCount; i++) {
-                        if (pageChecked[i]) {
-                            videoDetailFragment.prepareDownload(pages.get(i), qualityValues[qualityIdx[0]],
-                                    qualityNames[qualityIdx[0]]);
-                        }
-                    }
-                }
-            })
-            .setNegativeButton("取消", null)
-            .show();
+                mDownloadDialog = null;
+            }
+        });
+        builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                mDownloadDialog = null;
+            }
+        });
+
+        mDownloadDialog = builder.show();
     }
 
-    /**
-     * 由 VideoDetailFragment 调用，传递已解析的下载信息
-     * 显示画质选择对话框，用户确认后启动下载服务
-     */
-    /**
-     * 直接启动下载服务（画质已在弹窗中选择）
-     */
+    // 分P列表适配器（带CheckBox）
+    private class PageListAdapter extends BaseAdapter {
+        @Override
+        public int getCount() {
+            return mPages.size();
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return mPages.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @Override
+        public View getView(final int position, View convertView, ViewGroup parent) {
+            ViewHolder holder;
+            if (convertView == null) {
+                convertView = getLayoutInflater().inflate(R.layout.item_download_page, parent, false);
+                holder = new ViewHolder();
+                holder.checkBox = (CheckBox) convertView.findViewById(R.id.checkbox);
+                holder.title = (TextView) convertView.findViewById(R.id.title);
+                convertView.setTag(holder);
+            } else {
+                holder = (ViewHolder) convertView.getTag();
+            }
+
+            VideoDetailFragment.VideoPage page = mPages.get(position);
+            String title = page.title;
+            if (title == null || title.length() == 0) {
+                title = "P" + (position + 1);
+            }
+            holder.title.setText((position + 1) + ". " + title);
+            holder.checkBox.setChecked(mPageChecked[position]);
+            holder.checkBox.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    mPageChecked[position] = ((CheckBox) v).isChecked();
+                }
+            });
+
+            // 点击整行切换
+            convertView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    mPageChecked[position] = !mPageChecked[position];
+                    notifyDataSetChanged();
+                }
+            });
+
+            return convertView;
+        }
+    }
+
+    static class ViewHolder {
+        CheckBox checkBox;
+        TextView title;
+    }
+
     public void startDownloadDirect(String videoUrl, String title, String pageTitle,
-                                     long aid, long cid, int page,
-                                     int quality, String qualityName,
-                                     String coverUrl, String upName, String bvid,
-                                     String description, String tags) {
-        // 检查是否已存在
+                                    long aid, long cid, int page,
+                                    int quality, String qualityName,
+                                    String coverUrl, String upName, String bvid,
+                                    String description, String tags) {
         VideoDownloadEnvironment env = new VideoDownloadEnvironment(
                 getDownloadDir(), aid, page);
         if (env.getVideoFile().exists()) {
@@ -370,8 +428,6 @@ public class VideoDetailActivity extends BaseActivity {
                 description, tags);
         Toast.makeText(this, "已加入: " + pageTitle, Toast.LENGTH_SHORT).show();
     }
-
-    // ========== /下载相关 ==========
 
     private File getDownloadDir() {
         if (isSDCardAvailable()) {
@@ -389,10 +445,8 @@ public class VideoDetailActivity extends BaseActivity {
         return Environment.MEDIA_MOUNTED.equals(state);
     }
 
-    // ========== 其他原有方法 ==========
-
-    public void setVideoDetailFragment(VideoDetailFragment fragment) {
-        this.videoDetailFragment = fragment;
+    public void setVideoDetailFragment(Fragment fragment) {
+        this.videoDetailFragment = (VideoDetailFragment) fragment;
         this.fragmentReady = true;
     }
 

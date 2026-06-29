@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@drawable/bili_texture_background">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="选择分P"
+        android:textSize="14sp"
+        android:textColor="#666666"
+        android:layout_marginBottom="8dp" />
+
+    <ListView
+        android:id="@+id/list_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:dividerHeight="1dp"
+        android:divider="#EEEEEE"
+        android:background="@android:color/transparent" />
+
+    <!-- 分割线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#DDDDDD"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="12dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="选择画质"
+        android:textSize="14sp"
+        android:textColor="#666666"
+        android:layout_marginBottom="8dp" />
+
+    <RadioGroup
+        android:id="@+id/quality_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/quality_360"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="360P 流畅"
+            android:textColor="#333333"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp" />
+
+        <RadioButton
+            android:id="@+id/quality_480"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="480P 清晰"
+            android:textColor="#333333"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp" />
+
+        <RadioButton
+            android:id="@+id/quality_720"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="720P 高清"
+            android:textColor="#333333"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp" />
+
+    </RadioGroup>
+
+</LinearLayout>

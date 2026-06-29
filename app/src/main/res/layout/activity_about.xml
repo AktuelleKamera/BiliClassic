@@ -5,10 +5,6 @@
     android:orientation="vertical"
     android:background="@drawable/bili_texture_background">
 
-    <!-- 顶栏（白色，左侧logo） -->
-
-    <!-- Tab 栏（粉色背景） -->
-
     <!-- 关于内容区域 -->
     <LinearLayout
         android:layout_width="match_parent"

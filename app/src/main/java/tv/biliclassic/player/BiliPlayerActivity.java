@@ -591,8 +591,11 @@ public class BiliPlayerActivity extends Activity implements
                                     if (newQnVals != null) {
                                         intent.putExtra("qn_value_array", newQnVals);
                                     }
+                                    // 禁用转场动画
+                                    overridePendingTransition(0, 0);
                                     finish();
                                     startActivity(intent);
+                                    overridePendingTransition(0, 0);
                                 } else {
                                     cleanupAndRestartWithQuality();
                                 }
