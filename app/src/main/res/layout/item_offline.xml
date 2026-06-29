@@ -3,29 +3,23 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="#F5F5F5">
+    android:paddingLeft="8dp"
+    android:paddingRight="8dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp"
+    android:background="@android:color/white">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="8dp">
+        android:orientation="horizontal">
 
-        <!-- 封面容器（白色描边） -->
-        <FrameLayout
+        <ImageView
+            android:id="@+id/cover"
             android:layout_width="80dp"
             android:layout_height="60dp"
-            android:background="#FFFFFF"
-            android:padding="2dp">
-
-            <ImageView
-                android:id="@+id/cover"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="centerCrop"
-                android:src="@drawable/bili_default_image_tv_with_bg" />
-
-        </FrameLayout>
+            android:scaleType="centerCrop"
+            android:src="@drawable/bili_default_image_tv_with_bg" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -33,7 +27,8 @@
             android:layout_weight="1"
             android:orientation="vertical"
             android:paddingLeft="8dp"
-            android:gravity="center_vertical">
+            android:paddingRight="4dp"
+            android:layout_gravity="center_vertical">
 
             <TextView
                 android:id="@+id/title"
@@ -41,7 +36,7 @@
                 android:layout_height="wrap_content"
                 android:text="视频标题"
                 android:textSize="14sp"
-                android:textColor="#333333"
+                android:textColor="#FF333333"
                 android:maxLines="2"
                 android:ellipsize="end" />
 
@@ -49,19 +44,44 @@
                 android:id="@+id/size"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="3dp"
                 android:text="0 MB"
-                android:textSize="12sp"
-                android:textColor="#666666" />
+                android:textSize="11sp"
+                android:textColor="#FF999999" />
 
+            <TextView
+                android:id="@+id/state"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="11sp"
+                android:textColor="#FF999999" />
+
+            <ProgressBar
+                android:id="@+id/progress_bar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:layout_marginTop="3dp"
+                android:max="100"
+                android:progress="0"
+                android:visibility="gone" />
         </LinearLayout>
 
+        <ImageView
+            android:id="@+id/btn_play"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_btn_av_play_chroma"
+            android:scaleType="centerInside"
+            android:layout_gravity="center_vertical"
+            android:contentDescription="播放" />
     </LinearLayout>
 
-    <!-- 分割线 -->
     <View
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="#E0E0E0" />
+        android:layout_height="0.5dp"
+        android:layout_marginTop="8dp"
+        android:background="#FFE0E0E0" />
 
 </LinearLayout>

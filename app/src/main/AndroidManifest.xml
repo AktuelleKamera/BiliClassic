@@ -114,6 +114,11 @@
             android:screenOrientation="landscape"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
 
+        <!-- 视频下载后台服务 -->
+        <service
+            android:name=".download.VideoDownloadService"
+            android:exported="false" />
+
     </application>
 
 </manifest>

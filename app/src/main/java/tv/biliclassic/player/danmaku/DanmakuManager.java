@@ -64,6 +64,7 @@ public class DanmakuManager {
     private File mDanmakuCacheFile;
     private boolean mEnabled = true;
     private boolean mLoaded;
+    private File mOfflineDanmakuFile; // 离线弹幕文件路径
 
     private IMediaPlayer mMediaPlayer;
     private boolean mVideoPrepared;
@@ -83,6 +84,13 @@ public class DanmakuManager {
         mCid = cid;
         mInputStub = danmakuInputStub;
         mRes = activity.getResources();
+    }
+
+    /**
+     * 设置离线弹幕文件路径（用于已缓存视频播放）
+     */
+    public void setOfflineDanmakuFile(File danmakuFile) {
+        mOfflineDanmakuFile = danmakuFile;
     }
 
     // lifecycle
@@ -119,7 +127,14 @@ public class DanmakuManager {
             mDanmakuUrl = "https://comment.bilibili.com/" + mCid + ".xml";
             mDanmakuCacheFile = new File(mActivity.getCacheDir(), "danmaku_" + mCid + ".xml");
         }
-        if (mDanmakuUrl != null) {
+
+        // 离线弹幕优先：如果提供了离线弹幕文件路径且存在，直接使用
+        if (mOfflineDanmakuFile != null && mOfflineDanmakuFile.exists() && mOfflineDanmakuFile.length() > 0) {
+            mDanmakuCacheFile = mOfflineDanmakuFile;
+            mDanmakuUrl = null; // 不需要在线获取
+        }
+
+        if (mDanmakuUrl != null || (mDanmakuCacheFile != null && mDanmakuCacheFile.exists())) {
             startLoadDanmaku();
         }
     }

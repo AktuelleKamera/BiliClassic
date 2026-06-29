@@ -44,33 +44,66 @@
         android:background="@drawable/shadow_top_dig"
         android:contentDescription="@null" />
 
-    <!-- 列表 -->
-    <ListView
-        android:id="@+id/list_view"
+    <!-- 列表容器 -->
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:divider="@null"
-        android:dividerHeight="0dp" />
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
-    <!-- 加载中 -->
-    <ProgressBar
-        android:id="@+id/progress_bar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginTop="50dp"
-        android:visibility="gone" />
+        <ListView
+            android:id="@+id/list_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:divider="@null"
+            android:dividerHeight="0dp"
+            android:scrollbars="vertical" />
 
-    <!-- 空视图 -->
-    <TextView
-        android:id="@+id/empty_view"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginTop="50dp"
-        android:text="暂无离线视频"
-        android:textSize="14sp"
-        android:textColor="#999999"
-        android:visibility="gone" />
+        <ProgressBar
+            android:id="@+id/progress_bar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/empty_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="暂无离线视频"
+            android:textSize="14sp"
+            android:textColor="#999999"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <!-- 存储空间占用条 -->
+    <LinearLayout
+        android:id="@+id/storage_bar"
+        android:layout_width="match_parent"
+        android:layout_height="24dp"
+        android:orientation="vertical"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
+        android:gravity="center_vertical"
+        android:background="#F0F0F0">
+
+        <ProgressBar
+            android:id="@+id/storage_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:max="100"
+            android:progress="0"
+            android:progressDrawable="@drawable/media_player_progress_pink" />
+
+        <TextView
+            android:id="@+id/storage_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="可用 0 B / 共 0 B"
+            android:textSize="10sp"
+            android:textColor="#666666"
+            android:gravity="center" />
+    </LinearLayout>
 
 </LinearLayout>

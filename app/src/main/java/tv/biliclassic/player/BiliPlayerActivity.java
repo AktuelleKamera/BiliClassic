@@ -486,6 +486,17 @@ public class BiliPlayerActivity extends Activity implements
         if (danmakuContainer != null) {
             mDanmakuManager = new DanmakuManager(this, danmakuContainer, mAid, mCid,
                     danmakuInputStub);
+
+            // 离线弹幕支持：如果提供了离线弹幕缓存路径，优先使用
+            String danmakuCachePath = getIntent().getStringExtra("danmaku_cache_path");
+            if (danmakuCachePath != null && danmakuCachePath.length() > 0) {
+                File danmakuFile = new File(danmakuCachePath);
+                if (danmakuFile.exists() && danmakuFile.length() > 0) {
+                    mDanmakuManager.setOfflineDanmakuFile(danmakuFile);
+                    android.util.Log.e("BiliPlayer", "使用离线弹幕文件: " + danmakuCachePath);
+                }
+            }
+
             mDanmakuManager.init();
             android.util.Log.e("BiliPlayer", "DanmakuManager 已初始化");
         }

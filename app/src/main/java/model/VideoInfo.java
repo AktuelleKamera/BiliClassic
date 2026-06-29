@@ -53,6 +53,8 @@ public class VideoInfo implements Serializable {
 
     // 新增：可用画质列表
     public List<Integer> qualities = new ArrayList<Integer>();
+    public String tags;  // 标签字符串
+    public List<Integer> pages = new ArrayList<Integer>(); // 分P的实际page号
 
     public VideoInfo() {
     }
