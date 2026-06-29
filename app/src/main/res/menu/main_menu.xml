@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/menu_login_logout"
+        android:title="登录/注销"/>
+    <item
+        android:id="@+id/menu_favorite_list"
+        android:title="我的收藏"/>
+    <item
+        android:id="@+id/menu_video_history_list"
+        android:title="播放历史"/>
+    <item
+        android:id="@+id/menu_preferences"
+        android:title="设置"/>
+    <item
+        android:id="@+id/menu_help"
+        android:title="帮助"/>
+    <item
+        android:id="@+id/menu_exit"
+        android:title="退出"/>
+</menu>

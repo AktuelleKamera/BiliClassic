@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/bili_texture_background">
+
+    <!-- 顶栏 -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="#FFFFFF">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="程序崩溃"
+            android:textColor="#333333"
+            android:textSize="18sp"/>
+
+    </RelativeLayout>
+
+    <!-- 粉色分割线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="2px"
+        android:background="#D86DA5" />
+
+    <!-- 提示信息 -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#F0F0F0"
+        android:padding="12dp"
+        android:text="很抱歉，程序遇到了一些问题。请复制下方日志并反馈给开发者，谢谢！"
+        android:textColor="#666666"
+        android:textSize="13sp" />
+
+    <!-- 日志内容 -->
+    <ScrollView
+        android:id="@+id/scroll_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/crash_info_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#FFFFFF"
+            android:fontFamily="monospace"
+            android:padding="12dp"
+            android:text="正在收集信息..."
+            android:textColor="#333333"
+            android:textSize="10sp" />
+
+    </ScrollView>
+
+    <!-- 按钮行 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp">
+
+        <Button
+            android:id="@+id/btn_copy"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:layout_marginRight="6dp"
+            android:background="#D86DA5"
+            android:text="复制日志"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btn_share"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:layout_marginLeft="6dp"
+            android:layout_marginRight="6dp"
+            android:background="#FFFFFF"
+            android:text="分享日志"
+            android:textColor="#D86DA5"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btn_exit"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:layout_marginLeft="6dp"
+            android:background="#FFFFFF"
+            android:text="退出页面"
+            android:textColor="#666666"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+</LinearLayout>

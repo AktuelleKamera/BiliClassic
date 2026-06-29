@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/bili_texture_background">
+
+    <!-- 顶栏 -->
+    <RelativeLayout
+        android:id="@+id/title_bar"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="#FFFFFF">
+
+        <ImageView
+            android:id="@+id/btn_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_centerVertical="true"
+            android:padding="1dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_action_back" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="离线管理"
+            android:textSize="18sp"
+            android:textColor="#333333"/>
+
+    </RelativeLayout>
+
+    <!-- 粉色分割线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="2px"
+        android:background="#D86DA5" />
+
+    <!-- ActionBar下方阴影 -->
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="6.0dp"
+        android:background="@drawable/shadow_top_dig"
+        android:contentDescription="@null" />
+
+    <!-- 列表 -->
+    <ListView
+        android:id="@+id/list_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:divider="@null"
+        android:dividerHeight="0dp" />
+
+    <!-- 加载中 -->
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="50dp"
+        android:visibility="gone" />
+
+    <!-- 空视图 -->
+    <TextView
+        android:id="@+id/empty_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="50dp"
+        android:text="暂无离线视频"
+        android:textSize="14sp"
+        android:textColor="#999999"
+        android:visibility="gone" />
+
+</LinearLayout>

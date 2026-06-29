@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 粉色背景 -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#D86DA5" />
+        </shape>
+    </item>
+    <!-- 底部 2px 粉色分割线 -->
+    <item android:gravity="bottom">
+        <shape android:shape="rectangle">
+            <solid android:color="#FCA3C5" />
+            <size android:height="2px" />
+        </shape>
+    </item>
+</layer-list>

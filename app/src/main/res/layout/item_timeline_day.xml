@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingLeft="20dp"
+    android:paddingRight="4dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="2dp">
+
+    <!-- 时钟 -->
+    <ImageView
+        android:id="@+id/clock_icon"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginLeft="0dp"
+        android:layout_marginTop="0dp"
+        android:src="@drawable/bili_timeline_clock_6"
+        android:contentDescription="星期" />
+
+    <!-- 气泡 -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginLeft="-1dp">
+
+        <!-- 顶部行 -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="18dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="18dp"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="26dp"
+                    android:layout_height="18dp"
+                    android:src="@drawable/bili_timeline_group_background"
+                    android:scaleType="fitXY"
+                    android:contentDescription="气泡开头" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="18dp"
+                    android:layout_weight="1"
+                    android:background="#CACACA" />
+
+            </LinearLayout>
+
+            <!-- 文字内容 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="18dp"
+                android:orientation="horizontal"
+                android:paddingLeft="8dp"
+                android:paddingRight="6dp"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/day_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="周三"
+                    android:textSize="13sp"
+                    android:textColor="#333333" />
+
+                <TextView
+                    android:id="@+id/day_date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="4月10日"
+                    android:textSize="11sp"
+                    android:textColor="#333333" />
+
+            </LinearLayout>
+
+        </FrameLayout>
+
+        <!-- 番剧列表容器 -->
+        <LinearLayout
+            android:id="@+id/items_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="4dp" />
+
+    </LinearLayout>
+
+</LinearLayout>

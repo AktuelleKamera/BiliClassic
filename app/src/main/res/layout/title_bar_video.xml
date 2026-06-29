@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/title_bar"
+    android:layout_width="match_parent"
+    android:layout_height="48dp"
+    android:background="#F5F5F5">
+
+    <ImageView
+        android:id="@+id/btn_back"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_centerVertical="true"
+        android:layout_marginLeft="5dp"
+        android:src="@drawable/ic_action_back"
+        android:scaleType="centerInside"
+        android:padding="8dp"
+        android:contentDescription="返回" />
+
+    <TextView
+        android:id="@+id/tv_avid"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_toRightOf="@id/btn_back"
+        android:layout_marginLeft="8dp"
+        android:text="av号"
+        android:textSize="16sp"
+        android:textColor="#333333"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+</RelativeLayout>

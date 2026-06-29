@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:layout_marginBottom="8dp">
+
+    <!-- 左边：横向排列的两个视频卡片 -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="5"
+        android:orientation="horizontal">
+
+        <!-- 视频卡片1 -->
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginRight="4dp"
+            android:background="#CCCCCC"
+            android:padding="1dp"
+            android:clickable="true">
+
+            <ImageView
+                android:id="@+id/video1_cover"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:scaleType="centerCrop"
+                android:src="@drawable/bili_default_image_tv_with_bg" />
+
+        </FrameLayout>
+
+        <!-- 视频卡片2 -->
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginLeft="4dp"
+            android:background="#CCCCCC"
+            android:padding="1dp"
+            android:clickable="true">
+
+            <ImageView
+                android:id="@+id/video2_cover"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:scaleType="centerCrop"
+                android:src="@drawable/bili_default_image_tv_with_bg" />
+
+        </FrameLayout>
+
+    </LinearLayout>
+
+    <!-- 右边：新番连载按钮 -->
+    <LinearLayout
+        android:id="@+id/partition_card"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="3"
+        android:orientation="vertical"
+        android:background="#D86DA5"
+        android:layout_marginLeft="8dp"
+        android:clickable="true">
+
+        <!-- 上下描边容器 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="#FF9FC5"
+            android:paddingTop="2px"
+            android:paddingBottom="2px">
+
+            <!-- 主内容区（允许子视图超出边界） -->
+            <RelativeLayout
+                android:layout_width="150dp"
+                android:layout_height="100dp"
+                android:background="#D86DA5"
+                android:clipChildren="false"
+                android:padding="8dp">
+
+                <!-- 文字：左上方 -->
+                <TextView
+                    android:id="@+id/partition_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentLeft="true"
+                    android:layout_alignParentTop="true"
+                    android:text="新番连载"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <!-- 左下角大图标（设置左外边距，避免被遮挡） -->
+                <ImageView
+                    android:layout_width="60dp"
+                    android:layout_height="128dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/bili_intent_to_bangumi"
+                    android:layout_alignBottom="@+id/imageView6"
+                    android:layout_alignParentLeft="true"
+                    android:layout_alignParentStart="true" />
+
+                <!-- 右侧箭头 -->
+                <ImageView
+                    android:id="@+id/imageView6"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentRight="true"
+                    android:layout_centerVertical="true"
+                    android:layout_marginRight="8dp"
+                    android:src="@drawable/bili_category_forward"
+                    android:contentDescription="@null" />
+
+            </RelativeLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

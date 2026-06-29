@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/bili_texture_background">
+
+    <!-- 搜索栏 -->
+    <LinearLayout
+        android:id="@+id/search_bar"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="#FFFFFF"
+        android:orientation="horizontal"
+        android:paddingLeft="4dp"
+        android:paddingRight="4dp">
+
+        <ImageView
+            android:id="@+id/back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center_vertical"
+            android:contentDescription="返回"
+            android:padding="1dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_action_back" />
+
+        <EditText
+            android:id="@+id/search_edit"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center_vertical"
+            android:layout_weight="1"
+            android:background="@drawable/bili_search_edit_background"
+            android:hint="输入关键词或AV/BV号"
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingLeft="12dp"
+            android:paddingRight="12dp"
+            android:singleLine="true"
+            android:textSize="14sp" />
+
+        <ImageView
+            android:id="@+id/search_action"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center_vertical"
+            android:contentDescription="搜索"
+            android:padding="1dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_action_search" />
+
+    </LinearLayout>
+
+    <!-- ActionBar下方阴影 -->
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="6.0dp"
+        android:background="@drawable/shadow_top_dig"
+        android:contentDescription="@null" />
+
+    <!-- 顶部加载动画（第一次搜索显示在这里） -->
+    <LinearLayout
+        android:id="@+id/top_loading"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp"
+        android:background="@drawable/bili_texture_background"
+        android:visibility="gone">
+
+        <ProgressBar
+            android:id="@+id/top_progress"
+            android:layout_width="16dp"
+            android:layout_height="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="8dp"
+            android:text="嘿咻…嘿咻…"
+            android:textSize="12sp"
+            android:textColor="#999999" />
+
+    </LinearLayout>
+
+    <!-- 搜索结果列表 -->
+    <ListView
+        android:id="@+id/result_list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:divider="#E0E0E0"
+        android:dividerHeight="1dp" />
+
+    <!-- 空视图 -->
+    <TextView
+        android:id="@+id/empty_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="50dp"
+        android:text="暂无搜索结果"
+        android:textSize="14sp"
+        android:textColor="#999999"
+        android:visibility="gone" />
+
+</LinearLayout>

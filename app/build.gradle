@@ -1,0 +1,41 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 17
+    buildToolsVersion '25.0.0'
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_5
+        targetCompatibility JavaVersion.VERSION_1_5
+    }
+
+    defaultConfig {
+        applicationId "tv.biliclassic"
+        minSdkVersion 4
+        targetSdkVersion 17
+        versionCode 19
+        versionName "0.3.4"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir {
+        dirs 'libs'
+    }
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+//    compile project(':player')
+    // 不使用 ActionBarSherlock 的 jar，加 support-v4
+  //  compile (name: 'actionbarsherlock-4.4.0', ext: 'aar')
+  //  compile 'com.android.support:support-v4:18.0.0'
+ //   compile 'com.google.zxing:core:2.3.0'
+}

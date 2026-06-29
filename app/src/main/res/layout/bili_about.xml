@@ -1,0 +1,380 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <!-- 应用信息卡片 -->
+        <LinearLayout
+            android:orientation="vertical"
+            android:background="#1A1A1A"
+            android:padding="12dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/app_brief"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textSize="16sp"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:padding="8dp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#333333"
+                android:layout_margin="8dp" />
+
+            <TableLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <TableRow>
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="反馈群:"
+                        android:textSize="12sp"
+                        android:textColor="#CCCCCC" />
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="754725037"
+                        android:textSize="12sp"
+                        android:textColor="#CCCCCC" />
+                </TableRow>
+                <TableRow>
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="反馈论坛:"
+                        android:textSize="12sp"
+                        android:textColor="#CCCCCC" />
+                    <TextView
+                        android:id="@+id/release_website"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:textSize="12sp"
+                        android:textColor="#CCCCCC" />
+                </TableRow>
+            </TableLayout>
+
+        </LinearLayout>
+
+        <!-- STAFF 区域 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="STAFF"
+            android:textSize="14sp"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:padding="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="原作"
+            android:textSize="12sp"
+            android:textColor="#CCCCCC"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:id="@+id/bilibili_website"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textSize="12sp"
+            android:textColor="#CCCCCC" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="企画"
+            android:textSize="12sp"
+            android:textColor="#CCCCCC"
+            android:layout_marginTop="12dp" />
+
+        <TableLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp">
+            <TableRow>
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="⑨bishi"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="一只毛子球"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+            </TableRow>
+        </TableLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="制作"
+            android:textSize="12sp"
+            android:textColor="#CCCCCC"
+            android:layout_marginTop="12dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="某科学的弹幕委员会"
+            android:textSize="12sp"
+            android:textColor="#CCCCCC" />
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:text="软件开发"
+            android:textColor="#CCCCCC"
+            android:textSize="12sp" />
+
+        <TableLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp">
+            <TableRow>
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="一只毛子球"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="Skyler1n"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+            </TableRow>
+        </TableLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="系统构成"
+            android:textSize="12sp"
+            android:textColor="#CCCCCC"
+            android:layout_marginTop="12dp" />
+
+        <TextView
+            android:id="@+id/tv_system_architect"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="bbcallen"
+            android:textColor="#CCCCCC"
+            android:textSize="12sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="开源项目"
+            android:textSize="12sp"
+            android:textColor="#CCCCCC"
+            android:layout_marginTop="12dp" />
+
+        <TextView
+            android:id="@+id/tv_open_source_1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="https://gitee.com/RobinNotBad/BiliClient"
+            android:textColor="#CCCCCC"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/tv_open_source_2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="https://github.com/luern0313/WristBilibili"
+            android:textColor="#CCCCCC"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/tv_open_source_3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="https://github.com/bilibili-plugins/bilibili-api-collect"
+            android:textColor="#CCCCCC"
+            android:textSize="12sp" />
+
+        <!-- 特别鸣谢 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="特别鸣谢"
+            android:textSize="12sp"
+            android:textColor="#CCCCCC"
+            android:layout_marginTop="12dp" />
+
+        <TableLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <TableRow>
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="K老余"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="wcxawa"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+            </TableRow>
+            <TableRow>
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="流浪的猎人"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="mongou666"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+            </TableRow>
+            <TableRow>
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="ビリビリ_User"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="Steven-Rong"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+            </TableRow>
+            <TableRow>
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="MC-Windows1145"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="是真寻酱哒awa"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+            </TableRow>
+        </TableLayout>
+
+        <!-- 监督区域 -->
+        <LinearLayout
+            android:orientation="vertical"
+            android:id="@+id/director"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="监督"
+                android:textSize="12sp"
+                android:textColor="#CCCCCC" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="逐梦-3"
+                android:textSize="12sp"
+                android:textColor="#CCCCCC" />
+
+        </LinearLayout>
+
+        <!-- 赞助 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="赞助"
+            android:textSize="12sp"
+            android:textColor="#CCCCCC"
+            android:layout_marginTop="12dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Skyler1n"
+            android:textSize="12sp"
+            android:textColor="#CCCCCC" />
+
+    </LinearLayout>
+
+</ScrollView>
