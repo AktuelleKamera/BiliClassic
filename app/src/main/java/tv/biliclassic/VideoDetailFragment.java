@@ -711,7 +711,7 @@ public class VideoDetailFragment extends Fragment {
                 @Override
                 public void run() {
                     try {
-                        PlayerData playerData = new PlayerData();
+                        final PlayerData playerData = new PlayerData();
                         playerData.aid = tempAid;
                         playerData.cid = targetCid;
                         playerData.title = tempPartTitle;
@@ -730,6 +730,7 @@ public class VideoDetailFragment extends Fragment {
                                         intent.putExtra("video_title", tempPartTitle);
                                         intent.putExtra("aid", tempAid);
                                         intent.putExtra("cid", targetCid);
+                                        putQualityExtras(intent, playerData);
                                         startActivity(intent);
                                     } else {
                                         Toast.makeText(getActivity(), "获取播放地址失败", Toast.LENGTH_SHORT).show();
@@ -757,7 +758,7 @@ public class VideoDetailFragment extends Fragment {
             @Override
             public void run() {
                 try {
-                    PlayerData playerData = new PlayerData();
+                    final PlayerData playerData = new PlayerData();
                     playerData.aid = tempAid;
                     playerData.cid = targetCid;
                     playerData.title = tempPartTitle;
@@ -771,12 +772,13 @@ public class VideoDetailFragment extends Fragment {
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
                                 if (videoUrl != null && videoUrl.length() > 0) {
-                                    Intent intent = new Intent(getActivity(), PlayerAnimActivity.class);
-                                    intent.putExtra("video_url", videoUrl);
-                                    intent.putExtra("video_title", tempPartTitle);
-                                    intent.putExtra("aid", tempAid);
-                                    intent.putExtra("cid", targetCid);
-                                    startActivity(intent);
+                                        Intent intent = new Intent(getActivity(), PlayerAnimActivity.class);
+                                        intent.putExtra("video_url", videoUrl);
+                                        intent.putExtra("video_title", tempPartTitle);
+                                        intent.putExtra("aid", tempAid);
+                                        intent.putExtra("cid", targetCid);
+                                        putQualityExtras(intent, playerData);
+                                        startActivity(intent);
                                 } else {
                                     Toast.makeText(getActivity(), "获取播放地址失败", Toast.LENGTH_SHORT).show();
                                 }
@@ -805,7 +807,6 @@ public class VideoDetailFragment extends Fragment {
         int pageIndex = currentPartIndex;
         if (pageIndex < 0) pageIndex = 0;
 
-        // 获取实际的分P页码
         int actualPage = pageIndex + 1;
         if (videoInfo.pages != null && pageIndex < videoInfo.pages.size()) {
             actualPage = videoInfo.pages.get(pageIndex);
@@ -828,6 +829,23 @@ public class VideoDetailFragment extends Fragment {
             return;
         }
 
+        // 读取 entry.json 获取画质信息
+        int qualityQn = 0;
+        String qualityName = null;
+        try {
+            java.io.File entryFile = env.getEntryFile(false);
+            if (entryFile != null && entryFile.exists()) {
+                tv.biliclassic.download.VideoDownloadEntry entry =
+                        tv.biliclassic.download.VideoDownloadEntry.loadFromFile(entryFile);
+                if (entry != null) {
+                    qualityQn = entry.quality;
+                    qualityName = entry.qualityName;
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.e("VideoDetail", "读取entry.json失败: " + e.getMessage());
+        }
+
         String pageTitle = (videoInfo.pagenames != null && pageIndex < videoInfo.pagenames.size())
                 ? videoInfo.pagenames.get(pageIndex) : videoInfo.title;
 
@@ -840,6 +858,27 @@ public class VideoDetailFragment extends Fragment {
         if (danmakuFile.exists()) {
             intent.putExtra("danmaku_cache_path", danmakuFile.getAbsolutePath());
         }
+        // 离线模式标记
+        intent.putExtra("offline_mode", true);
+        intent.putExtra("current_qn", qualityQn);
+        if (qualityName != null && qualityName.length() > 0) {
+            intent.putExtra("qn_str_array", new String[]{qualityName});
+        } else if (qualityQn > 0) {
+            String shortName = tv.biliclassic.download.VideoDownloadEnvironment.getQualityName(qualityQn);
+            intent.putExtra("qn_str_array", new String[]{shortName});
+        }
         startActivity(intent);
+    }
+
+    private void putQualityExtras(Intent intent, PlayerData playerData) {
+        if (playerData != null && playerData.qnStrList != null && playerData.qnStrList.length > 0) {
+            intent.putExtra("qn_str_array", playerData.qnStrList);
+        }
+        if (playerData != null && playerData.qnValueList != null && playerData.qnValueList.length > 0) {
+            intent.putExtra("qn_value_array", playerData.qnValueList);
+        }
+        if (playerData != null) {
+            intent.putExtra("current_qn", playerData.qn);
+        }
     }
 }

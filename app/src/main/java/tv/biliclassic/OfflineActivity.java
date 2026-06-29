@@ -183,6 +183,11 @@ public class OfflineActivity extends BaseActivity {
             if (item.cid > 0) {
                 intent.putExtra("cid", item.cid);
             }
+            intent.putExtra("offline_mode", true);
+            if (item.qualityName != null && item.qualityName.length() > 0) {
+                intent.putExtra("qn_str_array", new String[]{item.qualityName});
+            }
+            intent.putExtra("current_qn", 0);
             startActivity(intent);
             return;
         }

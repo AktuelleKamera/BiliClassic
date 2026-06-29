@@ -248,8 +248,10 @@
     <ListView
         android:id="@+id/media_quality_options"
         android:background="@color/videoplay__control_panel_bkgd_new"
+        android:visibility="gone"
         android:layout_width="@dimen/player_status_bar_options_menu_items_layout_width"
         android:layout_height="wrap_content"
         android:layout_below="@+id/top"
+        android:layout_alignParentRight="true"
         android:contentDescription="@null"/>
 </RelativeLayout>

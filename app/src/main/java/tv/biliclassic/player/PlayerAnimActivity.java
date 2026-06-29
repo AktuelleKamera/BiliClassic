@@ -48,6 +48,10 @@ public class PlayerAnimActivity extends Activity {
     private boolean hasShownPreferenceToast = false;
     private boolean isOnlineMode = false;
 
+    private String[] mQualityNames;
+    private int[] mQualityValues;
+    private int mCurrentQn;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -65,6 +69,10 @@ public class PlayerAnimActivity extends Activity {
 
         // 检测是否在线模式
         isOnlineMode = SettingsActivity.isOnlinePlayEnabled();
+
+        mQualityNames = getIntent().getStringArrayExtra("qn_str_array");
+        mQualityValues = getIntent().getIntArrayExtra("qn_value_array");
+        mCurrentQn = getIntent().getIntExtra("current_qn", 0);
 
         // 打印日志确认 videoUrl
         android.util.Log.e("PlayerAnim", "videoUrl: " + videoUrl);
@@ -154,6 +162,7 @@ public class PlayerAnimActivity extends Activity {
         intent.putExtra("cid", cid);
         // 用 extra 标记在线模式，让 BiliPlayerActivity 知道不要依赖缓存
         intent.putExtra("online_mode", true);
+        putQualityExtras(intent);
         startActivity(intent);
         finish();
     }
@@ -389,6 +398,7 @@ public class PlayerAnimActivity extends Activity {
         intent.putExtra("aid", aid);
         intent.putExtra("cid", cid);
         intent.putExtra("online_mode", false);
+        putQualityExtras(intent);
         startActivity(intent);
         finish();
     }
@@ -447,5 +457,15 @@ public class PlayerAnimActivity extends Activity {
         super.onDestroy();
         stopTvAnimation();
         handler.removeCallbacksAndMessages(null);
+    }
+
+    private void putQualityExtras(Intent intent) {
+        if (mQualityNames != null && mQualityNames.length > 0) {
+            intent.putExtra("qn_str_array", mQualityNames);
+        }
+        if (mQualityValues != null && mQualityValues.length > 0) {
+            intent.putExtra("qn_value_array", mQualityValues);
+        }
+        intent.putExtra("current_qn", mCurrentQn);
     }
 }
