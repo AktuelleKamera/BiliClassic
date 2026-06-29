@@ -578,7 +578,24 @@ public class BiliPlayerActivity extends Activity implements
                                 if (mQualityManager != null) {
                                     mQualityManager.updateCurrentQuality(newQn);
                                 }
-                                cleanupAndRestartWithQuality();
+                                if (decoderType == DECODER_SYSTEM) {
+                                    releasePlayer();
+                                    sPendingSeekPosition = mQualitySwitchSeekPos;
+                                    mQualitySwitchSeekPos = 0;
+                                    Intent intent = getIntent();
+                                    intent.putExtra("video_url", newUrl);
+                                    intent.putExtra("current_qn", newQn);
+                                    if (newQnStrs != null) {
+                                        intent.putExtra("qn_str_array", newQnStrs);
+                                    }
+                                    if (newQnVals != null) {
+                                        intent.putExtra("qn_value_array", newQnVals);
+                                    }
+                                    finish();
+                                    startActivity(intent);
+                                } else {
+                                    cleanupAndRestartWithQuality();
+                                }
                             }
                         });
                     } else {
