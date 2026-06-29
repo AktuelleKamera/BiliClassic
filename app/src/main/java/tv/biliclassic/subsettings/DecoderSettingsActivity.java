@@ -86,8 +86,8 @@ public class DecoderSettingsActivity extends BaseActivity {
     // ---- list处理 ----
 
     private void setupListClick(int itemId, final String key,
-            final int entriesResId, final int valuesResId,
-            final String defaultValue, final TextView valueView, final String title) {
+                                final int entriesResId, final int valuesResId,
+                                final String defaultValue, final TextView valueView, final String title) {
         LinearLayout item = (LinearLayout) findViewById(itemId);
         if (item == null) return;
         item.setOnClickListener(new View.OnClickListener() {
@@ -99,11 +99,13 @@ public class DecoderSettingsActivity extends BaseActivity {
     }
 
     private void showListDialog(final String key, int entriesResId, final int valuesResId,
-            final String defaultValue, final TextView valueView, String title) {
+                                final String defaultValue, final TextView valueView, String title) {
         final String[] entries = getResources().getStringArray(entriesResId);
         final String[] values = getResources().getStringArray(valuesResId);
         String currentVal = SharedPreferencesUtil.getString(key, defaultValue);
-        if (currentVal.isEmpty()) currentVal = defaultValue;
+        if (currentVal == null || currentVal.length() == 0) {
+            currentVal = defaultValue;
+        }
 
         int checkedIndex = 0;
         for (int i = 0; i < values.length; i++) {
@@ -171,9 +173,11 @@ public class DecoderSettingsActivity extends BaseActivity {
     }
 
     private void updateOneList(String key, String defaultValue,
-            int entriesResId, int valuesResId, TextView view) {
+                               int entriesResId, int valuesResId, TextView view) {
         String val = SharedPreferencesUtil.getString(key, defaultValue);
-        if (val.isEmpty()) val = defaultValue;
+        if (val == null || val.length() == 0) {
+            val = defaultValue;
+        }
         String[] entries = getResources().getStringArray(entriesResId);
         String[] values = getResources().getStringArray(valuesResId);
         updateListDisplay(view, entries, values, val);
@@ -214,6 +218,7 @@ public class DecoderSettingsActivity extends BaseActivity {
     }
 
     private static int parseInt(String s, int def) {
+        if (s == null) return def;
         try {
             return Integer.parseInt(s);
         } catch (NumberFormatException e) {

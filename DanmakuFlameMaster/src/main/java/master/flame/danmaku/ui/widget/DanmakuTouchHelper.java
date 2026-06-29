@@ -31,7 +31,7 @@ public class DanmakuTouchHelper {
             case MotionEvent.ACTION_UP:
                 IDanmakus clickDanmakus = touchHitDanmaku(event.getX(), event.getY());
                 BaseDanmaku newestDanmaku = null;
-                if (null != clickDanmakus && !clickDanmakus.isEmpty()) {
+                if (null != clickDanmakus && clickDanmakus.size() > 0) {
                     performClick(clickDanmakus);
                     newestDanmaku = fetchLatestOne(clickDanmakus);
                 }
@@ -64,7 +64,7 @@ public class DanmakuTouchHelper {
         mDanmakuBounds.setEmpty();
 
         IDanmakus danmakus = danmakuView.getCurrentVisibleDanmakus();
-        if (null != danmakus && !danmakus.isEmpty()) {
+        if (null != danmakus && danmakus.size() > 0) {
             IDanmakuIterator iterator = danmakus.iterator();
             while (iterator.hasNext()) {
                 BaseDanmaku danmaku = iterator.next();
@@ -81,7 +81,7 @@ public class DanmakuTouchHelper {
     }
 
     private BaseDanmaku fetchLatestOne(IDanmakus danmakus) {
-        if (danmakus.isEmpty()) {
+        if (danmakus.size() == 0) {
             return null;
         }
 

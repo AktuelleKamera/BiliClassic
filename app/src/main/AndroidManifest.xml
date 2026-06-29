@@ -40,6 +40,15 @@
         </activity>
 
         <activity
+            android:name=".tv.TvMainActivity"
+            android:configChanges="orientation|screenSize"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+
+        <activity
+            android:name=".tv.TvSettingsActivity"
+            android:theme="@android:style/Theme.Black.NoTitleBar" />
+
+        <activity
             android:name=".SearchActivity"
             android:screenOrientation="portrait" />
 

@@ -19,7 +19,6 @@ import android.widget.BaseAdapter;
 import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.ListView;
-import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -120,10 +119,18 @@ public class VideoDetailActivity extends BaseActivity {
             });
         }
 
+        // 下载/删除按钮
         ImageView btnDownload = (ImageView) findViewById(R.id.btn_download);
         if (btnDownload != null) {
             if (mOfflineMode) {
-                btnDownload.setVisibility(View.GONE);
+                // 离线模式：显示删除按钮
+                btnDownload.setImageResource(R.drawable.ic_action_delete);
+                btnDownload.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showDeleteConfirmDialog();
+                    }
+                });
             } else {
                 btnDownload.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -273,6 +280,68 @@ public class VideoDetailActivity extends BaseActivity {
         }
     }
 
+    // 显示删除确认对话框（离线模式用）
+    private void showDeleteConfirmDialog() {
+        String title = "";
+        if (videoDetailFragment != null && videoDetailFragment.videoInfo != null) {
+            title = videoDetailFragment.videoInfo.title;
+        }
+        if (title == null || title.length() == 0) {
+            if (aid != 0L) {
+                title = "av" + aid;
+            } else if (bvid != null && bvid.length() > 0) {
+                title = bvid;
+            } else {
+                title = "该视频";
+            }
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("删除离线视频")
+                .setMessage("确定要删除 \"" + title + "\" 的离线缓存吗？")
+                .setPositiveButton("删除", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        deleteOfflineVideo();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    // 删除离线视频
+    private void deleteOfflineVideo() {
+        File downloadDir = getDownloadDir();
+        File avidDir = new File(downloadDir, String.valueOf(aid));
+
+        if (avidDir.exists() && avidDir.isDirectory()) {
+            boolean deleted = deleteRecursive(avidDir);
+            if (deleted) {
+                Toast.makeText(this, "已删除离线缓存", Toast.LENGTH_SHORT).show();
+                finish();
+            } else {
+                Toast.makeText(this, "删除失败", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            Toast.makeText(this, "未找到离线缓存", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // 递归删除文件/文件夹
+    private boolean deleteRecursive(File file) {
+        if (file == null || !file.exists()) {
+            return false;
+        }
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (int i = 0; i < children.length; i++) {
+                    deleteRecursive(children[i]);
+                }
+            }
+        }
+        return file.delete();
+    }
+
     // 下载相关
 
     private void showDownloadChoiceDialog() {
@@ -290,13 +359,11 @@ public class VideoDetailActivity extends BaseActivity {
         mPageChecked = new boolean[mPages.size()];
         mPageChecked[0] = true;
 
-        // 构建自定义布局
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_download_choice, null);
 
         ListView listView = (ListView) dialogView.findViewById(R.id.list_view);
         final RadioGroup qualityGroup = (RadioGroup) dialogView.findViewById(R.id.quality_group);
 
-        // 设置默认画质
         int defaultQuality = SettingsActivity.getVideoQuality();
         if (defaultQuality == 16) {
             qualityGroup.check(R.id.quality_360);
@@ -306,7 +373,6 @@ public class VideoDetailActivity extends BaseActivity {
             qualityGroup.check(R.id.quality_720);
         }
 
-        // 设置分P列表适配器
         final PageListAdapter adapter = new PageListAdapter();
         listView.setAdapter(adapter);
 
@@ -316,7 +382,6 @@ public class VideoDetailActivity extends BaseActivity {
         builder.setPositiveButton("下载", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                // 获取选中的画质
                 int checkedId = qualityGroup.getCheckedRadioButtonId();
                 if (checkedId == R.id.quality_360) {
                     mSelectedQuality = 16;
@@ -329,7 +394,6 @@ public class VideoDetailActivity extends BaseActivity {
                     mSelectedQualityName = "720P 高清";
                 }
 
-                // 遍历选中的分P
                 for (int i = 0; i < mPages.size(); i++) {
                     if (mPageChecked[i]) {
                         videoDetailFragment.prepareDownload(mPages.get(i), mSelectedQuality, mSelectedQualityName);
@@ -392,7 +456,6 @@ public class VideoDetailActivity extends BaseActivity {
                 }
             });
 
-            // 点击整行切换
             convertView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {

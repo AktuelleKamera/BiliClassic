@@ -55,7 +55,7 @@ public class VideoDetailFragment extends Fragment {
 
     private long aid;
     private String bvid;
-    private VideoInfo videoInfo;
+    public VideoInfo videoInfo;
     private int currentPartIndex = 0;
     private String[] tags = {"", "", "", "", "", "", "", "", ""};
 

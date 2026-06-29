@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#1A1A2E"
+    android:padding="16dp"
+    android:focusable="true"
+    android:focusableInTouchMode="true">
+
+    <!-- 标题 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="24dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="设置"
+            android:textSize="32sp"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btn_back"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="返回"
+            android:textSize="16sp"
+            android:textColor="#FCA3C5"
+            android:background="@null"
+            android:focusable="true"
+            android:clickable="true" />
+
+    </LinearLayout>
+
+    <!-- ScrollView：让内容可以滚动，但不拦截焦点 -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:descendantFocusability="afterDescendants"
+        android:focusable="false"
+        android:focusableInTouchMode="false">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/btn_threads"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="图片加载线程"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="16dp"
+                android:layout_marginBottom="8dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <Button
+                android:id="@+id/btn_player"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="默认播放器"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="16dp"
+                android:layout_marginBottom="8dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <Button
+                android:id="@+id/btn_quality"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="视频画质"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="16dp"
+                android:layout_marginBottom="8dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <Button
+                android:id="@+id/btn_home_tab"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="默认首页"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="16dp"
+                android:layout_marginBottom="8dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <!-- 在线播放开关 -->
+            <LinearLayout
+                android:id="@+id/online_play_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="16dp"
+                android:layout_marginBottom="8dp"
+                android:focusable="true"
+                android:clickable="true">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="在线播放"
+                        android:textSize="18sp"
+                        android:textColor="#FFFFFF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="实验性功能，直接在线播放视频"
+                        android:textSize="12sp"
+                        android:textColor="#999999" />
+
+                </LinearLayout>
+
+                <CheckBox
+                    android:id="@+id/checkbox_online_play"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:focusable="false"
+                    android:clickable="false"
+                    android:padding="0dp"
+                    android:minHeight="0dp" />
+
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btn_clear_cache"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="清除缓存"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="16dp"
+                android:layout_marginBottom="8dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <Button
+                android:id="@+id/btn_check_update"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="检查更新"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="16dp"
+                android:layout_marginBottom="8dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <Button
+                android:id="@+id/btn_about"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="关于"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="16dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+        </LinearLayout>
+
+    </ScrollView>
+
+</LinearLayout>

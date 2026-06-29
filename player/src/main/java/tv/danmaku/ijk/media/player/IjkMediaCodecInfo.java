@@ -5,7 +5,6 @@ import android.media.MediaCodecInfo;
 import android.media.MediaCodecInfo.CodecCapabilities;
 import android.media.MediaCodecInfo.CodecProfileLevel;
 import android.os.Build;
-import android.text.TextUtils;
 import android.util.Log;
 
 import java.util.Locale;
@@ -142,7 +141,7 @@ public class IjkMediaCodecInfo {
             return null;
 
         String name = codecInfo.getName();
-        if (TextUtils.isEmpty(name))
+        if (name == null || name.length() == 0)
             return null;
 
         name = name.toLowerCase(Locale.US);

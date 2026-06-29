@@ -99,7 +99,10 @@ public class VideoDownloadManager {
 
     public void cancelAll() {
         mPendingTasks.clear();
-        for (VideoDownloadTask t : mPausedTasks) { t.cancel(); }
+        for (int i = 0; i < mPausedTasks.size(); i++) {
+            VideoDownloadTask t = mPausedTasks.get(i);
+            t.cancel();
+        }
         mPausedTasks.clear();
         if (mCurrentTask != null) {
             mCurrentTask.cancel();
@@ -121,14 +124,18 @@ public class VideoDownloadManager {
 
     public void resumePaused(long key) {
         VideoDownloadTask found = null;
-        for (VideoDownloadTask t : mPausedTasks) {
-            if (t.entry.getKey() == key) { found = t; break; }
+        for (int i = 0; i < mPausedTasks.size(); i++) {
+            VideoDownloadTask t = mPausedTasks.get(i);
+            if (t.entry.getKey() == key) {
+                found = t;
+                break;
+            }
         }
         if (found != null) {
             mPausedTasks.remove(found);
             found.resume();
             found.entry.state = VideoDownloadEntry.STATE_IN_QUEUE;
-            mPendingTasks.add(found); // 加回队首
+            mPendingTasks.add(found);
             if (mCurrentTask == null && mWorkHandler != null) {
                 mWorkHandler.sendEmptyMessage(MSG_START_NEXT);
             }
@@ -136,11 +143,11 @@ public class VideoDownloadManager {
     }
 
     public void resumeCurrent() {
-        resumeAllPaused();  // 继续所有暂停的
+        resumeAllPaused();
     }
 
     private void resumeAllPaused() {
-        while (!mPausedTasks.isEmpty()) {
+        while (mPausedTasks.size() > 0) {
             VideoDownloadTask t = mPausedTasks.remove(0);
             t.resume();
             t.entry.state = VideoDownloadEntry.STATE_IN_QUEUE;
@@ -167,7 +174,10 @@ public class VideoDownloadManager {
         // 取消队列中的
         VideoDownloadTask toRemove = null;
         for (VideoDownloadTask t : mPendingTasks) {
-            if (t.entry.getKey() == key) { toRemove = t; break; }
+            if (t.entry.getKey() == key) {
+                toRemove = t;
+                break;
+            }
         }
         if (toRemove != null) mPendingTasks.remove(toRemove);
         if (mCurrentTask != null && mCurrentTask.entry.getKey() == key) {

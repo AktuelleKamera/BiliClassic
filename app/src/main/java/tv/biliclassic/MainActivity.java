@@ -35,17 +35,15 @@ public class MainActivity extends BaseActivity {
     private static final String KEY_LANDSCAPE_TIP_SHOWN = "landscape_tip_shown";
     private static final String KEY_AUTO_CHECK_UPDATE = "auto_check_update";
     private static final int TIP_DELAY_MS = 1500;
-    private static final long AUTO_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24小时
+    private static final long AUTO_CHECK_INTERVAL = 24 * 60 * 60 * 1000;
 
     private ViewPager mPager;
     private List<FragmentInfo> mFragments = new ArrayList<FragmentInfo>();
     private Handler mHandler = new Handler();
 
-    // 当前版本信息（缓存）
     private int currentVersionCode = -1;
     private String currentVersionName = "";
 
-    // 空间震彩蛋相关
     private int logoClickCount = 0;
     private Handler logoClickHandler = new Handler();
     private Runnable logoClickReset = new Runnable() {
@@ -67,9 +65,17 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // 检测 TV 模式
+        if (tv.biliclassic.tv.util.TvUtil.isTv(this)) {
+            Intent intent = new Intent(this, tv.biliclassic.tv.TvMainActivity.class);
+            startActivity(intent);
+            finish();
+            return;
+        }
+
         setContentView(R.layout.activity_main);
 
-        // 获取当前版本信息
         try {
             currentVersionCode = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
             currentVersionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
@@ -78,7 +84,6 @@ public class MainActivity extends BaseActivity {
             currentVersionName = "0.0.0";
         }
 
-        // 检查上次崩溃日志
         checkAndShowCrashDialog();
 
         PagerTabStrip tabStrip = (PagerTabStrip) findViewById(R.id.pager_tab_strip);
@@ -92,17 +97,21 @@ public class MainActivity extends BaseActivity {
         mPager.setAdapter(new ViewPagerAdapter(getSupportFragmentManager()));
         mPager.setOffscreenPageLimit(4);
 
-        // 添加 Tab（顺序：个人中心 → 分区导航 → 新番专题 → 放送时间表 → 推荐视频 → 关于我们）
         addTab("个人中心", ProfileFragment.class);
         addTab("分区导航", HomeFragment.class);
         addTab("新番专题", NewAnimeFragment.class);
         addTab("放送时间表", TimelineFragment.class);
-        addTab("推荐视频", RecommendFragment.class);  // 新增，在关于前面
+        addTab("推荐视频", RecommendFragment.class);
         addTab("关于我们", AboutFragment.class);
 
-        // 默认选中“新番专题”（索引2）
-        int defaultTab = SettingsActivity.getDefaultTab();
-        mPager.setCurrentItem(defaultTab);
+        // 从 Intent 获取默认 Tab（用于 TV 跳转）
+        int targetTab = getIntent().getIntExtra("tab_index", -1);
+        if (targetTab >= 0 && targetTab < mFragments.size()) {
+            mPager.setCurrentItem(targetTab);
+        } else {
+            int defaultTab = SettingsActivity.getDefaultTab();
+            mPager.setCurrentItem(defaultTab);
+        }
 
         ImageView btnSearch = (ImageView) findViewById(R.id.btn_search);
         btnSearch.setOnClickListener(new View.OnClickListener() {
@@ -112,15 +121,12 @@ public class MainActivity extends BaseActivity {
             }
         });
 
-        // Logo：单击弹出菜单 + 快速连点5次触发空间震
         ImageView logo = (ImageView) findViewById(R.id.logo);
         logo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // 正常行为：弹出菜单
                 openOptionsMenu();
 
-                // 彩蛋计数
                 logoClickCount++;
                 if (logoClickCount == 1) {
                     logoClickHandler.removeCallbacks(logoClickReset);
@@ -145,25 +151,16 @@ public class MainActivity extends BaseActivity {
             }
         }
 
-        // 每次进入应用时自动删除视频缓存
         clearVideoCache();
-
-        // 自动检查更新（默认开启）
         checkAutoUpdate();
     }
 
-    // 自动检查更新
-
-    /**
-     * 检查是否需要自动更新
-     */
     private void checkAutoUpdate() {
         boolean autoUpdateEnabled = SharedPreferencesUtil.getBoolean(KEY_AUTO_CHECK_UPDATE, true);
         if (!autoUpdateEnabled) {
             return;
         }
 
-        // 检查上次检查时间
         long lastCheckTime = SharedPreferencesUtil.getLong("last_auto_check_time", 0);
         long currentTime = System.currentTimeMillis();
 
@@ -173,9 +170,6 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    /**
-     * 执行自动检查更新
-     */
     private void doAutoCheckUpdate() {
         new Thread(new Runnable() {
             @Override
@@ -183,7 +177,6 @@ public class MainActivity extends BaseActivity {
                 boolean success = false;
                 String versionJson = null;
 
-                // 1. 优先从主站获取
                 try {
                     java.net.URL url = new java.net.URL("http://www.biliclassic.cn/api/version.json");
                     java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
@@ -208,11 +201,8 @@ public class MainActivity extends BaseActivity {
                         success = true;
                     }
                     conn.disconnect();
-                } catch (Exception e) {
-                    // 主站失败了呜呜
-                }
+                } catch (Exception e) {}
 
-                // 2. 如果失败，从 mongou666 的备用站获取
                 if (!success) {
                     try {
                         java.net.URL url = new java.net.URL(
@@ -239,9 +229,7 @@ public class MainActivity extends BaseActivity {
                             success = true;
                         }
                         conn.disconnect();
-                    } catch (Exception e) {
-                        // 7891vip 也失败了？
-                    }
+                    } catch (Exception e) {}
                 }
 
                 final String finalVersionJson = versionJson;
@@ -259,21 +247,16 @@ public class MainActivity extends BaseActivity {
         }).start();
     }
 
-    /**
-     * 处理更新检查结果
-     */
     private void handleUpdateCheckResult(String versionJson) {
         try {
             JSONObject json = new JSONObject(versionJson);
 
-            // ========== 使用 version_code 校验 ==========
             int latestVersionCode = json.optInt("version_code", 0);
             String latestVersionName = json.optString("version", "");
             String downloadUrl = json.optString("download_url", "");
             boolean forceUpdate = json.optBoolean("force_update", false);
             int minSdk = json.optInt("min_sdk", 0);
 
-            // 解析 changelog
             String changelog = "";
             try {
                 org.json.JSONArray changelogArray = json.optJSONArray("changelog");
@@ -291,37 +274,26 @@ public class MainActivity extends BaseActivity {
                 changelog = json.optString("changelog", "");
             }
 
-            // 检查是否有更新
             boolean hasUpdate = false;
 
             if (latestVersionCode > 0) {
-                // 使用 version_code 比较
                 hasUpdate = (latestVersionCode > currentVersionCode);
             } else {
-                // 降级方案：使用版本名比较
                 hasUpdate = compareVersions(currentVersionName, latestVersionName);
             }
 
-            // SDK 版本检查
             int sdkVersion = android.os.Build.VERSION.SDK_INT;
             if (minSdk > 0 && sdkVersion < minSdk) {
-                // SDK 太低，不他喵的提示
                 return;
             }
 
-            // 有新版本则弹出提示
             if (hasUpdate) {
                 showAutoUpdateDialog(latestVersionName, changelog, downloadUrl, forceUpdate);
             }
 
-        } catch (Exception e) {
-            // 解析失败，静默忽略
-        }
+        } catch (Exception e) {}
     }
 
-    /**
-     * 自动更新发现新版本对话框
-     */
     private void showAutoUpdateDialog(String versionName, String changelog, final String downloadUrl, boolean forceUpdate) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("发现新版本: " + versionName);
@@ -352,17 +324,6 @@ public class MainActivity extends BaseActivity {
         builder.show();
     }
 
-    private String getVersionName() {
-        return currentVersionName;
-    }
-
-    private int getVersionCode() {
-        return currentVersionCode;
-    }
-
-    /**
-     * 比较版本号，支持 -r数字 和 -fix 后缀
-     */
     private boolean compareVersions(String current, String latest) {
         if (current == null || latest == null || current.length() == 0 || latest.length() == 0) {
             return false;
@@ -480,9 +441,6 @@ public class MainActivity extends BaseActivity {
         return 0;
     }
 
-    /**
-     * 检查并显示崩溃对话框
-     */
     private void checkAndShowCrashDialog() {
         boolean hasCrash = getSharedPreferences("crash", MODE_PRIVATE)
                 .getBoolean("has_crash", false);
@@ -550,10 +508,6 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    /**
-     * 空间震彩蛋
-     * 你也看约战？
-     */
     private void triggerSpaceQuake() {
         Toast.makeText(this, "空間震！", Toast.LENGTH_SHORT).show();
 
@@ -581,9 +535,6 @@ public class MainActivity extends BaseActivity {
         }, 200);
     }
 
-    /**
-     * 清除所有视频缓存文件
-     */
     private void clearVideoCache() {
         new Thread(new Runnable() {
             @Override
@@ -733,7 +684,6 @@ public class MainActivity extends BaseActivity {
         if (id == R.id.menu_login_logout) {
             long mid = SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0);
             if (mid != 0) {
-                // 使用可爱的二次元风格退出弹窗
                 showMenuLogoutDialog();
             } else {
                 startActivity(new Intent(MainActivity.this, LoginActivity.class));
@@ -758,9 +708,6 @@ public class MainActivity extends BaseActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    /**
-     * 菜单退出登录的二次元风格弹窗
-     */
     private void showMenuLogoutDialog() {
         new AlertDialog.Builder(this)
                 .setTitle("真的要离开了吗…？")
@@ -783,9 +730,6 @@ public class MainActivity extends BaseActivity {
                 .show();
     }
 
-    /**
-     * 执行菜单退出登录
-     */
     private void doMenuLogout() {
         SharedPreferencesUtil.removeValue("cookies");
         SharedPreferencesUtil.removeValue("mid");

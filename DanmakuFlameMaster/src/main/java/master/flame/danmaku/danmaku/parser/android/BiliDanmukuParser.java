@@ -17,7 +17,6 @@
 package master.flame.danmaku.danmaku.parser.android;
 
 import android.graphics.Color;
-import android.text.TextUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -102,24 +101,13 @@ public class BiliDanmukuParser extends BaseDanmakuParser {
             String tagName = localName.length() != 0 ? localName : qName;
             tagName = tagName.toLowerCase(Locale.getDefault()).trim();
             if (tagName.equals("d")) {
-                // <d p="23.826000213623,1,25,16777215,1422201084,0,057075e9,757076900">我从未见过如此厚颜无耻之猴</d>
-                // 0:时间(弹幕出现时间)
-                // 1:类型(1从左至右滚动弹幕|6从右至左滚动弹幕|5顶端固定弹幕|4底端固定弹幕|7高级弹幕|8脚本弹幕)
-                // 2:字号
-                // 3:颜色
-                // 4:时间戳 ?
-                // 5:弹幕池id
-                // 6:用户hash
-                // 7:弹幕id
                 String pValue = attributes.getValue("p");
-                // parse p value to danmaku
                 String[] values = pValue.split(",");
                 if (values.length > 0) {
-                    long time = (long) (Float.parseFloat(values[0]) * 1000); // 出现时间
-                    int type = Integer.parseInt(values[1]); // 弹幕类型
-                    float textSize = Float.parseFloat(values[2]); // 字体大小
-                    int color = Integer.parseInt(values[3]) | 0xFF000000; // 颜色
-                    // int poolType = Integer.parseInt(values[5]); // 弹幕池类型（忽略
+                    long time = (long) (Float.parseFloat(values[0]) * 1000);
+                    int type = Integer.parseInt(values[1]);
+                    float textSize = Float.parseFloat(values[2]);
+                    int color = Integer.parseInt(values[3]) | 0xFF000000;
                     item = DanmakuFactory.createDanmaku(type, mDisp);
                     if (item != null) {
                         item.time = time;
@@ -146,27 +134,25 @@ public class BiliDanmukuParser extends BaseDanmakuParser {
         }
 
         @Override
-        public void characters(char[] ch, int start, int length)  {
+        public void characters(char[] ch, int start, int length) {
             if (item != null) {
                 DanmakuFactory.fillText(item, decodeXmlString(new String(ch, start, length)));
                 item.index = index++;
 
-                // initial specail danmaku data
                 String text = String.valueOf(item.text).trim();
                 if (item.getType() == BaseDanmaku.TYPE_SPECIAL && text.startsWith("[")
                         && text.endsWith("]")) {
-                    //text = text.substring(1, text.length() - 1);
-                    String[] textArr = null;//text.split(",", -1);
+                    String[] textArr = null;
                     try {
                         JSONArray jsonArray = new JSONArray(text);
                         textArr = new String[jsonArray.length()];
-                        for(int i=0;i<textArr.length;i++){
+                        for (int i = 0; i < textArr.length; i++) {
                             textArr[i] = jsonArray.getString(i);
                         }
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
-                    
+
                     if (textArr == null || textArr.length < 5) {
                         item = null;
                         return;
@@ -193,10 +179,10 @@ public class BiliDanmukuParser extends BaseDanmakuParser {
                     if (textArr.length >= 11) {
                         endX = Float.parseFloat(textArr[7]);
                         endY = Float.parseFloat(textArr[8]);
-                        if(!"".equals(textArr[9])){
+                        if (!"".equals(textArr[9])) {
                             translationDuration = Integer.parseInt(textArr[9]);
                         }
-                        if(!"".equals(textArr[10])){
+                        if (!"".equals(textArr[10])) {
                             translationStartDelay = (long) (Float.parseFloat(textArr[10]));
                         }
                     }
@@ -206,10 +192,9 @@ public class BiliDanmukuParser extends BaseDanmakuParser {
                     DanmakuFactory.fillTranslationData(item, beginX,
                             beginY, endX, endY, translationDuration, translationStartDelay, mDispScaleX, mDispScaleY);
                     DanmakuFactory.fillAlphaData(item, beginAlpha, endAlpha, alphaDuraion);
-                    
+
                     if (textArr.length >= 12) {
-                        // 是否有描边
-                        if (!TextUtils.isEmpty(textArr[11]) && TRUE_STRING.equals(textArr[11])) {
+                        if (textArr[11] != null && TRUE_STRING.equals(textArr[11])) {
                             item.textShadowColor = Color.TRANSPARENT;
                         }
                     }
@@ -220,7 +205,6 @@ public class BiliDanmukuParser extends BaseDanmakuParser {
                         //TODO 是否有加速
                     }
                     if (textArr.length >= 15) {
-                        // 路径数据
                         if (!"".equals(textArr[14])) {
                             String motionPathString = textArr[14].substring(1);
                             String[] pointStrArray = motionPathString.split("L");
@@ -258,7 +242,7 @@ public class BiliDanmukuParser extends BaseDanmakuParser {
         }
 
     }
-    
+
     @Override
     public BaseDanmakuParser setDisplayer(IDisplayer disp) {
         super.setDisplayer(disp);

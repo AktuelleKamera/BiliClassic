@@ -1,7 +1,6 @@
 package tv.danmaku.ijk.media.player;
 
 import android.os.Bundle;
-import android.text.TextUtils;
 
 import java.util.ArrayList;
 import java.util.Locale;
@@ -150,7 +149,7 @@ public class IjkMediaMeta {
 
     public int getInt(String key, int defaultValue) {
         String value = getString(key);
-        if (TextUtils.isEmpty(value))
+        if (value == null || value.length() == 0)
             return defaultValue;
 
         try {
@@ -166,7 +165,7 @@ public class IjkMediaMeta {
 
     public long getLong(String key, long defaultValue) {
         String value = getString(key);
-        if (TextUtils.isEmpty(value))
+        if (value == null || value.length() == 0)
             return defaultValue;
 
         try {
@@ -223,7 +222,7 @@ public class IjkMediaMeta {
             streamMeta.mMeta = streamBundle;
             streamMeta.mType = streamMeta.getString(IJKM_KEY_TYPE);
             streamMeta.mLanguage = streamMeta.getString(IJKM_KEY_LANGUAGE);
-            if (TextUtils.isEmpty(streamMeta.mType))
+            if (streamMeta.mType == null || streamMeta.mType.length() == 0)
                 continue;
 
             streamMeta.mCodecName = streamMeta.getString(IJKM_KEY_CODEC_NAME);
@@ -303,7 +302,7 @@ public class IjkMediaMeta {
 
         public int getInt(String key, int defaultValue) {
             String value = getString(key);
-            if (TextUtils.isEmpty(value))
+            if (value == null || value.length() == 0)
                 return defaultValue;
 
             try {
@@ -319,7 +318,7 @@ public class IjkMediaMeta {
 
         public long getLong(String key, long defaultValue) {
             String value = getString(key);
-            if (TextUtils.isEmpty(value))
+            if (value == null || value.length() == 0)
                 return defaultValue;
 
             try {
@@ -330,9 +329,9 @@ public class IjkMediaMeta {
         }
 
         public String getCodecLongNameInline() {
-            if (!TextUtils.isEmpty(mCodecLongName)) {
+            if (mCodecLongName != null && mCodecLongName.length() > 0) {
                 return mCodecLongName;
-            } else if (!TextUtils.isEmpty(mCodecName)) {
+            } else if (mCodecName != null && mCodecName.length() > 0) {
                 return mCodecName;
             } else {
                 return "N/A";
@@ -340,7 +339,7 @@ public class IjkMediaMeta {
         }
 
         public String getCodecShortNameInline() {
-            if (!TextUtils.isEmpty(mCodecName)) {
+            if (mCodecName != null && mCodecName.length() > 0) {
                 return mCodecName;
             } else {
                 return "N/A";

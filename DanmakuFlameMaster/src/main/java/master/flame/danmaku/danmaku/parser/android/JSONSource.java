@@ -14,7 +14,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 import android.net.Uri;
-import android.text.TextUtils;
 
 /**
  * a json file source
@@ -55,15 +54,16 @@ public class JSONSource implements IDataSource<JSONArray>{
             init(new FileInputStream(uri.getPath()));
         }
 	}
-	
+
 	private void init(String json) throws JSONException {
-		if(!TextUtils.isEmpty(json)){
+		if (json != null && json.length() > 0) {
 			mJSONArray = new JSONArray(json);
 		}
 	}
-    public JSONArray data(){
-    	return mJSONArray;
-    }
+
+	public JSONArray data() {
+		return mJSONArray;
+	}
 
 	@Override
 	public void release() {

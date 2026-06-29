@@ -18,8 +18,6 @@
 package tv.danmaku.ijk.media.player.misc;
 
 import android.annotation.TargetApi;
-import android.os.Build;
-import android.text.TextUtils;
 
 import java.util.HashMap;
 import java.util.Locale;
@@ -52,7 +50,7 @@ public class IjkMediaFormat implements IMediaFormat {
         mMediaFormat = streamMeta;
     }
 
-    @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
+    @TargetApi(16)
     @Override
     public int getInteger(String name) {
         if (mMediaFormat == null)
@@ -81,7 +79,7 @@ public class IjkMediaFormat implements IMediaFormat {
     private static abstract class Formatter {
         public String format(IjkMediaFormat mediaFormat) {
             String value = doFormat(mediaFormat);
-            if (TextUtils.isEmpty(value))
+            if (value == null || value.length() == 0)
                 return getDefaultString();
             return value;
         }
@@ -175,7 +173,7 @@ public class IjkMediaFormat implements IMediaFormat {
                 sb.append(profile);
 
                 String codecName = mediaFormat.getString(IjkMediaMeta.IJKM_KEY_CODEC_NAME);
-                if (!TextUtils.isEmpty(codecName) && codecName.equalsIgnoreCase(CODEC_NAME_H264)) {
+                if (codecName != null && codecName.length() > 0 && codecName.equalsIgnoreCase(CODEC_NAME_H264)) {
                     int level = mediaFormat.getInteger(IjkMediaMeta.IJKM_KEY_CODEC_LEVEL);
                     if (level < 10)
                         return sb.toString();

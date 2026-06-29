@@ -25,12 +25,12 @@ import master.flame.danmaku.danmaku.util.DanmakuUtils;
 public class DanmakusRetainer {
 
     private static IDanmakusRetainer rldrInstance = null;
-
     private static IDanmakusRetainer lrdrInstance = null;
-
     private static IDanmakusRetainer ftdrInstance = null;
-
     private static IDanmakusRetainer fbdrInstance = null;
+
+    // 屏幕高度对应的最大行数，动态计算
+    private static int sMaxLines = 0;
 
     public static void fix(BaseDanmaku danmaku, IDisplayer disp, Verifier verifier) {
 
@@ -81,8 +81,8 @@ public class DanmakusRetainer {
             fbdrInstance.clear();
         }
     }
-    
-    public static void release(){
+
+    public static void release() {
         clear();
         rldrInstance = null;
         lrdrInstance = null;
@@ -115,19 +115,34 @@ public class DanmakusRetainer {
                 return;
             float topPos = 0;
             int lines = 0;
-            boolean willHit = !drawItem.isShown() && !mVisibleDanmakus.isEmpty();
+            boolean willHit = !drawItem.isShown() && mVisibleDanmakus.size() > 0;
             boolean isOutOfVertialEdge = false;
             boolean shown = drawItem.isShown();
             if (!shown) {
                 mCancelFixingFlag = false;
-                // 确定弹幕位置
                 IDanmakuIterator it = mVisibleDanmakus.iterator();
                 BaseDanmaku insertItem = null, firstItem = null, lastItem = null, minRightRow = null;
                 boolean overwriteInsert = false;
-                while (!mCancelFixingFlag && it.hasNext()) {
+
+                // 动态计算最大检查行数：屏幕高度 / 弹幕高度
+                int maxCheckLines = sMaxLines;
+                if (maxCheckLines <= 0) {
+                    float danmakuHeight = drawItem.paintHeight;
+                    if (danmakuHeight <= 0) {
+                        danmakuHeight = 30; // 默认值
+                    }
+                    maxCheckLines = (int) (disp.getHeight() / danmakuHeight) + 2;
+                    if (maxCheckLines < 10) maxCheckLines = 10;
+                    if (maxCheckLines > 100) maxCheckLines = 100;
+                    sMaxLines = maxCheckLines;
+                }
+
+                int checkCount = 0;
+                while (!mCancelFixingFlag && it.hasNext() && checkCount < maxCheckLines) {
+                    checkCount++;
                     lines++;
                     BaseDanmaku item = it.next();
-                    if(item == drawItem){
+                    if (item == drawItem) {
                         insertItem = item;
                         lastItem = null;
                         shown = true;
@@ -151,7 +166,6 @@ public class DanmakusRetainer {
                         }
                     }
 
-                    // 检查碰撞
                     willHit = DanmakuUtils.willHitInDuration(disp, item, drawItem,
                             drawItem.getDuration(), drawItem.getTimer().currMillisecond);
                     if (!willHit) {
@@ -167,7 +181,7 @@ public class DanmakusRetainer {
                         topPos = lastItem.getBottom();
                     else
                         topPos = insertItem.getTop();
-                    if (insertItem != drawItem){
+                    if (insertItem != drawItem) {
                         mVisibleDanmakus.removeItem(insertItem);
                         shown = false;
                     }
@@ -254,7 +268,7 @@ public class DanmakusRetainer {
             boolean shown = drawItem.isShown();
             float topPos = drawItem.getTop();
             int lines = 0;
-            boolean willHit = !drawItem.isShown() && !mVisibleDanmakus.isEmpty();
+            boolean willHit = !drawItem.isShown() && mVisibleDanmakus.size() > 0;
             boolean isOutOfVerticalEdge = false;
             if (topPos < 0) {
                 topPos = disp.getHeight() - drawItem.paintHeight;
@@ -263,7 +277,22 @@ public class DanmakusRetainer {
             if (!shown) {
                 mCancelFixingFlag = false;
                 IDanmakuIterator it = mVisibleDanmakus.iterator();
-                while (!mCancelFixingFlag && it.hasNext()) {
+
+                int maxCheckLines = sMaxLines;
+                if (maxCheckLines <= 0) {
+                    float danmakuHeight = drawItem.paintHeight;
+                    if (danmakuHeight <= 0) {
+                        danmakuHeight = 30;
+                    }
+                    maxCheckLines = (int) (disp.getHeight() / danmakuHeight) + 2;
+                    if (maxCheckLines < 10) maxCheckLines = 10;
+                    if (maxCheckLines > 100) maxCheckLines = 100;
+                    sMaxLines = maxCheckLines;
+                }
+
+                int checkCount = 0;
+                while (!mCancelFixingFlag && it.hasNext() && checkCount < maxCheckLines) {
+                    checkCount++;
                     lines++;
                     BaseDanmaku item = it.next();
                     if (item == drawItem) {
@@ -284,12 +313,10 @@ public class DanmakusRetainer {
                         break;
                     }
 
-                    // 检查碰撞
                     willHit = DanmakuUtils.willHitInDuration(disp, item, drawItem,
                             drawItem.getDuration(), drawItem.getTimer().currMillisecond);
                     if (!willHit) {
                         removeItem = item;
-                        // topPos = item.getBottom() - drawItem.paintHeight;
                         break;
                     }
 

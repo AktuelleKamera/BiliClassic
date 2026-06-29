@@ -3,7 +3,6 @@ package tv.cjump.jni;
 
 import android.os.Build;
 import android.os.Environment;
-import android.text.TextUtils;
 import android.util.Log;
 
 import java.io.File;
@@ -100,12 +99,11 @@ public class DeviceUtils {
 
     public static boolean supportABI(String requestAbi) {
         String abi = get_CPU_ABI();
-        if (!TextUtils.isEmpty(abi) && abi.equalsIgnoreCase(requestAbi))
+        if (abi != null && abi.length() > 0 && abi.equalsIgnoreCase(requestAbi))
             return true;
 
         String abi2 = get_CPU_ABI2();
-        return !TextUtils.isEmpty(abi2) && abi.equalsIgnoreCase(requestAbi);
-
+        return abi2 != null && abi2.length() > 0 && abi2.equalsIgnoreCase(requestAbi);
     }
 
     public static boolean supportX86() {

@@ -197,7 +197,19 @@ public class OfflineActivity extends BaseActivity {
             return;
         }
 
-        if (SettingsActivity.getPlayerPreference() == 8) {
+        // 新版下载：跳转到视频详情页（离线模式）
+        if (item.env != null && item.env.avid > 0) {
+            Intent intent = new Intent(this, VideoDetailActivity.class);
+            intent.putExtra("aid", item.env.avid);
+            intent.putExtra("offline_mode", true);
+            startActivity(intent);
+            return;
+        }
+
+        int playerPref = SettingsActivity.getPlayerPreference();
+
+        // 内置播放器（旧版视频使用）
+        if (playerPref == 8) {
             Intent intent = new Intent(this, BiliPlayerActivity.class);
             String displayTitle = (item.pageTitle != null && item.pageTitle.length() > 0)
                     ? item.pageTitle : item.title;
@@ -218,6 +230,7 @@ public class OfflineActivity extends BaseActivity {
             return;
         }
 
+        // 外部播放器（旧版视频使用）
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setDataAndType(Uri.fromFile(item.videoFile), "video/mp4");
         String preferredPlayer = SettingsActivity.getPlayerPackageName();

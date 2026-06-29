@@ -17,8 +17,6 @@
 
 package tv.danmaku.ijk.media.player.misc;
 
-import android.text.TextUtils;
-
 import tv.danmaku.ijk.media.player.IjkMediaMeta;
 
 public class IjkTrackInfo implements ITrackInfo {
@@ -40,7 +38,7 @@ public class IjkTrackInfo implements ITrackInfo {
 
     @Override
     public String getLanguage() {
-        if (mStreamMeta == null || TextUtils.isEmpty(mStreamMeta.mLanguage))
+        if (mStreamMeta == null || mStreamMeta.mLanguage == null || mStreamMeta.mLanguage.length() == 0)
             return "und";
 
         return mStreamMeta.mLanguage;

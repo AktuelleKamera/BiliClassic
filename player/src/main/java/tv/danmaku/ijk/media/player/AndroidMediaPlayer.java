@@ -24,7 +24,6 @@ import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
-import android.text.TextUtils;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 
@@ -104,7 +103,7 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
 
         Uri uri = Uri.parse(path);
         String scheme = uri.getScheme();
-        if (!TextUtils.isEmpty(scheme) && scheme.equalsIgnoreCase("file")) {
+        if (scheme != null && scheme.length() > 0 && scheme.equalsIgnoreCase("file")) {
             mInternalMediaPlayer.setDataSource(uri.getPath());
         } else {
             mInternalMediaPlayer.setDataSource(path);

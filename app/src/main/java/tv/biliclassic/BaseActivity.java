@@ -6,8 +6,10 @@ import android.content.pm.ActivityInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
+import android.view.WindowManager;
 import android.widget.Toast;
 
+import tv.biliclassic.tv.util.TvUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public abstract class BaseActivity extends FragmentActivity {
@@ -31,10 +33,15 @@ public abstract class BaseActivity extends FragmentActivity {
             appContext = getApplicationContext();
         }
 
-        // 设置横屏
-        if (shouldEnableLandscape()) {
+        // TV 模式检测：自动横屏 + 全屏
+        if (TvUtil.isTv(this)) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        } else if (shouldEnableLandscape()) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         }
+
         super.onCreate(savedInstanceState);
     }
 

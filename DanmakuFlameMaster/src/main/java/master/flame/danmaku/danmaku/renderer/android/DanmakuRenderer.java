@@ -63,16 +63,16 @@ public class DanmakuRenderer extends Renderer {
     @Override
     public RenderingState draw(IDisplayer disp, IDanmakus danmakus, long startRenderTime) {
         int lastTotalDanmakuCount = mRenderingState.totalDanmakuCount;
-        mRenderingState.reset();       
+        mRenderingState.reset();
         IDanmakuIterator itr = danmakus.iterator();
-        int orderInScreen = 0;        
+        int orderInScreen = 0;
         mStartTimer.update(System.currentTimeMillis());
         int sizeInScreen = danmakus.size();
         BaseDanmaku drawItem = null;
         while (itr.hasNext()) {
 
             drawItem = itr.next();
-            
+
             if (drawItem.isLate()) {
                 break;
             }
@@ -85,7 +85,7 @@ public class DanmakuRenderer extends Renderer {
                     || (drawItem.priority == 0 && drawItem.isFiltered())) {
                 continue;
             }
-            
+
             if (drawItem.getType() == BaseDanmaku.TYPE_SCROLL_RL){
                 // 同屏弹幕密度只对滚动弹幕有效
                 orderInScreen++;
@@ -115,7 +115,7 @@ public class DanmakuRenderer extends Renderer {
             }
 
         }
-        
+
         mRenderingState.nothingRendered = (mRenderingState.totalDanmakuCount == 0);
         mRenderingState.endTime = drawItem != null ? drawItem.time : RenderingState.UNKNOWN_TIME;
         if (mRenderingState.nothingRendered) {
@@ -125,5 +125,5 @@ public class DanmakuRenderer extends Renderer {
         mRenderingState.consumingTime = mStartTimer.update(System.currentTimeMillis());
         return mRenderingState;
     }
-    
+
 }

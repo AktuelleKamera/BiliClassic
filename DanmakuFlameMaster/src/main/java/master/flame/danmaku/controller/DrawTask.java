@@ -36,7 +36,7 @@ import master.flame.danmaku.danmaku.renderer.android.DanmakuRenderer;
 import master.flame.danmaku.danmaku.renderer.android.DanmakusRetainer;
 
 public class DrawTask implements IDrawTask {
-    
+
     protected AbsDisplayer<?> mDisp;
 
     protected IDanmakus danmakuList;
@@ -72,7 +72,7 @@ public class DrawTask implements IDrawTask {
     };
 
     public DrawTask(DanmakuTimer timer, AbsDisplayer<?> disp,
-            TaskListener taskListener) {
+                    TaskListener taskListener) {
         mTaskListener = taskListener;
         mRenderer = new DanmakuRenderer();
         mRenderer.setVerifierEnabled(DanmakuGlobalConfig.DEFAULT.isPreventOverlappingEnabled() || DanmakuGlobalConfig.DEFAULT.isMaxLinesLimited());
@@ -80,7 +80,7 @@ public class DrawTask implements IDrawTask {
         initTimer(timer);
         Boolean enable = DanmakuGlobalConfig.DEFAULT.isDuplicateMergingEnabled();
         if (enable != null) {
-            if(enable) {
+            if(enable.booleanValue()) {
                 DanmakuFilters.getDefault().registerFilter(DanmakuFilters.TAG_DUPLICATE_FILTER);
             } else {
                 DanmakuFilters.getDefault().unregisterFilter(DanmakuFilters.TAG_DUPLICATE_FILTER);
@@ -115,10 +115,10 @@ public class DrawTask implements IDrawTask {
             mTaskListener.onDanmakuAdd(item);
         }
     }
-    
+
     @Override
     public synchronized void removeAllDanmakus() {
-        if (danmakuList == null || danmakuList.isEmpty())
+        if (danmakuList == null || danmakuList.size() == 0)
             return;
         danmakuList.clear();
     }
@@ -129,7 +129,7 @@ public class DrawTask implements IDrawTask {
 
     @Override
     public synchronized void removeAllLiveDanmakus() {
-        if (danmakus == null || danmakus.isEmpty())
+        if (danmakus == null || danmakus.size() == 0)
             return;
         synchronized (danmakus) {
             IDanmakuIterator it = danmakus.iterator();
@@ -144,7 +144,7 @@ public class DrawTask implements IDrawTask {
     }
 
     protected synchronized void removeUnusedLiveDanmakusIn(int msec) {
-        if (danmakuList == null || danmakuList.isEmpty())
+        if (danmakuList == null || danmakuList.size() == 0)
             return;
         long startTime = System.currentTimeMillis();
         IDanmakuIterator it = danmakuList.iterator();
@@ -167,7 +167,7 @@ public class DrawTask implements IDrawTask {
         long endMills = time + DanmakuFactory.MAX_DANMAKU_DURATION;
         IDanmakus subDanmakus = danmakuList.sub(beginMills, endMills);
         IDanmakus visibleDanmakus = new Danmakus();
-        if (null != subDanmakus && !subDanmakus.isEmpty()) {
+        if (null != subDanmakus && subDanmakus.size() > 0) {
             IDanmakuIterator iterator = subDanmakus.iterator();
             while (iterator.hasNext()) {
                 BaseDanmaku danmaku = iterator.next();
@@ -265,7 +265,7 @@ public class DrawTask implements IDrawTask {
                 beginMills = mLastBeginMills;
                 endMills = mLastEndMills;
             }
-            if (danmakus != null && !danmakus.isEmpty()) {
+            if (danmakus != null && danmakus.size() > 0) {
                 RenderingState renderingState = mRenderingState = mRenderer.draw(mDisp, danmakus, mStartRenderTime);
                 if (renderingState.nothingRendered) {
                     if (renderingState.beginTime == RenderingState.UNKNOWN_TIME) {
@@ -296,7 +296,7 @@ public class DrawTask implements IDrawTask {
     }
 
     public boolean onDanmakuConfigChanged(DanmakuGlobalConfig config, DanmakuConfigTag tag,
-            Object... values) {
+                                          Object... values) {
         boolean handled = handleOnDanmakuConfigChanged(config, tag, values);
         if (mTaskListener != null) {
             mTaskListener.onDanmakuConfigChanged();
@@ -311,7 +311,7 @@ public class DrawTask implements IDrawTask {
         } else if (DanmakuConfigTag.DUPLICATE_MERGING_ENABLED.equals(tag)) {
             Boolean enable = (Boolean) values[0];
             if (enable != null) {
-                if (enable) {
+                if (enable.booleanValue()) {
                     DanmakuFilters.getDefault().registerFilter(DanmakuFilters.TAG_DUPLICATE_FILTER);
                 } else {
                     DanmakuFilters.getDefault().unregisterFilter(DanmakuFilters.TAG_DUPLICATE_FILTER);

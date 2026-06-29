@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="16dp"
+    android:background="@drawable/tv_tile_bg"
+    android:focusable="true"
+    android:clickable="true"
+    android:focusableInTouchMode="true">
+
+    <ImageView
+        android:id="@+id/tile_icon"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:src="@drawable/ic_action_rating_important" />
+
+    <TextView
+        android:id="@+id/tile_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="追番"
+        android:textSize="16sp"
+        android:textColor="#FFFFFF"
+        android:layout_marginTop="8dp" />
+
+</LinearLayout>
