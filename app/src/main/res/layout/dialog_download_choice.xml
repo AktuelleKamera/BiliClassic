@@ -52,6 +52,7 @@
             android:layout_weight="1"
             android:text="360P"
             android:textColor="#333333"
+            android:button="@drawable/ic_btn_holo_pink_radio"
             android:paddingTop="4dp"
             android:paddingBottom="4dp" />
 
@@ -62,6 +63,7 @@
             android:layout_weight="1"
             android:text="480P"
             android:textColor="#333333"
+            android:button="@drawable/ic_btn_holo_pink_radio"
             android:paddingTop="4dp"
             android:paddingBottom="4dp" />
 
@@ -72,6 +74,7 @@
             android:layout_weight="1"
             android:text="720P"
             android:textColor="#333333"
+            android:button="@drawable/ic_btn_holo_pink_radio"
             android:paddingTop="4dp"
             android:paddingBottom="4dp" />
 
