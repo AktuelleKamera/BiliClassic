@@ -17,8 +17,8 @@
     <ListView
         android:id="@+id/list_view"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:scrollbars="none"
+        android:layout_height="140dp"
+        android:scrollbars="vertical"
         android:dividerHeight="1dp"
         android:divider="#EEEEEE"
         android:background="@android:color/transparent" />
@@ -43,31 +43,34 @@
         android:id="@+id/quality_group"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="horizontal">
 
         <RadioButton
             android:id="@+id/quality_360"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="360P 流畅"
+            android:layout_weight="1"
+            android:text="360P"
             android:textColor="#333333"
             android:paddingTop="4dp"
             android:paddingBottom="4dp" />
 
         <RadioButton
             android:id="@+id/quality_480"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="480P 清晰"
+            android:layout_weight="1"
+            android:text="480P"
             android:textColor="#333333"
             android:paddingTop="4dp"
             android:paddingBottom="4dp" />
 
         <RadioButton
             android:id="@+id/quality_720"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="720P 高清"
+            android:layout_weight="1"
+            android:text="720P"
             android:textColor="#333333"
             android:paddingTop="4dp"
             android:paddingBottom="4dp" />
