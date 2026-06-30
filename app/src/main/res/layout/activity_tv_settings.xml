@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#1A1A2E"
+    android:background="#0D1B2A"
     android:padding="16dp"
     android:focusable="true"
     android:focusableInTouchMode="true">
@@ -23,7 +23,8 @@
             android:text="设置"
             android:textSize="32sp"
             android:textColor="#FFFFFF"
-            android:textStyle="bold" />
+            android:fontFamily="sans-serif-light"
+            android:textStyle="normal" />
 
         <Button
             android:id="@+id/btn_back"
@@ -31,14 +32,14 @@
             android:layout_height="wrap_content"
             android:text="返回"
             android:textSize="16sp"
-            android:textColor="#FCA3C5"
+            android:textColor="#1E90FF"
             android:background="@null"
             android:focusable="true"
             android:clickable="true" />
 
     </LinearLayout>
 
-    <!-- ScrollView：让内容可以滚动，但不拦截焦点 -->
+    <!-- ScrollView：可以滚动，不拦截焦点 -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -61,6 +62,8 @@
                 android:text="图片加载线程"
                 android:textSize="18sp"
                 android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
                 android:background="@drawable/tv_tile_bg"
                 android:padding="16dp"
                 android:layout_marginBottom="8dp"
@@ -75,6 +78,8 @@
                 android:text="默认播放器"
                 android:textSize="18sp"
                 android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
                 android:background="@drawable/tv_tile_bg"
                 android:padding="16dp"
                 android:layout_marginBottom="8dp"
@@ -89,6 +94,8 @@
                 android:text="视频画质"
                 android:textSize="18sp"
                 android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
                 android:background="@drawable/tv_tile_bg"
                 android:padding="16dp"
                 android:layout_marginBottom="8dp"
@@ -103,6 +110,8 @@
                 android:text="默认首页"
                 android:textSize="18sp"
                 android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
                 android:background="@drawable/tv_tile_bg"
                 android:padding="16dp"
                 android:layout_marginBottom="8dp"
@@ -133,14 +142,18 @@
                         android:layout_height="wrap_content"
                         android:text="在线播放"
                         android:textSize="18sp"
-                        android:textColor="#FFFFFF" />
+                        android:textColor="#FFFFFF"
+                        android:fontFamily="sans-serif-light"
+                        android:textStyle="normal" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="实验性功能，直接在线播放视频"
                         android:textSize="12sp"
-                        android:textColor="#999999" />
+                        android:textColor="#999999"
+                        android:fontFamily="sans-serif-light"
+                        android:textStyle="normal" />
 
                 </LinearLayout>
 
@@ -163,6 +176,8 @@
                 android:text="清除缓存"
                 android:textSize="18sp"
                 android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
                 android:background="@drawable/tv_tile_bg"
                 android:padding="16dp"
                 android:layout_marginBottom="8dp"
@@ -177,6 +192,8 @@
                 android:text="检查更新"
                 android:textSize="18sp"
                 android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
                 android:background="@drawable/tv_tile_bg"
                 android:padding="16dp"
                 android:layout_marginBottom="8dp"
@@ -191,6 +208,8 @@
                 android:text="关于"
                 android:textSize="18sp"
                 android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
                 android:background="@drawable/tv_tile_bg"
                 android:padding="16dp"
                 android:focusable="true"

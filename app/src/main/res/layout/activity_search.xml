@@ -3,7 +3,10 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@drawable/bili_texture_background">
+    android:background="@drawable/bili_texture_background"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:descendantFocusability="afterDescendants">
 
     <!-- 搜索栏 -->
     <LinearLayout
@@ -13,7 +16,9 @@
         android:background="#FFFFFF"
         android:orientation="horizontal"
         android:paddingLeft="4dp"
-        android:paddingRight="4dp">
+        android:paddingRight="4dp"
+        android:focusable="true"
+        android:focusableInTouchMode="true">
 
         <ImageView
             android:id="@+id/back"
@@ -23,7 +28,9 @@
             android:contentDescription="返回"
             android:padding="1dp"
             android:scaleType="centerInside"
-            android:src="@drawable/ic_action_back" />
+            android:src="@drawable/ic_action_back"
+            android:focusable="true"
+            android:clickable="true" />
 
         <EditText
             android:id="@+id/search_edit"
@@ -39,7 +46,9 @@
             android:paddingLeft="12dp"
             android:paddingRight="12dp"
             android:singleLine="true"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            android:focusable="true"
+            android:focusableInTouchMode="true" />
 
         <ImageView
             android:id="@+id/search_action"
@@ -49,7 +58,9 @@
             android:contentDescription="搜索"
             android:padding="1dp"
             android:scaleType="centerInside"
-            android:src="@drawable/ic_action_search" />
+            android:src="@drawable/ic_action_search"
+            android:focusable="true"
+            android:clickable="true" />
 
     </LinearLayout>
 
@@ -60,7 +71,69 @@
         android:background="@drawable/shadow_top_dig"
         android:contentDescription="@null" />
 
-    <!-- 顶部加载动画（第一次搜索显示在这里） -->
+    <!-- 搜索历史容器 -->
+    <LinearLayout
+        android:id="@+id/history_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="搜索历史"
+                android:textSize="14sp"
+                android:textColor="#666666" />
+
+            <TextView
+                android:id="@+id/clear_history"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="清空"
+                android:textSize="12sp"
+                android:textColor="#FF6699"
+                android:focusable="true"
+                android:clickable="true"
+                android:padding="8dp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/history_list_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <LinearLayout
+            android:id="@+id/history_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="暂无搜索历史"
+                android:textSize="12sp"
+                android:textColor="#999999" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- 顶部加载动画 -->
     <LinearLayout
         android:id="@+id/top_loading"
         android:layout_width="match_parent"
@@ -90,9 +163,14 @@
     <ListView
         android:id="@+id/result_list"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:divider="#E0E0E0"
-        android:dividerHeight="1dp" />
+        android:dividerHeight="1dp"
+        android:background="@drawable/bili_texture_background"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:descendantFocusability="afterDescendants" />
 
     <!-- 空视图 -->
     <TextView

@@ -45,6 +45,13 @@ public class SearchActivity extends BaseActivity {
     private View footerView;
     private ProgressBar footerProgressBar;
 
+    // 搜索历史
+    private LinearLayout historyContainer;
+    private LinearLayout historyListContainer;
+    private TextView clearHistoryBtn;
+    private LinearLayout historyEmptyView;
+    private static final String KEY_SEARCH_HISTORY = "search_history";
+
     private SearchResultAdapter adapter;
     private List<SearchResultItem> resultListData = new ArrayList<SearchResultItem>();
 
@@ -72,6 +79,12 @@ public class SearchActivity extends BaseActivity {
         topLoading = (LinearLayout) findViewById(R.id.top_loading);
         topProgress = (ProgressBar) findViewById(R.id.top_progress);
 
+        // 搜索历史
+        historyContainer = (LinearLayout) findViewById(R.id.history_container);
+        historyListContainer = (LinearLayout) findViewById(R.id.history_list_container);
+        clearHistoryBtn = (TextView) findViewById(R.id.clear_history);
+        historyEmptyView = (LinearLayout) findViewById(R.id.history_empty);
+
         footerView = getLayoutInflater().inflate(R.layout.list_footer, null);
         footerProgressBar = (ProgressBar) footerView.findViewById(R.id.footer_progress);
         footerView.setVisibility(View.GONE);
@@ -80,6 +93,23 @@ public class SearchActivity extends BaseActivity {
 
         adapter = new SearchResultAdapter(this, resultListData);
         resultList.setAdapter(adapter);
+
+        // TV 模式适配：让 ListView 可聚焦
+        resultList.setFocusable(true);
+        resultList.setFocusableInTouchMode(true);
+
+        // 搜索历史加载
+        loadSearchHistory();
+
+        // 清空历史
+        if (clearHistoryBtn != null) {
+            clearHistoryBtn.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    clearSearchHistory();
+                }
+            });
+        }
 
         resultList.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
@@ -162,6 +192,9 @@ public class SearchActivity extends BaseActivity {
             }
         });
 
+        // TV 模式：搜索框也要能聚焦
+        searchEdit.setFocusable(true);
+        searchEdit.setFocusableInTouchMode(true);
         searchEdit.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
         searchEdit.setSingleLine(true);
 
@@ -170,9 +203,163 @@ public class SearchActivity extends BaseActivity {
             searchEdit.setText(keyword);
             performSearch();
         }
+
+        // 让搜索框获得焦点（TV 模式）
+        searchEdit.post(new Runnable() {
+            @Override
+            public void run() {
+                searchEdit.requestFocus();
+            }
+        });
+    }
+
+    // 加载搜索历史
+    private void loadSearchHistory() {
+        String historyJson = SharedPreferencesUtil.getString(KEY_SEARCH_HISTORY, "");
+        if (historyJson == null || historyJson.length() == 0) {
+            if (historyEmptyView != null) {
+                historyEmptyView.setVisibility(View.VISIBLE);
+            }
+            return;
+        }
+
+        try {
+            JSONArray arr = new JSONArray(historyJson);
+            if (arr.length() == 0) {
+                if (historyEmptyView != null) {
+                    historyEmptyView.setVisibility(View.VISIBLE);
+                }
+                return;
+            }
+
+            if (historyEmptyView != null) {
+                historyEmptyView.setVisibility(View.GONE);
+            }
+
+            if (historyListContainer != null) {
+                historyListContainer.removeAllViews();
+            }
+
+            for (int i = 0; i < arr.length(); i++) {
+                final String keyword = arr.getString(i);
+                View historyItem = getLayoutInflater().inflate(R.layout.item_search_history, null);
+                TextView tvKeyword = (TextView) historyItem.findViewById(R.id.history_keyword);
+                tvKeyword.setText(keyword);
+
+                historyItem.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        searchEdit.setText(keyword);
+                        performSearch();
+                    }
+                });
+
+                // TV 焦点支持
+                historyItem.setFocusable(true);
+                historyItem.setFocusableInTouchMode(true);
+
+                // 焦点效果（反射）
+                historyItem.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                    @Override
+                    public void onFocusChange(View v, boolean hasFocus) {
+                        try {
+                            if (hasFocus) {
+                                // setScaleX/Y (API 11+)
+                                try {
+                                    java.lang.reflect.Method setScaleX = View.class.getMethod("setScaleX", float.class);
+                                    setScaleX.invoke(v, 1.05f);
+                                } catch (Exception e) {}
+                                try {
+                                    java.lang.reflect.Method setScaleY = View.class.getMethod("setScaleY", float.class);
+                                    setScaleY.invoke(v, 1.05f);
+                                } catch (Exception e) {}
+                                // setBackgroundColor (API 1+)
+                                v.setBackgroundColor(0x33FFFFFF);
+                            } else {
+                                try {
+                                    java.lang.reflect.Method setScaleX = View.class.getMethod("setScaleX", float.class);
+                                    setScaleX.invoke(v, 1.0f);
+                                } catch (Exception e) {}
+                                try {
+                                    java.lang.reflect.Method setScaleY = View.class.getMethod("setScaleY", float.class);
+                                    setScaleY.invoke(v, 1.0f);
+                                } catch (Exception e) {}
+                                v.setBackgroundColor(0x00000000);
+                            }
+                        } catch (Exception e) {
+                            // 反射失败，静默忽略
+                        }
+                    }
+                });
+
+                historyListContainer.addView(historyItem);
+            }
+
+            if (historyContainer != null) {
+                historyContainer.setVisibility(View.VISIBLE);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 保存搜索历史
+    private void saveSearchHistory(String keyword) {
+        if (keyword == null || keyword.length() == 0) {
+            return;
+        }
+
+        String historyJson = SharedPreferencesUtil.getString(KEY_SEARCH_HISTORY, "");
+        List<String> historyList = new ArrayList<String>();
+
+        try {
+            if (historyJson != null && historyJson.length() > 0) {
+                JSONArray arr = new JSONArray(historyJson);
+                for (int i = 0; i < arr.length(); i++) {
+                    String item = arr.getString(i);
+                    if (!item.equals(keyword)) {
+                        historyList.add(item);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        historyList.add(0, keyword);
+        if (historyList.size() > 10) {
+            historyList = historyList.subList(0, 10);
+        }
+
+        try {
+            JSONArray arr = new JSONArray();
+            for (String item : historyList) {
+                arr.put(item);
+            }
+            SharedPreferencesUtil.putString(KEY_SEARCH_HISTORY, arr.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 清空搜索历史
+    private void clearSearchHistory() {
+        SharedPreferencesUtil.putString(KEY_SEARCH_HISTORY, "");
+        if (historyListContainer != null) {
+            historyListContainer.removeAllViews();
+        }
+        if (historyEmptyView != null) {
+            historyEmptyView.setVisibility(View.VISIBLE);
+        }
+        if (historyContainer != null) {
+            historyContainer.setVisibility(View.GONE);
+        }
+        Toast.makeText(this, "已清空搜索历史", Toast.LENGTH_SHORT).show();
     }
 
     private void showFirstLoading() {
+        historyContainer.setVisibility(View.GONE);
         resultListData.clear();
         adapter.notifyDataSetChanged();
         emptyView.setVisibility(View.GONE);
@@ -232,9 +419,6 @@ public class SearchActivity extends BaseActivity {
         return false;
     }
 
-    /**
-     * 是否为 GTA 仿古作弊码彩蛋
-     */
     private boolean checkAndTriggerCheatCode(String keyword) {
         if (keyword == null || keyword.length() == 0) {
             return false;
@@ -245,7 +429,6 @@ public class SearchActivity extends BaseActivity {
                 lowerKeyword.equals("professionaltools") ||
                 lowerKeyword.equals("thugstools")) {
 
-            // 震动效果
             try {
                 Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
                 if (vibrator != null) {
@@ -275,7 +458,6 @@ public class SearchActivity extends BaseActivity {
             return;
         }
 
-        // 检查 GTA 作弊码彩蛋
         if (checkAndTriggerCheatCode(keyword)) {
             return;
         }
@@ -285,6 +467,12 @@ public class SearchActivity extends BaseActivity {
         }
 
         if (isLoading) return;
+
+        saveSearchHistory(keyword);
+
+        if (historyContainer != null) {
+            historyContainer.setVisibility(View.GONE);
+        }
 
         hasSearched = true;
         isLoading = true;
@@ -643,7 +831,7 @@ public class SearchActivity extends BaseActivity {
     private void showNoMore() {
         isEnd = true;
         footerView.setVisibility(View.GONE);
-        Toast.makeText(this, "已经到底了", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "已经到底啦", Toast.LENGTH_SHORT).show();
     }
 
     private ArrayList<String> buildHeaders() {

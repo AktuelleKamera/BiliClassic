@@ -1,19 +1,3 @@
-/*
- * 本软件基于以下项目修改，致谢前辈：
- *   - 哔哩终端 (BiliTerminal) by RobinNotBad
- *   - 腕上哔哩 (WristBilibili) by luern0313
- *
- * 本程序是自由软件，遵循 GNU 通用公共许可证第 3 版（或更高版本）发布。
- * 你可以重新分发或修改它，希望它能为你带来快乐。
- *
- * 详情请参阅 GNU 通用公共许可证：
- * <https://www.gnu.org/licenses/>
- *
- * 修改者：一只毛子球 (BiliClassic)
- * 修改时间：2026年6月19日
- *
- * 安卓2也要看B站！
- */
 package tv.biliclassic;
 
 import android.text.ClipboardManager;
@@ -22,6 +6,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -34,6 +19,7 @@ import org.json.JSONObject;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.CookieHelper;
+import tv.biliclassic.tv.util.TvUtil;
 
 public class SpecialLoginActivity extends FragmentActivity {
 
@@ -46,7 +32,16 @@ public class SpecialLoginActivity extends FragmentActivity {
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+
+        // TV 模式：强制横屏 + 全屏
+        if (TvUtil.isTv(this)) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        } else {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        }
+
         setContentView(R.layout.activity_special_login);
 
         textInput = (EditText) findViewById(R.id.loginInput);
