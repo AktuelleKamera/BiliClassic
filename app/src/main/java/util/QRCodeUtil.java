@@ -61,7 +61,7 @@ public class QRCodeUtil {
             Qrcode qrcode = new Qrcode();
             qrcode.setQrcodeErrorCorrect('L');
             qrcode.setQrcodeEncodeMode('B');
-            qrcode.setQrcodeVersion(10);
+            qrcode.setQrcodeVersion(7);
 
             byte[] bytes = content.getBytes("UTF-8");
             boolean[][] code = qrcode.calQrcode(bytes);
