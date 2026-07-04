@@ -360,6 +360,19 @@ public class SettingsActivity extends BaseActivity {
             });
         }
 
+        // 弹幕引擎选择
+        LinearLayout danmakuEngineItem = (LinearLayout) findViewById(R.id.danmaku_engine_item);
+        final TextView danmakuEngineText = (TextView) findViewById(R.id.danmaku_engine_text);
+        if (danmakuEngineItem != null && danmakuEngineText != null) {
+            updateDanmakuEngineDisplay(danmakuEngineText);
+            danmakuEngineItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showDanmakuEngineDialog(danmakuEngineText);
+                }
+            });
+        }
+
         // 默认首页选择
         defaultTabItem = (LinearLayout) findViewById(R.id.default_tab_item);
         defaultTabText = (TextView) findViewById(R.id.default_tab_text);
@@ -624,6 +637,34 @@ public class SettingsActivity extends BaseActivity {
 
     public static int getVideoQuality() {
         return SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY, QUALITY_360P);
+    }
+
+    // 弹幕引擎选择
+    private void showDanmakuEngineDialog(final TextView textView) {
+        final String[] modes = {"完整版（DanmakuFlameMaster）", "简易版（BT-5弹幕引擎）"};
+        int current = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, 0);
+        int checkedIndex = Math.min(current, 1);
+
+        new AlertDialog.Builder(this)
+                .setTitle("弹幕引擎")
+                .setSingleChoiceItems(modes, checkedIndex, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        SharedPreferencesUtil.putInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, which);
+                        updateDanmakuEngineDisplay(textView);
+                        Toast.makeText(SettingsActivity.this,
+                                "已切换为: " + modes[which] + "，下次播放生效",
+                                Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void updateDanmakuEngineDisplay(TextView textView) {
+        int mode = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, 0);
+        textView.setText(mode == 1 ? "简易版（BT-5弹幕引擎）" : "完整版");
     }
 
     // 默认首页选择

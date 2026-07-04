@@ -60,11 +60,13 @@ public class DanmakuManager {
     private final long mCid;
 
     private DanmakuView mDanmakuView;
+    private SimpleDanmakuEngine mSimpleEngine;
     private String mDanmakuUrl;
     private File mDanmakuCacheFile;
     private boolean mEnabled = true;
     private boolean mLoaded;
-    private File mOfflineDanmakuFile; // 离线弹幕文件路径
+    private File mOfflineDanmakuFile;
+    private boolean mUseSimpleEngine;
 
     private IMediaPlayer mMediaPlayer;
     private boolean mVideoPrepared;
@@ -95,7 +97,40 @@ public class DanmakuManager {
 
     // lifecycle
 
+    public static boolean isSimpleEngineEnabled() {
+        return SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, 0) == 1;
+    }
+
     public void init() {
+        mUseSimpleEngine = isSimpleEngineEnabled();
+
+        if (mUseSimpleEngine) {
+            initSimpleEngine();
+        } else {
+            initFullEngine();
+        }
+
+        if (mCid > 0) {
+            mDanmakuUrl = "https://comment.bilibili.com/" + mCid + ".xml";
+            mDanmakuCacheFile = new File(mActivity.getCacheDir(), "danmaku_" + mCid + ".xml");
+        }
+
+        if (mOfflineDanmakuFile != null && mOfflineDanmakuFile.exists() && mOfflineDanmakuFile.length() > 0) {
+            mDanmakuCacheFile = mOfflineDanmakuFile;
+            mDanmakuUrl = null;
+        }
+
+        if (mDanmakuUrl != null || (mDanmakuCacheFile != null && mDanmakuCacheFile.exists())) {
+            startLoadDanmaku();
+        }
+    }
+
+    private void initSimpleEngine() {
+        mSimpleEngine = new SimpleDanmakuEngine(mActivity);
+        mSimpleEngine.init(mContainer);
+    }
+
+    private void initFullEngine() {
         mDanmakuView = new DanmakuView(mActivity);
         mContainer.addView(mDanmakuView,
                 new FrameLayout.LayoutParams(
@@ -141,6 +176,10 @@ public class DanmakuManager {
 
     public void release() {
         dismissAllPanels();
+        if (mSimpleEngine != null) {
+            mSimpleEngine.releaseDanmaku();
+            mSimpleEngine = null;
+        }
         if (mDanmakuView != null) {
             mDanmakuView.release();
             mDanmakuView = null;
@@ -153,22 +192,41 @@ public class DanmakuManager {
     public void onVideoPrepared(IMediaPlayer mp) {
         mMediaPlayer = mp;
         mVideoPrepared = true;
+        if (mSimpleEngine != null) {
+            mSimpleEngine.setTimeProvider(new SimpleDanmakuEngine.VideoTimeProvider() {
+                public long getCurrentPosition() {
+                    try {
+                        long pos = mMediaPlayer.getCurrentPosition();
+                        return pos >= 0 ? pos : 0;
+                    } catch (Exception e) {
+                        android.util.Log.e("BT-5", "getCurrentPosition error: " + e.getMessage());
+                        return 0;
+                    }
+                }
+            });
+        }
     }
 
     public void seekTo(long positionMs) {
-        if (mDanmakuView != null && mLoaded) {
+        if (mSimpleEngine != null && mLoaded) {
+            mSimpleEngine.seekTo(positionMs);
+        } else if (mDanmakuView != null && mLoaded) {
             mDanmakuView.seekTo(positionMs);
         }
     }
 
     public void pause() {
-        if (mDanmakuView != null && mLoaded) {
+        if (mSimpleEngine != null && mLoaded) {
+            mSimpleEngine.pauseDanmaku();
+        } else if (mDanmakuView != null && mLoaded) {
             mDanmakuView.pause();
         }
     }
 
     public void resume() {
-        if (mDanmakuView != null && mLoaded && mEnabled) {
+        if (mSimpleEngine != null && mLoaded && mEnabled) {
+            mSimpleEngine.resumeDanmaku();
+        } else if (mDanmakuView != null && mLoaded && mEnabled) {
             mDanmakuView.resume();
         }
     }
@@ -184,11 +242,10 @@ public class DanmakuManager {
     public boolean isLoaded() { return mLoaded; }
 
     private void updateVisibility() {
-        if (mDanmakuView == null) return;
-        if (mEnabled) {
-            mDanmakuView.show();
-        } else {
-            mDanmakuView.hide();
+        if (mSimpleEngine != null) {
+            if (mEnabled != mSimpleEngine.isEnabled()) mSimpleEngine.toggleVisibility();
+        } else if (mDanmakuView != null) {
+            if (mEnabled) mDanmakuView.show(); else mDanmakuView.hide();
         }
     }
 
@@ -200,6 +257,11 @@ public class DanmakuManager {
             return;
         }
         dismissAllPanels();
+
+        if (mUseSimpleEngine) {
+            showSimpleOptionsPanel();
+            return;
+        }
 
         LayoutInflater inflater = LayoutInflater.from(mActivity);
         View panel = inflater.inflate(R.layout.bili_app_player_options_pannel_danmaku, null);
@@ -306,6 +368,10 @@ public class DanmakuManager {
     // 输入并发送弹幕
 
     public void showInputPanel(final PlayControl playControl) {
+        if (mUseSimpleEngine) {
+            toast("简易引擎暂不支持发送弹幕");
+            return;
+        }
         if (mInputOverlay == null && mInputStub != null) {
             mInputOverlay = mInputStub.inflate();
             if (mInputOverlay != null) {
@@ -460,9 +526,25 @@ public class DanmakuManager {
         }
     }
 
+    private void prepareSimpleEngine() {
+        try {
+            mSimpleEngine.setDanmakuData(mDanmakuCacheFile);
+            // 不手动 start，等 setTimeProvider 后自动启动
+            mLoaded = true;
+        } catch (Exception e) {
+            android.util.Log.e("DanmakuManager", "简易弹幕初始化失败: " + e.getMessage());
+        }
+    }
+
     private void prepareDanmakuParser() {
-        if (mDanmakuView == null) return;
         if (mDanmakuCacheFile == null || !mDanmakuCacheFile.exists()) return;
+
+        if (mUseSimpleEngine) {
+            prepareSimpleEngine();
+            return;
+        }
+
+        if (mDanmakuView == null) return;
 
         try {
             ILoader loader = DanmakuLoaderFactory.create(DanmakuLoaderFactory.TAG_BILI);
@@ -556,6 +638,132 @@ public class DanmakuManager {
     }
 
     // UI管理
+
+    private void showSimpleOptionsPanel() {
+        LayoutInflater inflater = LayoutInflater.from(mActivity);
+        View panel = inflater.inflate(R.layout.bili_app_player_options_pannel_danmaku, null);
+
+        TextView titleView = (TextView) panel.findViewById(R.id.title);
+        if (titleView != null) {
+            titleView.setText(R.string.Player_danmaku_options_pannel_title);
+        }
+
+        View closeBtn = panel.findViewById(R.id.close);
+        if (closeBtn != null) {
+            closeBtn.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) { dismissAllPanels(); }
+            });
+        }
+
+        // 隐藏屏蔽区和描边
+        hideIfNotNull(panel, R.id.options_block_group);
+        hideIfNotNull(panel, R.id.option_block_top);
+        hideIfNotNull(panel, R.id.option_block_scroll);
+        hideIfNotNull(panel, R.id.option_block_bottom);
+        hideIfNotNull(panel, R.id.option_block_guest);
+        hideIfNotNull(panel, R.id.option_block_colorful);
+        hideIfNotNull(panel, R.id.options_duplicate_merging_enable);
+        hideIfNotNull(panel, R.id.option_danmaku_stroke_width_scaling);
+
+        // 隐藏 section headers（简单遍历 text views 匹配）
+        hideSectionHeaders(panel);
+
+        float textScale = SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, 0.8f);
+        float speed = SharedPreferencesUtil.getFloat(KEY_SPEED, 1.0f);
+        float alpha = 1.0f - SharedPreferencesUtil.getFloat(KEY_TRANSPARENCY, 0.4f);
+        int maxScreen = SharedPreferencesUtil.getInt(KEY_MAX_SCREEN, 50);
+
+        wireSimpleSeek(panel, R.id.option_danmaku_transparency,
+                0f, 1.0f, SharedPreferencesUtil.getFloat(KEY_TRANSPARENCY, 0.4f),
+                new SeekCallback() { public void onChanged(float v) {
+                    mSimpleEngine.setDanmakuOpacity(1.0f - v);
+                    SharedPreferencesUtil.putFloat(KEY_TRANSPARENCY, v);
+                }});
+
+        wireSimpleSeek(panel, R.id.option_danmaku_textsize,
+                0.5f, 2.0f, textScale, "字号",
+                new SeekCallback() { public void onChanged(float v) {
+                    mSimpleEngine.setScaleTextSize(v);
+                    SharedPreferencesUtil.putFloat(KEY_TEXT_SIZE, v);
+                }});
+
+        wireSimpleSeek(panel, R.id.option_danmaku_scroll_speed_factor,
+                0.3f, 3.0f, speed, "速度",
+                new SeekCallback() { public void onChanged(float v) {
+                    mSimpleEngine.setScrollSpeedFactor(v);
+                    SharedPreferencesUtil.putFloat(KEY_SPEED, v);
+                }});
+
+        wireSimpleSeek(panel, R.id.option_danmaku_max_on_screen,
+                1f, 100f, maxScreen > 0 ? maxScreen : 50f, "密度",
+                new SeekCallback() { public void onChanged(float v) {
+                    mSimpleEngine.setMaximumVisibleSizeInScreen((int) v);
+                    SharedPreferencesUtil.putInt(KEY_MAX_SCREEN, (int) v);
+                }});
+
+        mOptionsPanel = new PopupWindow(panel,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.MATCH_PARENT, true);
+        mOptionsPanel.setAnimationStyle(R.style.Animation_SidePannel);
+        mOptionsPanel.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+        mOptionsPanel.setOnDismissListener(new PopupWindow.OnDismissListener() {
+            public void onDismiss() { mOptionsPanel = null; }
+        });
+
+        View root = mActivity.findViewById(android.R.id.content);
+        mOptionsPanel.showAtLocation(root, Gravity.RIGHT, 0, 0);
+    }
+
+    private void hideIfNotNull(View panel, int id) {
+        View v = panel.findViewById(id);
+        if (v != null) v.setVisibility(View.GONE);
+    }
+
+    private void hideSectionHeaders(View panel) {
+        hideSectionTexts(panel);
+    }
+
+    private void hideSectionTexts(View view) {
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                hideSectionTexts(group.getChildAt(i));
+            }
+        }
+        if (view instanceof TextView && view.getId() == View.NO_ID) {
+            CharSequence t = ((TextView) view).getText();
+            if (t != null && (t.toString().contains("屏蔽") || t.toString().contains("描边"))) {
+                view.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    private void wireSimpleSeek(View panel, int containerId, final float min, final float max,
+                                float curr, final SeekCallback callback) {
+        wireSimpleSeek(panel, containerId, min, max, curr, null, callback);
+    }
+
+    private void wireSimpleSeek(View panel, int containerId, final float min, final float max,
+                                float curr, String label, final SeekCallback callback) {
+        View container = panel.findViewById(containerId);
+        if (container == null) return;
+        SeekBar sb = (SeekBar) container.findViewById(R.id.seekbar);
+        final TextView labelView = (TextView) container.findViewById(R.id.label);
+        if (sb == null) return;
+        final float range = max - min;
+        sb.setMax(100);
+        sb.setProgress((int) ((curr - min) / range * 100));
+        if (labelView != null) labelView.setText(sb.getProgress() + "%");
+        sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (labelView != null) labelView.setText(progress + "%");
+            }
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                callback.onChanged(min + range * seekBar.getProgress() / 100f);
+            }
+        });
+    }
 
     private interface BlockToggle { void set(boolean blocked); }
     private interface SeekCallback { void onChanged(float value); }

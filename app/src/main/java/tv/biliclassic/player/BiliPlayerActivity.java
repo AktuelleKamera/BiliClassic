@@ -54,6 +54,7 @@ import tv.biliclassic.widget.RadioGridGroup;
 import tv.danmaku.ijk.media.player.AndroidMediaPlayer;
 import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
+import tv.biliclassic.util.DeviceInfoUtil;
 import util.LocalStreamProxy;
 
 public class BiliPlayerActivity extends Activity implements
@@ -247,8 +248,18 @@ public class BiliPlayerActivity extends Activity implements
         sPendingSeekPosition = 0;
         keepBackground = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.KEEP_BACKGROUND, true);
 
-        IjkMediaPlayer.loadLibrariesOnce(null);
-        IjkMediaPlayer.native_setLogLevel(IjkMediaPlayer.IJK_LOG_SILENT);
+        if (DeviceInfoUtil.isUnsupportedCpu()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("设备不支持")
+                    .setMessage("ARMv5TE 或无 VFP 的 ARMv6 设备无法使用内置播放器，请关闭\"在线播放\"后下载视频，使用第三方播放器播放。")
+                    .setPositiveButton("确定", new android.content.DialogInterface.OnClickListener() {
+                        public void onClick(android.content.DialogInterface dialog, int which) {
+                            finish();
+                        }
+                    })
+                    .show();
+            return;
+        }
 
         initViews();
         initPlayer();
@@ -698,6 +709,12 @@ public class BiliPlayerActivity extends Activity implements
                 } catch (Exception e) {}
             }
 
+            // 创建播放器后设置到 GestureController
+            if (mGestureController != null) {
+                mGestureController.setMediaPlayer(mediaPlayer);
+                mGestureController.setDecoderType(decoderType);
+            }
+
             try {
                 mediaPlayer.prepareAsync();
             } catch (Exception e) {
@@ -709,6 +726,7 @@ public class BiliPlayerActivity extends Activity implements
 
         // IJK 解码器（硬解或软解）
         IjkMediaPlayer ijkPlayer = new IjkMediaPlayer();
+        IjkMediaPlayer.native_setLogLevel(IjkMediaPlayer.IJK_LOG_SILENT);
         mediaPlayer = ijkPlayer;
 
         boolean enableHardware = (decoderType == DECODER_IJK_HARD);
@@ -790,6 +808,12 @@ public class BiliPlayerActivity extends Activity implements
             try {
                 mediaPlayer.setDisplay(surfaceHolder);
             } catch (Exception e) {}
+        }
+
+        // 设置到 GestureController
+        if (mGestureController != null && mediaPlayer != null) {
+            mGestureController.setMediaPlayer(mediaPlayer);
+            mGestureController.setDecoderType(decoderType);
         }
 
         try {

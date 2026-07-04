@@ -54,6 +54,7 @@ public class SharedPreferencesUtil {
     public static final String IMAGE_LOAD_THREADS = "image_load_threads";
     public static final String PLAYER_PREFERENCE = "player_preference";
     public static final String KEEP_BACKGROUND = "keep_background";
+    public static final String DANMAKU_ENGINE_MODE = "danmaku_engine_mode"; // 0=完整, 1=简易
 
     private static SharedPreferences sharedPreferences;
     private static Context sAppContext;
