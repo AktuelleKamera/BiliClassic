@@ -725,11 +725,12 @@ public class VideoDetailFragment extends Fragment {
                                 public void run() {
                                     if (!isAdded() || getActivity() == null) return;
                                     if (videoUrl != null && videoUrl.length() > 0) {
-                                        Intent intent = new Intent(getActivity(), PlayerAnimActivity.class);
+                                        Intent intent = new Intent(getActivity(), BiliPlayerActivity.class);
                                         intent.putExtra("video_url", videoUrl);
                                         intent.putExtra("video_title", tempPartTitle);
                                         intent.putExtra("aid", tempAid);
                                         intent.putExtra("cid", targetCid);
+                                        intent.putExtra("online_mode", true);
                                         putQualityExtras(intent, playerData);
                                         startActivity(intent);
                                     } else {

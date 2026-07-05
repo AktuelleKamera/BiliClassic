@@ -547,17 +547,21 @@ public class SimpleDanmakuEngine extends View {
             int ev = p.getEventType();
             while (ev != XmlPullParser.END_DOCUMENT) {
                 if (ev == XmlPullParser.START_TAG && "d".equals(p.getName())) {
-                    String a = p.getAttributeValue(null, "p");
-                    if (a == null) { ev = p.next(); continue; }
-                    String[] parts = a.split(",");
-                    if (parts.length < 5) { ev = p.next(); continue; }
-                    DanmakuItem item = new DanmakuItem();
-                    try { item.time = Float.parseFloat(parts[0]); } catch (Exception e) { ev = p.next(); continue; }
-                    try { item.type = Integer.parseInt(parts[1]); } catch (Exception e) { item.type = 1; }
-                    try { item.color = Integer.parseInt(parts[3]); } catch (Exception e) { item.color = Color.WHITE; }
-                    if ((item.color & 0xFF000000) == 0) item.color |= 0xFF000000;
-                    item.text = p.nextText();
-                    if (item.text != null && item.text.length() > 0) list.add(item);
+                    try {
+                        String a = p.getAttributeValue(null, "p");
+                        if (a == null) { ev = p.next(); continue; }
+                        String[] parts = a.split(",");
+                        if (parts.length < 5) { ev = p.next(); continue; }
+                        DanmakuItem item = new DanmakuItem();
+                        item.time = safeFloat(parts[0], -1f);
+                        if (item.time < 0f) { ev = p.next(); continue; }
+                        item.type = safeInt(parts[1], 1);
+                        item.color = safeColor(parts[3]);
+                        item.text = p.nextText();
+                        if (item.text != null && item.text.length() > 0) list.add(item);
+                    } catch (Exception e) {
+                        // 单条弹幕解析失败，跳过继续
+                    }
                 }
                 ev = p.next();
             }
@@ -565,5 +569,23 @@ public class SimpleDanmakuEngine extends View {
             Log.e(TAG, "XML error: " + e.getMessage());
         }
         return list;
+    }
+
+    private static float safeFloat(String s, float def) {
+        try { return Float.parseFloat(s.trim()); } catch (Exception e) { return def; }
+    }
+
+    private static int safeInt(String s, int def) {
+        try { return Integer.parseInt(s.trim()); } catch (Exception e) { return def; }
+    }
+
+    private static int safeColor(String s) {
+        try {
+            int c = Integer.parseInt(s.trim());
+            if ((c & 0xFF000000) == 0) c |= 0xFF000000;
+            return c;
+        } catch (Exception e) {
+            return Color.WHITE;
+        }
     }
 }

@@ -78,6 +78,8 @@ public class GestureController {
         @Override
         public void run() {
             if (!mIsLongPressed) {
+                // API 23 以下的系统解码器不支持变速
+                if (mDecoderType == 0 && Build.VERSION.SDK_INT < 23) return;
                 mIsLongPressed = true;
                 Log.d(TAG, "长按触发，设置 2.0x 加速");
                 setPlaybackSpeed(2.0f);
@@ -180,9 +182,7 @@ public class GestureController {
         mSpeedTipText.setText(text);
         mSpeedTipContainer.setVisibility(View.VISIBLE);
         mSpeedTipShowing = true;
-        // 1.5 秒后自动隐藏
         mHandler.removeCallbacks(mHideSpeedTipRunnable);
-        mHandler.postDelayed(mHideSpeedTipRunnable, 1500);
     }
 
     // 隐藏速度提示

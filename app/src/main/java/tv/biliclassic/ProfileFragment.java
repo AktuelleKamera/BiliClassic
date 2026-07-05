@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
@@ -49,6 +50,7 @@ public class ProfileFragment extends Fragment {
     private Button btnSwitchAccount;
     private Button btnLogin;
     private ImageView ivAvatar;
+    private GlobalImageCache imageCache = GlobalImageCache.getInstance();
 
     private View itemFavorites;
     private View itemHistory;
@@ -244,7 +246,7 @@ public class ProfileFragment extends Fragment {
 
     private void updateLoginStatus() {
         final long mid = SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0);
-        String uname = SharedPreferencesUtil.getString("uname", "");
+        final String uname = SharedPreferencesUtil.getString("uname", "");
         String cookies = SharedPreferencesUtil.getString("cookies", "");
 
         View userCard = getView() != null ? getView().findViewById(R.id.user_card) : null;
@@ -261,11 +263,23 @@ public class ProfileFragment extends Fragment {
             }
 
             if (uname != null && uname.length() > 0) {
-                tvUserId.setText(uname);
+                mainHandler.post(new Runnable() {
+                    public void run() {
+                        if (isAdded() && tvUserId != null) tvUserId.setText(uname);
+                    }
+                });
             } else {
-                tvUserId.setText("用户名");
+                mainHandler.post(new Runnable() {
+                    public void run() {
+                        if (isAdded() && tvUserId != null) tvUserId.setText("用户名");
+                    }
+                });
             }
-            tvUid.setText("UID: " + mid);
+            mainHandler.post(new Runnable() {
+                public void run() {
+                    if (isAdded() && tvUid != null) tvUid.setText("UID: " + mid);
+                }
+            });
 
             tvCoin.setText("加载中...");
 
@@ -306,6 +320,7 @@ public class ProfileFragment extends Fragment {
                     if (json.getInt("code") == 0) {
                         JSONObject data = json.getJSONObject("data");
                         final String uname = data.getString("uname");
+                        final String face = data.optString("face");
                         SharedPreferencesUtil.putString("uname", uname);
                         mainHandler.post(new Runnable() {
                             @Override
@@ -313,11 +328,51 @@ public class ProfileFragment extends Fragment {
                                 if (isAdded() && tvUserId != null) {
                                     tvUserId.setText(uname);
                                 }
+                                if (face != null && face.length() > 0) {
+                                    loadAvatarUrl(face);
+                                }
                             }
                         });
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "获取用户名失败: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    private void loadAvatarUrl(final String urlStr) {
+        if (ivAvatar == null || getActivity() == null) return;
+        final String key = urlStr;
+        ivAvatar.setTag(key);
+        Bitmap cached = imageCache.get(key);
+        if (cached != null && !cached.isRecycled()) {
+            ivAvatar.setImageBitmap(cached);
+            return;
+        }
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                String dlUrl = key;
+                if (dlUrl.startsWith("https://")) {
+                    dlUrl = "http://" + dlUrl.substring(8);
+                }
+                final Bitmap bmp = downloadBitmap(dlUrl);
+                if (bmp != null && !bmp.isRecycled()) {
+                    imageCache.put(key, bmp);
+                    SharedPreferencesUtil.putString("avatar_url", key);
+                    saveAvatarToFile(bmp, SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0));
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (isAdded() && ivAvatar != null) {
+                                Object tag = ivAvatar.getTag();
+                                if (tag != null && tag.equals(key)) {
+                                    ivAvatar.setImageBitmap(bmp);
+                                }
+                            }
+                        }
+                    });
                 }
             }
         });
@@ -445,81 +500,46 @@ public class ProfileFragment extends Fragment {
         return new File(getActivity().getCacheDir(), AVATAR_FILE_NAME);
     }
 
-    private void loadAvatarFromFileOrNetwork(long mid) {
+    private void loadAvatarFromFileOrNetwork(final long mid) {
+        if (ivAvatar == null) return;
         final File avatarFile = getAvatarFile();
         final long savedMid = SharedPreferencesUtil.getLong("avatar_mid", 0);
+        final String savedUrl = SharedPreferencesUtil.getString("avatar_url", "");
 
-        ivAvatar.setImageResource(R.drawable.bili_default_avatar);
-
-        if (avatarFile.exists() && savedMid == mid) {
+        // 文件缓存命中：直接用，不走网络
+        if (avatarFile.exists() && savedMid == mid && savedUrl.length() > 0) {
+            ivAvatar.setTag(savedUrl);
+            // 先检查 GlobalImageCache
+            Bitmap cached = imageCache.get(savedUrl);
+            if (cached != null && !cached.isRecycled()) {
+                ivAvatar.setImageBitmap(cached);
+                return;
+            }
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
                     final Bitmap bmp = BitmapFactory.decodeFile(avatarFile.getAbsolutePath());
                     if (bmp != null && !bmp.isRecycled()) {
+                        imageCache.put(savedUrl, bmp);
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
                                 if (isAdded() && ivAvatar != null) {
-                                    ivAvatar.setImageBitmap(bmp);
-                                    Log.d(TAG, "从本地文件加载头像成功");
+                                    Object tag = ivAvatar.getTag();
+                                    if (tag != null && tag.equals(savedUrl)) {
+                                        ivAvatar.setImageBitmap(bmp);
+                                    }
                                 }
                             }
                         });
-                        return;
                     }
                 }
             });
+            return;
         }
 
-        downloadAvatar(mid);
-    }
-
-    private void downloadAvatar(final long mid) {
-        currentMid = mid;
-
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    String url = "https://api.bilibili.com/x/space/acc/info?mid=" + mid;
-                    String response = NetWorkUtil.get(url);
-                    JSONObject json = new JSONObject(response);
-                    if (json.optInt("code") != 0) {
-                        Log.w(TAG, "获取头像失败: code=" + json.optInt("code"));
-                        return;
-                    }
-
-                    JSONObject data = json.getJSONObject("data");
-                    String faceUrl = data.optString("face");
-                    if (faceUrl == null || faceUrl.length() == 0) {
-                        Log.w(TAG, "头像 URL 为空");
-                        return;
-                    }
-
-                    if (faceUrl.startsWith("https://")) {
-                        faceUrl = "http://" + faceUrl.substring(8);
-                    }
-
-                    final Bitmap bmp = downloadBitmap(faceUrl);
-                    if (bmp != null && !bmp.isRecycled()) {
-                        saveAvatarToFile(bmp, mid);
-
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (isAdded() && ivAvatar != null && !bmp.isRecycled()) {
-                                    ivAvatar.setImageBitmap(bmp);
-                                    Log.d(TAG, "头像下载并保存成功");
-                                }
-                            }
-                        });
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "downloadAvatar error: " + e.getMessage());
-                }
-            }
-        });
+        // 无缓存：走网络
+        fetchUserName(mid);
     }
 
     private void saveAvatarToFile(Bitmap bitmap, long mid) {
@@ -544,6 +564,7 @@ public class ProfileFragment extends Fragment {
                 Log.d(TAG, "已删除本地头像缓存");
             }
             SharedPreferencesUtil.removeValue("avatar_mid");
+            SharedPreferencesUtil.removeValue("avatar_url");
         } catch (Exception e) {
             Log.e(TAG, "清除头像缓存失败: " + e.getMessage());
         }

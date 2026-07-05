@@ -184,6 +184,7 @@ public class BiliPlayerActivity extends Activity implements
     private int mCurrentQn;
     private boolean mOfflineMode;
     private int mQualitySwitchSeekPos = 0;
+    private boolean mErrorToastShown;
 
     private Handler handler = new Handler(new Handler.Callback() {
         public boolean handleMessage(Message msg) {
@@ -204,15 +205,41 @@ public class BiliPlayerActivity extends Activity implements
 
     private GestureController mGestureController;
 
+    // 小电视加载动画
+    private View mLoadingOverlay;
+    private ImageView mLoadingIcon;
+    private Handler mAnimHandler = new Handler();
+    private int mAnimIndex;
+    private int[] mAnimDrawables = {
+            R.drawable.bili_anim_tv_chan_1,
+            R.drawable.bili_anim_tv_chan_3,
+            R.drawable.bili_anim_tv_chan_5,
+            R.drawable.bili_anim_tv_chan_7,
+            R.drawable.bili_anim_tv_chan_9
+    };
+    private Runnable mAnimRunnable = new Runnable() {
+        public void run() {
+            if (mLoadingOverlay != null && mLoadingOverlay.getVisibility() == View.VISIBLE) {
+                mLoadingIcon.setImageResource(mAnimDrawables[mAnimIndex]);
+                mAnimIndex = (mAnimIndex + 1) % mAnimDrawables.length;
+                mAnimHandler.postDelayed(this, 200);
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFFFFFFFF));
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         setContentView(R.layout.bili_app_player_view_new);
+        if (!getIntent().getBooleanExtra("offline_mode", false)) {
+            initLoadingOverlay();
+        }
 
         videoUrl = getIntent().getStringExtra("video_url");
         videoTitle = getIntent().getStringExtra("video_title");
@@ -264,6 +291,28 @@ public class BiliPlayerActivity extends Activity implements
         initViews();
         initPlayer();
         initGestureController();
+    }
+
+    private void initLoadingOverlay() {
+        FrameLayout root = (FrameLayout) findViewById(android.R.id.content);
+        if (root == null) return;
+
+        mLoadingOverlay = LayoutInflater.from(this).inflate(
+                R.layout.activity_player_anim, root, false);
+        mLoadingOverlay.setLayoutParams(new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        mLoadingIcon = (ImageView) mLoadingOverlay.findViewById(R.id.iv_tv_anim);
+        View progressGroup = mLoadingOverlay.findViewById(R.id.linearLayout);
+        if (progressGroup != null) progressGroup.setVisibility(View.INVISIBLE);
+        root.addView(mLoadingOverlay);
+        mAnimHandler.post(mAnimRunnable);
+    }
+
+    private void hideLoadingOverlay() {
+        if (mLoadingOverlay != null && mLoadingOverlay.getVisibility() == View.VISIBLE) {
+            mAnimHandler.removeCallbacks(mAnimRunnable);
+            mLoadingOverlay.setVisibility(View.GONE);
+        }
     }
 
     private void initGestureController() {
@@ -639,6 +688,7 @@ public class BiliPlayerActivity extends Activity implements
 
     private void preparePlayer() {
         releasePlayer();
+        mErrorToastShown = false;
 
         mHardwareDecodeRetryCount = 0;
         mAllowDecoderFallback = true;
@@ -871,6 +921,7 @@ public class BiliPlayerActivity extends Activity implements
     public void onPrepared(IMediaPlayer mp) {
         isPrepared = true;
         showBuffering(false);
+        hideLoadingOverlay();
 
         if (surfaceHolder != null) {
             try {
@@ -1054,17 +1105,28 @@ public class BiliPlayerActivity extends Activity implements
 
         // IJK 软解失败 或 不允许降级
         if (decoderType == DECODER_IJK_SOFT || !mAllowDecoderFallback) {
-            Toast.makeText(this, "播放失败，请检查网络或重试", Toast.LENGTH_LONG).show();
+            if (!mErrorToastShown) {
+                mErrorToastShown = true;
+                Toast.makeText(this, "播放失败，请检查网络或重试", Toast.LENGTH_LONG).show();
+            }
             finish();
             return true;
         }
 
-        Toast.makeText(this, "播放出错: what=" + what + ", extra=" + extra, Toast.LENGTH_LONG).show();
+        if (!mErrorToastShown) {
+            mErrorToastShown = true;
+            Toast.makeText(this, "播放出错: what=" + what + ", extra=" + extra, Toast.LENGTH_LONG).show();
+        }
         return true;
     }
 
     private void cleanupAndRestart() {
         mHardwareDecodeRetryCount = 0;
+
+        // 保存当前播放位置
+        if (mediaPlayer != null && isPrepared) {
+            try { mSeekWhenPrepared = (int) mediaPlayer.getCurrentPosition(); } catch (Exception e) {}
+        }
 
         if (localProxy != null) {
             localProxy.stop();
@@ -1800,6 +1862,7 @@ public class BiliPlayerActivity extends Activity implements
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        mAnimHandler.removeCallbacks(mAnimRunnable);
         if (localProxy != null) {
             localProxy.stop();
             localProxy = null;

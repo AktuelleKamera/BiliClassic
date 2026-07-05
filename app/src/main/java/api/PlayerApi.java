@@ -59,7 +59,7 @@ public class PlayerApi {
                 + "&cid=" + playerData.cid
                 + (html5 ? "&high_quality=1" : "")
                 + "&qn=" + playerData.qn
-                + (download ? "&fnval=1" : "&fnval=0")   // 下载用MP4(更多画质), 播放用FLV(IJK最佳)
+                + "&fnval=1" // MP4格式，B站已不提供FLV
                 + "&fnver=0"
                 + "&platform=" + (html5 ? "html5" : "pc")
                 + "&voice_balance=1"

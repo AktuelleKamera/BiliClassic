@@ -89,20 +89,15 @@ public class PlayerAnimActivity extends Activity {
         startTvAnimation();
 
         if (isOnlineMode) {
-            // 在线模式：直接播放，不下载
             tvStatus.setText("在线播放模式...");
             progressBar.setVisibility(ProgressBar.GONE);
             tvProgress.setVisibility(TextView.GONE);
-
-            // 延迟一下让动画先显示
-            handler.postDelayed(new Runnable() {
-                @Override
+            handler.post(new Runnable() {
                 public void run() {
                     stopTvAnimation();
-                    // 直接传入 videoUrl
                     playWithBuiltinPlayer(videoUrl);
                 }
-            }, 500);
+            });
         } else {
             // 非在线模式：走下载缓存流程
             File cacheDir = getCacheDir();
@@ -398,6 +393,7 @@ public class PlayerAnimActivity extends Activity {
         intent.putExtra("aid", aid);
         intent.putExtra("cid", cid);
         intent.putExtra("online_mode", false);
+        intent.putExtra("offline_mode", true);
         putQualityExtras(intent);
         startActivity(intent);
         finish();

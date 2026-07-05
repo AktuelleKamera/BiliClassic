@@ -36,6 +36,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class NewAnimeFragment extends Fragment {
@@ -413,7 +414,7 @@ public class NewAnimeFragment extends Fragment {
                             public void run() {
                                 if (isDestroyed) return;
                                 if (items == null || items.size() == 0) {
-                                    Toast.makeText(getActivity(), "获取番剧数据失败", Toast.LENGTH_SHORT).show();
+                                    MsgUtil.showMsg(getActivity(), "获取番剧数据失败");
                                     loadDefaultAnimeData();
                                     return;
                                 }
@@ -429,7 +430,7 @@ public class NewAnimeFragment extends Fragment {
                             @Override
                             public void run() {
                                 if (isDestroyed) return;
-                                Toast.makeText(getActivity(), "网络请求失败，使用默认数据", Toast.LENGTH_SHORT).show();
+                                MsgUtil.showMsg(getActivity(), "网络请求失败，使用默认数据");
                                 loadDefaultAnimeData();
                             }
                         });

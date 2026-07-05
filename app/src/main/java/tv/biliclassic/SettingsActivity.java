@@ -653,7 +653,7 @@ public class SettingsActivity extends BaseActivity {
                         SharedPreferencesUtil.putInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, which);
                         updateDanmakuEngineDisplay(textView);
                         Toast.makeText(SettingsActivity.this,
-                                "已切换为: " + modes[which] + "，下次播放生效",
+                                "已切换为: " + modes[which],
                                 Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
                     }

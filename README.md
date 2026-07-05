@@ -25,7 +25,7 @@
 
 **0.3.4 (稳定版)** —— 无播放器，纯净浏览体验
 
-**0.4.0-beta2 (尝鲜版)** —— 内置播放器，功能更完整（开发中）
+**0.4.0-beta3 (尝鲜版)** —— 内置播放器，功能更完整（开发中）
 
 ---
 
@@ -64,7 +64,7 @@
 
 本项目内置两套弹幕引擎，可在设置中自由切换：
 
-| 特性 | 完整版 (DanmakuFlameMaster) | BT-5 简易版 |
+| 特性 | 完整版 (DanmakuFlameMaster) | 简易版 (BitmapText-5) |
 |------|---------------------------|------------|
 | 渲染方式 | `SurfaceView` / `Canvas.drawText` 实时绘制 | `View` / `Canvas.drawBitmap` 预渲染 |
 | 弹幕样式 | 描边 / 阴影 / 投影 | 纯色填充 |
@@ -75,6 +75,9 @@
 | 推荐设备 | ARMv7 及以上 | ARMv5TE / ARMv6 |
 
 BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备设计。通过预渲染 Bitmap、同文案去重、低帧率轮询和 `MIN_PRIORITY` 后台线程，将弹幕渲染对视频解码的干扰降到最低。
+
+<img width="847" height="514" alt="07n9mbv7f7541" src="https://github.com/user-attachments/assets/d820526d-bdb6-4a41-84b4-c5fe05e3b5c3" />
+
 
 ---
 
