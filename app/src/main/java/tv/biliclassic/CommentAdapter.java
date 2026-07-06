@@ -45,7 +45,7 @@ public class CommentAdapter extends BaseAdapter {
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
 
     private boolean isScrolling = false;
-    private static final int MAX_CACHE_SIZE = 20;
+    private static final int MAX_CACHE_SIZE = 80;
 
     // 点击监听接口
     public interface OnUserClickListener {
@@ -91,6 +91,9 @@ public class CommentAdapter extends BaseAdapter {
 
     public void setScrolling(boolean scrolling) {
         this.isScrolling = scrolling;
+        if (!scrolling) {
+            notifyDataSetChanged();
+        }
     }
 
     public void reloadExecutor() {
@@ -158,10 +161,6 @@ public class CommentAdapter extends BaseAdapter {
         holder.avatar.setOnClickListener(userClickListener);
         holder.userName.setOnClickListener(userClickListener);
 
-        if (isScrolling) {
-            return convertView;
-        }
-
         if (item.userAvatar != null && item.userAvatar.length() > 0) {
             final String avatarUrl = item.userAvatar;
             final ImageView avatarView = holder.avatar;
@@ -181,6 +180,11 @@ public class CommentAdapter extends BaseAdapter {
                 }
             }
 
+            // 滑动时跳过网络下载，等滑动停止后再加载
+            if (isScrolling) {
+                return convertView;
+            }
+
             Boolean isLoading = loadingMap.get(currentPos);
             if (isLoading != null && isLoading) {
                 return convertView;
@@ -190,21 +194,24 @@ public class CommentAdapter extends BaseAdapter {
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    final Bitmap bitmap = downloadImage(avatarUrl);
-                    loadingMap.remove(currentPos);
-
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        addToCache(avatarUrl, bitmap);
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                Object tag = avatarView.getTag();
-                                if (tag != null && tag.equals(avatarUrl)) {
-                                    avatarView.setImageBitmap(bitmap);
-                                    addAvatarBorder(avatarView);
+                    try {
+                        final Bitmap bitmap = downloadImage(avatarUrl);
+                        if (bitmap != null && !bitmap.isRecycled()) {
+                            addToCache(avatarUrl, bitmap);
+                            mainHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Object tag = avatarView.getTag();
+                                    if (tag != null && tag.equals(avatarUrl)) {
+                                        avatarView.setImageBitmap(bitmap);
+                                        addAvatarBorder(avatarView);
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
+                    } catch (Exception e) {
+                    } finally {
+                        loadingMap.remove(currentPos);
                     }
                 }
             });
@@ -283,8 +290,6 @@ public class CommentAdapter extends BaseAdapter {
             options = new BitmapFactory.Options();
             options.inSampleSize = scale;
             options.inPreferredConfig = Bitmap.Config.RGB_565;
-            options.inPurgeable = true;
-            options.inInputShareable = true;
 
             Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
             is.close();

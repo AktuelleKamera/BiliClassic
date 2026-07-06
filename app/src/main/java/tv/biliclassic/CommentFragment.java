@@ -302,12 +302,7 @@ public class CommentFragment extends Fragment {
                     item.message = "";
                 }
 
-                JSONObject stat = reply.optJSONObject("stat");
-                if (stat != null) {
-                    item.likeCount = stat.optInt("like", 0);
-                } else {
-                    item.likeCount = 0;
-                }
+                item.likeCount = reply.optInt("like", 0);
 
                 item.time = reply.optLong("ctime", 0);
 
@@ -459,12 +454,7 @@ public class CommentFragment extends Fragment {
                     item.message = "";
                 }
 
-                JSONObject stat = reply.optJSONObject("stat");
-                if (stat != null) {
-                    item.likeCount = stat.optInt("like", 0);
-                } else {
-                    item.likeCount = 0;
-                }
+                item.likeCount = reply.optInt("like", 0);
 
                 item.time = reply.optLong("ctime", 0);
 

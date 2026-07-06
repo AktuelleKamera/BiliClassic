@@ -98,7 +98,15 @@ public class DanmakuManager {
     // lifecycle
 
     public static boolean isSimpleEngineEnabled() {
-        return SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, 0) == 1;
+        int mode = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, -1);
+        if (mode < 0) {
+            // 首次运行：ARMv5/v6 默认用 BT-5
+            String abi = android.os.Build.CPU_ABI;
+            boolean isLegacyCpu = abi != null && abi.startsWith("armeabi") && !abi.contains("v7");
+            mode = isLegacyCpu ? 1 : 0;
+            SharedPreferencesUtil.putInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, mode);
+        }
+        return mode == 1;
     }
 
     public void init() {

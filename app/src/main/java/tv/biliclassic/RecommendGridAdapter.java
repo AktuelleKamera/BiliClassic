@@ -41,7 +41,7 @@ public class RecommendGridAdapter extends BaseAdapter {
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
 
     private boolean isScrolling = false;
-    private static final int MAX_CACHE_SIZE = 12;
+    private static final int MAX_CACHE_SIZE = 60;
 
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
@@ -78,6 +78,9 @@ public class RecommendGridAdapter extends BaseAdapter {
 
     public void setScrolling(boolean scrolling) {
         this.isScrolling = scrolling;
+        if (!scrolling) {
+            notifyDataSetChanged();
+        }
     }
 
     @Override
@@ -133,10 +136,6 @@ public class RecommendGridAdapter extends BaseAdapter {
         // 先设置默认占位图，并清除之前的图片引用
         holder.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
 
-        if (isScrolling) {
-            return convertView;
-        }
-
         if (item != null && item.cover != null && item.cover.length() > 0) {
             String coverUrl = item.cover;
             if (coverUrl.startsWith("https://")) {
@@ -160,6 +159,10 @@ public class RecommendGridAdapter extends BaseAdapter {
                 }
             }
 
+            if (isScrolling) {
+                return convertView;
+            }
+
             // 避免重复加载
             Boolean isLoading = loadingMap.get(currentPos);
             if (isLoading != null && isLoading) {
@@ -170,18 +173,15 @@ public class RecommendGridAdapter extends BaseAdapter {
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    final Bitmap bitmap = downloadImage(finalUrl);
-                    loadingMap.remove(currentPos);
-
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        // 存入缓存
-                        imageCache.put(finalUrl, new SoftReference<Bitmap>(bitmap));
-                        // 管理缓存大小（不主动回收，让 SoftReference 自动管理）
-                        if (!cacheKeys.contains(finalUrl)) {
-                            if (cacheKeys.size() >= MAX_CACHE_SIZE) {
-                                cacheKeys.remove(0);
-                            }
-                            cacheKeys.add(finalUrl);
+                    try {
+                        final Bitmap bitmap = downloadImage(finalUrl);
+                        if (bitmap != null && !bitmap.isRecycled()) {
+                            imageCache.put(finalUrl, new SoftReference<Bitmap>(bitmap));
+                            if (!cacheKeys.contains(finalUrl)) {
+                                if (cacheKeys.size() >= MAX_CACHE_SIZE) {
+                                    cacheKeys.remove(0);
+                                }
+                                cacheKeys.add(finalUrl);
                         }
                         mainHandler.post(new Runnable() {
                             @Override
@@ -192,6 +192,10 @@ public class RecommendGridAdapter extends BaseAdapter {
                                 }
                             }
                         });
+                    }
+                    } catch (Exception e) {
+                    } finally {
+                        loadingMap.remove(currentPos);
                     }
                 }
             });
@@ -243,8 +247,6 @@ public class RecommendGridAdapter extends BaseAdapter {
             options = new BitmapFactory.Options();
             options.inSampleSize = scale;
             options.inPreferredConfig = Bitmap.Config.RGB_565;
-            options.inPurgeable = true;
-            options.inInputShareable = true;
 
             Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
             is.close();

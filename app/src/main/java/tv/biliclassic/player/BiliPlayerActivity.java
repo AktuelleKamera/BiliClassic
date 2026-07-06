@@ -17,8 +17,10 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStub;
@@ -89,8 +91,13 @@ public class BiliPlayerActivity extends Activity implements
     private static final int ASPECT_RATIO_16_9_INSIDE = 3;
     private static final int ASPECT_RATIO_COUNT = 4;
 
-    private SurfaceView videoView;
+    private static final int RENDERER_SURFACEVIEW = 0;
+    private static final int RENDERER_TEXTUREVIEW = 1;
+
+    private View videoView;
     private SurfaceHolder surfaceHolder;
+    private Surface mVideoSurface;
+    private int mRendererType = RENDERER_SURFACEVIEW;
     private IMediaPlayer mediaPlayer;
     private View topBar;
     private View bottomBar;
@@ -227,6 +234,58 @@ public class BiliPlayerActivity extends Activity implements
         }
     };
 
+    private Object createSurfaceTextureListener() {
+        return new TextureView.SurfaceTextureListener() {
+            public void onSurfaceTextureAvailable(android.graphics.SurfaceTexture st, int width, int height) {
+                mVideoSurface = new Surface(st);
+                surfaceReady = true;
+                if (videoWidth > 0 && videoHeight > 0) {
+                    st.setDefaultBufferSize(videoWidth, videoHeight);
+                }
+                if (pendingPrepare) {
+                    pendingPrepare = false;
+                    preparePlayer();
+                } else if (mediaPlayer != null) {
+                    if (isPrepared && videoWidth > 0 && videoHeight > 0) {
+                        st.setDefaultBufferSize(videoWidth, videoHeight);
+                    }
+                    try {
+                        mediaPlayer.setSurface(mVideoSurface);
+                        if (isPrepared && isPlaying) {
+                            mediaPlayer.start();
+                        }
+                    } catch (Exception e) {}
+                }
+            }
+
+            public void onSurfaceTextureSizeChanged(android.graphics.SurfaceTexture st, int width, int height) {
+                if (mediaPlayer != null) {
+                    try {
+                        mediaPlayer.setSurface(mVideoSurface);
+                    } catch (Exception e) {}
+                }
+            }
+
+            public boolean onSurfaceTextureDestroyed(android.graphics.SurfaceTexture st) {
+                surfaceReady = false;
+                if (mediaPlayer != null && mRendererType != RENDERER_SURFACEVIEW) {
+                    if (isPrepared) {
+                        try {
+                            mSeekWhenPrepared = (int) mediaPlayer.getCurrentPosition();
+                        } catch (Exception e) {}
+                    }
+                }
+                if (mVideoSurface != null) {
+                    mVideoSurface.release();
+                    mVideoSurface = null;
+                }
+                return true;
+            }
+
+            public void onSurfaceTextureUpdated(android.graphics.SurfaceTexture st) {}
+        };
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -247,6 +306,10 @@ public class BiliPlayerActivity extends Activity implements
         isLiveStream = getIntent().getBooleanExtra("live", false);
         boolean onlineMode = getIntent().getBooleanExtra("online_mode", false);
         decoderType = SettingsActivity.getDecoderType();
+        mRendererType = SettingsActivity.getRendererType();
+        if (mRendererType == RENDERER_TEXTUREVIEW && android.os.Build.VERSION.SDK_INT < 14) {
+            mRendererType = RENDERER_SURFACEVIEW;
+        }
 
         mAid = getIntent().getLongExtra("aid", 0);
         mCid = getIntent().getLongExtra("cid", 0);
@@ -348,9 +411,51 @@ public class BiliPlayerActivity extends Activity implements
         mGestureController.setLiveStream(isLiveStream);
     }
 
-    private void initViews() {
-        videoView = (SurfaceView) findViewById(R.id.video_view);
+    private void createVideoView() {
+        FrameLayout container = (FrameLayout) findViewById(R.id.video_container);
+        if (container == null) return;
+
+        container.removeAllViews();
+
+        if (mRendererType == RENDERER_TEXTUREVIEW && android.os.Build.VERSION.SDK_INT >= 14) {
+            TextureView tv = new TextureView(this);
+            tv.setSurfaceTextureListener(
+                    (TextureView.SurfaceTextureListener) createSurfaceTextureListener());
+            videoView = tv;
+            surfaceHolder = null;
+            mVideoSurface = null;
+        } else {
+            mRendererType = RENDERER_SURFACEVIEW;
+            SurfaceView sv = new SurfaceView(this);
+            videoView = sv;
+            mVideoSurface = null;
+            surfaceHolder = sv.getHolder();
+            if (decoderType == DECODER_SYSTEM) {
+                if (android.os.Build.VERSION.SDK_INT >= 5) {
+                    sv.setZOrderMediaOverlay(true);
+                }
+                surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+            }
+            surfaceHolder.addCallback(this);
+        }
+
         videoView.setKeepScreenOn(true);
+        container.addView(videoView, 0);
+    }
+
+    private void setDisplayOnPlayer() {
+        if (mediaPlayer == null) return;
+        try {
+            if (mRendererType == RENDERER_TEXTUREVIEW && mVideoSurface != null) {
+                mediaPlayer.setSurface(mVideoSurface);
+            } else if (surfaceHolder != null) {
+                mediaPlayer.setDisplay(surfaceHolder);
+            }
+        } catch (Exception e) {}
+    }
+
+    private void initViews() {
+        createVideoView();
 
         lockOverlayStub = (ViewStub) findViewById(R.id.lock_view);
         danmakuInputStub = (ViewStub) findViewById(R.id.danmaku_sender_viewstub);
@@ -391,15 +496,6 @@ public class BiliPlayerActivity extends Activity implements
         if (videoTitle != null && tvTitle != null) {
             tvTitle.setText(videoTitle);
         }
-
-        surfaceHolder = videoView.getHolder();
-        if (decoderType == DECODER_SYSTEM) {
-            if (android.os.Build.VERSION.SDK_INT >= 5) {
-                videoView.setZOrderMediaOverlay(true);
-            }
-            surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
-        }
-        surfaceHolder.addCallback(this);
 
         if (btnBack != null) {
             btnBack.setOnClickListener(new View.OnClickListener() {
@@ -629,6 +725,43 @@ public class BiliPlayerActivity extends Activity implements
         }).start();
     }
 
+    private void recreateVideoView() {
+        FrameLayout container = (FrameLayout) findViewById(R.id.video_container);
+        if (container == null) {
+            container = (FrameLayout) videoView.getParent();
+        }
+        if (container == null) return;
+
+        if (videoView != null) {
+            container.removeView(videoView);
+        }
+
+        if (mRendererType == RENDERER_TEXTUREVIEW && android.os.Build.VERSION.SDK_INT >= 14) {
+            TextureView tv = new TextureView(this);
+            tv.setSurfaceTextureListener(
+                    (TextureView.SurfaceTextureListener) createSurfaceTextureListener());
+            videoView = tv;
+            surfaceHolder = null;
+            mVideoSurface = null;
+        } else {
+            mRendererType = RENDERER_SURFACEVIEW;
+            SurfaceView sv = new SurfaceView(this);
+            videoView = sv;
+            mVideoSurface = null;
+            surfaceHolder = sv.getHolder();
+            if (decoderType == DECODER_SYSTEM) {
+                if (android.os.Build.VERSION.SDK_INT >= 5) {
+                    sv.setZOrderMediaOverlay(true);
+                }
+                surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+            }
+            surfaceHolder.addCallback(this);
+        }
+
+        videoView.setKeepScreenOn(true);
+        container.addView(videoView, 0);
+    }
+
     private void cleanupAndRestartWithQuality() {
         if (localProxy != null) {
             localProxy.stop();
@@ -642,15 +775,7 @@ public class BiliPlayerActivity extends Activity implements
 
         releasePlayer();
 
-        final FrameLayout parent = (FrameLayout) videoView.getParent();
-        if (parent != null) {
-            parent.removeView(videoView);
-            videoView = new SurfaceView(this);
-            videoView.setKeepScreenOn(true);
-            surfaceHolder = videoView.getHolder();
-            surfaceHolder.addCallback(BiliPlayerActivity.this);
-            parent.addView(videoView, 0);
-        }
+        recreateVideoView();
 
         surfaceReady = false;
         pendingPrepare = false;
@@ -666,8 +791,7 @@ public class BiliPlayerActivity extends Activity implements
                     mDanmakuManager.init();
                 }
 
-                if (surfaceHolder != null) {
-                    surfaceReady = true;
+                if (surfaceReady) {
                     preparePlayer();
                 } else {
                     pendingPrepare = true;
@@ -753,11 +877,7 @@ public class BiliPlayerActivity extends Activity implements
             mediaPlayer.setOnInfoListener(this);
             mediaPlayer.setOnBufferingUpdateListener(this);
 
-            if (surfaceHolder != null) {
-                try {
-                    mediaPlayer.setDisplay(surfaceHolder);
-                } catch (Exception e) {}
-            }
+            setDisplayOnPlayer();
 
             // 创建播放器后设置到 GestureController
             if (mGestureController != null) {
@@ -854,11 +974,7 @@ public class BiliPlayerActivity extends Activity implements
         mediaPlayer.setOnInfoListener(this);
         mediaPlayer.setOnBufferingUpdateListener(this);
 
-        if (surfaceHolder != null) {
-            try {
-                mediaPlayer.setDisplay(surfaceHolder);
-            } catch (Exception e) {}
-        }
+        setDisplayOnPlayer();
 
         // 设置到 GestureController
         if (mGestureController != null && mediaPlayer != null) {
@@ -876,6 +992,7 @@ public class BiliPlayerActivity extends Activity implements
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
+        if (mRendererType == RENDERER_TEXTUREVIEW) return;
         surfaceReady = true;
         if (decoderType == DECODER_SYSTEM && android.os.Build.VERSION.SDK_INT < 14) {
             holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
@@ -887,26 +1004,22 @@ public class BiliPlayerActivity extends Activity implements
             if (isPrepared && videoWidth > 0 && videoHeight > 0) {
                 holder.setFixedSize(videoWidth, videoHeight);
             }
-            try {
-                mediaPlayer.setDisplay(holder);
-                if (isPrepared && isPlaying) {
-                    mediaPlayer.start();
-                }
-            } catch (Exception e) {}
+            setDisplayOnPlayer();
+            if (isPrepared && isPlaying) {
+                mediaPlayer.start();
+            }
         }
     }
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        if (mediaPlayer != null) {
-            try {
-                mediaPlayer.setDisplay(holder);
-            } catch (Exception e) {}
-        }
+        if (mRendererType == RENDERER_TEXTUREVIEW) return;
+        setDisplayOnPlayer();
     }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
+        if (mRendererType == RENDERER_TEXTUREVIEW) return;
         surfaceReady = false;
         if (mediaPlayer != null && !(decoderType == DECODER_SYSTEM && android.os.Build.VERSION.SDK_INT < 14)) {
             if (isPrepared) {
@@ -923,10 +1036,17 @@ public class BiliPlayerActivity extends Activity implements
         showBuffering(false);
         hideLoadingOverlay();
 
-        if (surfaceHolder != null) {
-            try {
-                mediaPlayer.setDisplay(surfaceHolder);
-            } catch (Exception e) {}
+        setDisplayOnPlayer();
+
+        // Set default buffer size for TextureView
+        if (mRendererType == RENDERER_TEXTUREVIEW && videoView instanceof TextureView) {
+            TextureView tv = (TextureView) videoView;
+            if (tv.getSurfaceTexture() != null) {
+                try {
+                    tv.getSurfaceTexture().setDefaultBufferSize(
+                            mp.getVideoWidth(), mp.getVideoHeight());
+                } catch (Exception e) {}
+            }
         }
 
         mDuration = (int) mp.getDuration();
@@ -1140,15 +1260,7 @@ public class BiliPlayerActivity extends Activity implements
 
         releasePlayer();
 
-        final FrameLayout parent = (FrameLayout) videoView.getParent();
-        if (parent != null) {
-            parent.removeView(videoView);
-            videoView = new SurfaceView(this);
-            videoView.setKeepScreenOn(true);
-            surfaceHolder = videoView.getHolder();
-            surfaceHolder.addCallback(BiliPlayerActivity.this);
-            parent.addView(videoView, 0);
-        }
+        recreateVideoView();
 
         surfaceReady = false;
         pendingPrepare = false;
@@ -1159,8 +1271,7 @@ public class BiliPlayerActivity extends Activity implements
                     mDanmakuManager.init();
                 }
 
-                if (surfaceHolder != null) {
-                    surfaceReady = true;
+                if (surfaceReady) {
                     preparePlayer();
                 } else {
                     pendingPrepare = true;
@@ -1255,8 +1366,16 @@ public class BiliPlayerActivity extends Activity implements
             targetWidth = (int) (containerHeight * targetRatio);
         }
 
-        SurfaceHolder holder = videoView.getHolder();
-        holder.setFixedSize(videoWidth, videoHeight);
+        if (mRendererType == RENDERER_SURFACEVIEW && surfaceHolder != null) {
+            surfaceHolder.setFixedSize(videoWidth, videoHeight);
+        } else if (mRendererType == RENDERER_TEXTUREVIEW && videoView instanceof TextureView) {
+            TextureView tv = (TextureView) videoView;
+            if (tv.getSurfaceTexture() != null) {
+                try {
+                    tv.getSurfaceTexture().setDefaultBufferSize(videoWidth, videoHeight);
+                } catch (Exception e) {}
+            }
+        }
 
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) videoView.getLayoutParams();
         if (params == null) {
@@ -1490,6 +1609,7 @@ public class BiliPlayerActivity extends Activity implements
         } else {
             decoder = "IJK 软解";
         }
+        String renderer = (mRendererType == RENDERER_TEXTUREVIEW) ? "TextureView" : "SurfaceView";
         String resolution = videoWidth + " x " + videoHeight;
         String duration = "";
         if (mediaPlayer != null && isPrepared) {
@@ -1498,9 +1618,22 @@ public class BiliPlayerActivity extends Activity implements
                 duration = formatTime((int) dur);
             }
         }
+        String fps = "N/A";
+        if (isPrepared && mediaPlayer instanceof IjkMediaPlayer) {
+            try {
+                float f = ((IjkMediaPlayer) mediaPlayer).getVideoOutputFramesPerSecond();
+                if (f > 0) {
+                    fps = String.format("%.1f", f);
+                }
+            } catch (Exception e) {}
+        }
 
         StringBuilder msg = new StringBuilder();
         msg.append("分辨率: ").append(resolution).append("\n");
+        msg.append("渲染方式: ").append(renderer).append("\n");
+        if (decoderType != DECODER_SYSTEM) {
+            msg.append("帧数: ").append(fps).append("\n");
+        }
         msg.append("解码器: ").append(decoder).append("\n");
         if (duration.length() > 0) {
             msg.append("时长: ").append(duration);
@@ -1917,7 +2050,11 @@ public class BiliPlayerActivity extends Activity implements
 
         if (mediaPlayer != null) {
             try {
-                mediaPlayer.setDisplay(null);
+                if (mRendererType == RENDERER_TEXTUREVIEW && mVideoSurface != null) {
+                    mediaPlayer.setSurface(null);
+                } else {
+                    mediaPlayer.setDisplay(null);
+                }
             } catch (Exception e) {}
             try {
                 mediaPlayer.reset();

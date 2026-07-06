@@ -180,7 +180,7 @@ public class SimpleDanmakuEngine extends View {
         if (mItems == null || mItems.isEmpty()) return;
         final float t = positionMs / 1000f;
         int start = mItemIndex;
-        while (start > 0 && mItems.get(start - 1).time > t - 1f) start--;
+        while (start > 0 && start <= mItems.size() && mItems.get(start - 1).time > t - 1f) start--;
         final int startIdx = start;
         new Thread(new Runnable() {
             public void run() {
@@ -188,6 +188,7 @@ public class SimpleDanmakuEngine extends View {
                 int end = Math.min(startIdx + 200, mItems.size());
                 float limit = t + 15f;
                 for (int i = startIdx; i < end; i++) {
+                    if (i >= mItems.size()) break;
                     DanmakuItem item = mItems.get(i);
                     if (item.time > limit) break;
                     ensureBitmap(item);
@@ -259,9 +260,10 @@ public class SimpleDanmakuEngine extends View {
         float t = mVideoPosition / 1000f;
         // 预创建当前位置附近前 100 条弹幕的 Bitmap
         int wi = mItemIndex;
-        while (wi > 0 && mItems.get(wi - 1).time > t - 1f) wi--;
+        while (wi > 0 && wi <= mItems.size() && mItems.get(wi - 1).time > t - 1f) wi--;
         int end = Math.min(wi + 100, mItems.size());
         for (int i = wi; i < end; i++) {
+            if (i >= mItems.size()) break;
             DanmakuItem item = mItems.get(i);
             if (item.time > t + 10f) break;
             if (item.bitmap == null) ensureBitmap(item);
@@ -378,11 +380,12 @@ public class SimpleDanmakuEngine extends View {
         if (mItems == null || mItems.isEmpty()) return;
         float t = mVideoPosition / 1000f;
         int start = mItemIndex;
-        while (start > 0 && mItems.get(start - 1).time > t - 1f) start--;
+        while (start > 0 && start <= mItems.size() && mItems.get(start - 1).time > t - 1f) start--;
         int end = Math.min(start + 80, mItems.size());
         float limit = t + 8f;
         int prepared = 0;
         for (int i = start; i < end && prepared < 20; i++) {
+            if (i >= mItems.size()) break;
             DanmakuItem item = mItems.get(i);
             if (item.time > limit) break;
             if (item.bitmap == null) {

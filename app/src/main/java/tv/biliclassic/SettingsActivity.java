@@ -360,6 +360,23 @@ public class SettingsActivity extends BaseActivity {
             });
         }
 
+        // 视频渲染方式选择 - 仅 API 14+ 可用
+        LinearLayout rendererTypeItem = (LinearLayout) findViewById(R.id.renderer_type_item);
+        final TextView rendererTypeText = (TextView) findViewById(R.id.renderer_type_text);
+        if (rendererTypeItem != null && rendererTypeText != null) {
+            if (Build.VERSION.SDK_INT < 14) {
+                rendererTypeItem.setVisibility(View.GONE);
+            } else {
+                updateRendererTypeDisplay(rendererTypeText);
+                rendererTypeItem.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showRendererTypeDialog(rendererTypeText);
+                    }
+                });
+            }
+        }
+
         // 弹幕引擎选择
         LinearLayout danmakuEngineItem = (LinearLayout) findViewById(R.id.danmaku_engine_item);
         final TextView danmakuEngineText = (TextView) findViewById(R.id.danmaku_engine_text);
@@ -637,6 +654,49 @@ public class SettingsActivity extends BaseActivity {
 
     public static int getVideoQuality() {
         return SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY, QUALITY_360P);
+    }
+
+    // 获取渲染方式
+    public static int getRendererType() {
+        if (Build.VERSION.SDK_INT < 14) {
+            return 0; // TextureView 需要 API 14+
+        }
+        return SharedPreferencesUtil.getInt(SharedPreferencesUtil.RENDERER_TYPE, 0);
+    }
+
+    // 渲染方式选择
+    private void showRendererTypeDialog(final TextView textView) {
+        final String[] modes = {"SurfaceView", "TextureView"};
+        final int[] values = {0, 1};
+        int current = getRendererType();
+
+        int checkedIndex = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == current) {
+                checkedIndex = i;
+                break;
+            }
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("视频渲染方式")
+                .setSingleChoiceItems(modes, checkedIndex, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        SharedPreferencesUtil.putInt(SharedPreferencesUtil.RENDERER_TYPE, values[which]);
+                        updateRendererTypeDisplay(textView);
+                        Toast.makeText(SettingsActivity.this,
+                                "已切换为: " + modes[which],
+                                Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void updateRendererTypeDisplay(TextView textView) {
+        int type = getRendererType();
+        textView.setText(type == 1 ? "TextureView" : "SurfaceView");
     }
 
     // 弹幕引擎选择
