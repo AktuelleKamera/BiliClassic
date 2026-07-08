@@ -18,6 +18,7 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -91,6 +92,10 @@ public class SettingsActivity extends BaseActivity {
     private TextView defaultTabText;
     private LinearLayout videoQualityItem;
     private TextView videoQualityText;
+
+    private TextView echoHoleText;
+    private LinearLayout echoHoleItem;
+    private int mLastEchoIndex = -1;
 
     private TextView crashLogSizeText;
     private LinearLayout clearCrashLogItem;
@@ -317,6 +322,19 @@ public class SettingsActivity extends BaseActivity {
                 @Override
                 public void onClick(View v) {
                     showCookieDialog();
+                }
+            });
+        }
+
+        // 回声洞
+        echoHoleText = (TextView) findViewById(R.id.echo_hole_text);
+        echoHoleItem = (LinearLayout) findViewById(R.id.echo_hole_item);
+
+        if (echoHoleItem != null) {
+            echoHoleItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    loadEchoHole();
                 }
             });
         }
@@ -1481,6 +1499,79 @@ public class SettingsActivity extends BaseActivity {
         } catch (Exception e) {
             Toast.makeText(this, "删除失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    // 回声洞
+    private void loadEchoHole() {
+        echoHoleText.setText("加载中...");
+        echoHoleItem.setEnabled(false);
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    URL url = new URL("http://www.biliclassic.cn/api/echo.json");
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(10000);
+                    conn.setRequestMethod("GET");
+                    java.io.BufferedReader reader = new java.io.BufferedReader(
+                            new java.io.InputStreamReader(conn.getInputStream(), "UTF-8"));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line);
+                    }
+                    reader.close();
+                    final String jsonStr = sb.toString();
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            echoHoleText.setText("随一个");
+                            echoHoleItem.setEnabled(true);
+                            if (isFinishing()) return;
+                            try {
+                                JSONArray arr = new JSONArray(jsonStr);
+                                if (arr.length() > 0) {
+                                    int idx = (int) (Math.random() * arr.length());
+                                    if (arr.length() > 1) {
+                                        while (idx == mLastEchoIndex) {
+                                            idx = (int) (Math.random() * arr.length());
+                                        }
+                                    }
+                                    mLastEchoIndex = idx;
+                                    JSONObject item = arr.getJSONObject(idx);
+                                    String text = item.optString("text", "");
+                                    String author = item.optString("author", "匿名");
+                                    String device = item.optString("device", null);
+                                    String time = item.optString("time", "未知");
+                                    String msg = text + "\n\n" + author;
+                                    if (device != null && device.length() > 0) {
+                                        msg += "\n来自 " + device;
+                                    }
+                                    msg += "\n" + time;
+                                    new AlertDialog.Builder(SettingsActivity.this)
+                                            .setTitle("回声洞")
+                                            .setMessage(msg)
+                                            .setPositiveButton("关闭", null)
+                                            .show();
+                                } else {
+                                    Toast.makeText(SettingsActivity.this, "回声洞暂无内容", Toast.LENGTH_SHORT).show();
+                                }
+                            } catch (JSONException e) {
+                                Toast.makeText(SettingsActivity.this, "解析失败", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    });
+                } catch (final Exception e) {
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            if (isFinishing()) return;
+                            echoHoleText.setText("随一个");
+                            echoHoleItem.setEnabled(true);
+                            Toast.makeText(SettingsActivity.this, "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            }
+        }).start();
     }
 
     // 检查更新（使用 UpdateUtil）

@@ -35,7 +35,7 @@
     <!-- 上方分割线 -->
     <View
         android:layout_width="match_parent"
-        android:layout_height="2px"
+        android:layout_height="1px"
         android:background="#FCA3C5" />
 
     <!-- ViewPager（PagerTabStrip 我使用带底部线的背景= = 为什么下面这条破线还是没法显示） -->

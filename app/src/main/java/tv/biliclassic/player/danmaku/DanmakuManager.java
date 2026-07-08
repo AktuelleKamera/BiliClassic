@@ -46,6 +46,7 @@ public class DanmakuManager {
     private static final String KEY_TEXT_SIZE = "danmaku_text_size";
     private static final String KEY_TRANSPARENCY = "danmaku_transparency";
     private static final String KEY_SPEED = "danmaku_speed";
+    private static final String KEY_STROKE_SCALE = "danmaku_stroke_scale";
     private static final String KEY_MAX_SCREEN = "danmaku_max_screen";
     private static final String KEY_BLOCK_TOP = "danmaku_block_top";
     private static final String KEY_BLOCK_SCROLL = "danmaku_block_scroll";
@@ -70,6 +71,8 @@ public class DanmakuManager {
 
     private IMediaPlayer mMediaPlayer;
     private boolean mVideoPrepared;
+    private boolean mSeekPending;
+    private long mSeekTarget;
 
     private PopupWindow mOptionsPanel;
     private ViewStub mInputStub;
@@ -166,6 +169,8 @@ public class DanmakuManager {
         DanmakuGlobalConfig.DEFAULT.setSpecialDanmakuVisibility(true);
         DanmakuGlobalConfig.DEFAULT.setDuplicateMergingEnabled(dupMerge);
 
+        applyStrokeScale();
+
         if (mCid > 0) {
             mDanmakuUrl = "https://comment.bilibili.com/" + mCid + ".xml";
             mDanmakuCacheFile = new File(mActivity.getCacheDir(), "danmaku_" + mCid + ".xml");
@@ -179,6 +184,16 @@ public class DanmakuManager {
 
         if (mDanmakuUrl != null || (mDanmakuCacheFile != null && mDanmakuCacheFile.exists())) {
             startLoadDanmaku();
+        }
+    }
+
+    private void applyStrokeScale() {
+        float scale = SharedPreferencesUtil.getFloat(KEY_STROKE_SCALE, 1.0f);
+        master.flame.danmaku.danmaku.model.android.AndroidDisplayer.setShadowRadius(4.0f * scale);
+        master.flame.danmaku.danmaku.model.android.AndroidDisplayer.setPaintStorkeWidth(3.5f * scale);
+        master.flame.danmaku.danmaku.model.android.AndroidDisplayer.clearTextHeightCache();
+        if (mDanmakuView != null) {
+            mDanmakuView.clearCache();
         }
     }
 
@@ -216,6 +231,8 @@ public class DanmakuManager {
     }
 
     public void seekTo(long positionMs) {
+        mSeekPending = true;
+        mSeekTarget = positionMs;
         if (mSimpleEngine != null && mLoaded) {
             mSimpleEngine.seekTo(positionMs);
         } else if (mDanmakuView != null && mLoaded) {
@@ -232,9 +249,9 @@ public class DanmakuManager {
     }
 
     public void resume() {
-        if (mSimpleEngine != null && mLoaded && mEnabled) {
+        if (mSimpleEngine != null && mLoaded) {
             mSimpleEngine.resumeDanmaku();
-        } else if (mDanmakuView != null && mLoaded && mEnabled) {
+        } else if (mDanmakuView != null && mLoaded) {
             mDanmakuView.resume();
         }
     }
@@ -357,8 +374,12 @@ public class DanmakuManager {
                     DanmakuGlobalConfig.DEFAULT.setDanmakuTransparency(1.0f - v);
                     SharedPreferencesUtil.putFloat(KEY_TRANSPARENCY, v);
                 }});
-        wireSeek(panel, R.id.option_danmaku_stroke_width_scaling, 0.5f, 2.0f, 1.0f, "描边大小",
-                new SeekCallback() { public void onChanged(float v) { /* TODO */ } });
+        final float savedStroke = SharedPreferencesUtil.getFloat(KEY_STROKE_SCALE, 1.0f);
+        wireSeek(panel, R.id.option_danmaku_stroke_width_scaling, 0.5f, 2.0f, savedStroke, "描边大小",
+                new SeekCallback() { public void onChanged(float v) {
+                    SharedPreferencesUtil.putFloat(KEY_STROKE_SCALE, v);
+                    applyStrokeScale();
+                }});
 
         mOptionsPanel = new PopupWindow(panel,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -572,10 +593,13 @@ public class DanmakuManager {
 
                 @Override
                 public void updateTimer(DanmakuTimer timer) {
-                    if (mMediaPlayer != null && mVideoPrepared) {
+                    if (mMediaPlayer != null && mVideoPrepared && mSeekPending) {
                         try {
                             long pos = mMediaPlayer.getCurrentPosition();
-                            if (pos >= 0) timer.update(pos);
+                            if (pos >= 0 && Math.abs(pos - mSeekTarget) < 500) {
+                                timer.update(pos);
+                                mSeekPending = false;
+                            }
                         } catch (Exception ignored) {}
                     }
                 }

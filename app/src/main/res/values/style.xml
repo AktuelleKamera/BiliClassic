@@ -1,6 +1,6 @@
 <resources>
     <style name="AppTheme" parent="android:Theme.Light.NoTitleBar">
-        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowBackground">@drawable/bili_texture_background</item>
         <item name="android:tabStripEnabled">true</item>
     </style>
 

@@ -13,7 +13,7 @@
 
         <!-- 封面容器（白色描边） -->
         <FrameLayout
-            android:layout_width="60dp"
+            android:layout_width="90dp"
             android:layout_height="60dp"
             android:background="#FFFFFF"
             android:padding="2dp">

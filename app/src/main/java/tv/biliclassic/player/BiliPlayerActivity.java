@@ -126,6 +126,7 @@ public class BiliPlayerActivity extends Activity implements
 
     private boolean isPlaying = false;
     private boolean isPrepared = false;
+    private boolean mPlaybackCompleted;
     private boolean controlsVisible = true;
     private boolean surfaceReady = false;
     private boolean pendingPrepare = false;
@@ -1120,6 +1121,7 @@ public class BiliPlayerActivity extends Activity implements
     @Override
     public void onCompletion(IMediaPlayer mp) {
         isPlaying = false;
+        mPlaybackCompleted = true;
         updatePlayPauseButton();
         if (seekBar != null) {
             seekBar.setProgress(0);
@@ -1285,9 +1287,11 @@ public class BiliPlayerActivity extends Activity implements
         switch (what) {
             case IMediaPlayer.MEDIA_INFO_BUFFERING_START:
                 showBuffering(true);
+                if (mDanmakuManager != null && isPlaying) mDanmakuManager.pause();
                 break;
             case IMediaPlayer.MEDIA_INFO_BUFFERING_END:
                 showBuffering(false);
+                if (mDanmakuManager != null && isPlaying) mDanmakuManager.resume();
                 break;
             case IMediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START:
                 showBuffering(false);
@@ -1721,6 +1725,12 @@ public class BiliPlayerActivity extends Activity implements
                 try {
                     mediaPlayer.seekTo(0);
                 } catch (Exception e) {}
+            } else if (mPlaybackCompleted) {
+                mPlaybackCompleted = false;
+                try {
+                    mediaPlayer.seekTo(0);
+                } catch (Exception e) {}
+                if (mDanmakuManager != null) mDanmakuManager.seekTo(0L);
             }
             isPrepared = true;
             mediaPlayer.start();

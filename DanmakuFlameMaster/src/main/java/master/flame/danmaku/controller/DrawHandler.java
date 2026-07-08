@@ -75,6 +75,8 @@ public class DrawHandler extends Handler {
 
     private static final int CLEAR_DANMAKUS_ON_SCREEN = 13;
 
+    private static final int CLEAR_CACHE = 14;
+
     private static final long INDEFINITE_TIME = 10000000;
 
     private long pausedPosition = 0;
@@ -308,6 +310,12 @@ public class DrawHandler extends Handler {
                 break;
             case CLEAR_DANMAKUS_ON_SCREEN:
                 if (drawTask != null) {
+                    drawTask.clearDanmakusOnScreen(getCurrentTime());
+                }
+                break;
+            case CLEAR_CACHE:
+                if (drawTask != null) {
+                    drawTask.clearCache();
                     drawTask.clearDanmakusOnScreen(getCurrentTime());
                 }
                 break;
@@ -676,6 +684,10 @@ public class DrawHandler extends Handler {
 
     public void clearDanmakusOnScreen() {
         obtainMessage(CLEAR_DANMAKUS_ON_SCREEN).sendToTarget();
+    }
+
+    public void clearCache() {
+        obtainMessage(CLEAR_CACHE).sendToTarget();
     }
 
 }

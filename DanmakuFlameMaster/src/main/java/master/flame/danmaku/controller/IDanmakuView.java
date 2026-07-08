@@ -107,6 +107,8 @@ public interface IDanmakuView {
 
     public void clearDanmakusOnScreen();
 
+    public void clearCache();
+
  // ------------- Click Listener -------------------
     public interface OnDanmakuClickListener {
      /**

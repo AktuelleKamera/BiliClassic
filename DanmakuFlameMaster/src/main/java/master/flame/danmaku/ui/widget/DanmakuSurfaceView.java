@@ -442,4 +442,11 @@ public class DanmakuSurfaceView extends SurfaceView implements IDanmakuView, IDa
         }
     }
 
+    @Override
+    public void clearCache() {
+        if (handler != null) {
+            handler.clearCache();
+        }
+    }
+
 }

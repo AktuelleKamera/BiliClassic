@@ -453,4 +453,11 @@ public class DanmakuTextureView extends TextureView implements IDanmakuView, IDa
         }
     }
 
+    @Override
+    public void clearCache() {
+        if (handler != null) {
+            handler.clearCache();
+        }
+    }
+
 }

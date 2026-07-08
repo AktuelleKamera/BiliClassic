@@ -5,6 +5,12 @@
     android:orientation="vertical"
     android:background="@drawable/bili_texture_background">
 
+    <!-- 顶部分割线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:background="#FCA3C5" />
+
     <ProgressBar
         android:id="@+id/progress_bar"
         android:layout_width="wrap_content"

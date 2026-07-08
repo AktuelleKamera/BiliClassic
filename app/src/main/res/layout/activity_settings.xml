@@ -919,6 +919,67 @@
                 android:layout_marginBottom="12dp"
                 android:background="#E0E0E0" />
 
+            <!-- 回声洞 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="回声洞"
+                android:textSize="15sp"
+                android:textColor="#333333"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/echo_hole_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="#FFFFFF"
+                android:padding="12dp"
+                android:clickable="true">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="回声洞"
+                    android:textSize="15sp"
+                    android:textColor="#333333" />
+
+                <TextView
+                    android:id="@+id/echo_hole_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="随一个"
+                    android:textSize="13sp"
+                    android:textColor="#999999"
+                    android:layout_marginRight="8dp" />
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@android:drawable/ic_menu_myplaces"
+                    android:contentDescription="回声洞" />
+
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginLeft="12dp"
+                android:layout_marginRight="12dp"
+                android:text="从服务器随机获取一条历史留言"
+                android:textSize="11sp"
+                android:textColor="#999999" />
+
+            <!-- 分隔线 -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="12dp"
+                android:background="#E0E0E0" />
+
             <!-- 崩溃日志管理 -->
             <TextView
                 android:layout_width="match_parent"

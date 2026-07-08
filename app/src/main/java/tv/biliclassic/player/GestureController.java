@@ -534,10 +534,10 @@ public class GestureController {
     }
 
     private void updateCurrentPositionForGesture() {
-        if (mSeekBar != null && mDuration > 0) {
-            mSeekBeginPosition = (int) (1000L * mSeekBar.getProgress() / mDuration);
+        if (mSeekBar != null) {
+            mSeekBeginPosition = mSeekBar.getProgress();
         } else {
-            mSeekBeginPosition = mSeekBar != null ? mSeekBar.getProgress() : 0;
+            mSeekBeginPosition = 0;
         }
     }
 
