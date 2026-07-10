@@ -91,6 +91,70 @@
                 android:clickable="true" />
 
             <Button
+                android:id="@+id/btn_decoder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="解码方式"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="20dp"
+                android:layout_marginBottom="12dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <Button
+                android:id="@+id/btn_decoder_settings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="解码设置"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="20dp"
+                android:layout_marginBottom="12dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <Button
+                android:id="@+id/btn_renderer_type"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="视频渲染方式"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="20dp"
+                android:layout_marginBottom="12dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <Button
+                android:id="@+id/btn_danmaku_engine"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="弹幕引擎"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="20dp"
+                android:layout_marginBottom="12dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <Button
                 android:id="@+id/btn_quality"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -122,7 +186,107 @@
                 android:focusable="true"
                 android:clickable="true" />
 
-            <!-- 在线播放开关 -->
+            <!-- 横屏适配 -->
+            <LinearLayout
+                android:id="@+id/landscape_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="20dp"
+                android:layout_marginBottom="12dp"
+                android:focusable="true"
+                android:clickable="true">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="横屏适配"
+                        android:textSize="18sp"
+                        android:textColor="#FFFFFF"
+                        android:fontFamily="sans-serif-light"
+                        android:textStyle="normal" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="在手机竖屏下显示横屏界面"
+                        android:textSize="12sp"
+                        android:textColor="#999999"
+                        android:fontFamily="sans-serif-light"
+                        android:textStyle="normal" />
+
+                </LinearLayout>
+
+                <CheckBox
+                    android:id="@+id/checkbox_landscape"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:focusable="false"
+                    android:clickable="false"
+                    android:padding="0dp"
+                    android:minHeight="0dp" />
+
+            </LinearLayout>
+
+            <!-- 现代模式 -->
+            <LinearLayout
+                android:id="@+id/modern_mode_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="20dp"
+                android:layout_marginBottom="12dp"
+                android:focusable="true"
+                android:clickable="true">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="现代模式"
+                        android:textSize="18sp"
+                        android:textColor="#FFFFFF"
+                        android:fontFamily="sans-serif-light"
+                        android:textStyle="normal" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="使用新版数据接口"
+                        android:textSize="12sp"
+                        android:textColor="#999999"
+                        android:fontFamily="sans-serif-light"
+                        android:textStyle="normal" />
+
+                </LinearLayout>
+
+                <CheckBox
+                    android:id="@+id/checkbox_modern_mode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:focusable="false"
+                    android:clickable="false"
+                    android:padding="0dp"
+                    android:minHeight="0dp" />
+
+            </LinearLayout>
+
+            <!-- 在线播放 -->
             <LinearLayout
                 android:id="@+id/online_play_item"
                 android:layout_width="match_parent"
@@ -173,11 +337,91 @@
             </LinearLayout>
 
             <Button
+                android:id="@+id/btn_cookie"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="Cookie 管理"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="20dp"
+                android:layout_marginBottom="12dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <Button
                 android:id="@+id/btn_clear_cache"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="left|center_vertical"
-                android:text="清除缓存"
+                android:text="清除图片缓存"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="20dp"
+                android:layout_marginBottom="12dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <Button
+                android:id="@+id/btn_clear_play_cache"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="清除播放缓存"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="20dp"
+                android:layout_marginBottom="12dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <Button
+                android:id="@+id/btn_crash_log"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="崩溃日志"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="20dp"
+                android:layout_marginBottom="12dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <Button
+                android:id="@+id/btn_echo_hole"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="回声洞"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="20dp"
+                android:layout_marginBottom="12dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <Button
+                android:id="@+id/btn_device_info"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="设备信息"
                 android:textSize="18sp"
                 android:textColor="#FFFFFF"
                 android:fontFamily="sans-serif-light"

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <View
+        android:id="@+id/comment_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000" />
+
+    <LinearLayout
+        android:id="@+id/comment_panel"
+        android:orientation="vertical"
+        android:background="@color/videoplay__control_panel_bkgd_new"
+        android:layout_width="280dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="right">
+
+        <FrameLayout
+            android:background="@color/videoplay__control_panel_bkgd_new"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="30dp">
+
+            <TextView
+                android:textSize="17sp"
+                android:textColor="@color/videoplay__video_title_text"
+                android:gravity="center"
+                android:layout_gravity="center"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:singleLine="true"
+                android:text="评论区" />
+
+            <ImageView
+                android:id="@+id/comment_close"
+                android:layout_gravity="center|right"
+                android:padding="10dp"
+                android:focusable="true"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_player_pannel_close"
+                android:scaleType="center"
+                android:contentDescription="@null"
+                style="@style/PlayerControlBarButton" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/comment_overlay_empty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:padding="20dp"
+                android:text="加载中..."
+                android:textSize="14sp"
+                android:textColor="@color/videoplay__video_title_text"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <ListView
+            android:id="@+id/comment_overlay_list"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:divider="@null"
+            android:dividerHeight="0dp"
+            android:background="@android:color/transparent" />
+
+    </LinearLayout>
+
+</FrameLayout>

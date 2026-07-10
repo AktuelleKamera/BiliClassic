@@ -4,12 +4,6 @@
     android:layout_height="match_parent"
     android:background="@drawable/bili_texture_background">
 
-    <!-- 顶部分割线 -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1px"
-        android:background="#FCA3C5" />
-
     <!-- 加载中容器 -->
     <LinearLayout
         android:id="@+id/loading_container"

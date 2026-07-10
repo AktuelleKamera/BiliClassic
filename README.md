@@ -40,7 +40,7 @@
 - 离线缓存
 - 分P下载（带封面缓存）
 - 视频播放（内置播放器 / MX Player / VLC / MoboPlayer / QQ影音等）
-- 弹幕开关
+- 弹幕引擎切换（完整版 DanmakuFlameMaster / BT-5 简易版）
 - 发布评论和弹幕
 - 内置解码方式选择（系统硬解 / IJK 软解 / IJK 硬解）
 - 检查更新（多分支版本管理）
@@ -57,6 +57,24 @@
 - 参考 Bilibili 官方 API 文档实现数据获取
 - WBI 签名算法已适配，登录、下载、播放一条龙
 - 二维码生成使用 SwetakeQRCode 魔改
+
+---
+
+## 弹幕引擎
+
+本项目内置两套弹幕引擎，可在设置中自由切换：
+
+| 特性 | 完整版 (DanmakuFlameMaster) | BT-5 简易版 |
+|------|---------------------------|------------|
+| 渲染方式 | `SurfaceView` / `Canvas.drawText` 实时绘制 | `View` / `Canvas.drawBitmap` 预渲染 |
+| 弹幕样式 | 描边 / 阴影 / 投影 | 纯色填充 |
+| 碰撞检测 | 有（O(n²) 行布局） | 无（8 行轮转） |
+| 渲染帧率 | 25-60fps | 20fps |
+| Bitmap 缓存 | ~16MB LRU 池 (ARGB_8888) | 2MB 去重池 (ARGB_4444) |
+| Native 依赖 | 有（ndkbitmap.so） | 无 |
+| 推荐设备 | ARMv7 及以上 | ARMv5TE / ARMv6 |
+
+BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备设计。通过预渲染 Bitmap、同文案去重、低帧率轮询和 `MIN_PRIORITY` 后台线程，将弹幕渲染对视频解码的干扰降到最低。
 
 ---
 

@@ -703,8 +703,20 @@ public class VideoDetailFragment extends Fragment {
         final long tempAid = videoInfo.aid;
         final String tempTitle = videoInfo.title;
         final int tempPartIndex = currentPartIndex;
-        final String tempPartTitle = (videoInfo.pagenames != null && tempPartIndex < videoInfo.pagenames.size())
+        final String tempPartTitle = (videoInfo.pagenames != null && videoInfo.pagenames.size() > 1 && tempPartIndex < videoInfo.pagenames.size())
                 ? videoInfo.pagenames.get(tempPartIndex) : tempTitle;
+
+        // 构建分P列表数据
+        final long[] cidArray;
+        final String[] partNameArray;
+        if (videoInfo.cids != null && videoInfo.cids.size() > 1) {
+            cidArray = new long[videoInfo.cids.size()];
+            for (int i = 0; i < cidArray.length; i++) cidArray[i] = videoInfo.cids.get(i);
+            partNameArray = videoInfo.pagenames.toArray(new String[videoInfo.pagenames.size()]);
+        } else {
+            cidArray = null;
+            partNameArray = null;
+        }
 
         if (SettingsActivity.isOnlinePlayEnabled()) {
             new Thread(new Runnable() {
@@ -725,11 +737,17 @@ public class VideoDetailFragment extends Fragment {
                                 public void run() {
                                     if (!isAdded() || getActivity() == null) return;
                                     if (videoUrl != null && videoUrl.length() > 0) {
-                                        Intent intent = new Intent(getActivity(), PlayerAnimActivity.class);
+                                        Intent intent = new Intent(getActivity(), BiliPlayerActivity.class);
                                         intent.putExtra("video_url", videoUrl);
                                         intent.putExtra("video_title", tempPartTitle);
                                         intent.putExtra("aid", tempAid);
                                         intent.putExtra("cid", targetCid);
+                                        intent.putExtra("online_mode", true);
+                                        intent.putExtra("part_index", tempPartIndex);
+                                        if (cidArray != null) {
+                                            intent.putExtra("cids", cidArray);
+                                            intent.putExtra("pagenames", partNameArray);
+                                        }
                                         putQualityExtras(intent, playerData);
                                         startActivity(intent);
                                     } else {
@@ -777,6 +795,11 @@ public class VideoDetailFragment extends Fragment {
                                     intent.putExtra("video_title", tempPartTitle);
                                     intent.putExtra("aid", tempAid);
                                     intent.putExtra("cid", targetCid);
+                                    intent.putExtra("part_index", tempPartIndex);
+                                    if (cidArray != null) {
+                                        intent.putExtra("cids", cidArray);
+                                        intent.putExtra("pagenames", partNameArray);
+                                    }
                                     putQualityExtras(intent, playerData);
                                     startActivity(intent);
                                 } else {
@@ -846,7 +869,7 @@ public class VideoDetailFragment extends Fragment {
             android.util.Log.e("VideoDetail", "读取entry.json失败: " + e.getMessage());
         }
 
-        String pageTitle = (videoInfo.pagenames != null && pageIndex < videoInfo.pagenames.size())
+        String pageTitle = (videoInfo.pagenames != null && videoInfo.pagenames.size() > 1 && pageIndex < videoInfo.pagenames.size())
                 ? videoInfo.pagenames.get(pageIndex) : videoInfo.title;
 
         Intent intent = new Intent(getActivity(), BiliPlayerActivity.class);

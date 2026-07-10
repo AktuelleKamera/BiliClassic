@@ -287,6 +287,44 @@ public class DeviceInfoUtil {
         return null;
     }
 
+    public static boolean isArmv5() {
+        if (!isArmeabiLegacy()) return false;
+        return "ARMv5te".equals(checkArmv5OrV6());
+    }
+
+    public static boolean isArmv6WithoutVfp() {
+        if (!isArmeabiLegacy()) return false;
+        return "ARMv6".equals(checkArmv5OrV6()) && !hasVfp();
+    }
+
+    public static boolean isLegacy = false;
+
+    public static boolean isUnsupportedCpu() {
+        return !isLegacy && (isArmv5() || isArmv6WithoutVfp());
+    }
+
+    private static boolean isArmeabiLegacy() {
+        String abi = Build.CPU_ABI;
+        return abi != null && abi.startsWith("armeabi") && !abi.contains("v7");
+    }
+
+    private static boolean hasVfp() {
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader("/proc/cpuinfo"));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.startsWith("Features") && line.contains("vfp")) {
+                    reader.close();
+                    return true;
+                }
+            }
+            reader.close();
+        } catch (Exception e) {
+            // 读不到就认为没有
+        }
+        return false;
+    }
+
     /**
      * 检测 ARMv5 还是 ARMv6（兼容 ARMv5TEJ 等格式）
      */

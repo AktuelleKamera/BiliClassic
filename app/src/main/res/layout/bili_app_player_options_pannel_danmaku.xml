@@ -5,110 +5,137 @@
     android:layout_width="280dp"
     android:layout_height="match_parent">
     <include layout="@layout/bili_view_closeable_bar"/>
+
     <ScrollView
-        android:scrollbarStyle="outsideOverlay"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:scrollbarStyle="outsideOverlay">
+
         <LinearLayout
-            android:orientation="vertical"
-            android:paddingLeft="10dp"
-            android:paddingRight="10dp"
-            android:paddingBottom="10dp"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="10dp"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
             <TextView
-                android:text="@string/Player_danmaku_options_pannel_title_danmaku_block"
-                style="@style/PlayerOptionsPannelItemTitle"/>
+                style="@style/PlayerOptionsPannelItemTitle"
+                android:text="@string/Player_danmaku_options_pannel_title_danmaku_block" />
+
             <LinearLayout
-                android:orientation="horizontal"
                 android:id="@+id/options_block_group"
-                android:paddingTop="3dp"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingTop="3dp">
+
                 <CheckBox
                     android:id="@+id/option_block_top"
+                    style="@style/PlayerOptionsPannelItemCheckbox"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/Player_danmaku_options_pannel_options_title_block_top"
                     android:drawableTop="@drawable/ic_btn_player_danmaku_options_block_top"
-                    style="@style/PlayerOptionsPannelItemCheckbox"/>
+                    android:text="@string/Player_danmaku_options_pannel_options_title_block_top" />
+
                 <CheckBox
                     android:id="@+id/option_block_scroll"
+                    style="@style/PlayerOptionsPannelItemCheckbox"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/Player_danmaku_options_pannel_options_title_block_rl"
                     android:drawableTop="@drawable/ic_btn_player_danmaku_options_block_rl"
-                    style="@style/PlayerOptionsPannelItemCheckbox"/>
+                    android:text="@string/Player_danmaku_options_pannel_options_title_block_rl" />
+
                 <CheckBox
                     android:id="@+id/option_block_bottom"
+                    style="@style/PlayerOptionsPannelItemCheckbox"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/Player_danmaku_options_pannel_options_title_block_bottom"
                     android:drawableTop="@drawable/ic_btn_player_danmaku_options_block_bottom"
-                    style="@style/PlayerOptionsPannelItemCheckbox"/>
+                    android:text="@string/Player_danmaku_options_pannel_options_title_block_bottom" />
+
                 <CheckBox
                     android:id="@+id/option_block_guest"
+                    style="@style/PlayerOptionsPannelItemCheckbox"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/Player_danmaku_options_pannel_options_title_block_tourist"
                     android:drawableTop="@drawable/ic_btn_player_danmaku_options_block_tourist"
-                    style="@style/PlayerOptionsPannelItemCheckbox"/>
+                    android:text="@string/Player_danmaku_options_pannel_options_title_block_tourist" />
+
                 <CheckBox
                     android:id="@+id/option_block_colorful"
+                    style="@style/PlayerOptionsPannelItemCheckbox"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/Player_danmaku_options_pannel_options_title_block_colorful"
                     android:drawableTop="@drawable/ic_btn_player_danmaku_options_block_colorful"
-                    style="@style/PlayerOptionsPannelItemCheckbox"/>
+                    android:text="@string/Player_danmaku_options_pannel_options_title_block_colorful" />
             </LinearLayout>
+
             <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingLeft="10dp"
-                android:paddingRight="13dp"
                 android:paddingBottom="3dp"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:paddingLeft="10dp"
+                android:paddingRight="13dp">
+
                 <TextView
-                    android:textSize="14sp"
-                    android:textColor="@color/videoplay__video_title_text"
-                    android:gravity="center_vertical"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
                     android:text="@string/Player_danmaku_options_pannel_title_danmaku_duplicate_merging_enable"
-                    android:layout_weight="1"/>
-                <include layout="@layout/danmaku_duplicate_merging_checkbox"/>
+                    android:textColor="@color/videoplay__video_title_text"
+                    android:textSize="14sp" />
+
+                <include layout="@layout/danmaku_duplicate_merging_checkbox" />
             </LinearLayout>
+
             <TextView
-                android:text="@string/Player_danmaku_options_pannel_title_danmaku_textsize"
-                style="@style/PlayerOptionsPannelItemTitle"/>
-            <include layout="@layout/bili_widget_label_seekbar"
-                android:id="@+id/option_danmaku_textsize"/>
+                style="@style/PlayerOptionsPannelItemTitle"
+                android:text="@string/Player_danmaku_options_pannel_title_danmaku_textsize" />
+
+            <include
+                android:id="@+id/option_danmaku_textsize"
+                layout="@layout/bili_widget_label_seekbar" />
+
             <TextView
-                android:text="@string/Player_danmaku_options_pannel_title_danmaku_stroke_width_scaling"
-                style="@style/PlayerOptionsPannelItemTitle"/>
-            <include layout="@layout/bili_widget_label_seekbar"
-                android:id="@+id/option_danmaku_stroke_width_scaling"/>
+                style="@style/PlayerOptionsPannelItemTitle"
+                android:text="@string/Player_danmaku_options_pannel_title_danmaku_stroke_width_scaling" />
+
+            <include
+                android:id="@+id/option_danmaku_stroke_width_scaling"
+                layout="@layout/bili_widget_label_seekbar" />
+
             <TextView
-                android:text="@string/Player_danmaku_options_pannel_title_danmaku_max_on_screen"
-                style="@style/PlayerOptionsPannelItemTitle"/>
-            <include layout="@layout/bili_widget_label_seekbar"
-                android:id="@+id/option_danmaku_max_on_screen"/>
+                style="@style/PlayerOptionsPannelItemTitle"
+                android:text="@string/Player_danmaku_options_pannel_title_danmaku_max_on_screen" />
+
+            <include
+                android:id="@+id/option_danmaku_max_on_screen"
+                layout="@layout/bili_widget_label_seekbar" />
+
             <TextView
-                android:text="@string/Player_danmaku_options_pannel_title_danmaku_speed_factor"
-                style="@style/PlayerOptionsPannelItemTitle"/>
-            <include layout="@layout/bili_widget_label_seekbar"
-                android:id="@+id/option_danmaku_scroll_speed_factor"/>
+                style="@style/PlayerOptionsPannelItemTitle"
+                android:text="@string/Player_danmaku_options_pannel_title_danmaku_speed_factor" />
+
+            <include
+                android:id="@+id/option_danmaku_scroll_speed_factor"
+                layout="@layout/bili_widget_label_seekbar" />
+
             <TextView
-                android:text="@string/Player_danmaku_options_pannel_title_danmaku_transparency"
-                style="@style/PlayerOptionsPannelItemTitle"/>
-            <include layout="@layout/bili_widget_label_seekbar"
-                android:id="@+id/option_danmaku_transparency"/>
+                style="@style/PlayerOptionsPannelItemTitle"
+                android:text="@string/Player_danmaku_options_pannel_title_danmaku_transparency" />
+
+            <include
+                android:id="@+id/option_danmaku_transparency"
+                layout="@layout/bili_widget_label_seekbar" />
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

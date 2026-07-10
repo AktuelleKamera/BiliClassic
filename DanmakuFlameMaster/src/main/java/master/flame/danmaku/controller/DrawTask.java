@@ -187,8 +187,7 @@ public class DrawTask implements IDrawTask {
 
     @Override
     public void reset() {
-        if (danmakus != null)
-            danmakus.clear();
+        mLastBeginMills = mLastEndMills = 0;
         if (mRenderer != null)
             mRenderer.clear();
     }
@@ -289,6 +288,9 @@ public class DrawTask implements IDrawTask {
     public void requestClear() {
         mLastBeginMills = mLastEndMills = 0;
         mIsHidden = false;
+    }
+
+    public void clearCache() {
     }
 
     public void requestClearRetainer() {

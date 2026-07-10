@@ -148,6 +148,14 @@ public class CacheManagingDrawTask extends DrawTask {
         mCacheManager.begin();
     }
 
+    @Override
+    public void clearCache() {
+        if (mCacheManager != null) {
+            mCacheManager.requestClearAll();
+            mCacheManager.requestBuild(-DanmakuFactory.MAX_DANMAKU_DURATION);
+        }
+    }
+
     public class CacheManager {
 
         @SuppressWarnings("unused")

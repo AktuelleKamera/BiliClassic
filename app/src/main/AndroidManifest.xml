@@ -105,7 +105,7 @@
         <activity
             android:name=".player.PlayerAnimActivity"
             android:hardwareAccelerated="false"
-            android:screenOrientation="landscape"
+            android:screenOrientation="sensor"
             android:configChanges="orientation|screenSize"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
 

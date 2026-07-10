@@ -48,6 +48,8 @@ public interface IDrawTask {
 
     public void requestClear();
 
+    public void clearCache();
+
     public void setParser(BaseDanmakuParser parser);
 
     public interface TaskListener {

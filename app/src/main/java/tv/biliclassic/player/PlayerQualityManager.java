@@ -149,15 +149,15 @@ public class PlayerQualityManager {
 
     public static String getQualityShortName(int qn) {
         switch (qn) {
-            case 6:  return "240P";
-            case 16: return "360P";
-            case 32: return "480P";
-            case 64: return "720P";
-            case 74: return "720P60";
-            case 80: return "1080P";
-            case 112: return "1080P+";
-            case 116: return "1080P60";
-            case 120: return "4K";
+            case 6:  return "极速"; //240P
+            case 16: return "流畅"; //360P
+            case 32: return "清晰"; //480P
+            case 64: return "高清"; //720P
+            case 74: return "高清60帧"; //720P60
+            case 80: return "超清"; //1080P
+            case 112: return "超清+"; //1080P+
+            case 116: return "超清60帧"; //1080P60
+            case 120: return "超高清"; //4K
             default: return qn > 0 ? (qn + "P") : "画质";
         }
     }

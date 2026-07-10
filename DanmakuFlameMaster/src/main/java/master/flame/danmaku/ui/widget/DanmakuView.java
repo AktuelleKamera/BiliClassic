@@ -483,6 +483,13 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
     }
 
     @Override
+    public void clearCache() {
+        if (handler != null) {
+            handler.clearCache();
+        }
+    }
+
+    @Override
     public void setOnDanmakuClickListener(OnDanmakuClickListener listener) {
         mOnDanmakuClickListener = listener;
         setClickable(null != listener);

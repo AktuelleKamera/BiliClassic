@@ -302,14 +302,28 @@ public class CommentFragment extends Fragment {
                     item.message = "";
                 }
 
-                JSONObject stat = reply.optJSONObject("stat");
-                if (stat != null) {
-                    item.likeCount = stat.optInt("like", 0);
-                } else {
-                    item.likeCount = 0;
-                }
+                item.likeCount = reply.optInt("like", 0);
 
                 item.time = reply.optLong("ctime", 0);
+
+                JSONArray replyReplies = reply.optJSONArray("replies");
+                if (replyReplies != null && replyReplies.length() > 0) {
+                    item.replies = new ArrayList<ReplyItem>();
+                    for (int j = 0; j < replyReplies.length(); j++) {
+                        try {
+                            JSONObject rr = replyReplies.getJSONObject(j);
+                            ReplyItem ri = new ReplyItem();
+                            JSONObject rmember = rr.optJSONObject("member");
+                            if (rmember != null) {
+                                ri.userName = rmember.optString("uname", "");
+                                ri.mid = rmember.optLong("mid", 0);
+                            }
+                            JSONObject rcontent = rr.optJSONObject("content");
+                            ri.message = rcontent != null ? rcontent.optString("message", "") : "";
+                            item.replies.add(ri);
+                        } catch (Exception e) { }
+                    }
+                }
 
                 items.add(item);
             } catch (Exception e) {
@@ -459,14 +473,28 @@ public class CommentFragment extends Fragment {
                     item.message = "";
                 }
 
-                JSONObject stat = reply.optJSONObject("stat");
-                if (stat != null) {
-                    item.likeCount = stat.optInt("like", 0);
-                } else {
-                    item.likeCount = 0;
-                }
+                item.likeCount = reply.optInt("like", 0);
 
                 item.time = reply.optLong("ctime", 0);
+
+                JSONArray replyReplies = reply.optJSONArray("replies");
+                if (replyReplies != null && replyReplies.length() > 0) {
+                    item.replies = new ArrayList<ReplyItem>();
+                    for (int j = 0; j < replyReplies.length(); j++) {
+                        try {
+                            JSONObject rr = replyReplies.getJSONObject(j);
+                            ReplyItem ri = new ReplyItem();
+                            JSONObject rmember = rr.optJSONObject("member");
+                            if (rmember != null) {
+                                ri.userName = rmember.optString("uname", "");
+                                ri.mid = rmember.optLong("mid", 0);
+                            }
+                            JSONObject rcontent = rr.optJSONObject("content");
+                            ri.message = rcontent != null ? rcontent.optString("message", "") : "";
+                            item.replies.add(ri);
+                        } catch (Exception e) { }
+                    }
+                }
 
                 items.add(item);
             } catch (Exception e) {
@@ -537,6 +565,12 @@ public class CommentFragment extends Fragment {
         });
     }
 
+    public static class ReplyItem {
+        public String userName;
+        public String message;
+        public long mid;
+    }
+
     public static class CommentItem {
         public long rpid;
         public String userName;
@@ -545,5 +579,6 @@ public class CommentFragment extends Fragment {
         public int likeCount;
         public long time;
         public long mid;
+        public List<ReplyItem> replies;
     }
 }

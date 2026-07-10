@@ -7,11 +7,17 @@ import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.TextPaint;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -45,7 +51,7 @@ public class CommentAdapter extends BaseAdapter {
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
 
     private boolean isScrolling = false;
-    private static final int MAX_CACHE_SIZE = 20;
+    private static final int MAX_CACHE_SIZE = 80;
 
     // 点击监听接口
     public interface OnUserClickListener {
@@ -91,6 +97,9 @@ public class CommentAdapter extends BaseAdapter {
 
     public void setScrolling(boolean scrolling) {
         this.isScrolling = scrolling;
+        if (!scrolling) {
+            notifyDataSetChanged();
+        }
     }
 
     public void reloadExecutor() {
@@ -123,6 +132,8 @@ public class CommentAdapter extends BaseAdapter {
             holder.message = (TextView) convertView.findViewById(R.id.message);
             holder.likeCount = (TextView) convertView.findViewById(R.id.like_count);
             holder.time = (TextView) convertView.findViewById(R.id.time);
+            holder.repliesContainer = (LinearLayout) convertView.findViewById(R.id.replies_container);
+            holder.repliesText = (TextView) convertView.findViewById(R.id.replies_text);
             convertView.setTag(holder);
         } else {
             holder = (ViewHolder) convertView.getTag();
@@ -133,10 +144,46 @@ public class CommentAdapter extends BaseAdapter {
         holder.message.setText(item.message);
         holder.likeCount.setText(String.valueOf(item.likeCount));
 
-        SimpleDateFormat sdf = new SimpleDateFormat("MM-dd HH:mm", Locale.CHINA);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA);
         holder.time.setText(sdf.format(new Date(item.time * 1000)));
         holder.avatar.setImageResource(R.drawable.bili_default_avatar);
         addAvatarBorder(holder.avatar);
+
+        List<CommentFragment.ReplyItem> replies = item.replies;
+        if (replies != null && !replies.isEmpty()) {
+            holder.repliesContainer.setVisibility(View.VISIBLE);
+            SpannableStringBuilder ssb = new SpannableStringBuilder();
+            for (int i = 0; i < replies.size(); i++) {
+                CommentFragment.ReplyItem ri = replies.get(i);
+                if (i > 0) ssb.append("\n");
+                int start = ssb.length();
+                String uname = ri.userName != null ? ri.userName : "";
+                ssb.append(uname);
+                ssb.append(": ");
+                final long mid = ri.mid;
+                ssb.setSpan(new ClickableSpan() {
+                    @Override
+                    public void onClick(View widget) {
+                        if (mid != 0) {
+                            Intent intent = new Intent(context, UserProfileActivity.class);
+                            intent.putExtra("mid", mid);
+                            context.startActivity(intent);
+                        } else {
+                            Toast.makeText(context, "无法获取用户信息", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                    @Override
+                    public void updateDrawState(TextPaint ds) {
+                        ds.setUnderlineText(false);
+                    }
+                }, start, start + uname.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                ssb.append(ri.message != null ? ri.message : "");
+            }
+            holder.repliesText.setText(ssb);
+            holder.repliesText.setMovementMethod(LinkMovementMethod.getInstance());
+        } else {
+            holder.repliesContainer.setVisibility(View.GONE);
+        }
 
         // ========== 点击头像或用户名进入用户主页 ==========
         final long mid = item.mid;
@@ -158,10 +205,6 @@ public class CommentAdapter extends BaseAdapter {
         holder.avatar.setOnClickListener(userClickListener);
         holder.userName.setOnClickListener(userClickListener);
 
-        if (isScrolling) {
-            return convertView;
-        }
-
         if (item.userAvatar != null && item.userAvatar.length() > 0) {
             final String avatarUrl = item.userAvatar;
             final ImageView avatarView = holder.avatar;
@@ -181,6 +224,11 @@ public class CommentAdapter extends BaseAdapter {
                 }
             }
 
+            // 滑动时跳过网络下载，等滑动停止后再加载
+            if (isScrolling) {
+                return convertView;
+            }
+
             Boolean isLoading = loadingMap.get(currentPos);
             if (isLoading != null && isLoading) {
                 return convertView;
@@ -190,21 +238,24 @@ public class CommentAdapter extends BaseAdapter {
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    final Bitmap bitmap = downloadImage(avatarUrl);
-                    loadingMap.remove(currentPos);
-
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        addToCache(avatarUrl, bitmap);
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                Object tag = avatarView.getTag();
-                                if (tag != null && tag.equals(avatarUrl)) {
-                                    avatarView.setImageBitmap(bitmap);
-                                    addAvatarBorder(avatarView);
+                    try {
+                        final Bitmap bitmap = downloadImage(avatarUrl);
+                        if (bitmap != null && !bitmap.isRecycled()) {
+                            addToCache(avatarUrl, bitmap);
+                            mainHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Object tag = avatarView.getTag();
+                                    if (tag != null && tag.equals(avatarUrl)) {
+                                        avatarView.setImageBitmap(bitmap);
+                                        addAvatarBorder(avatarView);
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
+                    } catch (Exception e) {
+                    } finally {
+                        loadingMap.remove(currentPos);
                     }
                 }
             });
@@ -283,8 +334,6 @@ public class CommentAdapter extends BaseAdapter {
             options = new BitmapFactory.Options();
             options.inSampleSize = scale;
             options.inPreferredConfig = Bitmap.Config.RGB_565;
-            options.inPurgeable = true;
-            options.inInputShareable = true;
 
             Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
             is.close();
@@ -322,5 +371,7 @@ public class CommentAdapter extends BaseAdapter {
         TextView message;
         TextView likeCount;
         TextView time;
+        LinearLayout repliesContainer;
+        TextView repliesText;
     }
 }

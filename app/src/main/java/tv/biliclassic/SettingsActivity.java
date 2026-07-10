@@ -18,6 +18,7 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -91,6 +92,10 @@ public class SettingsActivity extends BaseActivity {
     private TextView defaultTabText;
     private LinearLayout videoQualityItem;
     private TextView videoQualityText;
+
+    private TextView echoHoleText;
+    private LinearLayout echoHoleItem;
+    private int mLastEchoIndex = -1;
 
     private TextView crashLogSizeText;
     private LinearLayout clearCrashLogItem;
@@ -321,6 +326,19 @@ public class SettingsActivity extends BaseActivity {
             });
         }
 
+        // 回声洞
+        echoHoleText = (TextView) findViewById(R.id.echo_hole_text);
+        echoHoleItem = (LinearLayout) findViewById(R.id.echo_hole_item);
+
+        if (echoHoleItem != null) {
+            echoHoleItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    loadEchoHole();
+                }
+            });
+        }
+
         // 播放器选择
         playerChoiceItem = (LinearLayout) findViewById(R.id.player_choice_item);
         playerChoiceText = (TextView) findViewById(R.id.player_choice_text);
@@ -356,6 +374,36 @@ public class SettingsActivity extends BaseActivity {
                 @Override
                 public void onClick(View v) {
                     startActivity(new Intent(SettingsActivity.this, DecoderSettingsActivity.class));
+                }
+            });
+        }
+
+        // 视频渲染方式选择 - 仅 API 14+ 可用
+        LinearLayout rendererTypeItem = (LinearLayout) findViewById(R.id.renderer_type_item);
+        final TextView rendererTypeText = (TextView) findViewById(R.id.renderer_type_text);
+        if (rendererTypeItem != null && rendererTypeText != null) {
+            if (Build.VERSION.SDK_INT < 14) {
+                rendererTypeItem.setVisibility(View.GONE);
+            } else {
+                updateRendererTypeDisplay(rendererTypeText);
+                rendererTypeItem.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showRendererTypeDialog(rendererTypeText);
+                    }
+                });
+            }
+        }
+
+        // 弹幕引擎选择
+        LinearLayout danmakuEngineItem = (LinearLayout) findViewById(R.id.danmaku_engine_item);
+        final TextView danmakuEngineText = (TextView) findViewById(R.id.danmaku_engine_text);
+        if (danmakuEngineItem != null && danmakuEngineText != null) {
+            updateDanmakuEngineDisplay(danmakuEngineText);
+            danmakuEngineItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showDanmakuEngineDialog(danmakuEngineText);
                 }
             });
         }
@@ -624,6 +672,77 @@ public class SettingsActivity extends BaseActivity {
 
     public static int getVideoQuality() {
         return SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY, QUALITY_360P);
+    }
+
+    // 获取渲染方式
+    public static int getRendererType() {
+        if (Build.VERSION.SDK_INT < 14) {
+            return 0; // TextureView 需要 API 14+
+        }
+        return SharedPreferencesUtil.getInt(SharedPreferencesUtil.RENDERER_TYPE, 0);
+    }
+
+    // 渲染方式选择
+    private void showRendererTypeDialog(final TextView textView) {
+        final String[] modes = {"SurfaceView", "TextureView"};
+        final int[] values = {0, 1};
+        int current = getRendererType();
+
+        int checkedIndex = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == current) {
+                checkedIndex = i;
+                break;
+            }
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("视频渲染方式")
+                .setSingleChoiceItems(modes, checkedIndex, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        SharedPreferencesUtil.putInt(SharedPreferencesUtil.RENDERER_TYPE, values[which]);
+                        updateRendererTypeDisplay(textView);
+                        Toast.makeText(SettingsActivity.this,
+                                "已切换为: " + modes[which],
+                                Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void updateRendererTypeDisplay(TextView textView) {
+        int type = getRendererType();
+        textView.setText(type == 1 ? "TextureView" : "SurfaceView");
+    }
+
+    // 弹幕引擎选择
+    private void showDanmakuEngineDialog(final TextView textView) {
+        final String[] modes = {"完整版（DanmakuFlameMaster）", "简易版（BT-5弹幕引擎）"};
+        int current = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, 0);
+        int checkedIndex = Math.min(current, 1);
+
+        new AlertDialog.Builder(this)
+                .setTitle("弹幕引擎")
+                .setSingleChoiceItems(modes, checkedIndex, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        SharedPreferencesUtil.putInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, which);
+                        updateDanmakuEngineDisplay(textView);
+                        Toast.makeText(SettingsActivity.this,
+                                "已切换为: " + modes[which],
+                                Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void updateDanmakuEngineDisplay(TextView textView) {
+        int mode = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, 0);
+        textView.setText(mode == 1 ? "简易版（BT-5弹幕引擎）" : "完整版");
     }
 
     // 默认首页选择
@@ -1380,6 +1499,79 @@ public class SettingsActivity extends BaseActivity {
         } catch (Exception e) {
             Toast.makeText(this, "删除失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    // 回声洞
+    private void loadEchoHole() {
+        echoHoleText.setText("加载中...");
+        echoHoleItem.setEnabled(false);
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    URL url = new URL("http://www.biliclassic.cn/api/echo.json");
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(10000);
+                    conn.setRequestMethod("GET");
+                    java.io.BufferedReader reader = new java.io.BufferedReader(
+                            new java.io.InputStreamReader(conn.getInputStream(), "UTF-8"));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line);
+                    }
+                    reader.close();
+                    final String jsonStr = sb.toString();
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            echoHoleText.setText("随一个");
+                            echoHoleItem.setEnabled(true);
+                            if (isFinishing()) return;
+                            try {
+                                JSONArray arr = new JSONArray(jsonStr);
+                                if (arr.length() > 0) {
+                                    int idx = (int) (Math.random() * arr.length());
+                                    if (arr.length() > 1) {
+                                        while (idx == mLastEchoIndex) {
+                                            idx = (int) (Math.random() * arr.length());
+                                        }
+                                    }
+                                    mLastEchoIndex = idx;
+                                    JSONObject item = arr.getJSONObject(idx);
+                                    String text = item.optString("text", "");
+                                    String author = item.optString("author", "匿名");
+                                    String device = item.optString("device", null);
+                                    String time = item.optString("time", "未知");
+                                    String msg = text + "\n\n" + author;
+                                    if (device != null && device.length() > 0) {
+                                        msg += "\n来自 " + device;
+                                    }
+                                    msg += "\n" + time;
+                                    new AlertDialog.Builder(SettingsActivity.this)
+                                            .setTitle("回声洞")
+                                            .setMessage(msg)
+                                            .setPositiveButton("关闭", null)
+                                            .show();
+                                } else {
+                                    Toast.makeText(SettingsActivity.this, "回声洞暂无内容", Toast.LENGTH_SHORT).show();
+                                }
+                            } catch (JSONException e) {
+                                Toast.makeText(SettingsActivity.this, "解析失败", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    });
+                } catch (final Exception e) {
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            if (isFinishing()) return;
+                            echoHoleText.setText("随一个");
+                            echoHoleItem.setEnabled(true);
+                            Toast.makeText(SettingsActivity.this, "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            }
+        }).start();
     }
 
     // 检查更新（使用 UpdateUtil）

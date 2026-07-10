@@ -190,7 +190,7 @@ public class VideoDetailActivity extends BaseActivity {
         ImageView btnDownload = (ImageView) findViewById(R.id.btn_download);
         if (btnDownload != null) {
             if (mOfflineMode) {
-                btnDownload.setImageResource(android.R.drawable.ic_menu_delete);
+                btnDownload.setImageResource(R.drawable.ic_action_delete);
                 btnDownload.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {

@@ -13,9 +13,12 @@
         android:drawable="@drawable/ic_ar_16_9_inside"
         android:maxLevel="3"/>
     <item
-        android:drawable="@drawable/ic_ar_4_3_crop"
+        android:drawable="@drawable/ic_ar_9_16_inside"
         android:maxLevel="4"/>
     <item
-        android:drawable="@drawable/ic_ar_16_9_crop"
+        android:drawable="@drawable/ic_ar_4_3_crop"
         android:maxLevel="5"/>
+    <item
+        android:drawable="@drawable/ic_ar_16_9_crop"
+        android:maxLevel="6"/>
 </level-list>

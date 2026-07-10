@@ -4,12 +4,11 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:contentDescription="@string/ACD_VideoRoot">
-    <SurfaceView
+    <FrameLayout
+        android:id="@+id/video_container"
         android:layout_gravity="center"
-        android:id="@+id/video_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:keepScreenOn="true"
         android:contentDescription="@string/ACD_VideoView"/>
     <View
         android:id="@+id/controller_underlay"
@@ -68,4 +67,8 @@
         android:contentDescription="@string/ACD_PreloadingView"
         layout="@layout/bili_app_player_preloading"/>
     <include layout="@layout/bili_app_player_media_level_bar2"/>
+    <include
+        android:id="@+id/comment_overlay"
+        android:visibility="gone"
+        layout="@layout/bili_app_player_comment_overlay"/>
 </FrameLayout>

@@ -30,6 +30,7 @@ import java.util.regex.Pattern;
 import tv.biliclassic.api.ConfInfoApi;
 import tv.biliclassic.api.BilibiliIDConverter;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.StringUtil;
 
@@ -627,7 +628,7 @@ public class SearchActivity extends BaseActivity {
         isLoading = false;
 
         if (retryLeft > 0 && (code == -400 || message.contains("sign") || message.contains("wbi"))) {
-            Toast.makeText(this, "签名验证失败，正在重试...", Toast.LENGTH_SHORT).show();
+            MsgUtil.showMsg(this, "签名验证失败，正在重试...");
             retryHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -637,7 +638,7 @@ public class SearchActivity extends BaseActivity {
         } else {
             showEmptyResult();
             emptyView.setText("API错误(" + code + "): " + message);
-            Toast.makeText(this, "搜索失败: " + message, Toast.LENGTH_SHORT).show();
+            MsgUtil.showMsg(this, "搜索失败: " + message);
         }
     }
 
@@ -647,7 +648,7 @@ public class SearchActivity extends BaseActivity {
         boolean isNetworkError = errMsg != null && (errMsg.contains("Transport endpoint") || errMsg.contains("No route") || errMsg.contains("timeout"));
 
         if (retryLeft > 0 && isNetworkError) {
-            Toast.makeText(this, "网络异常，正在重试...(" + retryLeft + ")", Toast.LENGTH_SHORT).show();
+            MsgUtil.showMsg(this, "网络异常，正在重试...(" + retryLeft + ")");
             retryHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
@@ -657,7 +658,7 @@ public class SearchActivity extends BaseActivity {
         } else {
             showEmptyResult();
             emptyView.setText("请求失败: " + (errMsg != null ? errMsg : "请检查网络"));
-            Toast.makeText(this, "请求失败: " + (errMsg != null ? errMsg : "请检查网络"), Toast.LENGTH_SHORT).show();
+            MsgUtil.showMsg(this, "请求失败: " + (errMsg != null ? errMsg : "请检查网络"));
         }
     }
 

@@ -444,6 +444,97 @@
 
             </LinearLayout>
 
+            <!-- 视频渲染方式选择 -->
+            <LinearLayout
+                android:id="@+id/renderer_type_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="#FFFFFF"
+                android:padding="12dp"
+                android:layout_marginTop="4dp"
+                android:clickable="true">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="视频渲染方式"
+                        android:textSize="15sp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="切换 SurfaceView / TextureView"
+                        android:textSize="11sp"
+                        android:textColor="#999999" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/renderer_type_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SurfaceView"
+                    android:textSize="13sp"
+                    android:textColor="#999999"
+                    android:layout_marginRight="8dp"
+                    android:layout_gravity="center_vertical" />
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center_vertical"
+                    android:src="@android:drawable/ic_menu_edit"
+                    android:contentDescription="选择" />
+
+            </LinearLayout>
+
+            <!-- 弹幕引擎选择 -->
+            <LinearLayout
+                android:id="@+id/danmaku_engine_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="#FFFFFF"
+                android:padding="12dp"
+                android:layout_marginTop="4dp"
+                android:clickable="true">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="弹幕引擎"
+                    android:textSize="15sp"
+                    android:textColor="#333333" />
+
+                <TextView
+                    android:id="@+id/danmaku_engine_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="完整版"
+                    android:textSize="13sp"
+                    android:textColor="#999999"
+                    android:layout_marginRight="8dp"
+                    android:layout_gravity="center_vertical" />
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center_vertical"
+                    android:src="@android:drawable/ic_menu_edit"
+                    android:contentDescription="选择" />
+
+            </LinearLayout>
+
             <!-- 播放器详细说明 -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -817,6 +908,67 @@
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
                 android:text="导出需登录，导入无需"
+                android:textSize="11sp"
+                android:textColor="#999999" />
+
+            <!-- 分隔线 -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="12dp"
+                android:background="#E0E0E0" />
+
+            <!-- 回声洞 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="回声洞"
+                android:textSize="15sp"
+                android:textColor="#333333"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/echo_hole_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="#FFFFFF"
+                android:padding="12dp"
+                android:clickable="true">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="回声洞"
+                    android:textSize="15sp"
+                    android:textColor="#333333" />
+
+                <TextView
+                    android:id="@+id/echo_hole_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="随一个"
+                    android:textSize="13sp"
+                    android:textColor="#999999"
+                    android:layout_marginRight="8dp" />
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@android:drawable/ic_menu_myplaces"
+                    android:contentDescription="回声洞" />
+
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginLeft="12dp"
+                android:layout_marginRight="12dp"
+                android:text="从服务器随机获取一条历史留言"
                 android:textSize="11sp"
                 android:textColor="#999999" />
 
