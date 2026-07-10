@@ -40,6 +40,7 @@
                 android:singleLine="true"
                 style="@style/PlayerControlBarButton"/>
             <tv.biliclassic.widget.BatteryView2
+                android:id="@+id/battery_view"
                 android:focusable="false"
                 android:layout_width="29dp"
                 android:layout_height="10dp"
@@ -104,16 +105,17 @@
                 android:contentDescription="@null"
                 android:src="@drawable/bili_player_back_button" />
 
-            <TextView
+            <tv.biliclassic.widget.MarqueeTextView
                 android:textSize="17sp"
                 android:textColor="@color/videoplay__video_title_text"
                 android:ellipsize="marquee"
-                android:gravity="center"
+                android:gravity="left|center_vertical"
                 android:id="@+id/title"
                 android:paddingRight="50dp"
-                android:focusable="false"
-                android:layout_width="wrap_content"
+                android:background="@null"
+                android:layout_width="0dp"
                 android:layout_height="match_parent"
+                android:layout_weight="1"
                 android:singleLine="true"
                 android:marqueeRepeatLimit="0"
                 style="@style/PlayerControlBarButton"/>

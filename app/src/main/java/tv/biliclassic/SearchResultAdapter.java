@@ -92,7 +92,7 @@ public class SearchResultAdapter extends BaseAdapter {
         ViewHolder holder;
 
         if (convertView == null) {
-            convertView = LayoutInflater.from(context).inflate(R.layout.search_result_item, parent, false);
+            convertView = LayoutInflater.from(context).inflate(R.layout.item_search_result, parent, false);
             holder = new ViewHolder();
             holder.title = (TextView) convertView.findViewById(R.id.title);
             holder.author = (TextView) convertView.findViewById(R.id.author);

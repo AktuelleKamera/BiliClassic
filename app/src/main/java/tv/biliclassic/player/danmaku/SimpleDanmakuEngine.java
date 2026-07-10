@@ -130,7 +130,7 @@ public class SimpleDanmakuEngine extends View {
     }
 
     public void start() {
-        if (mItems == null || mItems.isEmpty() || mLoaded) return;
+        if (mItems == null || mItems.size() == 0 || mLoaded) return;
         mLoaded = true;
         mVisible = true;
         mRunning = true;
@@ -155,11 +155,9 @@ public class SimpleDanmakuEngine extends View {
             public void run() {
                 Log.e(TAG, "render thread started");
                 while (!mStopped) {
-                    if (mRunning && mVisible) {
+                    if (mRunning && mVisible && !mPaused) {
                         postInvalidate();
-                        if (!mPaused) {
-                            prepareBitmaps();
-                        }
+                        prepareBitmaps();
                     }
                     try { Thread.sleep(FRAME_MS); } catch (InterruptedException e) { break; }
                 }
@@ -177,7 +175,7 @@ public class SimpleDanmakuEngine extends View {
     }
 
     private void preloadBitmaps(long positionMs) {
-        if (mItems == null || mItems.isEmpty()) return;
+        if (mItems == null || mItems.size() == 0) return;
         final float t = positionMs / 1000f;
         int start = mItemIndex;
         while (start > 0 && start <= mItems.size() && mItems.get(start - 1).time > t - 1f) start--;
@@ -255,7 +253,7 @@ public class SimpleDanmakuEngine extends View {
     }
 
     private void warmUp() {
-        if (mItems == null || mItems.isEmpty() || mTimeProvider == null) return;
+        if (mItems == null || mItems.size() == 0 || mTimeProvider == null) return;
         mVideoPosition = Math.max(0, mTimeProvider.getCurrentPosition());
         float t = mVideoPosition / 1000f;
         // 预创建当前位置附近前 100 条弹幕的 Bitmap
@@ -295,7 +293,7 @@ public class SimpleDanmakuEngine extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (!mVisible || mItems == null || mItems.isEmpty()) return;
+        if (!mVisible || mItems == null || mItems.size() == 0 || mPaused) return;
 
         int w = getWidth();
         int h = getHeight();
@@ -377,7 +375,7 @@ public class SimpleDanmakuEngine extends View {
     }
 
     private void prepareBitmaps() {
-        if (mItems == null || mItems.isEmpty()) return;
+        if (mItems == null || mItems.size() == 0) return;
         float t = mVideoPosition / 1000f;
         int start = mItemIndex;
         while (start > 0 && start <= mItems.size() && mItems.get(start - 1).time > t - 1f) start--;

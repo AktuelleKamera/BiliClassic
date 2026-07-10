@@ -9,11 +9,10 @@
     android:minHeight="40dp">
     <SeekBar
         android:id="@+id/seekbar"
+        style="@style/Widget.App.Seekbar.Pink"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:maxHeight="8dp"
-        android:minHeight="8dp"/>
+        android:layout_weight="1"/>
     <TextView
         android:id="@+id/label"
         android:textSize="12sp"

@@ -146,7 +146,7 @@ public class VideoDownloadManager {
             }
         }
         // 如果队列和当前任务都空了，取消通知
-        if (mCurrentTask == null && mPendingTasks.isEmpty()) {
+        if (mCurrentTask == null && mPendingTasks.size() == 0) {
             cancelProgressNotification();
         }
     }

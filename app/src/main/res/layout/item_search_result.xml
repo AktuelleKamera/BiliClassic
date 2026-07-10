@@ -7,8 +7,8 @@
     android:background="#F5F5F5">
 
     <FrameLayout
-        android:layout_width="90dp"
-        android:layout_height="60dp"
+        android:layout_width="100dp"
+        android:layout_height="70dp"
         android:background="#FFFFFF"
         android:padding="2dp">
 

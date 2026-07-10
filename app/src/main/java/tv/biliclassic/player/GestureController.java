@@ -1,6 +1,7 @@
 package tv.biliclassic.player;
 
 import android.app.Activity;
+import android.content.pm.ActivityInfo;
 import android.os.Build;
 import android.os.Handler;
 import android.util.DisplayMetrics;
@@ -74,6 +75,15 @@ public class GestureController {
     private TextView mSpeedTipText;
     private boolean mSpeedTipShowing = false;
 
+    // 缩放相关
+    private float mCurrentScale = 1.0f;
+    private float mMinScale = 1.0f;
+    private float mMaxScale = 3.0f;
+    private float mScaleStartDistance = 0;
+    private float mScaleStartScale = 1.0f;
+    private boolean mIsPinching = false;
+    private OnScaleChangeListener mScaleChangeListener;
+
     private Runnable mLongPressRunnable = new Runnable() {
         @Override
         public void run() {
@@ -87,6 +97,12 @@ public class GestureController {
             }
         }
     };
+
+    // 缩放回调接口
+    public interface OnScaleChangeListener {
+        void onScaleChange(float scale);
+        void onScaleReset();
+    }
 
     public interface OnGestureActionListener {
         void onToggleControls();
@@ -285,8 +301,8 @@ public class GestureController {
         int viewHeight = mGestureView.getHeight();
         if (viewWidth <= 0 || viewHeight <= 0) {
             DisplayMetrics dm = mActivity.getResources().getDisplayMetrics();
-            viewWidth = Math.max(dm.widthPixels, dm.heightPixels);
-            viewHeight = Math.min(dm.widthPixels, dm.heightPixels);
+            viewWidth = dm.widthPixels;
+            viewHeight = dm.heightPixels;
             Log.d(TAG, "使用 DisplayMetrics: " + viewWidth + "x" + viewHeight);
         }
         mGestureWidth = viewWidth;
@@ -300,9 +316,13 @@ public class GestureController {
 
         mGestureListener = new GestureListener();
         mGestureScanner = new GestureDetector(mActivity, mGestureListener);
+
         mGestureView.setOnTouchListener(new View.OnTouchListener() {
             public boolean onTouch(View v, MotionEvent event) {
                 mTouchingView = v;
+                if (event.getPointerCount() >= 2) {
+                    return handlePinchZoom(event);
+                }
                 if (mGestureScanner != null) {
                     return mGestureScanner.onTouchEvent(event);
                 }
@@ -315,6 +335,9 @@ public class GestureController {
             preloadingView.setOnTouchListener(new View.OnTouchListener() {
                 public boolean onTouch(View v, MotionEvent event) {
                     mTouchingView = v;
+                    if (event.getPointerCount() >= 2) {
+                        return handlePinchZoom(event);
+                    }
                     if (mGestureScanner != null) {
                         return mGestureScanner.onTouchEvent(event);
                     }
@@ -322,6 +345,19 @@ public class GestureController {
                 }
             });
         }
+    }
+
+    public void onOrientationChanged() {
+        DisplayMetrics dm = mActivity.getResources().getDisplayMetrics();
+        boolean portrait = mActivity.getRequestedOrientation() == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+        if (portrait) {
+            mGestureWidth = Math.min(dm.widthPixels, dm.heightPixels);
+            mGestureHeight = Math.max(dm.widthPixels, dm.heightPixels);
+        } else {
+            mGestureWidth = dm.widthPixels;
+            mGestureHeight = dm.heightPixels;
+        }
+        Log.d(TAG, "方向改变，手势区域更新: " + mGestureWidth + "x" + mGestureHeight);
     }
 
     public boolean onTouchEvent(MotionEvent event) {
@@ -419,6 +455,90 @@ public class GestureController {
         return mMaxSeekableValue;
     }
 
+
+    // 缩放手势
+
+    // 设置缩放监听
+    public void setOnScaleChangeListener(OnScaleChangeListener listener) {
+        mScaleChangeListener = listener;
+    }
+
+    // 设置最大缩放倍数
+    public void setMaxScale(float maxScale) {
+        mMaxScale = maxScale;
+    }
+
+    // 获取当前缩放
+    public float getCurrentScale() {
+        return mCurrentScale;
+    }
+
+    // 重置缩放
+    public void resetScale() {
+        if (mScaleChangeListener != null && mCurrentScale != 1.0f) {
+            mCurrentScale = 1.0f;
+            mScaleChangeListener.onScaleReset();
+        }
+    }
+
+    // 计算两个手指之间的距离
+    private float getFingerDistance(MotionEvent event) {
+        float x = event.getX(0) - event.getX(1);
+        float y = event.getY(0) - event.getY(1);
+        return (float) Math.sqrt(x * x + y * y);
+    }
+
+    // 处理双指缩放手势
+    private boolean handlePinchZoom(MotionEvent event) {
+        if (mScaleChangeListener == null) {
+            Log.d(TAG, "handlePinchZoom: mScaleChangeListener is null");
+            return false;
+        }
+        if (event.getPointerCount() < 2) {
+            mIsPinching = false;
+            return false;
+        }
+
+        int action = event.getAction() & MotionEvent.ACTION_MASK;
+        switch (action) {
+            case MotionEvent.ACTION_POINTER_DOWN:
+                mScaleStartDistance = getFingerDistance(event);
+                mScaleStartScale = mCurrentScale;
+                mIsPinching = true;
+                Log.d(TAG, "开始缩放: startDistance=" + mScaleStartDistance + ", startScale=" + mScaleStartScale);
+                return true;
+
+            case MotionEvent.ACTION_MOVE:
+                if (!mIsPinching) return false;
+                float currentDistance = getFingerDistance(event);
+                if (currentDistance == 0) return false;
+
+                float scale = currentDistance / mScaleStartDistance;
+                float newScale = mScaleStartScale * scale;
+
+                // 限制缩放范围
+                if (newScale < mMinScale) newScale = mMinScale;
+                if (newScale > mMaxScale) newScale = mMaxScale;
+
+                if (newScale != mCurrentScale) {
+                    mCurrentScale = newScale;
+                    Log.d(TAG, "缩放中: scale=" + mCurrentScale);
+                    mScaleChangeListener.onScaleChange(mCurrentScale);
+                }
+                return true;
+
+            case MotionEvent.ACTION_POINTER_UP:
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                mIsPinching = false;
+                Log.d(TAG, "缩放结束: finalScale=" + mCurrentScale);
+                return true;
+        }
+        return false;
+    }
+
+    // 手势监听器
+
     private class GestureListener extends GestureDetector.SimpleOnGestureListener {
 
         private Runnable mHideUIRunnable = new Runnable() {
@@ -430,6 +550,8 @@ public class GestureController {
 
         public boolean onDown(MotionEvent e) {
             Log.d(TAG, "onDown");
+            // 重置缩放状态
+            mIsPinching = false;
             updateCurrentPositionForGesture();
             hideBarControllers(0);
             startBrightnessChange();
@@ -458,6 +580,22 @@ public class GestureController {
             Log.d(TAG, "onDoubleTap");
             // 取消长按计时
             mLongPressHandler.removeCallbacks(mLongPressRunnable);
+            // 双击重置缩放
+            if (mScaleChangeListener != null && mCurrentScale != 1.0f) {
+                mCurrentScale = 1.0f;
+                mScaleChangeListener.onScaleReset();
+                // 显示提示
+                if (mToastViewHolder != null) {
+                    android.widget.FrameLayout rootView = (android.widget.FrameLayout)
+                            mActivity.findViewById(android.R.id.content);
+                    if (rootView != null) {
+                        mToastViewHolder.initView(mActivity, rootView);
+                        mToastViewHolder.show("已重置", 1000, false);
+                    }
+                }
+                return true;
+            }
+            // 没有缩放时，切换播放/暂停
             if (mListener != null) {
                 mListener.onTogglePlayPause();
             }
@@ -467,6 +605,11 @@ public class GestureController {
         public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
             if (e1 == null || e2 == null) return false;
             if (!enableGesture) return false;
+
+            // 检查是否有两个手指（缩放手势由外部处理）
+            if (e2.getPointerCount() >= 2) {
+                return false;
+            }
 
             float startX = e1.getX();
             if (startX < mGestureWidth * 0.01f || startX > mGestureWidth * 0.95f) return true;

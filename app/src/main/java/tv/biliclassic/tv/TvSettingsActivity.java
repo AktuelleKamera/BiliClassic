@@ -850,7 +850,7 @@ public class TvSettingsActivity extends FragmentActivity {
     // ---- 关于 ----
 
     private void showAboutDialog() {
-        String version = "0.4.1";
+        String version = "0.4.2";
         try { version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) {}
         new AlertDialog.Builder(this)
                 .setTitle("关于")

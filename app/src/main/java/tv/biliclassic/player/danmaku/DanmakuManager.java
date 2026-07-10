@@ -73,6 +73,7 @@ public class DanmakuManager {
     private boolean mVideoPrepared;
     private boolean mSeekPending;
     private long mSeekTarget;
+    private boolean mReleased;
 
     private PopupWindow mOptionsPanel;
     private ViewStub mInputStub;
@@ -198,6 +199,7 @@ public class DanmakuManager {
     }
 
     public void release() {
+        mReleased = true;
         dismissAllPanels();
         if (mSimpleEngine != null) {
             mSimpleEngine.releaseDanmaku();
@@ -468,13 +470,16 @@ public class DanmakuManager {
             public void run() {
                 try {
                     downloadDanmakuXml();
-                    mActivity.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() { prepareDanmakuParser(); }
-                    });
+                    if (!mReleased) {
+                        mActivity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (!mReleased) prepareDanmakuParser();
+                            }
+                        });
+                    }
                 } catch (final Exception e) {
                     android.util.Log.e("DanmakuManager", "弹幕加载失败: " + e.getMessage());
-                    e.printStackTrace();
                 }
             }
         }).start();
@@ -583,9 +588,10 @@ public class DanmakuManager {
             IDataSource<?> dataSource = loader.getDataSource();
             parser.load(dataSource);
 
-            mDanmakuView.setCallback(new DrawHandler.Callback() {
+                    mDanmakuView.setCallback(new DrawHandler.Callback() {
                 @Override
                 public void prepared() {
+                    if (mReleased || mDanmakuView == null) return;
                     android.util.Log.e("DanmakuManager", "弹幕引擎准备完毕");
                     mLoaded = true;
                     if (mEnabled) mDanmakuView.start();

@@ -25,11 +25,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStub;
 import android.view.WindowManager;
+import android.widget.AbsListView;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.PopupWindow;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
@@ -39,19 +41,27 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
+import tv.biliclassic.CommentAdapter;
+import tv.biliclassic.CommentFragment;
 import tv.biliclassic.R;
 import tv.biliclassic.SettingsActivity;
+import tv.biliclassic.UserProfileActivity;
 import tv.biliclassic.api.PlayerApi;
 import tv.biliclassic.model.PlayerData;
 import tv.biliclassic.player.danmaku.DanmakuManager;
 import tv.biliclassic.subsettings.DecoderSettingsActivity;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.widget.MarqueeTextView;
 import tv.biliclassic.widget.RadioGridGroup;
 import tv.danmaku.ijk.media.player.AndroidMediaPlayer;
 import tv.danmaku.ijk.media.player.IMediaPlayer;
@@ -71,7 +81,7 @@ public class BiliPlayerActivity extends Activity implements
     private static final int MSG_HIDE_CONTROLS = 1;
     private static final int MSG_UPDATE_PROGRESS = 2;
     private static final int MSG_UPDATE_TIME = 3;
-    private static final int CONTROL_HIDE_DELAY = 2000;
+    private static final int CONTROL_HIDE_DELAY = 3000;
     private static final int PROGRESS_UPDATE_INTERVAL = 500;
     private static final int TIME_UPDATE_INTERVAL = 30000;
 
@@ -89,13 +99,19 @@ public class BiliPlayerActivity extends Activity implements
     private static final int ASPECT_RATIO_ADJUST_SCREEN = 1;
     private static final int ASPECT_RATIO_4_3_INSIDE = 2;
     private static final int ASPECT_RATIO_16_9_INSIDE = 3;
-    private static final int ASPECT_RATIO_COUNT = 4;
+    private static final int ASPECT_RATIO_9_16_INSIDE = 4;
+    private static final int ASPECT_RATIO_COUNT = 5;
 
     private static final int RENDERER_SURFACEVIEW = 0;
     private static final int RENDERER_TEXTUREVIEW = 1;
 
+    private static final long BACK_PRESS_INTERVAL = 2000; // 2秒内按两次退出
+
+    private static final int SWIPE_THRESHOLD = 200;
+
     private View videoView;
     private SurfaceHolder surfaceHolder;
+    private FrameLayout mDanmakuContainer;
     private Surface mVideoSurface;
     private int mRendererType = RENDERER_SURFACEVIEW;
     private IMediaPlayer mediaPlayer;
@@ -109,6 +125,7 @@ public class BiliPlayerActivity extends Activity implements
     private TextView tvTitle;
     private TextView tvDateTime;
     private TextView tvNetworkStatus;
+    private View mBatteryView;
     private LinearLayout bufferingGroup;
     private ProgressBar bufferingView;
     private TextView btnAspectRatio;
@@ -136,6 +153,7 @@ public class BiliPlayerActivity extends Activity implements
     private DanmakuManager mDanmakuManager;
     private long mAid;
     private long mCid;
+    private long mLastBackPressTime = 0;
     private boolean mAllowDecoderFallback = true;
     private int mLastReportProgress = -1;
     private FileInputStream mFileInputStream;
@@ -177,8 +195,26 @@ public class BiliPlayerActivity extends Activity implements
     private View lockUnlockRight;
     private boolean lockIconsVisible = false;
     private Runnable lockIconsHideRunnable;
-
     private ViewStub danmakuInputStub;
+    private View commentOverlay;
+    private View commentScrim;
+    private View commentClose;
+    private ListView commentList;
+    private TextView commentEmpty;
+    private List<CommentFragment.CommentItem> commentItems;
+    private CommentAdapter commentAdapter;
+    private boolean commentLoaded;
+    private float touchStartX;
+    private Set<Long> commentIdSet = new HashSet<Long>();
+    private String commentNextCursor = "";
+    private boolean commentIsLoading = false;
+    private boolean commentIsEnd = false;
+    private boolean commentIsLoadingMore = false;
+    private View commentFooterView;
+    private ProgressBar commentFooterProgress;
+    private float commentTouchStartX = 0;
+    private float commentTouchStartY = 0;
+    private boolean commentIsSwiping = false;
 
     private PopupWindow mPlayerOptionsPannel;
 
@@ -193,6 +229,11 @@ public class BiliPlayerActivity extends Activity implements
     private boolean mOfflineMode;
     private int mQualitySwitchSeekPos = 0;
     private boolean mErrorToastShown;
+
+    private long[] mCids;
+    private String[] mPartNames;
+    private int mCurrentPartIndex;
+    private boolean mHasNextPart;
 
     private Handler handler = new Handler(new Handler.Callback() {
         public boolean handleMessage(Message msg) {
@@ -315,6 +356,11 @@ public class BiliPlayerActivity extends Activity implements
         mAid = getIntent().getLongExtra("aid", 0);
         mCid = getIntent().getLongExtra("cid", 0);
 
+        mCids = getIntent().hasExtra("cids") ? getIntent().getLongArrayExtra("cids") : null;
+        mPartNames = getIntent().hasExtra("pagenames") ? getIntent().getStringArrayExtra("pagenames") : null;
+        mCurrentPartIndex = getIntent().getIntExtra("part_index", 0);
+        mHasNextPart = mCids != null && mCids.length > 1 && mCurrentPartIndex < mCids.length - 1;
+
         mQualityNames = getIntent().getStringArrayExtra("qn_str_array");
         mQualityValues = getIntent().getIntArrayExtra("qn_value_array");
         mCurrentQn = getIntent().getIntExtra("current_qn", 0);
@@ -338,6 +384,7 @@ public class BiliPlayerActivity extends Activity implements
         mSeekWhenPrepared = sPendingSeekPosition;
         sPendingSeekPosition = 0;
         keepBackground = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.KEEP_BACKGROUND, true);
+        completionAction = SharedPreferencesUtil.getInt(SharedPreferencesUtil.COMPLETION_ACTION, COMPLETION_ACTION_PAUSE);
 
         if (DeviceInfoUtil.isUnsupportedCpu()) {
             new AlertDialog.Builder(this)
@@ -395,21 +442,85 @@ public class BiliPlayerActivity extends Activity implements
                         if (mediaPlayer != null && isPrepared && mDuration > 0) {
                             mediaPlayer.seekTo(position);
                             if (mDanmakuManager != null) mDanmakuManager.seekTo(position);
+                            if (!isPlaying && mDanmakuManager != null) mDanmakuManager.pause();
                             if (tvCurrentTime != null) {
                                 tvCurrentTime.setText(formatTime((int) position));
                             }
                         }
                     }
-
-                    public void onShowToast(String text) {
-                        Toast.makeText(BiliPlayerActivity.this, text, Toast.LENGTH_SHORT).show();
-                    }
-
-                    public void onHideToast() {
-                        // 不需要处理
-                    }
                 });
         mGestureController.setLiveStream(isLiveStream);
+
+        // 添加缩放监听
+        mGestureController.setOnScaleChangeListener(new GestureController.OnScaleChangeListener() {
+            @Override
+            public void onScaleChange(float scale) {
+                applyVideoScale(scale);
+            }
+
+            @Override
+            public void onScaleReset() {
+                applyVideoScale(1.0f);
+            }
+        });
+    }
+
+    /**
+     * 应用视频缩放
+     * @param scale 缩放倍数 (1.0 = 原始大小)
+     */
+    private void applyVideoScale(float scale) {
+        if (videoView == null) return;
+        if (videoWidth == 0 || videoHeight == 0) {
+            // 如果视频尺寸还没获取到，尝试从 MediaPlayer 获取
+            if (mediaPlayer != null) {
+                videoWidth = mediaPlayer.getVideoWidth();
+                videoHeight = mediaPlayer.getVideoHeight();
+            }
+            if (videoWidth == 0 || videoHeight == 0) return;
+        }
+
+        FrameLayout container = (FrameLayout) findViewById(R.id.video_container);
+        if (container == null) return;
+
+        int containerWidth = container.getWidth();
+        int containerHeight = container.getHeight();
+
+        // 如果容器尺寸为 0，使用屏幕尺寸
+        if (containerWidth == 0 || containerHeight == 0) {
+            DisplayMetrics dm = new DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getMetrics(dm);
+            containerWidth = dm.widthPixels;
+            containerHeight = dm.heightPixels;
+        }
+
+        // 计算基础缩放（适应屏幕）
+        float baseScaleX = (float) containerWidth / videoWidth;
+        float baseScaleY = (float) containerHeight / videoHeight;
+        float baseScale = Math.min(baseScaleX, baseScaleY);
+
+        // 应用用户缩放
+        float finalScale = baseScale * scale;
+
+        int targetWidth = (int) (videoWidth * finalScale);
+        int targetHeight = (int) (videoHeight * finalScale);
+
+        // 确保最小尺寸
+        if (targetWidth < 1) targetWidth = 1;
+        if (targetHeight < 1) targetHeight = 1;
+
+        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) videoView.getLayoutParams();
+        if (params == null) {
+            params = new FrameLayout.LayoutParams(targetWidth, targetHeight);
+            params.gravity = android.view.Gravity.CENTER;
+        } else {
+            params.width = targetWidth;
+            params.height = targetHeight;
+            params.gravity = android.view.Gravity.CENTER;
+        }
+
+        videoView.setLayoutParams(params);
+        videoView.requestLayout();
     }
 
     private void createVideoView() {
@@ -477,6 +588,7 @@ public class BiliPlayerActivity extends Activity implements
 
             tvDateTime = (TextView) controllerView.findViewById(R.id.date_time);
             tvNetworkStatus = (TextView) controllerView.findViewById(R.id.network_status);
+            mBatteryView = controllerView.findViewById(R.id.battery_view);
 
             View toggleAspect = controllerView.findViewById(R.id.toggle_aspect_ratio_button);
             View toggleDanmaku = controllerView.findViewById(R.id.toggle_danmaku_button);
@@ -494,8 +606,136 @@ public class BiliPlayerActivity extends Activity implements
             optionsMenuStub = (ViewStub) controllerView.findViewById(R.id.options_menu_items_stub);
         }
 
+        // 选集按钮
+        View pageListSelector = controllerView != null ? controllerView.findViewById(R.id.page_list_selector) : null;
+        if (pageListSelector != null) {
+            if (mCids != null && mCids.length > 1) {
+                pageListSelector.setVisibility(View.VISIBLE);
+                pageListSelector.setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View v) {
+                        showPartSelector();
+                    }
+                });
+            } else {
+                pageListSelector.setVisibility(View.GONE);
+            }
+        }
+
+        // 设置标题
         if (videoTitle != null && tvTitle != null) {
             tvTitle.setText(videoTitle);
+
+            if (tvTitle instanceof MarqueeTextView) {
+                final MarqueeTextView marqueeTv = (MarqueeTextView) tvTitle;
+                marqueeTv.setAutoStartMarquee(false);
+                marqueeTv.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        boolean needScroll = false;
+                        try {
+                            float textWidth = marqueeTv.getPaint().measureText(videoTitle);
+                            int viewWidth = marqueeTv.getWidth() - marqueeTv.getPaddingLeft() - marqueeTv.getPaddingRight();
+                            needScroll = textWidth > viewWidth;
+                        } catch (Exception e) {
+                            needScroll = videoTitle.length() > 18;
+                        }
+                        if (needScroll) {
+                            marqueeTv.initMarquee();
+                        } else {
+                            marqueeTv.stopMarquee();
+                        }
+                    }
+                }, 300);
+            } else {
+                tvTitle.setSelected(false);
+                tvTitle.setFocusable(false);
+                tvTitle.setFocusableInTouchMode(false);
+                tvTitle.setSingleLine(true);
+                tvTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                tvTitle.setMarqueeRepeatLimit(0);
+            }
+        }
+
+        // ========== 评论覆盖层 ==========
+        commentOverlay = findViewById(R.id.comment_overlay);
+        if (commentOverlay != null) {
+            commentScrim = commentOverlay.findViewById(R.id.comment_scrim);
+            commentClose = commentOverlay.findViewById(R.id.comment_close);
+            commentList = (ListView) commentOverlay.findViewById(R.id.comment_overlay_list);
+            commentEmpty = (TextView) commentOverlay.findViewById(R.id.comment_overlay_empty);
+
+            // 添加底部加载Footer
+            commentFooterView = LayoutInflater.from(this).inflate(R.layout.list_footer, null);
+            commentFooterProgress = (ProgressBar) commentFooterView.findViewById(R.id.footer_progress);
+            if (commentFooterProgress != null) {
+                commentFooterProgress.setVisibility(View.GONE);
+            }
+            commentFooterView.setVisibility(View.GONE);
+            commentList.addFooterView(commentFooterView);
+
+            commentItems = new ArrayList<CommentFragment.CommentItem>();
+            commentAdapter = new CommentAdapter(this, commentItems);
+            commentList.setAdapter(commentAdapter);
+
+            // 设置点击用户跳转
+            commentAdapter.setOnUserClickListener(new CommentAdapter.OnUserClickListener() {
+                @Override
+                public void onUserClick(long mid, String userName) {
+                    if (mid != 0) {
+                        Intent intent = new Intent(BiliPlayerActivity.this, UserProfileActivity.class);
+                        intent.putExtra("mid", mid);
+                        startActivity(intent);
+                    } else {
+                        Toast.makeText(BiliPlayerActivity.this, "无法获取用户信息", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+
+            if (commentClose != null) {
+                commentClose.setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View v) {
+                        hideCommentOverlay();
+                    }
+                });
+            }
+            if (commentScrim != null) {
+                commentScrim.setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View v) {
+                        hideCommentOverlay();
+                    }
+                });
+            }
+
+            // 设置ListView滚动监听实现分页加载
+            commentList.setOnScrollListener(new AbsListView.OnScrollListener() {
+                @Override
+                public void onScrollStateChanged(AbsListView view, int scrollState) {
+                    if (scrollState == SCROLL_STATE_IDLE) {
+                        int lastVisible = view.getLastVisiblePosition();
+                        int totalCount = commentAdapter.getCount();
+                        if (lastVisible >= totalCount - 1 && !commentIsLoadingMore && !commentIsEnd && totalCount > 0) {
+                            loadMoreCommentsForOverlay();
+                        }
+                    }
+                }
+
+                @Override
+                public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+                    if (!commentIsLoadingMore && !commentIsEnd && totalItemCount > 0) {
+                        if (firstVisibleItem + visibleItemCount >= totalItemCount - 3) {
+                            loadMoreCommentsForOverlay();
+                        }
+                    }
+                }
+            });
+
+            // 设置触摸事件实现右滑关闭
+            commentOverlay.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    return handleCommentTouch(event);
+                }
+            });
         }
 
         if (btnBack != null) {
@@ -583,6 +823,42 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         if (seekBar != null) {
+            seekBar.setOnTouchListener(new View.OnTouchListener() {
+                public boolean onTouch(View v, MotionEvent event) {
+                    if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                        SeekBar sb = (SeekBar) v;
+                        int newProgress = (int) ((event.getX() / sb.getWidth()) * sb.getMax());
+                        sb.setProgress(newProgress);
+                        // 拖动时暂停弹幕
+                        if (mDanmakuManager != null) {
+                            mDanmakuManager.pause();
+                        }
+                    } else if (event.getAction() == MotionEvent.ACTION_UP
+                            || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                        if (mediaPlayer != null && isPrepared && mDuration > 0) {
+                            long position = ((long) ((SeekBar) v).getProgress()) * mDuration / 1000;
+                            mediaPlayer.seekTo(position);
+                            if (mDanmakuManager != null) {
+                                mDanmakuManager.seekTo(position);
+                                // 只有正在播放时才恢复弹幕
+                                if (isPlaying) {
+                                    mDanmakuManager.resume();
+                                } else {
+                                    mDanmakuManager.pause();
+                                }
+                            }
+                            if (tvCurrentTime != null) {
+                                tvCurrentTime.setText(formatTime((int) position));
+                            }
+                        }
+                        if (mIsDragging) {
+                            mIsDragging = false;
+                            showControlsWithAutoHide();
+                        }
+                    }
+                    return false;
+                }
+            });
             seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                 public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                     if (fromUser && mediaPlayer != null && isPrepared && mDuration > 0) {
@@ -595,26 +871,26 @@ public class BiliPlayerActivity extends Activity implements
                 public void onStartTrackingTouch(SeekBar seekBar) {
                     mIsDragging = true;
                     handler.removeMessages(MSG_HIDE_CONTROLS);
+                    // 拖动时暂停弹幕
+                    if (mDanmakuManager != null) {
+                        mDanmakuManager.pause();
+                    }
                 }
                 public void onStopTrackingTouch(SeekBar seekBar) {
-                    if (mediaPlayer != null && isPrepared && mDuration > 0) {
-                        long finalPosition = ((long) seekBar.getProgress()) * mDuration / 1000;
-                        mediaPlayer.seekTo(finalPosition);
-                        if (mDanmakuManager != null) mDanmakuManager.seekTo(finalPosition);
-                        if (tvCurrentTime != null) {
-                            tvCurrentTime.setText(formatTime((int) finalPosition));
-                        }
-                    }
                     mIsDragging = false;
                     showControlsWithAutoHide();
+                    // 只有正在播放时才恢复弹幕
+                    if (mDanmakuManager != null && isPlaying) {
+                        mDanmakuManager.resume();
+                    }
                 }
             });
         }
 
         // 初始化弹幕管理器
-        FrameLayout danmakuContainer = (FrameLayout) findViewById(R.id.danmaku_view);
-        if (danmakuContainer != null) {
-            mDanmakuManager = new DanmakuManager(this, danmakuContainer, mAid, mCid,
+        mDanmakuContainer = (FrameLayout) findViewById(R.id.danmaku_view);
+        if (mDanmakuContainer != null) {
+            mDanmakuManager = new DanmakuManager(this, mDanmakuContainer, mAid, mCid,
                     danmakuInputStub);
 
             String danmakuCachePath = getIntent().getStringExtra("danmaku_cache_path");
@@ -630,6 +906,422 @@ public class BiliPlayerActivity extends Activity implements
 
         showControlsWithAutoHide();
         initQualityManager();
+    }
+
+    private boolean handleCommentTouch(MotionEvent event) {
+        float x = event.getRawX();
+        float y = event.getRawY();
+        final View panel = commentOverlay.findViewById(R.id.comment_panel);
+
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                commentTouchStartX = x;
+                commentTouchStartY = y;
+                commentIsSwiping = false;
+                return false;
+
+            case MotionEvent.ACTION_MOVE:
+                float dx = x - commentTouchStartX;
+                float dy = y - commentTouchStartY;
+
+                // 判断是否为水平滑动（水平距离大于垂直距离）
+                if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+                    commentIsSwiping = true;
+                    if (panel != null) {
+                        // 使用 layout 实现滑动，限制最大滑动距离
+                        int offset = (int) Math.min(dx, panel.getWidth());
+                        if (offset < 0) offset = 0;
+                        panel.layout(offset, panel.getTop(), offset + panel.getWidth(), panel.getBottom());
+
+                        // 通过透明度变化实现淡出效果（使用 setAlpha 的兼容方式）
+                        float progress = offset / (float) panel.getWidth();
+                        int alpha = (int) (255 * (1.0f - progress * 0.6f));
+                        if (commentScrim != null) {
+                            commentScrim.setAlpha(alpha);
+                        }
+                    }
+                    return true;
+                }
+                break;
+
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                float dx2 = x - commentTouchStartX;
+
+                if (commentIsSwiping && panel != null) {
+                    if (dx2 > SWIPE_THRESHOLD) {
+                        // 右滑超过阈值，关闭评论
+                        final int targetX = panel.getWidth();
+                        android.view.animation.TranslateAnimation anim = new android.view.animation.TranslateAnimation(
+                                0, targetX, 0, 0);
+                        anim.setDuration(200);
+                        anim.setFillAfter(true);
+                        anim.setAnimationListener(new android.view.animation.Animation.AnimationListener() {
+                            @Override
+                            public void onAnimationStart(android.view.animation.Animation animation) {}
+                            @Override
+                            public void onAnimationEnd(android.view.animation.Animation animation) {
+                                panel.clearAnimation();
+                                hideCommentOverlay();
+                            }
+                            @Override
+                            public void onAnimationRepeat(android.view.animation.Animation animation) {}
+                        });
+                        panel.startAnimation(anim);
+                    } else {
+                        // 回弹
+                        android.view.animation.TranslateAnimation anim = new android.view.animation.TranslateAnimation(
+                                panel.getLeft(), 0, 0, 0);
+                        anim.setDuration(200);
+                        anim.setFillAfter(true);
+                        anim.setAnimationListener(new android.view.animation.Animation.AnimationListener() {
+                            @Override
+                            public void onAnimationStart(android.view.animation.Animation animation) {}
+                            @Override
+                            public void onAnimationEnd(android.view.animation.Animation animation) {
+                                panel.clearAnimation();
+                                panel.layout(0, panel.getTop(), panel.getWidth(), panel.getBottom());
+                                if (commentScrim != null) {
+                                    commentScrim.setAlpha(255);
+                                }
+                            }
+                            @Override
+                            public void onAnimationRepeat(android.view.animation.Animation animation) {}
+                        });
+                        panel.startAnimation(anim);
+                    }
+                    commentIsSwiping = false;
+                    return true;
+                }
+                break;
+        }
+        return false;
+    }
+
+    //评论加载
+    private void loadCommentsForOverlay() {
+        if (commentLoaded || mAid == 0) return;
+        if (commentIsLoading) return;
+
+        commentIsLoading = true;
+        commentNextCursor = "";
+        commentIsEnd = false;
+        commentIsLoadingMore = false;
+
+        commentItems.clear();
+        commentIdSet.clear();
+
+        if (commentEmpty != null) {
+            commentEmpty.setVisibility(View.VISIBLE);
+            commentEmpty.setText("加载中...");
+        }
+
+        commentFooterView.setVisibility(View.GONE);
+        if (commentFooterProgress != null) {
+            commentFooterProgress.setVisibility(View.GONE);
+        }
+
+        final String oidParam = String.valueOf(mAid);
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String url = "https://api.bilibili.com/x/v2/reply/main?type=1&oid=" + oidParam;
+                    java.util.ArrayList<String> headers = new java.util.ArrayList<String>();
+                    headers.add("User-Agent");
+                    headers.add(NetWorkUtil.USER_AGENT_WEB);
+                    headers.add("Referer");
+                    headers.add("https://www.bilibili.com/");
+                    String cookies = SharedPreferencesUtil.getString("cookies", "");
+                    if (cookies != null && cookies.length() > 0) {
+                        headers.add("Cookie");
+                        headers.add(cookies);
+                    }
+                    String response = NetWorkUtil.get(url, headers);
+                    if (response == null || response.length() == 0) {
+                        showCommentError("网络返回为空");
+                        return;
+                    }
+
+                    org.json.JSONObject json = new org.json.JSONObject(response);
+                    if (json.optInt("code", -1) == 0) {
+                        org.json.JSONObject data = json.optJSONObject("data");
+                        if (data != null) {
+                            org.json.JSONObject cursor = data.optJSONObject("cursor");
+                            if (cursor != null) {
+                                commentNextCursor = cursor.optString("next", "");
+                                commentIsEnd = cursor.optBoolean("is_end", true);
+                            }
+
+                            org.json.JSONArray replies = data.optJSONArray("replies");
+                            if (replies != null && replies.length() > 0) {
+                                parseCommentReplies(replies, false);
+                                commentLoaded = true;
+                                return;
+                            }
+                        }
+                    }
+                    showCommentEmpty("暂无评论");
+                } catch (Exception e) {
+                    showCommentError("加载失败: " + e.getMessage());
+                } finally {
+                    commentIsLoading = false;
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (commentEmpty != null) {
+                                commentEmpty.setVisibility(View.GONE);
+                            }
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+
+    private void loadMoreCommentsForOverlay() {
+        if (commentIsLoadingMore || commentIsEnd || commentIsLoading) return;
+        if (commentNextCursor == null || commentNextCursor.length() == 0) {
+            commentIsEnd = true;
+            commentFooterView.setVisibility(View.GONE);
+            return;
+        }
+
+        commentIsLoadingMore = true;
+        commentFooterView.setVisibility(View.VISIBLE);
+        if (commentFooterProgress != null) {
+            commentFooterProgress.setVisibility(View.VISIBLE);
+        }
+
+        final String oidParam = String.valueOf(mAid);
+        final String cursor = commentNextCursor;
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String url = "https://api.bilibili.com/x/v2/reply/main?type=1&oid=" + oidParam + "&next=" + cursor;
+                    java.util.ArrayList<String> headers = new java.util.ArrayList<String>();
+                    headers.add("User-Agent");
+                    headers.add(NetWorkUtil.USER_AGENT_WEB);
+                    headers.add("Referer");
+                    headers.add("https://www.bilibili.com/");
+                    String cookies = SharedPreferencesUtil.getString("cookies", "");
+                    if (cookies != null && cookies.length() > 0) {
+                        headers.add("Cookie");
+                        headers.add(cookies);
+                    }
+                    String response = NetWorkUtil.get(url, headers);
+
+                    if (response == null || response.length() == 0) {
+                        showLoadMoreError("网络返回为空");
+                        return;
+                    }
+
+                    org.json.JSONObject json = new org.json.JSONObject(response);
+                    if (json.optInt("code", -1) == 0) {
+                        org.json.JSONObject data = json.optJSONObject("data");
+                        if (data != null) {
+                            org.json.JSONObject cursor = data.optJSONObject("cursor");
+                            if (cursor != null) {
+                                commentNextCursor = cursor.optString("next", "");
+                                commentIsEnd = cursor.optBoolean("is_end", true);
+                            }
+
+                            org.json.JSONArray replies = data.optJSONArray("replies");
+                            if (replies != null && replies.length() > 0) {
+                                parseCommentReplies(replies, true);
+                                return;
+                            }
+                        }
+                    }
+                    showLoadMoreError("没有更多评论");
+                } catch (final Exception e) {
+                    showLoadMoreError("加载失败: " + e.getMessage());
+                }
+            }
+        }).start();
+    }
+
+    private void parseCommentReplies(final org.json.JSONArray replies, final boolean isMore) {
+        final java.util.List<CommentFragment.CommentItem> newItems =
+                new java.util.ArrayList<CommentFragment.CommentItem>();
+
+        for (int i = 0; i < replies.length(); i++) {
+            try {
+                org.json.JSONObject reply = replies.getJSONObject(i);
+                if (reply == null) continue;
+
+                long replyId = reply.optLong("rpid", 0);
+                if (replyId == 0) continue;
+
+                if (commentIdSet.contains(replyId)) {
+                    continue;
+                }
+                commentIdSet.add(replyId);
+
+                CommentFragment.CommentItem item = new CommentFragment.CommentItem();
+                item.rpid = replyId;
+
+                org.json.JSONObject member = reply.optJSONObject("member");
+                if (member != null) {
+                    item.userName = member.optString("uname", "匿名用户");
+                    item.mid = member.optLong("mid", 0);
+                    String avatar = member.optString("avatar", "");
+                    if (avatar != null && avatar.length() > 0) {
+                        avatar = avatar.replace("/64", "/48");
+                        if (avatar.startsWith("https://")) {
+                            avatar = "http://" + avatar.substring(8);
+                        }
+                    }
+                    item.userAvatar = avatar;
+                } else {
+                    item.userName = "匿名用户";
+                    item.userAvatar = null;
+                    item.mid = 0;
+                }
+
+                org.json.JSONObject content = reply.optJSONObject("content");
+                item.message = content != null ? content.optString("message", "") : "";
+                item.likeCount = reply.optInt("like", 0);
+                item.time = reply.optLong("ctime", 0);
+
+                org.json.JSONArray replyReplies = reply.optJSONArray("replies");
+                if (replyReplies != null && replyReplies.length() > 0) {
+                    item.replies = new java.util.ArrayList<CommentFragment.ReplyItem>();
+                    for (int j = 0; j < replyReplies.length(); j++) {
+                        try {
+                            org.json.JSONObject rr = replyReplies.getJSONObject(j);
+                            CommentFragment.ReplyItem ri = new CommentFragment.ReplyItem();
+                            org.json.JSONObject rmember = rr.optJSONObject("member");
+                            if (rmember != null) {
+                                ri.userName = rmember.optString("uname", "");
+                                ri.mid = rmember.optLong("mid", 0);
+                            }
+                            org.json.JSONObject rcontent = rr.optJSONObject("content");
+                            ri.message = rcontent != null ? rcontent.optString("message", "") : "";
+                            item.replies.add(ri);
+                        } catch (Exception e) { }
+                    }
+                }
+                newItems.add(item);
+            } catch (Exception e) { }
+        }
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (isMore) {
+                    commentItems.addAll(newItems);
+                    commentAdapter.updateData(commentItems);
+
+                    commentFooterView.setVisibility(View.GONE);
+                    if (commentFooterProgress != null) {
+                        commentFooterProgress.setVisibility(View.GONE);
+                    }
+                    commentIsLoadingMore = false;
+
+                    if (commentIsEnd) {
+                        Toast.makeText(BiliPlayerActivity.this, "已经到底啦", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    commentItems.clear();
+                    commentItems.addAll(newItems);
+                    commentAdapter.updateData(commentItems);
+
+                    if (commentItems.size() == 0) {
+                        commentEmpty.setText("暂无评论");
+                        commentEmpty.setVisibility(View.VISIBLE);
+                    } else {
+                        commentEmpty.setVisibility(View.GONE);
+                        if (!commentIsEnd && commentNextCursor != null && commentNextCursor.length() > 0) {
+                            commentFooterView.setVisibility(View.VISIBLE);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    private void showCommentError(final String msg) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                commentIsLoading = false;
+                commentEmpty.setText(msg);
+                commentEmpty.setVisibility(View.VISIBLE);
+                Toast.makeText(BiliPlayerActivity.this, msg, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void showCommentEmpty(final String msg) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                commentIsLoading = false;
+                commentEmpty.setText(msg);
+                commentEmpty.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    private void showLoadMoreError(final String msg) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                commentFooterView.setVisibility(View.GONE);
+                if (commentFooterProgress != null) {
+                    commentFooterProgress.setVisibility(View.GONE);
+                }
+                commentIsLoadingMore = false;
+                Toast.makeText(BiliPlayerActivity.this, msg, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void showCommentOverlay() {
+        if (commentOverlay == null || commentOverlay.getVisibility() == View.VISIBLE) return;
+        commentOverlay.setVisibility(View.VISIBLE);
+        View panel = commentOverlay.findViewById(R.id.comment_panel);
+        if (panel != null) {
+            // 重置位置
+            panel.layout(0, panel.getTop(), panel.getWidth(), panel.getBottom());
+            // 使用兼容的动画
+            android.view.animation.Animation anim = android.view.animation.AnimationUtils.loadAnimation(this,
+                    R.anim.options_pannel_in);
+            panel.startAnimation(anim);
+        }
+        if (commentScrim != null) {
+            commentScrim.setVisibility(View.VISIBLE);
+        }
+        commentOverlay.requestFocus();
+        if (!commentLoaded) {
+            loadCommentsForOverlay();
+        }
+    }
+
+    private void hideCommentOverlay() {
+        if (commentOverlay == null || commentOverlay.getVisibility() != View.VISIBLE) return;
+        View panel = commentOverlay.findViewById(R.id.comment_panel);
+        if (panel != null) {
+            android.view.animation.Animation anim = android.view.animation.AnimationUtils.loadAnimation(this,
+                    R.anim.options_pannel_out);
+            anim.setAnimationListener(new android.view.animation.Animation.AnimationListener() {
+                @Override
+                public void onAnimationStart(android.view.animation.Animation animation) {}
+                @Override
+                public void onAnimationEnd(android.view.animation.Animation animation) {
+                    commentOverlay.setVisibility(View.GONE);
+                }
+                @Override
+                public void onAnimationRepeat(android.view.animation.Animation animation) {}
+            });
+            panel.startAnimation(anim);
+        } else {
+            commentOverlay.setVisibility(View.GONE);
+        }
     }
 
     private void initQualityManager() {
@@ -726,6 +1418,114 @@ public class BiliPlayerActivity extends Activity implements
         }).start();
     }
 
+    private void switchToPart(final int newPartIndex) {
+        if (mCids == null || newPartIndex < 0 || newPartIndex >= mCids.length) return;
+
+        if (mediaPlayer != null && isPrepared) {
+            try { mQualitySwitchSeekPos = (int) mediaPlayer.getCurrentPosition(); } catch (Exception e) {}
+        }
+
+        showBuffering(true);
+
+        final long newCid = mCids[newPartIndex];
+        final String newTitle = (mPartNames != null && newPartIndex < mPartNames.length)
+                ? mPartNames[newPartIndex] : videoTitle;
+
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    PlayerData playerData = new PlayerData();
+                    playerData.aid = mAid;
+                    playerData.cid = newCid;
+                    playerData.qn = mCurrentQn;
+                    playerData.timeStamp = 0;
+
+                    PlayerApi.getVideo(playerData, false);
+                    final String newUrl = playerData.videoUrl;
+
+                    if (newUrl != null && newUrl.length() > 0) {
+                        final String[] newQnStrs = playerData.qnStrList;
+                        final int[] newQnVals = playerData.qnValueList;
+
+                        runOnUiThread(new Runnable() {
+                            public void run() {
+                                videoUrl = newUrl;
+                                videoTitle = newTitle;
+                                mCid = newCid;
+                                mCurrentPartIndex = newPartIndex;
+                                mHasNextPart = mCurrentPartIndex < mCids.length - 1;
+                                if (newQnStrs != null && newQnVals != null) {
+                                    mQualityNames = newQnStrs;
+                                    mQualityValues = newQnVals;
+                                }
+                                if (mQualityManager != null) {
+                                    mQualityManager.updateCurrentQuality(mCurrentQn);
+                                }
+                                if (mDanmakuManager != null) {
+                                    mDanmakuManager.pause();
+                                    mDanmakuManager.release();
+                                    mDanmakuManager = null;
+                                }
+                                if (tvTitle != null) tvTitle.setText(videoTitle);
+                                if (decoderType == DECODER_SYSTEM) {
+                                    releasePlayer();
+                                    sPendingSeekPosition = 0;
+                                    Intent intent = getIntent();
+                                    intent.putExtra("video_url", newUrl);
+                                    intent.putExtra("video_title", newTitle);
+                                    intent.putExtra("cid", newCid);
+                                    intent.putExtra("part_index", newPartIndex);
+                                    if (newQnStrs != null) intent.putExtra("qn_str_array", newQnStrs);
+                                    if (newQnVals != null) intent.putExtra("qn_value_array", newQnVals);
+                                    overridePendingTransition(0, 0);
+                                    finish();
+                                    startActivity(intent);
+                                    overridePendingTransition(0, 0);
+                                } else {
+                                    cleanupAndRestartWithQuality();
+                                }
+                            }
+                        });
+                    } else {
+                        runOnUiThread(new Runnable() {
+                            public void run() {
+                                showBuffering(false);
+                                Toast.makeText(BiliPlayerActivity.this, "换P失败，获取播放地址失败", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                } catch (final Exception e) {
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            showBuffering(false);
+                            Toast.makeText(BiliPlayerActivity.this, "换P失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+
+    private void showPartSelector() {
+        if (mCids == null || mCids.length <= 1) return;
+        String[] items = new String[mCids.length];
+        for (int i = 0; i < mCids.length; i++) {
+            items[i] = (i + 1) + ". " + (mPartNames != null && i < mPartNames.length ? mPartNames[i] : "P" + (i + 1));
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("选集")
+                .setSingleChoiceItems(items, mCurrentPartIndex, new android.content.DialogInterface.OnClickListener() {
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                        if (which != mCurrentPartIndex) {
+                            switchToPart(which);
+                        }
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
     private void recreateVideoView() {
         FrameLayout container = (FrameLayout) findViewById(R.id.video_container);
         if (container == null) {
@@ -788,7 +1588,11 @@ public class BiliPlayerActivity extends Activity implements
 
         handler.postDelayed(new Runnable() {
             public void run() {
-                if (mDanmakuManager != null) {
+                if (mDanmakuManager == null && mDanmakuContainer != null) {
+                    mDanmakuManager = new DanmakuManager(BiliPlayerActivity.this,
+                            mDanmakuContainer, mAid, mCid, danmakuInputStub);
+                    mDanmakuManager.init();
+                } else if (mDanmakuManager != null) {
                     mDanmakuManager.init();
                 }
 
@@ -832,7 +1636,6 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         if (decoderType == DECODER_SYSTEM) {
-            // 系统解码器
             AndroidMediaPlayer androidPlayer = new AndroidMediaPlayer();
             mediaPlayer = androidPlayer;
 
@@ -880,7 +1683,6 @@ public class BiliPlayerActivity extends Activity implements
 
             setDisplayOnPlayer();
 
-            // 创建播放器后设置到 GestureController
             if (mGestureController != null) {
                 mGestureController.setMediaPlayer(mediaPlayer);
                 mGestureController.setDecoderType(decoderType);
@@ -895,7 +1697,6 @@ public class BiliPlayerActivity extends Activity implements
             return;
         }
 
-        // IJK 解码器（硬解或软解）
         IjkMediaPlayer ijkPlayer = new IjkMediaPlayer();
         IjkMediaPlayer.native_setLogLevel(IjkMediaPlayer.IJK_LOG_SILENT);
         mediaPlayer = ijkPlayer;
@@ -977,7 +1778,6 @@ public class BiliPlayerActivity extends Activity implements
 
         setDisplayOnPlayer();
 
-        // 设置到 GestureController
         if (mGestureController != null && mediaPlayer != null) {
             mGestureController.setMediaPlayer(mediaPlayer);
             mGestureController.setDecoderType(decoderType);
@@ -1039,7 +1839,6 @@ public class BiliPlayerActivity extends Activity implements
 
         setDisplayOnPlayer();
 
-        // Set default buffer size for TextureView
         if (mRendererType == RENDERER_TEXTUREVIEW && videoView instanceof TextureView) {
             TextureView tv = (TextureView) videoView;
             if (tv.getSurfaceTexture() != null) {
@@ -1064,6 +1863,7 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         adjustVideoSize();
+        updateTopBarForOrientation();
 
         if (mSeekWhenPrepared > 0 && mDuration > 0) {
             mp.seekTo(mSeekWhenPrepared);
@@ -1077,6 +1877,16 @@ public class BiliPlayerActivity extends Activity implements
         }
         aspectRatioFixed = false;
 
+        // 获取视频尺寸
+        videoWidth = mp.getVideoWidth();
+        videoHeight = mp.getVideoHeight();
+        // 设置最大缩放倍数（默认3倍）
+        if (mGestureController != null) {
+            mGestureController.setMaxScale(3.0f);
+        }
+        // 应用初始缩放（1.0倍 = 原始大小）
+        applyVideoScale(1.0f);
+
         if (!isLiveStream) {
             handler.sendEmptyMessage(MSG_UPDATE_PROGRESS);
         }
@@ -1088,7 +1898,11 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         if (btnAspectRatio != null) {
-            btnAspectRatio.setVisibility(View.VISIBLE);
+            if (getRequestedOrientation() == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
+                btnAspectRatio.setVisibility(View.GONE);
+            } else {
+                btnAspectRatio.setVisibility(View.VISIBLE);
+            }
             if (btnAspectRatio.getCompoundDrawables()[1] != null) {
                 btnAspectRatio.getCompoundDrawables()[1].setLevel(currentAspectRatio);
             }
@@ -1109,12 +1923,19 @@ public class BiliPlayerActivity extends Activity implements
             }
         }
         if (btnMediaInfo != null) btnMediaInfo.setVisibility(View.VISIBLE);
+        showControlsWithAutoHide();
     }
 
     @Override
     public void onSeekComplete(IMediaPlayer mp) {
         if (!mIsDragging) {
             updateTimeDisplay();
+            // 只有正在播放时才恢复弹幕
+            if (mDanmakuManager != null && isPlaying) {
+                mDanmakuManager.resume();
+            } else if (mDanmakuManager != null && !isPlaying) {
+                mDanmakuManager.pause();
+            }
         }
     }
 
@@ -1148,10 +1969,19 @@ public class BiliPlayerActivity extends Activity implements
                 break;
             case COMPLETION_ACTION_NEXT:
             case COMPLETION_ACTION_NEXT_LOOP:
-                Toast.makeText(this, "换P功能暂未实现", Toast.LENGTH_SHORT).show();
+                if (mCids == null || mCids.length <= 1) {
+                    if (mDanmakuManager != null) mDanmakuManager.pause();
+                } else if (mCurrentPartIndex < mCids.length - 1) {
+                    switchToPart(mCurrentPartIndex + 1);
+                } else if (completionAction == COMPLETION_ACTION_NEXT_LOOP) {
+                    switchToPart(0);
+                } else {
+                    if (mDanmakuManager != null) mDanmakuManager.pause();
+                }
                 break;
             case COMPLETION_ACTION_PAUSE:
             default:
+                if (mDanmakuManager != null) mDanmakuManager.pause();
                 break;
         }
     }
@@ -1162,11 +1992,9 @@ public class BiliPlayerActivity extends Activity implements
 
         int sdkInt = android.os.Build.VERSION.SDK_INT;
 
-        // 系统解码器失败
         if (decoderType == DECODER_SYSTEM && mAllowDecoderFallback) {
             if (!isPrepared) {
                 mAllowDecoderFallback = false;
-                // 4.1以下直接软解，4.1以上先硬解
                 if (sdkInt < 16) {
                     decoderType = DECODER_IJK_SOFT;
                     Toast.makeText(this, "系统解码器失败，切换到IJK软解", Toast.LENGTH_LONG).show();
@@ -1179,7 +2007,6 @@ public class BiliPlayerActivity extends Activity implements
                 return true;
             }
 
-            // 已成功播放过，偶发错误 → 重试 5 次
             if (mHardwareDecodeRetryCount < MAX_HARDWARE_RETRY) {
                 mHardwareDecodeRetryCount++;
                 handler.postDelayed(new Runnable() {
@@ -1190,7 +2017,6 @@ public class BiliPlayerActivity extends Activity implements
                 return true;
             }
 
-            // 重试耗尽 → 降级
             mAllowDecoderFallback = false;
             if (sdkInt < 16) {
                 decoderType = DECODER_IJK_SOFT;
@@ -1204,7 +2030,6 @@ public class BiliPlayerActivity extends Activity implements
             return true;
         }
 
-        // IJK 硬解失败
         if (decoderType == DECODER_IJK_HARD && mAllowDecoderFallback) {
             if (mHardwareDecodeRetryCount < MAX_HARDWARE_RETRY) {
                 mHardwareDecodeRetryCount++;
@@ -1216,7 +2041,6 @@ public class BiliPlayerActivity extends Activity implements
                 return true;
             }
 
-            // 硬解重试耗尽 → 降级软解
             mAllowDecoderFallback = false;
             decoderType = DECODER_IJK_SOFT;
             mHardwareDecodeRetryCount = 0;
@@ -1225,7 +2049,6 @@ public class BiliPlayerActivity extends Activity implements
             return true;
         }
 
-        // IJK 软解失败 或 不允许降级
         if (decoderType == DECODER_IJK_SOFT || !mAllowDecoderFallback) {
             if (!mErrorToastShown) {
                 mErrorToastShown = true;
@@ -1245,7 +2068,6 @@ public class BiliPlayerActivity extends Activity implements
     private void cleanupAndRestart() {
         mHardwareDecodeRetryCount = 0;
 
-        // 保存当前播放位置
         if (mediaPlayer != null && isPrepared) {
             try { mSeekWhenPrepared = (int) mediaPlayer.getCurrentPosition(); } catch (Exception e) {}
         }
@@ -1269,7 +2091,11 @@ public class BiliPlayerActivity extends Activity implements
 
         handler.postDelayed(new Runnable() {
             public void run() {
-                if (mDanmakuManager != null) {
+                if (mDanmakuManager == null && mDanmakuContainer != null) {
+                    mDanmakuManager = new DanmakuManager(BiliPlayerActivity.this,
+                            mDanmakuContainer, mAid, mCid, danmakuInputStub);
+                    mDanmakuManager.init();
+                } else if (mDanmakuManager != null) {
                     mDanmakuManager.init();
                 }
 
@@ -1329,6 +2155,9 @@ public class BiliPlayerActivity extends Activity implements
             return;
         }
 
+        VideoAspectRatioHelper.autoRotateIfPortrait(this, videoWidth, videoHeight,
+                !aspectRatioFixed, btnAspectRatio, mGestureController);
+
         applyAspectRatio(currentAspectRatio);
     }
 
@@ -1353,6 +2182,9 @@ public class BiliPlayerActivity extends Activity implements
                 break;
             case ASPECT_RATIO_16_9_INSIDE:
                 targetRatio = 16f / 9f;
+                break;
+            case ASPECT_RATIO_9_16_INSIDE:
+                targetRatio = 9f / 16f;
                 break;
             default:
                 targetRatio = (float) videoWidth / videoHeight;
@@ -1533,6 +2365,7 @@ public class BiliPlayerActivity extends Activity implements
                     } else {
                         completionAction = COMPLETION_ACTION_PAUSE;
                     }
+                    SharedPreferencesUtil.putInt(SharedPreferencesUtil.COMPLETION_ACTION, completionAction);
                 }
             });
         }
@@ -1757,7 +2590,6 @@ public class BiliPlayerActivity extends Activity implements
         }
     }
 
-    // 上报播放进度
     private void reportHistory(final int progress) {
         if (mAid == 0 || mCid == 0) return;
         if (mLastReportProgress == progress) return;
@@ -1925,9 +2757,56 @@ public class BiliPlayerActivity extends Activity implements
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
+        // 评论覆盖层可见时处理评论
+        if (commentOverlay != null && commentOverlay.getVisibility() == View.VISIBLE) {
+            return super.dispatchTouchEvent(ev);
+        }
+
+        // 评论覆盖层不可见时，检测从右边缘滑入
+        if (commentOverlay != null && commentOverlay.getVisibility() != View.VISIBLE
+                && ev.getAction() == MotionEvent.ACTION_DOWN) {
+            int edgeThreshold = (int) (getResources().getDisplayMetrics().density * 30);
+            if (ev.getX() >= getWindow().getWindowManager().getDefaultDisplay().getWidth() - edgeThreshold) {
+                touchStartX = ev.getX();
+                return super.dispatchTouchEvent(ev);
+            }
+        }
+
+        if (commentOverlay != null && commentOverlay.getVisibility() != View.VISIBLE
+                && ev.getAction() == MotionEvent.ACTION_MOVE && touchStartX > 0) {
+            float dx = touchStartX - ev.getX();
+            if (dx > getResources().getDisplayMetrics().density * 40) {
+                touchStartX = 0;
+                showCommentOverlay();
+                return true;
+            }
+        }
+
+        if (ev.getAction() == MotionEvent.ACTION_UP || ev.getAction() == MotionEvent.ACTION_CANCEL) {
+            touchStartX = 0;
+        }
+
+        // 缩放手势
+        if (isPrepared && !isLiveStream && mGestureController != null) {
+            // 触摸点是否在视频区域内
+            int[] location = new int[2];
+            videoView.getLocationOnScreen(location);
+            float touchX = ev.getRawX();
+            float touchY = ev.getRawY();
+            if (touchX >= location[0] && touchX <= location[0] + videoView.getWidth() &&
+                    touchY >= location[1] && touchY <= location[1] + videoView.getHeight()) {
+                // GestureController 处理
+                if (ev.getPointerCount() >= 2) {
+                    mGestureController.onTouchEvent(ev);
+                    return super.dispatchTouchEvent(ev);
+                }
+            }
+        }
+
         if (mGestureController != null) {
             mGestureController.onTouchEvent(ev);
         }
+
         return super.dispatchTouchEvent(ev);
     }
 
@@ -1971,17 +2850,36 @@ public class BiliPlayerActivity extends Activity implements
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getKeyCode() == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_DOWN) {
+            // 评论覆盖层可见时，先关闭评论
+            if (commentOverlay != null && commentOverlay.getVisibility() == View.VISIBLE) {
+                hideCommentOverlay();
+                return true;
+            }
+            // 画质列表可见时，先关闭画质列表
             if (mQualityManager != null && mQualityManager.isQualityListVisible()) {
                 mQualityManager.hideQualityList();
                 return true;
             }
+            // 弹幕输入框可见时，先关闭弹幕输入
             if (mDanmakuManager != null && mDanmakuManager.isInputVisible()) {
                 mDanmakuManager.hideInputPanel(mPlayControl);
                 return true;
             }
+            // 弹窗面板可见时，先关闭弹窗
             if ((mPlayerOptionsPannel != null && mPlayerOptionsPannel.isShowing())
                     || (mDanmakuManager != null && mDanmakuManager.isOptionsPanelShowing())) {
                 dismissAllPanels();
+                return true;
+            }
+
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - mLastBackPressTime < BACK_PRESS_INTERVAL) {
+                mLastBackPressTime = 0;
+                finish();
+                return true;
+            } else {
+                mLastBackPressTime = currentTime;
+                Toast.makeText(this, "再次按后退可以结束播放", Toast.LENGTH_SHORT).show();
                 return true;
             }
         }
@@ -2080,13 +2978,39 @@ public class BiliPlayerActivity extends Activity implements
         }
     }
 
+    private void updateTopBarForOrientation() {
+        boolean portrait = getRequestedOrientation() == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+        if (tvDateTime != null) tvDateTime.setVisibility(portrait ? View.GONE : View.VISIBLE);
+        if (tvNetworkStatus != null) tvNetworkStatus.setVisibility(portrait ? View.GONE : View.VISIBLE);
+        if (mBatteryView != null) mBatteryView.setVisibility(portrait ? View.GONE : View.VISIBLE);
+    }
+
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         if (isPrepared) {
+            if (mGestureController != null) {
+                mGestureController.onOrientationChanged();
+            }
+            if (btnAspectRatio != null) {
+                if (getRequestedOrientation() == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
+                    btnAspectRatio.setVisibility(View.GONE);
+                } else {
+                    btnAspectRatio.setVisibility(View.VISIBLE);
+                }
+            }
+            updateTopBarForOrientation();
+            if (isPlaying && !isLiveStream) {
+                handler.removeMessages(MSG_UPDATE_PROGRESS);
+                handler.sendEmptyMessage(MSG_UPDATE_PROGRESS);
+            }
             videoView.postDelayed(new Runnable() {
                 public void run() {
                     applyAspectRatio(currentAspectRatio);
+                    // 屏幕旋转后重新应用缩放
+                    if (mGestureController != null) {
+                        applyVideoScale(mGestureController.getCurrentScale());
+                    }
                 }
             }, 100);
         }

@@ -67,4 +67,8 @@
         android:contentDescription="@string/ACD_PreloadingView"
         layout="@layout/bili_app_player_preloading"/>
     <include layout="@layout/bili_app_player_media_level_bar2"/>
+    <include
+        android:id="@+id/comment_overlay"
+        android:visibility="gone"
+        layout="@layout/bili_app_player_comment_overlay"/>
 </FrameLayout>

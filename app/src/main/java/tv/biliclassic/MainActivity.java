@@ -29,6 +29,7 @@ import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.List;
 
+import tv.biliclassic.util.AnnouncementUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class MainActivity extends BaseActivity {
@@ -37,7 +38,6 @@ public class MainActivity extends BaseActivity {
     private static final String KEY_AUTO_CHECK_UPDATE = "auto_check_update";
     private static final String KEY_TV_UNSUPPORTED_SHOWN = "tv_unsupported_shown";
     private static final int TIP_DELAY_MS = 1500;
-    private static final long AUTO_CHECK_INTERVAL = 24 * 60 * 60 * 1000;
 
     private ViewPager mPager;
     private List<FragmentInfo> mFragments = new ArrayList<FragmentInfo>();
@@ -186,6 +186,32 @@ public class MainActivity extends BaseActivity {
 
         clearVideoCache();
         checkAutoUpdate();
+
+        // 检查并显示公告（延迟执行，确保界面加载完成）
+        checkAnnouncement();
+    }
+
+    /**
+     * 检查并显示公告
+     */
+    private void checkAnnouncement() {
+        mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                AnnouncementUtil.checkMultipleAnnouncements(MainActivity.this,
+                        new AnnouncementUtil.MultipleAnnouncementCallback() {
+                            @Override
+                            public void onSuccess(List<AnnouncementUtil.Announcement> announcements) {
+                                // 公告已显示，无需额外处理
+                            }
+
+                            @Override
+                            public void onFailed(String error) {
+                                // 公告获取失败或无需显示，静默处理
+                            }
+                        });
+            }
+        }, 2000);
     }
 
     private void checkAutoUpdate() {
@@ -194,13 +220,7 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        long lastCheckTime = SharedPreferencesUtil.getLong("last_auto_check_time", 0);
-        long currentTime = System.currentTimeMillis();
-
-        if (lastCheckTime == 0 || (currentTime - lastCheckTime) > AUTO_CHECK_INTERVAL) {
-            SharedPreferencesUtil.putLong("last_auto_check_time", currentTime);
-            doAutoCheckUpdate();
-        }
+        doAutoCheckUpdate();
     }
 
     private void doAutoCheckUpdate() {

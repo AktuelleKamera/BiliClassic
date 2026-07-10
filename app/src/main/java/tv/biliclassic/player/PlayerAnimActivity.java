@@ -2,11 +2,14 @@ package tv.biliclassic.player;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.view.Display;
+import android.view.Surface;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -99,7 +102,6 @@ public class PlayerAnimActivity extends Activity {
                 }
             });
         } else {
-            // 非在线模式：走下载缓存流程
             File cacheDir = getCacheDir();
 
             if (isSDCardAvailable()) {
@@ -155,8 +157,24 @@ public class PlayerAnimActivity extends Activity {
         intent.putExtra("cache_path", (String) null);
         intent.putExtra("aid", aid);
         intent.putExtra("cid", cid);
+        intent.putExtra("part_index", getIntent().getIntExtra("part_index", 0));
+        if (getIntent().hasExtra("cids")) {
+            intent.putExtra("cids", getIntent().getLongArrayExtra("cids"));
+            intent.putExtra("pagenames", getIntent().getStringArrayExtra("pagenames"));
+        }
         // 用 extra 标记在线模式，让 BiliPlayerActivity 知道不要依赖缓存
         intent.putExtra("online_mode", true);
+        Display display = getWindowManager().getDefaultDisplay();
+        boolean portrait = false;
+        if (android.os.Build.VERSION.SDK_INT >= 8) {
+            int rotation = display.getRotation();
+            portrait = (rotation == Surface.ROTATION_0 || rotation == Surface.ROTATION_180);
+        } else {
+            portrait = (display.getOrientation() == 0);
+        }
+        if (portrait) {
+            intent.putExtra("is_portrait_loading", true);
+        }
         putQualityExtras(intent);
         startActivity(intent);
         finish();
@@ -394,6 +412,22 @@ public class PlayerAnimActivity extends Activity {
         intent.putExtra("cid", cid);
         intent.putExtra("online_mode", false);
         intent.putExtra("offline_mode", true);
+        intent.putExtra("part_index", getIntent().getIntExtra("part_index", 0));
+        if (getIntent().hasExtra("cids")) {
+            intent.putExtra("cids", getIntent().getLongArrayExtra("cids"));
+            intent.putExtra("pagenames", getIntent().getStringArrayExtra("pagenames"));
+        }
+        Display display = getWindowManager().getDefaultDisplay();
+        boolean portrait = false;
+        if (android.os.Build.VERSION.SDK_INT >= 8) {
+            int rotation = display.getRotation();
+            portrait = (rotation == Surface.ROTATION_0 || rotation == Surface.ROTATION_180);
+        } else {
+            portrait = (display.getOrientation() == 0);
+        }
+        if (portrait) {
+            intent.putExtra("is_portrait_loading", true);
+        }
         putQualityExtras(intent);
         startActivity(intent);
         finish();
