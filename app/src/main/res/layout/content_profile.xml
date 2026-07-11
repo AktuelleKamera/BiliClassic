@@ -23,7 +23,7 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@android:color/transparent"
-            android:padding="20dp"
+            android:padding="15dp"
             android:focusable="true"
             android:focusableInTouchMode="true">
 
@@ -207,7 +207,7 @@
                     android:orientation="horizontal"
                     android:paddingTop="12dp"
                     android:paddingBottom="12dp"
-                    android:background="@android:color/transparent"
+                    android:background="@drawable/item_click_effect"
                     android:clickable="true"
                     android:focusable="true">
 
@@ -242,7 +242,7 @@
                     android:orientation="horizontal"
                     android:paddingTop="12dp"
                     android:paddingBottom="12dp"
-                    android:background="@android:color/transparent"
+                    android:background="@drawable/item_click_effect"
                     android:clickable="true"
                     android:focusable="true">
 
@@ -277,7 +277,7 @@
                     android:orientation="horizontal"
                     android:paddingTop="12dp"
                     android:paddingBottom="12dp"
-                    android:background="@android:color/transparent"
+                    android:background="@drawable/item_click_effect"
                     android:clickable="true"
                     android:focusable="true">
 
@@ -312,7 +312,7 @@
                     android:orientation="horizontal"
                     android:paddingTop="12dp"
                     android:paddingBottom="12dp"
-                    android:background="@android:color/transparent"
+                    android:background="@drawable/item_click_effect"
                     android:clickable="true"
                     android:focusable="true">
 
@@ -347,7 +347,7 @@
                     android:orientation="horizontal"
                     android:paddingTop="12dp"
                     android:paddingBottom="12dp"
-                    android:background="@android:color/transparent"
+                    android:background="@drawable/item_click_effect"
                     android:clickable="true"
                     android:focusable="true">
 

@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -112,6 +113,7 @@ public class BiliPlayerActivity extends Activity implements
     private View videoView;
     private SurfaceHolder surfaceHolder;
     private FrameLayout mDanmakuContainer;
+    private FrameLayout mResetScaleContainer;
     private Surface mVideoSurface;
     private int mRendererType = RENDERER_SURFACEVIEW;
     private IMediaPlayer mediaPlayer;
@@ -126,6 +128,7 @@ public class BiliPlayerActivity extends Activity implements
     private TextView tvDateTime;
     private TextView tvNetworkStatus;
     private View mBatteryView;
+    private TextView btnResetScale;
     private LinearLayout bufferingGroup;
     private ProgressBar bufferingView;
     private TextView btnAspectRatio;
@@ -150,6 +153,7 @@ public class BiliPlayerActivity extends Activity implements
     private int mSeekWhenPrepared = 0;
     private static int sPendingSeekPosition = 0;
     private boolean playerLocked = false;
+    private boolean mIsScaleResetBtnShowing = false;
     private DanmakuManager mDanmakuManager;
     private long mAid;
     private long mCid;
@@ -205,6 +209,7 @@ public class BiliPlayerActivity extends Activity implements
     private CommentAdapter commentAdapter;
     private boolean commentLoaded;
     private float touchStartX;
+    private float touchStartY;
     private Set<Long> commentIdSet = new HashSet<Long>();
     private String commentNextCursor = "";
     private boolean commentIsLoading = false;
@@ -233,7 +238,6 @@ public class BiliPlayerActivity extends Activity implements
     private long[] mCids;
     private String[] mPartNames;
     private int mCurrentPartIndex;
-    private boolean mHasNextPart;
 
     private Handler handler = new Handler(new Handler.Callback() {
         public boolean handleMessage(Message msg) {
@@ -359,7 +363,6 @@ public class BiliPlayerActivity extends Activity implements
         mCids = getIntent().hasExtra("cids") ? getIntent().getLongArrayExtra("cids") : null;
         mPartNames = getIntent().hasExtra("pagenames") ? getIntent().getStringArrayExtra("pagenames") : null;
         mCurrentPartIndex = getIntent().getIntExtra("part_index", 0);
-        mHasNextPart = mCids != null && mCids.length > 1 && mCurrentPartIndex < mCids.length - 1;
 
         mQualityNames = getIntent().getStringArrayExtra("qn_str_array");
         mQualityValues = getIntent().getIntArrayExtra("qn_value_array");
@@ -451,16 +454,17 @@ public class BiliPlayerActivity extends Activity implements
                 });
         mGestureController.setLiveStream(isLiveStream);
 
-        // 添加缩放监听
         mGestureController.setOnScaleChangeListener(new GestureController.OnScaleChangeListener() {
             @Override
-            public void onScaleChange(float scale) {
-                applyVideoScale(scale);
+            public void onScaleChange(float scale, float translateX, float translateY) {
+                applyVideoScale(scale, translateX, translateY);
+                updateResetScaleButtonVisibility(scale);
             }
 
             @Override
             public void onScaleReset() {
-                applyVideoScale(1.0f);
+                applyVideoScale(1.0f, 0, 0);
+                updateResetScaleButtonVisibility(1.0f);
             }
         });
     }
@@ -469,10 +473,9 @@ public class BiliPlayerActivity extends Activity implements
      * 应用视频缩放
      * @param scale 缩放倍数 (1.0 = 原始大小)
      */
-    private void applyVideoScale(float scale) {
+    private void applyVideoScale(float scale, float translateX, float translateY) {
         if (videoView == null) return;
         if (videoWidth == 0 || videoHeight == 0) {
-            // 如果视频尺寸还没获取到，尝试从 MediaPlayer 获取
             if (mediaPlayer != null) {
                 videoWidth = mediaPlayer.getVideoWidth();
                 videoHeight = mediaPlayer.getVideoHeight();
@@ -486,7 +489,6 @@ public class BiliPlayerActivity extends Activity implements
         int containerWidth = container.getWidth();
         int containerHeight = container.getHeight();
 
-        // 如果容器尺寸为 0，使用屏幕尺寸
         if (containerWidth == 0 || containerHeight == 0) {
             DisplayMetrics dm = new DisplayMetrics();
             getWindowManager().getDefaultDisplay().getMetrics(dm);
@@ -494,33 +496,80 @@ public class BiliPlayerActivity extends Activity implements
             containerHeight = dm.heightPixels;
         }
 
-        // 计算基础缩放（适应屏幕）
+        // 基础缩放（适应屏幕）
         float baseScaleX = (float) containerWidth / videoWidth;
         float baseScaleY = (float) containerHeight / videoHeight;
         float baseScale = Math.min(baseScaleX, baseScaleY);
 
-        // 应用用户缩放
         float finalScale = baseScale * scale;
 
-        int targetWidth = (int) (videoWidth * finalScale);
-        int targetHeight = (int) (videoHeight * finalScale);
+        int scaledWidth = (int) (videoWidth * finalScale);
+        int scaledHeight = (int) (videoHeight * finalScale);
 
-        // 确保最小尺寸
-        if (targetWidth < 1) targetWidth = 1;
-        if (targetHeight < 1) targetHeight = 1;
+        // 平移范围
+        float maxTranslateX = Math.max(0, (scaledWidth - containerWidth) / 2.0f);
+        float maxTranslateY = Math.max(0, (scaledHeight - containerHeight) / 2.0f);
 
-        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) videoView.getLayoutParams();
-        if (params == null) {
-            params = new FrameLayout.LayoutParams(targetWidth, targetHeight);
-            params.gravity = android.view.Gravity.CENTER;
-        } else {
-            params.width = targetWidth;
-            params.height = targetHeight;
-            params.gravity = android.view.Gravity.CENTER;
+        float sensitivity = 1.25f;
+        maxTranslateX = maxTranslateX * sensitivity;
+        maxTranslateY = maxTranslateY * sensitivity;
+
+        float finalTranslateX = translateX * maxTranslateX;
+        float finalTranslateY = translateY * maxTranslateY;
+
+        // 边界限制
+        if (finalTranslateX > maxTranslateX) finalTranslateX = maxTranslateX;
+        if (finalTranslateX < -maxTranslateX) finalTranslateX = -maxTranslateX;
+        if (finalTranslateY > maxTranslateY) finalTranslateY = maxTranslateY;
+        if (finalTranslateY < -maxTranslateY) finalTranslateY = -maxTranslateY;
+
+        // scale <= 1.0 时禁止平移
+        if (scale <= 1.0f) {
+            finalTranslateX = 0;
+            finalTranslateY = 0;
         }
 
+        // 如果是 TextureView，用 Matrix
+        if (mRendererType == RENDERER_TEXTUREVIEW && videoView instanceof TextureView) {
+            TextureView tv = (TextureView) videoView;
+            if (tv.getSurfaceTexture() != null) {
+                android.graphics.Matrix matrix = new android.graphics.Matrix();
+                float centerX = containerWidth / 2.0f;
+                float centerY = containerHeight / 2.0f;
+
+                matrix.postTranslate(-videoWidth / 2.0f, -videoHeight / 2.0f);
+                matrix.postScale(finalScale / baseScale, finalScale / baseScale);
+                matrix.postTranslate(centerX + finalTranslateX, centerY + finalTranslateY);
+
+                tv.setTransform(matrix);
+            }
+            return;
+        }
+
+        // SurfaceView 用 LayoutParams
+        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) videoView.getLayoutParams();
+        if (params == null) {
+            params = new FrameLayout.LayoutParams(scaledWidth, scaledHeight);
+            params.gravity = android.view.Gravity.CENTER;
+        } else {
+            params.width = scaledWidth;
+            params.height = scaledHeight;
+        }
+
+        // 用 margin 控制位置
+        params.leftMargin = (containerWidth - scaledWidth) / 2 + (int) finalTranslateX;
+        params.topMargin = (containerHeight - scaledHeight) / 2 + (int) finalTranslateY;
+        params.rightMargin = 0;
+        params.bottomMargin = 0;
+        params.gravity = android.view.Gravity.LEFT | android.view.Gravity.TOP;
+
         videoView.setLayoutParams(params);
-        videoView.requestLayout();
+
+        if (surfaceHolder != null) {
+            try {
+                surfaceHolder.setFixedSize(videoWidth, videoHeight);
+            } catch (Exception e) {}
+        }
     }
 
     private void createVideoView() {
@@ -807,6 +856,10 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         if (btnLock != null) {
+            // 竖屏时隐藏锁屏按钮
+            if (getRequestedOrientation() == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
+                btnLock.setVisibility(View.GONE);
+            }
             btnLock.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
                     playerLocked = true;
@@ -824,45 +877,54 @@ public class BiliPlayerActivity extends Activity implements
 
         if (seekBar != null) {
             seekBar.setOnTouchListener(new View.OnTouchListener() {
+                @Override
                 public boolean onTouch(View v, MotionEvent event) {
-                    if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                        SeekBar sb = (SeekBar) v;
-                        int newProgress = (int) ((event.getX() / sb.getWidth()) * sb.getMax());
-                        sb.setProgress(newProgress);
-                        // 拖动时暂停弹幕
-                        if (mDanmakuManager != null) {
-                            mDanmakuManager.pause();
-                        }
-                    } else if (event.getAction() == MotionEvent.ACTION_UP
-                            || event.getAction() == MotionEvent.ACTION_CANCEL) {
-                        if (mediaPlayer != null && isPrepared && mDuration > 0) {
-                            long position = ((long) ((SeekBar) v).getProgress()) * mDuration / 1000;
-                            mediaPlayer.seekTo(position);
-                            if (mDanmakuManager != null) {
-                                mDanmakuManager.seekTo(position);
-                                // 只有正在播放时才恢复弹幕
-                                if (isPlaying) {
-                                    mDanmakuManager.resume();
-                                } else {
-                                    mDanmakuManager.pause();
+                    switch (event.getAction()) {
+                        case MotionEvent.ACTION_DOWN:
+                            // 先标记按下位置，不立即跳转
+                            return false; // 让 SeekBar 自己处理
+
+                        case MotionEvent.ACTION_UP:
+                            // 检查是否是点击（没有移动）
+                            SeekBar sb = (SeekBar) v;
+                            float touchX = event.getX();
+                            float width = sb.getWidth();
+                            if (width > 0 && touchX >= 0) {
+                                int newProgress = (int) ((touchX / width) * sb.getMax());
+                                // 限制范围
+                                if (newProgress < 0) newProgress = 0;
+                                if (newProgress > sb.getMax()) newProgress = sb.getMax();
+                                sb.setProgress(newProgress);
+                                // 执行跳转
+                                if (mediaPlayer != null && isPrepared && mDuration > 0) {
+                                    long position = ((long) newProgress) * mDuration / 1000;
+                                    mediaPlayer.seekTo(position);
+                                    if (mDanmakuManager != null) {
+                                        mDanmakuManager.seekTo(position);
+                                        if (isPlaying) {
+                                            mDanmakuManager.resume();
+                                        } else {
+                                            mDanmakuManager.pause();
+                                        }
+                                    }
+                                    if (tvCurrentTime != null) {
+                                        tvCurrentTime.setText(formatTime((int) position));
+                                    }
                                 }
                             }
-                            if (tvCurrentTime != null) {
-                                tvCurrentTime.setText(formatTime((int) position));
-                            }
-                        }
-                        if (mIsDragging) {
-                            mIsDragging = false;
-                            showControlsWithAutoHide();
-                        }
+                            return false;
+
+                        default:
+                            return false;
                     }
-                    return false;
                 }
             });
+
             seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                 public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                     if (fromUser && mediaPlayer != null && isPrepared && mDuration > 0) {
                         long newPosition = ((long) progress) * mDuration / 1000;
+                        Log.d("SeekBarDebug", "onProgressChanged: progress=" + progress + ", position=" + newPosition + "ms, duration=" + mDuration);
                         if (tvCurrentTime != null) {
                             tvCurrentTime.setText(formatTime((int) newPosition));
                         }
@@ -871,18 +933,20 @@ public class BiliPlayerActivity extends Activity implements
                 public void onStartTrackingTouch(SeekBar seekBar) {
                     mIsDragging = true;
                     handler.removeMessages(MSG_HIDE_CONTROLS);
-                    // 拖动时暂停弹幕
-                    if (mDanmakuManager != null) {
-                        mDanmakuManager.pause();
-                    }
+                    Log.d("SeekBarDebug", "onStartTrackingTouch: max=" + seekBar.getMax() + ", progress=" + seekBar.getProgress());
                 }
                 public void onStopTrackingTouch(SeekBar seekBar) {
                     mIsDragging = false;
-                    showControlsWithAutoHide();
-                    // 只有正在播放时才恢复弹幕
-                    if (mDanmakuManager != null && isPlaying) {
-                        mDanmakuManager.resume();
+                    int progress = seekBar.getProgress();
+                    Log.d("SeekBarDebug", "onStopTrackingTouch: progress=" + progress + ", max=" + seekBar.getMax());
+                    if (mediaPlayer != null && isPrepared && mDuration > 0) {
+                        long position = ((long) progress) * mDuration / 1000;
+                        Log.d("SeekBarDebug", "跳转到: " + position + "ms");
+                        mediaPlayer.seekTo(position);
+                        if (mDanmakuManager != null) mDanmakuManager.seekTo(position);
+                        if (!isPlaying && mDanmakuManager != null) mDanmakuManager.pause();
                     }
+                    showControlsWithAutoHide();
                 }
             });
         }
@@ -906,6 +970,7 @@ public class BiliPlayerActivity extends Activity implements
 
         showControlsWithAutoHide();
         initQualityManager();
+        createResetScaleButton();
     }
 
     private boolean handleCommentTouch(MotionEvent event) {
@@ -996,6 +1061,58 @@ public class BiliPlayerActivity extends Activity implements
                 break;
         }
         return false;
+    }
+
+    private void createResetScaleButton() {
+        FrameLayout parent = (FrameLayout) findViewById(android.R.id.content);
+        if (parent == null) return;
+
+        // 容器 - 和2.0x一样
+        FrameLayout container = new FrameLayout(this);
+        FrameLayout.LayoutParams containerParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        containerParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+        containerParams.bottomMargin = dpToPx(80);
+        container.setLayoutParams(containerParams);
+        container.setVisibility(View.GONE);
+
+        btnResetScale = new TextView(this);
+        btnResetScale.setText("还原屏幕");
+        btnResetScale.setTextSize(16);
+        btnResetScale.setTextColor(0xFFD86DA5);
+        btnResetScale.setGravity(Gravity.CENTER);
+        btnResetScale.setBackgroundColor(0x88000000);
+        btnResetScale.setPadding(dpToPx(24), dpToPx(12), dpToPx(24), dpToPx(12));
+        btnResetScale.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mGestureController != null) {
+                    mGestureController.resetScale();
+                }
+            }
+        });
+
+        container.addView(btnResetScale);
+        parent.addView(container);
+        mResetScaleContainer = container;
+
+        container.bringToFront();
+    }
+
+    private void updateResetScaleButtonVisibility(float scale) {
+        if (mResetScaleContainer == null) return;
+        if (scale > 1.0f) {
+            mResetScaleContainer.setVisibility(View.VISIBLE);
+        } else {
+            mResetScaleContainer.setVisibility(View.GONE);
+        }
+    }
+
+    private int dpToPx(int dp) {
+        float density = getResources().getDisplayMetrics().density;
+        return (int) (dp * density + 0.5f);
     }
 
     //评论加载
@@ -1283,12 +1400,22 @@ public class BiliPlayerActivity extends Activity implements
 
     private void showCommentOverlay() {
         if (commentOverlay == null || commentOverlay.getVisibility() == View.VISIBLE) return;
+
+        // 显示评论前完全禁用所有手势（包括长按）
+        if (mGestureController != null) {
+            mGestureController.setEnableGesture(false);
+            // 强制取消长按计时
+            mGestureController.cancelLongPressForComment();
+        }
+
+        // 重置滑动状态
+        touchStartX = 0;
+        touchStartY = 0;
+
         commentOverlay.setVisibility(View.VISIBLE);
         View panel = commentOverlay.findViewById(R.id.comment_panel);
         if (panel != null) {
-            // 重置位置
             panel.layout(0, panel.getTop(), panel.getWidth(), panel.getBottom());
-            // 使用兼容的动画
             android.view.animation.Animation anim = android.view.animation.AnimationUtils.loadAnimation(this,
                     R.anim.options_pannel_in);
             panel.startAnimation(anim);
@@ -1314,6 +1441,12 @@ public class BiliPlayerActivity extends Activity implements
                 @Override
                 public void onAnimationEnd(android.view.animation.Animation animation) {
                     commentOverlay.setVisibility(View.GONE);
+                    // 评论关闭后恢复手势
+                    if (mGestureController != null) {
+                        mGestureController.setEnableGesture(true);
+                        // 重置长按状态
+                        mGestureController.cancelLongPressForComment();
+                    }
                 }
                 @Override
                 public void onAnimationRepeat(android.view.animation.Animation animation) {}
@@ -1321,6 +1454,10 @@ public class BiliPlayerActivity extends Activity implements
             panel.startAnimation(anim);
         } else {
             commentOverlay.setVisibility(View.GONE);
+            if (mGestureController != null) {
+                mGestureController.setEnableGesture(true);
+                mGestureController.cancelLongPressForComment();
+            }
         }
     }
 
@@ -1453,7 +1590,6 @@ public class BiliPlayerActivity extends Activity implements
                                 videoTitle = newTitle;
                                 mCid = newCid;
                                 mCurrentPartIndex = newPartIndex;
-                                mHasNextPart = mCurrentPartIndex < mCids.length - 1;
                                 if (newQnStrs != null && newQnVals != null) {
                                     mQualityNames = newQnStrs;
                                     mQualityValues = newQnVals;
@@ -1885,7 +2021,7 @@ public class BiliPlayerActivity extends Activity implements
             mGestureController.setMaxScale(3.0f);
         }
         // 应用初始缩放（1.0倍 = 原始大小）
-        applyVideoScale(1.0f);
+        applyVideoScale(1.0f, 0, 0);
 
         if (!isLiveStream) {
             handler.sendEmptyMessage(MSG_UPDATE_PROGRESS);
@@ -2635,21 +2771,27 @@ public class BiliPlayerActivity extends Activity implements
 
     private void updateTimeDisplay() {
         if (mediaPlayer == null || !isPrepared) return;
-
         if (mIsDragging || (mGestureController != null && mGestureController.isGestureSeeking())) return;
 
         try {
             long current = mediaPlayer.getCurrentPosition();
-            if (seekBar != null && mDuration > 0) {
-                seekBar.setProgress((int) (1000L * current / mDuration));
+            long duration = mediaPlayer.getDuration();
+            if (duration <= 0) {
+                duration = mDuration;
+            }
+            if (seekBar != null && duration > 0) {
+                int progress = (int) (1000L * current / duration);
+                if (progress < 0) progress = 0;
+                if (progress > 1000) progress = 1000;
+                seekBar.setProgress(progress);
             }
             if (tvCurrentTime != null) {
                 tvCurrentTime.setText(formatTime((int) current));
             }
 
-            int progress = (int) current;
-            if (progress > 0 && progress % 5000 < 250) {
-                reportHistory(progress);
+            int progressMs = (int) current;
+            if (progressMs > 0 && progressMs % 5000 < 250) {
+                reportHistory(progressMs);
             }
         } catch (Exception e) {}
     }
@@ -2757,53 +2899,87 @@ public class BiliPlayerActivity extends Activity implements
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        // 评论覆盖层可见时处理评论
+        if (commentOverlay != null && commentOverlay.getVisibility() != View.VISIBLE) {
+            int edgeThreshold = (int) (getResources().getDisplayMetrics().density * 30);
+            int screenWidth = getWindow().getWindowManager().getDefaultDisplay().getWidth();
+
+            switch (ev.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    if (ev.getX() >= screenWidth - edgeThreshold) {
+                        touchStartX = ev.getX();
+                        touchStartY = ev.getY();
+                        if (mGestureController != null) {
+                            mGestureController.setEnableGesture(false);
+                        }
+                        return super.dispatchTouchEvent(ev);
+                    }
+                    break;
+
+                case MotionEvent.ACTION_MOVE:
+                    if (touchStartX > 0) {
+                        float dx = touchStartX - ev.getX();
+                        float dy = Math.abs(touchStartY - ev.getY());
+
+                        // 水平滑动超过阈值，打开评论
+                        if (dx > getResources().getDisplayMetrics().density * 40 && dy < getResources().getDisplayMetrics().density * 100) {
+                            touchStartX = 0;
+                            touchStartY = 0;
+                            showCommentOverlay();
+                            return true;
+                        }
+
+                        // 如果垂直偏移太大，取消评论滑动，恢复手势
+                        if (dy > getResources().getDisplayMetrics().density * 50) {
+                            touchStartX = 0;
+                            touchStartY = 0;
+                            if (mGestureController != null) {
+                                mGestureController.setEnableGesture(true);
+                            }
+                        }
+                    }
+                    break;
+
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    if (touchStartX > 0) {
+                        touchStartX = 0;
+                        touchStartY = 0;
+                        if (mGestureController != null) {
+                            mGestureController.setEnableGesture(true);
+                        }
+                    }
+                    break;
+            }
+        }
+
+        // 评论覆盖层可见时，所有事件交给评论处理，完全禁用手势
         if (commentOverlay != null && commentOverlay.getVisibility() == View.VISIBLE) {
+            if (mGestureController != null) {
+                mGestureController.setEnableGesture(false);
+            }
             return super.dispatchTouchEvent(ev);
         }
 
-        // 评论覆盖层不可见时，检测从右边缘滑入
-        if (commentOverlay != null && commentOverlay.getVisibility() != View.VISIBLE
-                && ev.getAction() == MotionEvent.ACTION_DOWN) {
-            int edgeThreshold = (int) (getResources().getDisplayMetrics().density * 30);
-            if (ev.getX() >= getWindow().getWindowManager().getDefaultDisplay().getWidth() - edgeThreshold) {
-                touchStartX = ev.getX();
-                return super.dispatchTouchEvent(ev);
-            }
-        }
-
-        if (commentOverlay != null && commentOverlay.getVisibility() != View.VISIBLE
-                && ev.getAction() == MotionEvent.ACTION_MOVE && touchStartX > 0) {
-            float dx = touchStartX - ev.getX();
-            if (dx > getResources().getDisplayMetrics().density * 40) {
-                touchStartX = 0;
-                showCommentOverlay();
-                return true;
-            }
-        }
-
-        if (ev.getAction() == MotionEvent.ACTION_UP || ev.getAction() == MotionEvent.ACTION_CANCEL) {
-            touchStartX = 0;
-        }
-
-        // 缩放手势
         if (isPrepared && !isLiveStream && mGestureController != null) {
-            // 触摸点是否在视频区域内
-            int[] location = new int[2];
-            videoView.getLocationOnScreen(location);
-            float touchX = ev.getRawX();
-            float touchY = ev.getRawY();
-            if (touchX >= location[0] && touchX <= location[0] + videoView.getWidth() &&
-                    touchY >= location[1] && touchY <= location[1] + videoView.getHeight()) {
-                // GestureController 处理
-                if (ev.getPointerCount() >= 2) {
+            if (ev.getPointerCount() >= 2) {
+                int[] location = new int[2];
+                videoView.getLocationOnScreen(location);
+                float touchX = ev.getRawX();
+                float touchY = ev.getRawY();
+                if (touchX >= location[0] && touchX <= location[0] + videoView.getWidth() &&
+                        touchY >= location[1] && touchY <= location[1] + videoView.getHeight()) {
                     mGestureController.onTouchEvent(ev);
                     return super.dispatchTouchEvent(ev);
                 }
             }
         }
 
-        if (mGestureController != null) {
+        // 单指手势交给 GestureController（只在非评论滑动时）
+        if (mGestureController != null && ev.getPointerCount() == 1 && touchStartX == 0) {
+            // 确保手势已启用，但不要重复启用
+            if (!mGestureController.isGestureEnabled()) {
+                mGestureController.setEnableGesture(true);
+            }
             mGestureController.onTouchEvent(ev);
         }
 
@@ -2983,6 +3159,13 @@ public class BiliPlayerActivity extends Activity implements
         if (tvDateTime != null) tvDateTime.setVisibility(portrait ? View.GONE : View.VISIBLE);
         if (tvNetworkStatus != null) tvNetworkStatus.setVisibility(portrait ? View.GONE : View.VISIBLE);
         if (mBatteryView != null) mBatteryView.setVisibility(portrait ? View.GONE : View.VISIBLE);
+        if (btnLock != null) {btnLock.setVisibility(portrait ? View.GONE : View.VISIBLE);
+        }
+
+        // 竖屏时自动解锁
+        if (portrait && playerLocked) {
+            unlock();
+        }
     }
 
     @Override
@@ -2991,6 +3174,9 @@ public class BiliPlayerActivity extends Activity implements
         if (isPrepared) {
             if (mGestureController != null) {
                 mGestureController.onOrientationChanged();
+            }
+            if (mGestureController != null) {
+                updateResetScaleButtonVisibility(mGestureController.getCurrentScale());
             }
             if (btnAspectRatio != null) {
                 if (getRequestedOrientation() == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
@@ -3009,7 +3195,9 @@ public class BiliPlayerActivity extends Activity implements
                     applyAspectRatio(currentAspectRatio);
                     // 屏幕旋转后重新应用缩放
                     if (mGestureController != null) {
-                        applyVideoScale(mGestureController.getCurrentScale());
+                        applyVideoScale(mGestureController.getCurrentScale(),
+                                mGestureController.getTranslateX(),
+                                mGestureController.getTranslateY());
                     }
                 }
             }, 100);

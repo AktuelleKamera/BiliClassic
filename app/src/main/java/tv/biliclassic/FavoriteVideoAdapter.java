@@ -152,7 +152,7 @@ public class FavoriteVideoAdapter extends BaseAdapter {
                     cachedBitmap = softBitmap.get();
                     if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
                         coverView.setImageBitmap(cachedBitmap);
-                        return convertView;
+                        // 继续执行点击监听
                     } else {
                         imageCache.remove(finalCoverUrl);
                     }
@@ -161,33 +161,44 @@ public class FavoriteVideoAdapter extends BaseAdapter {
 
             Boolean isLoading = loadingMap.get(currentPos);
             if (isLoading != null && isLoading) {
-                return convertView;
-            }
+                // 继续执行点击监听
+            } else {
+                loadingMap.put(currentPos, true);
+                executor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        final Bitmap bitmap = downloadImage(finalCoverUrl);
+                        loadingMap.remove(currentPos);
 
-            loadingMap.put(currentPos, true);
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    final Bitmap bitmap = downloadImage(finalCoverUrl);
-                    loadingMap.remove(currentPos);
-
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        synchronized (imageCache) {
-                            imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
-                        }
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                Object currentTag = coverView.getTag();
-                                if (currentTag != null && currentTag.equals(finalCoverUrl)) {
-                                    coverView.setImageBitmap(bitmap);
-                                }
+                        if (bitmap != null && !bitmap.isRecycled()) {
+                            synchronized (imageCache) {
+                                imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
                             }
-                        });
+                            mainHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Object currentTag = coverView.getTag();
+                                    if (currentTag != null && currentTag.equals(finalCoverUrl)) {
+                                        coverView.setImageBitmap(bitmap);
+                                    }
+                                }
+                            });
+                        }
                     }
-                }
-            });
+                });
+            }
         }
+
+        final int pos = position;
+        final VideoCard clickItem = item;
+        convertView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (context instanceof FavoriteVideoListActivity) {
+                    ((FavoriteVideoListActivity) context).onVideoClick(clickItem, pos);
+                }
+            }
+        });
 
         return convertView;
     }
@@ -267,7 +278,6 @@ public class FavoriteVideoAdapter extends BaseAdapter {
     }
 
     public void clearCache() {
-        // 加同步锁，防止 ConcurrentModificationException
         synchronized (imageCache) {
             for (SoftReference<Bitmap> ref : imageCache.values()) {
                 Bitmap bmp = ref.get();

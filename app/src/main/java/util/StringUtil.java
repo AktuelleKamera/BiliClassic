@@ -190,18 +190,4 @@ public class StringUtil {
             ds.setColor(Color.rgb(0x66, 0xcc, 0xff));
         }
     }
-
-    /**
-     * 判断字符串是否为空
-     */
-    public static boolean isEmpty(String str) {
-        return str == null || str.length() == 0;
-    }
-
-    /**
-     * 判断字符串是否不为空
-     */
-    public static boolean isNotEmpty(String str) {
-        return str != null && str.length() > 0;
-    }
 }

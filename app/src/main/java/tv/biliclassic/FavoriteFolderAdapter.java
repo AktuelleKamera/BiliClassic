@@ -190,6 +190,17 @@ public class FavoriteFolderAdapter extends BaseAdapter {
             });
         }
 
+        final int pos = position;
+        final FavoriteFolder clickItem = item;
+        convertView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (context instanceof FavoriteFolderListActivity) {
+                    ((FavoriteFolderListActivity) context).onFolderClick(clickItem, pos);
+                }
+            }
+        });
+
         return convertView;
     }
 
@@ -273,14 +284,6 @@ public class FavoriteFolderAdapter extends BaseAdapter {
             imageCache.clear();
         }
         loadingMap.clear();
-    }
-
-    public void clearCacheForActivity() {
-        clearCache();
-        if (executor != null && !executor.isShutdown()) {
-            executor.shutdownNow();
-            executor = null;
-        }
     }
 
     static class ViewHolder {

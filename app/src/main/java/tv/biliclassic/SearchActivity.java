@@ -490,6 +490,13 @@ public class SearchActivity extends BaseActivity {
         doSearchRequest(keyword, 1, 3);
     }
 
+    public void onSearchResultClick(SearchActivity.SearchResultItem item, int position) {
+        if (item == null) return;
+        Intent intent = new Intent(this, VideoDetailActivity.class);
+        intent.putExtra("aid", item.aid);
+        startActivity(intent);
+    }
+
     private void doSearchRequest(final String keyword, final int page, final int retryLeft) {
         new Thread(new Runnable() {
             @Override

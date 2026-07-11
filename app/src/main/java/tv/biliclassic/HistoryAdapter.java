@@ -36,8 +36,8 @@ public class HistoryAdapter extends BaseAdapter {
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Map<String, SoftReference<Bitmap>> imageCache = new HashMap<String, SoftReference<Bitmap>>();
 
-    private boolean isScrolling = false;
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
+    private boolean isScrolling = false;
 
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
@@ -47,15 +47,12 @@ public class HistoryAdapter extends BaseAdapter {
     private int getConfiguredThreadCount() {
         int savedThreads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
         if (savedThreads > 0) {
-            // 手动设置了线程数，直接使用喵
             return savedThreads;
         }
-        // 自动检测：低内存用1线程，否则用3线程
         return isLowMemoryDevice() ? 1 : 3;
     }
 
     private void initExecutor() {
-        // 关闭旧的 executor
         if (executor != null && !executor.isShutdown()) {
             executor.shutdownNow();
         }
@@ -79,7 +76,6 @@ public class HistoryAdapter extends BaseAdapter {
         this.isScrolling = scrolling;
     }
 
-    // 当设置改变时，重新初始化线程池
     public void reloadExecutor() {
         initExecutor();
     }
@@ -139,41 +135,50 @@ public class HistoryAdapter extends BaseAdapter {
                 Bitmap cachedBitmap = softBitmap.get();
                 if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
                     coverView.setImageBitmap(cachedBitmap);
-                    return convertView;
+                    // 继续执行点击监听
                 } else {
                     imageCache.remove(finalCoverUrl);
                 }
             }
 
             Boolean isLoading = loadingMap.get(currentPos);
-            if (isLoading != null && isLoading) {
-                return convertView;
-            }
+            if (isLoading == null || !isLoading) {
+                loadingMap.put(currentPos, true);
+                executor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        final Bitmap bitmap = downloadImage(finalCoverUrl);
+                        loadingMap.remove(currentPos);
 
-            loadingMap.put(currentPos, true);
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    final Bitmap bitmap = downloadImage(finalCoverUrl);
-                    loadingMap.remove(currentPos);
-
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                Object currentTag = coverView.getTag();
-                                if (currentTag != null && currentTag.equals(finalCoverUrl)) {
-                                    coverView.setImageBitmap(bitmap);
+                        if (bitmap != null && !bitmap.isRecycled()) {
+                            imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
+                            mainHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Object currentTag = coverView.getTag();
+                                    if (currentTag != null && currentTag.equals(finalCoverUrl)) {
+                                        coverView.setImageBitmap(bitmap);
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
                     }
-                }
-            });
+                });
+            }
         } else {
             holder.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
         }
+
+        final int pos = position;
+        final VideoCard clickItem = item;
+        convertView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (context instanceof HistoryActivity) {
+                    ((HistoryActivity) context).onHistoryClick(clickItem, pos);
+                }
+            }
+        });
 
         return convertView;
     }

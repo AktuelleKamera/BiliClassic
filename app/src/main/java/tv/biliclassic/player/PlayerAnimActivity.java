@@ -55,6 +55,10 @@ public class PlayerAnimActivity extends Activity {
     private int[] mQualityValues;
     private int mCurrentQn;
 
+    // 下载控制
+    private volatile boolean isDownloadCancelled = false;
+    private Thread downloadThread = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -162,7 +166,7 @@ public class PlayerAnimActivity extends Activity {
             intent.putExtra("cids", getIntent().getLongArrayExtra("cids"));
             intent.putExtra("pagenames", getIntent().getStringArrayExtra("pagenames"));
         }
-        // 用 extra 标记在线模式，让 BiliPlayerActivity 知道不要依赖缓存
+        // 用 extra 标记在线模式
         intent.putExtra("online_mode", true);
         Display display = getWindowManager().getDefaultDisplay();
         boolean portrait = false;
@@ -202,20 +206,33 @@ public class PlayerAnimActivity extends Activity {
 
     private void startDownload() {
         tvStatus.setText("正在缓冲...");
+        isDownloadCancelled = false;
 
-        new Thread(new Runnable() {
+        downloadThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
                     downloadVideo();
+                    // 检查是否被取消
+                    if (isDownloadCancelled) {
+                        return;
+                    }
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            // 再次检查是否被取消
+                            if (isDownloadCancelled) {
+                                return;
+                            }
                             stopTvAnimation();
                             playWithPlayer();
                         }
                     });
                 } catch (final Exception e) {
+                    // 如果是取消导致的异常，不显示错误
+                    if (isDownloadCancelled) {
+                        return;
+                    }
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -227,7 +244,8 @@ public class PlayerAnimActivity extends Activity {
                     e.printStackTrace();
                 }
             }
-        }).start();
+        });
+        downloadThread.start();
     }
 
     private void downloadVideo() throws Exception {
@@ -237,6 +255,11 @@ public class PlayerAnimActivity extends Activity {
         }
 
         if (cacheFile.exists()) {
+            return;
+        }
+
+        // 检查是否被取消
+        if (isDownloadCancelled) {
             return;
         }
 
@@ -269,6 +292,18 @@ public class PlayerAnimActivity extends Activity {
         int lastProgress = 0;
 
         while ((len = is.read(buffer)) != -1) {
+            // 检查是否被取消
+            if (isDownloadCancelled) {
+                fos.close();
+                is.close();
+                conn.disconnect();
+                // 删除未完成的文件
+                if (cacheFile.exists()) {
+                    cacheFile.delete();
+                }
+                return;
+            }
+
             fos.write(buffer, 0, len);
             total += len;
 
@@ -485,6 +520,16 @@ public class PlayerAnimActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        // 取消下载
+        isDownloadCancelled = true;
+        if (downloadThread != null && downloadThread.isAlive()) {
+            downloadThread.interrupt();
+            try {
+                downloadThread.join(1000);
+            } catch (InterruptedException e) {
+                // 忽略
+            }
+        }
         stopTvAnimation();
         handler.removeCallbacksAndMessages(null);
     }

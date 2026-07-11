@@ -11,7 +11,7 @@ import android.os.Handler;
 import android.os.Vibrator;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentPagerAdapter;
+import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.view.PagerTabStrip;
 import android.support.v4.view.ViewPager;
 import android.view.Menu;
@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import tv.biliclassic.util.AnnouncementUtil;
+import tv.biliclassic.util.DeviceInfoUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class MainActivity extends BaseActivity {
@@ -109,6 +110,7 @@ public class MainActivity extends BaseActivity {
         }
 
         setContentView(R.layout.activity_main);
+        checkLegacyVersionCompatibility();
 
         try {
             currentVersionCode = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
@@ -128,8 +130,9 @@ public class MainActivity extends BaseActivity {
         }
 
         mPager = (ViewPager) findViewById(R.id.pager);
+        // 优化：使用 FragmentStatePagerAdapter，只缓存当前页左右各1页
         mPager.setAdapter(new ViewPagerAdapter(getSupportFragmentManager()));
-        mPager.setOffscreenPageLimit(4);
+        mPager.setOffscreenPageLimit(1);
 
         addTab("个人中心", ProfileFragment.class);
         addTab("分区导航", HomeFragment.class);
@@ -783,6 +786,32 @@ public class MainActivity extends BaseActivity {
                 .show();
     }
 
+    private void checkLegacyVersionCompatibility() {
+        if (DeviceInfoUtil.isLegacy) {
+            boolean isLegacyDevice = DeviceInfoUtil.isLegacyDevice();
+            if (!isLegacyDevice) {
+                new AlertDialog.Builder(this)
+                        .setTitle("版本提示")
+                        .setMessage("检测到您的设备并非清朝老设备，但您正在运行 Legacy（超低配）版本。\n\n建议下载使用完整版 BiliClassic，以获得更好的体验和更多功能。")
+                        .setPositiveButton("立即下载", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                try {
+                                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                                    intent.setData(Uri.parse("http://www.biliclassic.cn/"));
+                                    startActivity(intent);
+                                } catch (Exception e) {
+                                    Toast.makeText(MainActivity.this, "请访问 www.biliclassic.cn 下载完整版", Toast.LENGTH_LONG).show();
+                                }
+                            }
+                        })
+                        .setNegativeButton("忽略", null)
+                        .setCancelable(true)
+                        .show();
+            }
+        }
+    }
+
     private void doMenuLogout() {
         SharedPreferencesUtil.removeValue("cookies");
         SharedPreferencesUtil.removeValue("mid");
@@ -796,7 +825,9 @@ public class MainActivity extends BaseActivity {
         startActivity(intent);
     }
 
-    private class ViewPagerAdapter extends FragmentPagerAdapter {
+    private class ViewPagerAdapter extends FragmentStatePagerAdapter {
+        private Fragment mCurrentFragment;
+
         public ViewPagerAdapter(FragmentManager fm) {
             super(fm);
         }
@@ -815,6 +846,22 @@ public class MainActivity extends BaseActivity {
         @Override
         public CharSequence getPageTitle(int position) {
             return mFragments.get(position).title;
+        }
+
+        @Override
+        public void destroyItem(ViewGroup container, int position, Object object) {
+            if (position == 2 || position == 3 || position == 4) {
+                return;
+            }
+            super.destroyItem(container, position, object);
+        }
+
+        @Override
+        public void setPrimaryItem(ViewGroup container, int position, Object object) {
+            super.setPrimaryItem(container, position, object);
+            if (object instanceof Fragment) {
+                mCurrentFragment = (Fragment) object;
+            }
         }
     }
 }

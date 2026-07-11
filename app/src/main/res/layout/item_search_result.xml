@@ -4,7 +4,7 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:padding="8dp"
-    android:background="#F5F5F5">
+    android:background="@drawable/item_click_effect_white">
 
     <FrameLayout
         android:layout_width="100dp"

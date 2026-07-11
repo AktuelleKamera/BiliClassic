@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -45,23 +44,6 @@ public class FavoriteFolderListActivity extends BaseActivity {
         adapter = new FavoriteFolderAdapter(this, folderList);
         listView.setAdapter(adapter);
 
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView parent, View view, int position, long id) {
-                if (position < 0 || position >= folderList.size()) {
-                    return;
-                }
-                FavoriteFolder folder = (FavoriteFolder) folderList.get(position);
-                if (folder == null) {
-                    return;
-                }
-                Intent intent = new Intent(FavoriteFolderListActivity.this, FavoriteVideoListActivity.class);
-                intent.putExtra("fid", folder.id);
-                intent.putExtra("name", folder.name);
-                startActivity(intent);
-            }
-        });
-
         findViewById(R.id.btn_back).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -70,6 +52,17 @@ public class FavoriteFolderListActivity extends BaseActivity {
         });
 
         loadFolders();
+    }
+
+    /**
+     * 由 Adapter 调用的点击方法
+     */
+    public void onFolderClick(FavoriteFolder folder, int position) {
+        if (folder == null) return;
+        Intent intent = new Intent(FavoriteFolderListActivity.this, FavoriteVideoListActivity.class);
+        intent.putExtra("fid", folder.id);
+        intent.putExtra("name", folder.name);
+        startActivity(intent);
     }
 
     private void loadFolders() {

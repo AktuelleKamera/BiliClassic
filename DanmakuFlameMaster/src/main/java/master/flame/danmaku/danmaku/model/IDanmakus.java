@@ -37,8 +37,6 @@ public interface IDanmakus {
     public IDanmakuIterator iterator();
     
     public boolean contains(BaseDanmaku item);
-
-    public boolean isEmpty();
     
     public void setSubItemsDuplicateMergingEnabled(boolean enable);
 

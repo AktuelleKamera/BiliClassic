@@ -7,7 +7,7 @@
     android:paddingRight="10dp"
     android:paddingTop="8dp"
     android:paddingBottom="8dp"
-    android:background="#F5F5F5">
+    android:background="@drawable/item_click_effect_white">
 
     <TextView
         android:id="@+id/tv_part_index"

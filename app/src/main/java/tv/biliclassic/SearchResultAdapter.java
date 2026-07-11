@@ -68,10 +68,6 @@ public class SearchResultAdapter extends BaseAdapter {
         initExecutor();
     }
 
-    public void reloadExecutor() {
-        initExecutor();
-    }
-
     @Override
     public int getCount() {
         return list.size();
@@ -110,7 +106,7 @@ public class SearchResultAdapter extends BaseAdapter {
         holder.author.setText(item.author);
         holder.play.setText(item.play + "播放");
 
-        // 先设置占位图
+        // 设置他喵的占位图
         holder.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
 
         if (item.cover != null && item.cover.length() > 0) {
@@ -128,39 +124,48 @@ public class SearchResultAdapter extends BaseAdapter {
                 Bitmap cachedBitmap = softBitmap.get();
                 if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
                     coverView.setImageBitmap(cachedBitmap);
-                    return convertView;
                 } else {
                     imageCache.remove(finalCoverUrl);
                 }
             }
 
             Boolean isLoading = loadingMap.get(Integer.valueOf(currentPos));
-            if (isLoading != null && isLoading.booleanValue()) {
-                return convertView;
-            }
+            if (isLoading == null || !isLoading.booleanValue()) {
+                loadingMap.put(Integer.valueOf(currentPos), Boolean.TRUE);
+                executor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        final Bitmap bitmap = downloadImage(finalCoverUrl);
+                        loadingMap.remove(Integer.valueOf(currentPos));
 
-            loadingMap.put(Integer.valueOf(currentPos), Boolean.TRUE);
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    final Bitmap bitmap = downloadImage(finalCoverUrl);
-                    loadingMap.remove(Integer.valueOf(currentPos));
-
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                Object currentTag = coverView.getTag();
-                                if (currentTag != null && currentTag.equals(finalCoverUrl)) {
-                                    coverView.setImageBitmap(bitmap);
+                        if (bitmap != null && !bitmap.isRecycled()) {
+                            imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
+                            mainHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Object currentTag = coverView.getTag();
+                                    if (currentTag != null && currentTag.equals(finalCoverUrl)) {
+                                        coverView.setImageBitmap(bitmap);
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
                     }
-                }
-            });
+                });
+            }
         }
+
+        // ========== 添加点击监听 ==========
+        final int pos = position;
+        final SearchActivity.SearchResultItem clickItem = item;
+        convertView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (context instanceof SearchActivity) {
+                    ((SearchActivity) context).onSearchResultClick(clickItem, pos);
+                }
+            }
+        });
 
         return convertView;
     }

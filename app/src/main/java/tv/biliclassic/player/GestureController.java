@@ -21,6 +21,7 @@ import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import util.AudioManagerHelper;
 import util.BrightnessHelper;
 import util.PlayerToastMessageViewHolder;
+import android.view.ScaleGestureDetector;
 
 public class GestureController {
 
@@ -36,6 +37,7 @@ public class GestureController {
     private ProgressBar mVolumeLevel;
 
     private GestureDetector mGestureScanner;
+    private ScaleGestureDetector mScaleDetector;
 
     private int mGestureWidth;
     private int mGestureHeight;
@@ -79,18 +81,37 @@ public class GestureController {
     private float mCurrentScale = 1.0f;
     private float mMinScale = 1.0f;
     private float mMaxScale = 3.0f;
-    private float mScaleStartDistance = 0;
-    private float mScaleStartScale = 1.0f;
     private boolean mIsPinching = false;
     private OnScaleChangeListener mScaleChangeListener;
+
+    // 平移相关
+    private float mTranslateX = 0;
+    private float mTranslateY = 0;
+    private float mLastTouchX = 0;
+    private float mLastTouchY = 0;
+    private float mDragStartX = 0;
+    private float mDragStartY = 0;
+    private boolean mIsDragging = false;
+
+    // 手势互斥状态
+    private boolean mIsScaling = false;
+    private boolean mIsSeeking = false;
+    private boolean mIsAdjustingBrightness = false;
+    private boolean mIsAdjustingVolume = false;
+    private boolean mIsLongPressing = false;
 
     private Runnable mLongPressRunnable = new Runnable() {
         @Override
         public void run() {
+            if (mIsScaling || mIsPinching || mIsSeeking ||
+                    mIsAdjustingBrightness || mIsAdjustingVolume ||
+                    mInHorizontalMoving || mInVerticalMoving) {
+                return;
+            }
             if (!mIsLongPressed) {
-                // API 23 以下的系统解码器不支持变速
                 if (mDecoderType == 0 && Build.VERSION.SDK_INT < 23) return;
                 mIsLongPressed = true;
+                mIsLongPressing = true;
                 Log.d(TAG, "长按触发，设置 2.0x 加速");
                 setPlaybackSpeed(2.0f);
                 showSpeedTip(2.0f);
@@ -100,7 +121,7 @@ public class GestureController {
 
     // 缩放回调接口
     public interface OnScaleChangeListener {
-        void onScaleChange(float scale);
+        void onScaleChange(float scale, float translateX, float translateY);
         void onScaleReset();
     }
 
@@ -151,6 +172,39 @@ public class GestureController {
         mToastViewHolder = new PlayerToastMessageViewHolder();
 
         initSpeedTipView(rootView);
+
+        mScaleDetector = new android.view.ScaleGestureDetector(mActivity,
+                new android.view.ScaleGestureDetector.OnScaleGestureListener() {
+                    public boolean onScale(android.view.ScaleGestureDetector detector) {
+                        float scaleFactor = detector.getScaleFactor();
+                        float newScale = mCurrentScale * scaleFactor;
+
+                        if (newScale < mMinScale) newScale = mMinScale;
+                        if (newScale > mMaxScale) newScale = mMaxScale;
+
+                        if (newScale != mCurrentScale) {
+                            mCurrentScale = newScale;
+                            mIsScaling = true;
+                            if (mScaleChangeListener != null) {
+                                mScaleChangeListener.onScaleChange(mCurrentScale, mTranslateX, mTranslateY);
+                            }
+                        }
+                        return true;
+                    }
+
+                    public boolean onScaleBegin(android.view.ScaleGestureDetector detector) {
+                        mIsPinching = true;
+                        mIsScaling = true;
+                        mLongPressHandler.removeCallbacks(mLongPressRunnable);
+                        return true;
+                    }
+
+                    public void onScaleEnd(android.view.ScaleGestureDetector detector) {
+                        mIsPinching = false;
+                        mIsScaling = false;
+                    }
+                }
+        );
 
         setupGestureDetector();
     }
@@ -214,22 +268,20 @@ public class GestureController {
     private void cancelLongPress() {
         mLongPressHandler.removeCallbacks(mLongPressRunnable);
         mIsLongPressed = false;
-        // 如果速度不是 1.0，恢复
         if (mCurrentSpeed != 1.0f) {
             setPlaybackSpeed(1.0f);
             hideSpeedTip();
         }
     }
 
-    // 重新开始长按计时（手势结束时调用）
-    private void restartLongPressTimer() {
-        mLongPressHandler.removeCallbacks(mLongPressRunnable);
-        mIsLongPressed = false;
-        mLongPressHandler.postDelayed(mLongPressRunnable, LONG_PRESS_TIMEOUT);
-    }
-
     public void setEnableGesture(boolean enable) {
         this.enableGesture = enable;
+        if (!enable) {
+            cancelLongPress();
+            mIsDragging = false;
+            mIsPinching = false;
+            mIsScaling = false;
+        }
     }
 
     public void setLiveStream(boolean live) {
@@ -268,6 +320,10 @@ public class GestureController {
 
     public boolean isGestureSeeking() {
         return mInGestureSeekingMode || mInHorizontalMoving || mInVerticalMoving;
+    }
+
+    public boolean isGestureEnabled() {
+        return enableGesture;
     }
 
     public void release() {
@@ -320,10 +376,13 @@ public class GestureController {
         mGestureView.setOnTouchListener(new View.OnTouchListener() {
             public boolean onTouch(View v, MotionEvent event) {
                 mTouchingView = v;
-                if (event.getPointerCount() >= 2) {
-                    return handlePinchZoom(event);
+                // 先让 ScaleDetector 处理缩放
+                if (mScaleDetector != null && event.getPointerCount() >= 2) {
+                    mScaleDetector.onTouchEvent(event);
+                    return true;
                 }
-                if (mGestureScanner != null) {
+                // 单指交给 GestureDetector
+                if (mGestureScanner != null && event.getPointerCount() == 1) {
                     return mGestureScanner.onTouchEvent(event);
                 }
                 return false;
@@ -335,10 +394,11 @@ public class GestureController {
             preloadingView.setOnTouchListener(new View.OnTouchListener() {
                 public boolean onTouch(View v, MotionEvent event) {
                     mTouchingView = v;
-                    if (event.getPointerCount() >= 2) {
-                        return handlePinchZoom(event);
+                    if (mScaleDetector != null && event.getPointerCount() >= 2) {
+                        mScaleDetector.onTouchEvent(event);
+                        return true;
                     }
-                    if (mGestureScanner != null) {
+                    if (mGestureScanner != null && event.getPointerCount() == 1) {
                         return mGestureScanner.onTouchEvent(event);
                     }
                     return false;
@@ -364,17 +424,21 @@ public class GestureController {
         int action = event.getAction();
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
             Log.d(TAG, "onTouchEvent: ACTION_UP/CANCEL, mIsLongPressed=" + mIsLongPressed);
+            mIsSeeking = false;
+            mIsAdjustingBrightness = false;
+            mIsAdjustingVolume = false;
+            mIsScaling = false;
+            mIsPinching = false;
+
             if (mIsLongPressed) {
                 Log.d(TAG, "恢复 1.0x 正常播放");
                 setPlaybackSpeed(1.0f);
                 mIsLongPressed = false;
+                mIsLongPressing = false;
                 showSpeedTip(1.0f);
-                // 延迟隐藏
                 mHandler.postDelayed(mHideSpeedTipRunnable, 1000);
             } else {
-                // 没有触发长按，取消计时
                 mLongPressHandler.removeCallbacks(mLongPressRunnable);
-                // 如果有速度提示显示，隐藏
                 if (mSpeedTipShowing) {
                     hideSpeedTip();
                 }
@@ -391,7 +455,6 @@ public class GestureController {
         if (mCurrentSpeed == speed) return;
         mCurrentSpeed = speed;
 
-        // IJK 直接支持
         if (mMediaPlayer instanceof IjkMediaPlayer) {
             try {
                 ((IjkMediaPlayer) mMediaPlayer).setSpeed(speed);
@@ -401,11 +464,9 @@ public class GestureController {
             }
         }
 
-        // 系统解码器 (AndroidMediaPlayer)
         if (Build.VERSION.SDK_INT >= 23) {
             try {
                 Class<?> cls = mMediaPlayer.getClass();
-                // 遍历所有字段，找到 MediaPlayer 类型的
                 java.lang.reflect.Field[] fields = cls.getDeclaredFields();
                 Object internalMediaPlayer = null;
                 for (java.lang.reflect.Field f : fields) {
@@ -423,7 +484,6 @@ public class GestureController {
                     return;
                 }
 
-                // 对内部 MediaPlayer 调用 setPlaybackParams
                 Class<?> mediaPlayerClass = Class.forName("android.media.MediaPlayer");
                 Class<?> playbackParamsClass = Class.forName("android.media.PlaybackParams");
 
@@ -443,101 +503,108 @@ public class GestureController {
         }
     }
 
-    // GestureController 方法
-
     private int getMaxSeekableValue() {
         if (mDuration <= 0) return 0;
         if (mMaxSeekableValue != -1) return mMaxSeekableValue;
-        float p = 90000.0f / mDuration;
-        if (p > 1.0f) p = 1.0f;
-        mMaxSeekableValue = (int) (1000.0f * p);
+        mMaxSeekableValue = 1000;
         Log.d(TAG, "getMaxSeekableValue: " + mMaxSeekableValue + " (duration=" + mDuration + ")");
         return mMaxSeekableValue;
     }
 
-
-    // 缩放手势
-
-    // 设置缩放监听
+    // 缩放相关
     public void setOnScaleChangeListener(OnScaleChangeListener listener) {
         mScaleChangeListener = listener;
     }
 
-    // 设置最大缩放倍数
     public void setMaxScale(float maxScale) {
         mMaxScale = maxScale;
     }
 
-    // 获取当前缩放
     public float getCurrentScale() {
         return mCurrentScale;
     }
 
+    public float getTranslateX() {
+        return mTranslateX;
+    }
+
+    public float getTranslateY() {
+        return mTranslateY;
+    }
+
     // 重置缩放
     public void resetScale() {
-        if (mScaleChangeListener != null && mCurrentScale != 1.0f) {
+        if (mScaleChangeListener != null) {
             mCurrentScale = 1.0f;
+            mTranslateX = 0;
+            mTranslateY = 0;
             mScaleChangeListener.onScaleReset();
         }
     }
 
-    // 计算两个手指之间的距离
-    private float getFingerDistance(MotionEvent event) {
-        float x = event.getX(0) - event.getX(1);
-        float y = event.getY(0) - event.getY(1);
-        return (float) Math.sqrt(x * x + y * y);
-    }
-
-    // 处理双指缩放手势
-    private boolean handlePinchZoom(MotionEvent event) {
-        if (mScaleChangeListener == null) {
-            Log.d(TAG, "handlePinchZoom: mScaleChangeListener is null");
-            return false;
-        }
-        if (event.getPointerCount() < 2) {
-            mIsPinching = false;
-            return false;
+    // 拖拽平移处理
+    private void handleDrag(MotionEvent event) {
+        if (mCurrentScale <= 1.0f) {
+            mIsDragging = false;
+            return;
         }
 
-        int action = event.getAction() & MotionEvent.ACTION_MASK;
+        int action = event.getAction();
+        float x = event.getX();
+        float y = event.getY();
+
         switch (action) {
-            case MotionEvent.ACTION_POINTER_DOWN:
-                mScaleStartDistance = getFingerDistance(event);
-                mScaleStartScale = mCurrentScale;
-                mIsPinching = true;
-                Log.d(TAG, "开始缩放: startDistance=" + mScaleStartDistance + ", startScale=" + mScaleStartScale);
-                return true;
+            case MotionEvent.ACTION_DOWN:
+                mLastTouchX = x;
+                mLastTouchY = y;
+                mDragStartX = mTranslateX;
+                mDragStartY = mTranslateY;
+                mIsDragging = false;
+                break;
 
             case MotionEvent.ACTION_MOVE:
-                if (!mIsPinching) return false;
-                float currentDistance = getFingerDistance(event);
-                if (currentDistance == 0) return false;
+                if (event.getPointerCount() >= 2) return;
 
-                float scale = currentDistance / mScaleStartDistance;
-                float newScale = mScaleStartScale * scale;
+                float dx = (x - mLastTouchX) / mGestureWidth;
+                float dy = (y - mLastTouchY) / mGestureHeight;
 
-                // 限制缩放范围
-                if (newScale < mMinScale) newScale = mMinScale;
-                if (newScale > mMaxScale) newScale = mMaxScale;
-
-                if (newScale != mCurrentScale) {
-                    mCurrentScale = newScale;
-                    Log.d(TAG, "缩放中: scale=" + mCurrentScale);
-                    mScaleChangeListener.onScaleChange(mCurrentScale);
+                if (Math.abs(dx) > 0.001f || Math.abs(dy) > 0.001f) {
+                    mIsDragging = true;
                 }
-                return true;
 
-            case MotionEvent.ACTION_POINTER_UP:
+                float newTranslateX = mDragStartX + dx;
+                float newTranslateY = mDragStartY + dy;
+
+                mTranslateX = newTranslateX;
+                mTranslateY = newTranslateY;
+
+                if (mScaleChangeListener != null) {
+                    mScaleChangeListener.onScaleChange(mCurrentScale, mTranslateX, mTranslateY);
+                }
+                break;
+
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
-                mIsPinching = false;
-                Log.d(TAG, "缩放结束: finalScale=" + mCurrentScale);
-                return true;
+                mIsDragging = false;
+                break;
         }
-        return false;
     }
 
+    /**
+     * 取消长按计时（用于评论滑动时强制取消）
+     */
+    public void cancelLongPressForComment() {
+        mLongPressHandler.removeCallbacks(mLongPressRunnable);
+        mIsLongPressed = false;
+        if (mCurrentSpeed != 1.0f) {
+            setPlaybackSpeed(1.0f);
+            hideSpeedTip();
+        }
+    }
+
+    // ============================================================
     // 手势监听器
+    // ============================================================
 
     private class GestureListener extends GestureDetector.SimpleOnGestureListener {
 
@@ -550,13 +617,11 @@ public class GestureController {
 
         public boolean onDown(MotionEvent e) {
             Log.d(TAG, "onDown");
-            // 重置缩放状态
             mIsPinching = false;
             updateCurrentPositionForGesture();
             hideBarControllers(0);
             startBrightnessChange();
             startVolumeChange();
-            // 启动长按计时
             mLongPressHandler.removeCallbacks(mLongPressRunnable);
             mIsLongPressed = false;
             mLongPressHandler.postDelayed(mLongPressRunnable, LONG_PRESS_TIMEOUT);
@@ -565,9 +630,9 @@ public class GestureController {
 
         public boolean onSingleTapConfirmed(MotionEvent e) {
             Log.d(TAG, "onSingleTapConfirmed");
-            // 取消长按计时，防止干扰
             mLongPressHandler.removeCallbacks(mLongPressRunnable);
-            if (mInGestureSeekingMode || mInHorizontalMoving || mInVerticalMoving) {
+            if (mInGestureSeekingMode || mInHorizontalMoving || mInVerticalMoving ||
+                    mIsScaling || mIsPinching || mIsDragging) {
                 return false;
             }
             if (mListener != null) {
@@ -578,24 +643,7 @@ public class GestureController {
 
         public boolean onDoubleTap(MotionEvent e) {
             Log.d(TAG, "onDoubleTap");
-            // 取消长按计时
             mLongPressHandler.removeCallbacks(mLongPressRunnable);
-            // 双击重置缩放
-            if (mScaleChangeListener != null && mCurrentScale != 1.0f) {
-                mCurrentScale = 1.0f;
-                mScaleChangeListener.onScaleReset();
-                // 显示提示
-                if (mToastViewHolder != null) {
-                    android.widget.FrameLayout rootView = (android.widget.FrameLayout)
-                            mActivity.findViewById(android.R.id.content);
-                    if (rootView != null) {
-                        mToastViewHolder.initView(mActivity, rootView);
-                        mToastViewHolder.show("已重置", 1000, false);
-                    }
-                }
-                return true;
-            }
-            // 没有缩放时，切换播放/暂停
             if (mListener != null) {
                 mListener.onTogglePlayPause();
             }
@@ -606,37 +654,63 @@ public class GestureController {
             if (e1 == null || e2 == null) return false;
             if (!enableGesture) return false;
 
-            // 检查是否有两个手指（缩放手势由外部处理）
-            if (e2.getPointerCount() >= 2) {
+            if (mIsScaling || mIsPinching) {
                 return false;
             }
 
-            float startX = e1.getX();
-            if (startX < mGestureWidth * 0.01f || startX > mGestureWidth * 0.95f) return true;
-            float startY = e1.getY();
-            if (startY < mGestureHeight * 0.1f || startY > mGestureHeight * 0.95f) return true;
+            // 缩放 > 1.0 时进入拖拽模式
+            if (mCurrentScale > 1.0f && e2.getPointerCount() == 1) {
+                // 直接使用 distanceX/distanceY，它们代表的是本次移动的增量
+                float dx = -distanceX / mGestureWidth;
+                float dy = -distanceY / mGestureHeight;
 
-            float moveDelta = Math.abs(distanceY) - Math.abs(distanceX);
+                // 降低阈值，让移动更灵敏
+                if (Math.abs(dx) > 0.001f || Math.abs(dy) > 0.001f) {
+                    mTranslateX += dx;
+                    mTranslateY += dy;
+                    mIsDragging = true;
 
-            // 检测到垂直移动（亮度/音量调节）
-            if (moveDelta > 0f) {
-                // 取消长按计时
-                mLongPressHandler.removeCallbacks(mLongPressRunnable);
-                onVerticalMove(e1, e2, distanceX, distanceY);
-            } else if (moveDelta < 0f && !isLiveStream) {
-                // 水平移动（快进快退），取消长按计时
-                mLongPressHandler.removeCallbacks(mLongPressRunnable);
-                onHorizontalMove(e1, e2, distanceX, distanceY);
+                    if (mScaleChangeListener != null) {
+                        mScaleChangeListener.onScaleChange(mCurrentScale, mTranslateX, mTranslateY);
+                    }
+                    return true;
+                }
+            }
+
+            // 缩放为 1.0 时处理快进快退
+            if (mCurrentScale <= 1.0f) {
+                float startX = e1.getX();
+                if (startX < mGestureWidth * 0.01f || startX > mGestureWidth * 0.95f) return true;
+                float startY = e1.getY();
+                if (startY < mGestureHeight * 0.1f || startY > mGestureHeight * 0.95f) return true;
+
+                float moveDelta = Math.abs(distanceY) - Math.abs(distanceX);
+
+                if (moveDelta > 0f) {
+                    if (mInHorizontalMoving || mIsSeeking) {
+                        return true;
+                    }
+                    mLongPressHandler.removeCallbacks(mLongPressRunnable);
+                    onVerticalMove(e1, e2, distanceX, distanceY);
+                } else if (moveDelta < 0f && !isLiveStream) {
+                    if (mInVerticalMoving || mIsAdjustingBrightness || mIsAdjustingVolume) {
+                        return true;
+                    }
+                    mLongPressHandler.removeCallbacks(mLongPressRunnable);
+                    onHorizontalMove(e1, e2, distanceX, distanceY);
+                }
             }
             return true;
         }
 
+        // 处理水平滑动（快进快退）
         private void onHorizontalMove(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-            if (mInVerticalMoving || mSeekBar == null) return;
+            if (mInVerticalMoving || mIsAdjustingBrightness || mIsAdjustingVolume || mSeekBar == null) return;
             float deltaFactorX = (e1.getX() - e2.getX()) / (float) mGestureWidth;
             if (Math.abs(deltaFactorX) >= 0.02f || mInGestureSeekingMode) {
                 if (!mInGestureSeekingMode) {
                     mInGestureSeekingMode = true;
+                    mIsSeeking = true;
                     mSeekBarStartProgress = mSeekBar.getProgress();
                     Log.d(TAG, "开始手势快进，起始进度: " + mSeekBarStartProgress);
                 }
@@ -653,8 +727,9 @@ public class GestureController {
             }
         }
 
+        // 处理垂直滑动（亮度/音量调节）
         private void onVerticalMove(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-            if (mInHorizontalMoving) return;
+            if (mInHorizontalMoving || mIsSeeking) return;
             float startX1 = e1.getX();
             float startX2 = e2.getX();
             float left = mGestureWidth / 3f;
@@ -662,9 +737,11 @@ public class GestureController {
             float deltaFactorY = (e1.getY() - e2.getY()) / (float) mGestureHeight;
 
             if (startX1 < left && startX2 < left) {
+                mIsAdjustingBrightness = true;
                 changeBrightness(deltaFactorY);
                 if (!mInVerticalMoving) mInVerticalMoving = true;
             } else if (startX1 > right && startX2 > right) {
+                mIsAdjustingVolume = true;
                 changeVolume(deltaFactorY);
                 if (!mInVerticalMoving) mInVerticalMoving = true;
             }
@@ -675,6 +752,10 @@ public class GestureController {
             mHandler.postDelayed(mHideUIRunnable, delay);
         }
     }
+
+    // ============================================================
+    // 以下为辅助方法
+    // ============================================================
 
     private void updateCurrentPositionForGesture() {
         if (mSeekBar != null) {
@@ -754,8 +835,18 @@ public class GestureController {
         mToastViewHolder.show(text, 500000, false);
     }
 
+    // 处理手势结束，重置所有状态
     private void handleGestureUp() {
         Log.d(TAG, "handleGestureUp");
+
+        mIsSeeking = false;
+        mIsAdjustingBrightness = false;
+        mIsAdjustingVolume = false;
+        mIsScaling = false;
+        mIsPinching = false;
+        mIsLongPressing = false;
+        mIsDragging = false;
+
         if ((mBrightnessBar != null && mBrightnessBar.isShown()) ||
                 (mVolumeBar != null && mVolumeBar.isShown())) {
             mHandler.removeCallbacks(mHideBarsRunnable);

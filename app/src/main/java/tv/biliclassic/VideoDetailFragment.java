@@ -91,9 +91,9 @@ public class VideoDetailFragment extends Fragment {
         partAdapter = new VideoPartAdapter(getActivity(), partList);
         lvParts.setAdapter(partAdapter);
 
-        lvParts.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        partAdapter.setOnPartClickListener(new VideoPartAdapter.OnPartClickListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+            public void onPartClick(VideoPart part, int position) {
                 currentPartIndex = position;
                 partAdapter.setSelectedPosition(position);
                 playVideo();

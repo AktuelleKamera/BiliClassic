@@ -31,12 +31,17 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class RelatedVideosAdapter extends BaseAdapter {
 
+    public interface OnVideoClickListener {
+        void onVideoClick(VideoCard video, int position);
+    }
+
     private Context context;
     private List<VideoCard> list;
     private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Map<String, SoftReference<Bitmap>> imageCache = new HashMap<String, SoftReference<Bitmap>>();
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
+    private OnVideoClickListener mListener;
 
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
@@ -68,6 +73,10 @@ public class RelatedVideosAdapter extends BaseAdapter {
         this.context = context;
         this.list = list;
         initExecutor();
+    }
+
+    public void setOnVideoClickListener(OnVideoClickListener listener) {
+        this.mListener = listener;
     }
 
     public void reloadExecutor() {
@@ -132,39 +141,49 @@ public class RelatedVideosAdapter extends BaseAdapter {
                 Bitmap cachedBitmap = softBitmap.get();
                 if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
                     coverView.setImageBitmap(cachedBitmap);
-                    return convertView;
+                    // 继续执行点击监听
                 } else {
                     imageCache.remove(finalCoverUrl);
                 }
             }
 
             Boolean isLoading = loadingMap.get(currentPos);
-            if (isLoading != null && isLoading) {
-                return convertView;
-            }
+            if (isLoading == null || !isLoading) {
+                loadingMap.put(currentPos, true);
+                executor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        final Bitmap bitmap = downloadImage(finalCoverUrl);
+                        loadingMap.remove(currentPos);
 
-            loadingMap.put(currentPos, true);
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    final Bitmap bitmap = downloadImage(finalCoverUrl);
-                    loadingMap.remove(currentPos);
-
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                Object currentTag = coverView.getTag();
-                                if (currentTag != null && currentTag.equals(finalCoverUrl)) {
-                                    coverView.setImageBitmap(bitmap);
+                        if (bitmap != null && !bitmap.isRecycled()) {
+                            imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
+                            mainHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Object currentTag = coverView.getTag();
+                                    if (currentTag != null && currentTag.equals(finalCoverUrl)) {
+                                        coverView.setImageBitmap(bitmap);
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
                     }
-                }
-            });
+                });
+            }
         }
+
+        // ========== 添加点击监听 ==========
+        final int pos = position;
+        final VideoCard clickItem = item;
+        convertView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mListener != null) {
+                    mListener.onVideoClick(clickItem, pos);
+                }
+            }
+        });
 
         return convertView;
     }

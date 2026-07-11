@@ -12,13 +12,22 @@ import tv.biliclassic.model.VideoPart;
 
 public class VideoPartAdapter extends BaseAdapter {
 
+    public interface OnPartClickListener {
+        void onPartClick(VideoPart part, int position);
+    }
+
     private Context context;
     private List<VideoPart> list;
     private int selectedPosition = -1;
+    private OnPartClickListener mListener;
 
     public VideoPartAdapter(Context context, List<VideoPart> list) {
         this.context = context;
         this.list = list;
+    }
+
+    public void setOnPartClickListener(OnPartClickListener listener) {
+        this.mListener = listener;
     }
 
     public void setSelectedPosition(int position) {
@@ -47,7 +56,8 @@ public class VideoPartAdapter extends BaseAdapter {
             convertView = LayoutInflater.from(context).inflate(R.layout.item_video_part, parent, false);
         }
 
-        VideoPart item = list.get(position);
+        final VideoPart item = list.get(position);
+        final int pos = position;
 
         TextView tvIndex = (TextView) convertView.findViewById(R.id.tv_part_index);
         TextView tvTitle = (TextView) convertView.findViewById(R.id.tv_part_title);
@@ -61,6 +71,15 @@ public class VideoPartAdapter extends BaseAdapter {
         } else {
             convertView.setBackgroundColor(0x00000000);
         }
+
+        convertView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mListener != null) {
+                    mListener.onPartClick(item, pos);
+                }
+            }
+        });
 
         return convertView;
     }

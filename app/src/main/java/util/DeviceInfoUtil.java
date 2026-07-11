@@ -18,12 +18,11 @@ public class DeviceInfoUtil {
         StringBuilder sb = new StringBuilder();
 
         String abi = Build.CPU_ABI;
-        String hardware = getHardwareInfo();
         String model = Build.MODEL;
         String device = Build.DEVICE;
         String manufacturer = Build.MANUFACTURER;
 
-        // ========== 横屏设备彩蛋（优先检测）==========
+        // 横屏设备彩蛋
 
         android.util.Log.e("DeviceInfoUtil", "检查 HTC ChaCha 系列...");
 
@@ -64,7 +63,7 @@ public class DeviceInfoUtil {
             }
         }
 
-        // ========== 索尼A5100微单相机彩蛋 ==========
+        // 索尼A5100微单相机彩蛋
         if (model != null && (model.equalsIgnoreCase("ScalarA") ||
                 model.toLowerCase().contains("scalara"))) {
             android.util.Log.e("DeviceInfoUtil", "✅ 匹配到索尼A5100微单！");
@@ -76,7 +75,7 @@ public class DeviceInfoUtil {
             return sb.toString();
         }
 
-        // ========== 小米/红米手机彩蛋 ==========
+        // 小米/红米手机彩蛋
 
         android.util.Log.e("DeviceInfoUtil", "检查小米/红米系列...");
 
@@ -193,7 +192,7 @@ public class DeviceInfoUtil {
             return sb.toString();
         }
 
-        // ========== HTC HD2 ==========
+        // HTC HD2
         if (model != null && (model.toLowerCase().contains("hd2") ||
                 model.toLowerCase().contains("leo") ||
                 model.equalsIgnoreCase("T8585") ||
@@ -208,7 +207,7 @@ public class DeviceInfoUtil {
             return sb.toString();
         }
 
-        // ========== 常规架构检测 ==========
+        // 常规架构检测
         android.util.Log.e("DeviceInfoUtil", "未匹配到特殊设备，进入常规架构检测...");
 
         if (abi != null) {
@@ -267,26 +266,6 @@ public class DeviceInfoUtil {
         return sb.toString();
     }
 
-    private static String getHardwareInfo() {
-        try {
-            BufferedReader reader = new BufferedReader(new FileReader("/proc/cpuinfo"));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.startsWith("Hardware") || line.startsWith("Hardware\t")) {
-                    String[] parts = line.split(":");
-                    if (parts.length > 1) {
-                        reader.close();
-                        return parts[1].trim();
-                    }
-                }
-            }
-            reader.close();
-        } catch (Exception e) {
-            // 忽略
-        }
-        return null;
-    }
-
     public static boolean isArmv5() {
         if (!isArmeabiLegacy()) return false;
         return "ARMv5te".equals(checkArmv5OrV6());
@@ -322,6 +301,25 @@ public class DeviceInfoUtil {
         } catch (Exception e) {
             // 读不到就认为没有
         }
+        return false;
+    }
+
+    /**
+     * 检测是否需要 Legacy 版本喵
+     * 返回 true 表示需要 Legacy 版本（不弹窗）
+     * 返回 false 表示不需要 Legacy 版本（弹窗提示）
+     */
+    public static boolean isLegacyDevice() {
+        // ARMv5 或 ARMv6 无 VFP，确实需要 Legacy
+        if (isArmv5() || isArmv6WithoutVfp()) {
+            return true;
+        }
+
+        // 检测 SDK 版本（Android 2.2 及以下视为 Legacy）
+        if (android.os.Build.VERSION.SDK_INT < 9) {
+            return true;
+        }
+
         return false;
     }
 

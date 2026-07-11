@@ -14,7 +14,6 @@ import android.os.StatFs;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
@@ -22,6 +21,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.AbsListView;
+import android.widget.AdapterView;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -134,16 +134,6 @@ public class OfflineActivity extends BaseActivity {
             }
         });
 
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                OfflineItem item = videoList.get(position);
-                if (item != null) {
-                    playVideo(item);
-                }
-            }
-        });
-
         listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
@@ -190,9 +180,14 @@ public class OfflineActivity extends BaseActivity {
         finish();
     }
 
+    public void onOfflineItemClick(OfflineItem item, int position) {
+        if (item != null) {
+            playVideo(item);
+        }
+    }
+
     // 播放视频
     private void playVideo(OfflineItem item) {
-        // 未下载完的视频 → 进入在线详情页
         if (!item.isCompleted && item.avid > 0) {
             Intent intent = new Intent(this, VideoDetailActivity.class);
             intent.putExtra("aid", item.avid);
@@ -206,7 +201,6 @@ public class OfflineActivity extends BaseActivity {
             return;
         }
 
-        // 新版下载：跳转到视频详情页（离线模式）
         if (item.env != null && item.env.avid > 0) {
             Intent intent = new Intent(this, VideoDetailActivity.class);
             intent.putExtra("aid", item.env.avid);
@@ -217,7 +211,6 @@ public class OfflineActivity extends BaseActivity {
 
         int playerPref = SettingsActivity.getPlayerPreference();
 
-        // 内置播放器（旧版视频使用）
         if (playerPref == 8) {
             Intent intent = new Intent(this, BiliPlayerActivity.class);
             String displayTitle = (item.pageTitle != null && item.pageTitle.length() > 0)
@@ -239,7 +232,6 @@ public class OfflineActivity extends BaseActivity {
             return;
         }
 
-        // 外部播放器（旧版视频使用）
         Intent intent = new Intent(Intent.ACTION_VIEW);
         intent.setDataAndType(Uri.fromFile(item.videoFile), "video/mp4");
         String preferredPlayer = SettingsActivity.getPlayerPackageName();
@@ -279,10 +271,8 @@ public class OfflineActivity extends BaseActivity {
     private void deleteVideo(OfflineItem item) {
         try {
             if (item.isCompleted && item.env != null) {
-                // 已完成的新版 → 删整个目录
                 item.env.deleteEntry();
             } else if (!item.isCompleted) {
-                // 下载中的 → 先取消服务，再删
                 Intent cancelIntent = new Intent(this, VideoDownloadService.class);
                 cancelIntent.setAction(VideoDownloadService.ACTION_CANCEL);
                 startService(cancelIntent);
@@ -435,7 +425,7 @@ public class OfflineActivity extends BaseActivity {
         }
     }
 
-    // 统一扫描：新版 + 旧版 + 自动迁移封面
+    // 扫描
     private List<OfflineItem> scanAllItems() {
         List<OfflineItem> items = new ArrayList<OfflineItem>();
         File downloadDir = mDownloadDir;
@@ -460,7 +450,7 @@ public class OfflineActivity extends BaseActivity {
             Log.d("OfflineActivity", "  文件 " + i + ": " + f.getName() + " (目录:" + f.isDirectory() + ", 视频:" + isVideoFile(f) + ")");
         }
 
-        // 1. 扫描新版（有 entry.json 的）
+        // 1. 扫描新版
         Log.d("OfflineActivity", "--- 扫描新版 ---");
         ArrayList<VideoDownloadEntry> entries = VideoDownloadEnvironment.loadAllEntries(downloadDir);
         if (entries != null) {
@@ -968,6 +958,17 @@ public class OfflineActivity extends BaseActivity {
             if (item != null && !isScrolling) {
                 loadCoverFromLocal(item, holder.cover, position);
             }
+
+            // ========== 添加点击监听 ==========
+            final int pos = position;
+            final OfflineItem clickItem = item;
+            convertView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    onOfflineItemClick(clickItem, pos);
+                }
+            });
+
             return convertView;
         }
     }

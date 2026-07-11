@@ -6,7 +6,6 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -47,22 +46,22 @@ public class RelatedVideosFragment extends Fragment {
         adapter = new RelatedVideosAdapter(getActivity(), videoList);
         listView.setAdapter(adapter);
 
-        Bundle args = getArguments();
-        if (args != null) {
-            aid = args.getLong("aid", 0);
-            bvid = args.getString("bvid");
-        }
-
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        adapter.setOnVideoClickListener(new RelatedVideosAdapter.OnVideoClickListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                VideoCard video = videoList.get(position);
+            public void onVideoClick(VideoCard video, int position) {
+                if (video == null) return;
                 Intent intent = new Intent(getActivity(), VideoDetailActivity.class);
                 intent.putExtra("aid", video.aid);
                 intent.putExtra("bvid", video.bvid);
                 startActivity(intent);
             }
         });
+
+        Bundle args = getArguments();
+        if (args != null) {
+            aid = args.getLong("aid", 0);
+            bvid = args.getString("bvid");
+        }
 
         loadRelatedVideos();
 
@@ -72,13 +71,9 @@ public class RelatedVideosFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // 彻底清理
         clearAll();
     }
 
-    /**
-     * 清理图片资源（供 VideoDetailActivity 调用）
-     */
     public void clearImages() {
         if (adapter != null) {
             adapter.clearCache();
@@ -88,9 +83,6 @@ public class RelatedVideosFragment extends Fragment {
         }
     }
 
-    /**
-     * 彻底清理，断开所有引用
-     */
     public void clearAll() {
         if (adapter != null) {
             adapter.clearCache();

@@ -129,6 +129,14 @@ public class FavoriteVideoListActivity extends BaseActivity {
         loadVideos();
     }
 
+    public void onVideoClick(VideoCard video, int position) {
+        if (video == null) return;
+        Intent intent = new Intent(this, VideoDetailActivity.class);
+        intent.putExtra("aid", video.aid);
+        intent.putExtra("bvid", video.bvid);
+        startActivity(intent);
+    }
+
     private void showDeleteConfirm(final int position) {
         new AlertDialog.Builder(this)
                 .setTitle("提示")
