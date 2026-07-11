@@ -658,16 +658,19 @@ public class GestureController {
                 return false;
             }
 
-            // 缩放 > 1.0 时进入拖拽模式
+            // 拖拽模式（缩放 > 1.0 时）
             if (mCurrentScale > 1.0f && e2.getPointerCount() == 1) {
-                // 直接使用 distanceX/distanceY，它们代表的是本次移动的增量
-                float dx = -distanceX / mGestureWidth;
-                float dy = -distanceY / mGestureHeight;
+                float dx = Math.abs(e2.getX() - e1.getX());
+                float dy = Math.abs(e2.getY() - e1.getY());
+                if (dx > 15 || dy > 15) {
+                    mLongPressHandler.removeCallbacks(mLongPressRunnable);
+                    mIsLongPressed = false;
 
-                // 降低阈值，让移动更灵敏
-                if (Math.abs(dx) > 0.001f || Math.abs(dy) > 0.001f) {
-                    mTranslateX += dx;
-                    mTranslateY += dy;
+                    float moveX = -distanceX / mGestureWidth;
+                    float moveY = -distanceY / mGestureHeight;
+
+                    mTranslateX += moveX;
+                    mTranslateY += moveY;
                     mIsDragging = true;
 
                     if (mScaleChangeListener != null) {

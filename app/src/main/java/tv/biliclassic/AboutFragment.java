@@ -20,12 +20,12 @@ public class AboutFragment extends Fragment {
         View view = inflater.inflate(R.layout.content_about, container, false);
 
         TextView appBrief = (TextView) view.findViewById(R.id.app_brief);
-        String versionName = "0.4.3";
+        String versionName = "0.4.4";
         try {
             PackageInfo packageInfo = getActivity().getPackageManager().getPackageInfo(getActivity().getPackageName(), 0);
             versionName = packageInfo.versionName;
         } catch (PackageManager.NameNotFoundException e) {
-            versionName = "0.4.3";
+            versionName = "0.4.4";
         }
         appBrief.setText("哔哩经典 " + versionName + "\n安卓2也要看B站！");
 

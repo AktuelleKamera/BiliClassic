@@ -16,12 +16,12 @@ public class AboutActivity extends BaseActivity {
         setContentView(R.layout.bili_about);
 
         // 获取版本号
-        String versionName = "0.4.3";
+        String versionName = "0.4.4";
         try {
             PackageInfo packageInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
             versionName = packageInfo.versionName;
         } catch (PackageManager.NameNotFoundException e) {
-            versionName = "0.4.3";
+            versionName = "0.4.4";
         }
 
         // 应用名称和版本号
