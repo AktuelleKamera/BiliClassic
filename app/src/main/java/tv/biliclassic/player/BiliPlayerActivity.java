@@ -2300,18 +2300,29 @@ public class BiliPlayerActivity extends Activity implements
     private void applyAspectRatio(int mode) {
         if (videoWidth == 0 || videoHeight == 0) return;
 
-        DisplayMetrics dm = new DisplayMetrics();
-        getWindowManager().getDefaultDisplay().getMetrics(dm);
-        int containerWidth = dm.widthPixels;
-        int containerHeight = dm.heightPixels;
+        FrameLayout container = (FrameLayout) findViewById(R.id.video_container);
+        if (container == null) return;
+
+        int containerWidth = container.getWidth();
+        int containerHeight = container.getHeight();
+
+        if (containerWidth == 0 || containerHeight == 0) {
+            DisplayMetrics dm = new DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getMetrics(dm);
+            containerWidth = dm.widthPixels;
+            containerHeight = dm.heightPixels;
+        }
+
+        float containerRatio = (float) containerWidth / containerHeight;
+        float videoRatio = (float) videoWidth / videoHeight;
 
         float targetRatio;
         switch (mode) {
             case ASPECT_RATIO_ADJUST_CONTENT:
-                targetRatio = (float) videoWidth / videoHeight;
+                targetRatio = videoRatio;
                 break;
             case ASPECT_RATIO_ADJUST_SCREEN:
-                targetRatio = (float) containerWidth / containerHeight;
+                targetRatio = containerRatio;
                 break;
             case ASPECT_RATIO_4_3_INSIDE:
                 targetRatio = 4f / 3f;
@@ -2323,11 +2334,9 @@ public class BiliPlayerActivity extends Activity implements
                 targetRatio = 9f / 16f;
                 break;
             default:
-                targetRatio = (float) videoWidth / videoHeight;
+                targetRatio = videoRatio;
                 break;
         }
-
-        float containerRatio = (float) containerWidth / containerHeight;
 
         int targetWidth, targetHeight;
         if (targetRatio > containerRatio) {
@@ -2338,16 +2347,8 @@ public class BiliPlayerActivity extends Activity implements
             targetWidth = (int) (containerHeight * targetRatio);
         }
 
-        if (mRendererType == RENDERER_SURFACEVIEW && surfaceHolder != null) {
-            surfaceHolder.setFixedSize(videoWidth, videoHeight);
-        } else if (mRendererType == RENDERER_TEXTUREVIEW && videoView instanceof TextureView) {
-            TextureView tv = (TextureView) videoView;
-            if (tv.getSurfaceTexture() != null) {
-                try {
-                    tv.getSurfaceTexture().setDefaultBufferSize(videoWidth, videoHeight);
-                } catch (Exception e) {}
-            }
-        }
+        if (targetWidth < 1) targetWidth = 1;
+        if (targetHeight < 1) targetHeight = 1;
 
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) videoView.getLayoutParams();
         if (params == null) {
@@ -2357,9 +2358,21 @@ public class BiliPlayerActivity extends Activity implements
             params.width = targetWidth;
             params.height = targetHeight;
             params.gravity = android.view.Gravity.CENTER;
+            // 清除之前可能存在的偏移
+            params.leftMargin = 0;
+            params.topMargin = 0;
+            params.rightMargin = 0;
+            params.bottomMargin = 0;
         }
         videoView.setLayoutParams(params);
         videoView.requestLayout();
+
+        // 如果是 SurfaceView，更新固定大小
+        if (mRendererType == RENDERER_SURFACEVIEW && surfaceHolder != null) {
+            try {
+                surfaceHolder.setFixedSize(videoWidth, videoHeight);
+            } catch (Exception e) {}
+        }
     }
 
     // ---- Options Menu ----
