@@ -326,6 +326,25 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
+                    android:text="NullNanError"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="水渠-official"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+            </TableRow>
+            <TableRow>
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
                     android:text="ビリビリ_User"
                     android:textSize="12sp"
                     android:textColor="#CCCCCC" />

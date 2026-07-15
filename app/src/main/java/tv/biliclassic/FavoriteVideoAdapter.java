@@ -1,11 +1,13 @@
 package tv.biliclassic;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -37,6 +39,33 @@ public class FavoriteVideoAdapter extends BaseAdapter {
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Map<String, SoftReference<Bitmap>> imageCache = new HashMap<String, SoftReference<Bitmap>>();
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
+    private boolean isLowMemory = false;
+
+    // 长按检测
+    private Handler longPressHandler = new Handler();
+    private Runnable longPressRunnable;
+    private int longPressPosition = -1;
+    private boolean isLongPressTriggered = false;
+
+    public interface OnDeleteClickListener {
+        void onDeleteClick(int position);
+    }
+
+    private OnDeleteClickListener deleteClickListener;
+
+    public void setOnDeleteClickListener(OnDeleteClickListener listener) {
+        this.deleteClickListener = listener;
+    }
+
+    public FavoriteVideoAdapter(Context context, List<VideoCard> list) {
+        this.context = context;
+        this.list = list;
+        if (this.list == null) {
+            this.list = new ArrayList<VideoCard>();
+        }
+        this.isLowMemory = isLowMemoryDevice();
+        initExecutor();
+    }
 
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
@@ -48,7 +77,7 @@ public class FavoriteVideoAdapter extends BaseAdapter {
         if (savedThreads > 0) {
             return savedThreads;
         }
-        return isLowMemoryDevice() ? 1 : 2;
+        return isLowMemory ? 1 : 2;
     }
 
     private void initExecutor() {
@@ -62,15 +91,6 @@ public class FavoriteVideoAdapter extends BaseAdapter {
             executor = new ThreadPoolExecutor(threadCount, threadCount, 60L, TimeUnit.SECONDS,
                     new LinkedBlockingQueue<Runnable>());
         }
-    }
-
-    public FavoriteVideoAdapter(Context context, List<VideoCard> list) {
-        this.context = context;
-        this.list = list;
-        if (this.list == null) {
-            this.list = new ArrayList<VideoCard>();
-        }
-        initExecutor();
     }
 
     public void reloadExecutor() {
@@ -96,41 +116,36 @@ public class FavoriteVideoAdapter extends BaseAdapter {
     }
 
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
-        if (list == null || position < 0 || position >= list.size()) {
-            if (convertView == null) {
-                convertView = LayoutInflater.from(context).inflate(R.layout.item_favorite_video, parent, false);
-            }
-            return convertView;
-        }
-
-        final VideoCard item = list.get(position);
-        if (item == null) {
-            if (convertView == null) {
-                convertView = LayoutInflater.from(context).inflate(R.layout.item_favorite_video, parent, false);
-            }
-            return convertView;
-        }
-
+    public View getView(final int position, View convertView, ViewGroup parent) {
         ViewHolder holder;
 
         if (convertView == null) {
             convertView = LayoutInflater.from(context).inflate(R.layout.item_favorite_video, parent, false);
             holder = new ViewHolder();
-            holder.title = (TextView) convertView.findViewById(R.id.title);
-            holder.upName = (TextView) convertView.findViewById(R.id.up_name);
-            holder.view = (TextView) convertView.findViewById(R.id.view);
             holder.cover = (ImageView) convertView.findViewById(R.id.cover);
+            holder.title = (TextView) convertView.findViewById(R.id.title);
+            holder.author = (TextView) convertView.findViewById(R.id.up_name);   // 改为 up_name
+            holder.play = (TextView) convertView.findViewById(R.id.view);        // 改为 view
             convertView.setTag(holder);
         } else {
             holder = (ViewHolder) convertView.getTag();
         }
 
-        holder.title.setText(item.title != null ? item.title : "");
-        holder.upName.setText(item.upName != null ? item.upName : "");
-        holder.view.setText(item.view != null ? item.view : "");
+        if (list == null || position < 0 || position >= list.size()) {
+            holder.title.setText("嘿咻…嘿咻…");
+            return convertView;
+        }
 
-        // 占位图
+        final VideoCard item = list.get(position);
+        if (item == null) {
+            holder.title.setText("视频信息错误");
+            return convertView;
+        }
+
+        holder.title.setText(item.title != null ? item.title : "无标题");
+        holder.author.setText(item.upName != null ? item.upName : "未知UP主");
+        holder.play.setText(item.view != null ? item.view : "0观看");
+
         holder.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
 
         if (item.cover != null && item.cover.length() > 0) {
@@ -144,7 +159,6 @@ public class FavoriteVideoAdapter extends BaseAdapter {
             final int currentPos = position;
             coverView.setTag(finalCoverUrl);
 
-            // 从缓存中查找（加同步锁）
             Bitmap cachedBitmap = null;
             synchronized (imageCache) {
                 SoftReference<Bitmap> softBitmap = imageCache.get(finalCoverUrl);
@@ -152,45 +166,46 @@ public class FavoriteVideoAdapter extends BaseAdapter {
                     cachedBitmap = softBitmap.get();
                     if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
                         coverView.setImageBitmap(cachedBitmap);
-                        // 继续执行点击监听
                     } else {
                         imageCache.remove(finalCoverUrl);
                     }
                 }
             }
 
-            Boolean isLoading = loadingMap.get(currentPos);
-            if (isLoading != null && isLoading) {
-                // 继续执行点击监听
-            } else {
-                loadingMap.put(currentPos, true);
-                executor.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        final Bitmap bitmap = downloadImage(finalCoverUrl);
-                        loadingMap.remove(currentPos);
+            if (cachedBitmap == null || cachedBitmap.isRecycled()) {
+                Boolean isLoading = loadingMap.get(currentPos);
+                if (isLoading == null || !isLoading) {
+                    loadingMap.put(currentPos, true);
+                    executor.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            final Bitmap bitmap = downloadImage(finalCoverUrl);
+                            loadingMap.remove(currentPos);
 
-                        if (bitmap != null && !bitmap.isRecycled()) {
-                            synchronized (imageCache) {
-                                imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
-                            }
-                            mainHandler.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    Object currentTag = coverView.getTag();
-                                    if (currentTag != null && currentTag.equals(finalCoverUrl)) {
-                                        coverView.setImageBitmap(bitmap);
-                                    }
+                            if (bitmap != null && !bitmap.isRecycled()) {
+                                synchronized (imageCache) {
+                                    imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
                                 }
-                            });
+                                mainHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        Object tag = coverView.getTag();
+                                        if (tag != null && tag.equals(finalCoverUrl)) {
+                                            coverView.setImageBitmap(bitmap);
+                                        }
+                                    }
+                                });
+                            }
                         }
-                    }
-                });
+                    });
+                }
             }
         }
 
         final int pos = position;
         final VideoCard clickItem = item;
+
+        // 直接设置点击，不拦截长按
         convertView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -200,12 +215,20 @@ public class FavoriteVideoAdapter extends BaseAdapter {
             }
         });
 
+        convertView.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                if (deleteClickListener != null) {
+                    deleteClickListener.onDeleteClick(pos);
+                    return true;
+                }
+                return false;
+            }
+        });
+
         return convertView;
     }
 
-    /**
-     * 下载并压缩图片（兼容 Android 1.6，防 OOM）
-     */
     private Bitmap downloadImage(String urlStr) {
         HttpURLConnection conn = null;
         try {
@@ -218,13 +241,11 @@ public class FavoriteVideoAdapter extends BaseAdapter {
 
             InputStream is = conn.getInputStream();
 
-            // 先获取图片尺寸
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
             BitmapFactory.decodeStream(is, null, options);
             is.close();
 
-            // 重新连接
             conn.disconnect();
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(8000);
@@ -233,7 +254,6 @@ public class FavoriteVideoAdapter extends BaseAdapter {
             conn.connect();
             is = conn.getInputStream();
 
-            // 计算采样率（目标宽度 120dp）
             int targetWidth = (int) (120 * context.getResources().getDisplayMetrics().density);
             int scale = 1;
             if (options.outWidth > targetWidth) {
@@ -242,13 +262,11 @@ public class FavoriteVideoAdapter extends BaseAdapter {
                 if (scale > 4) scale = 4;
             }
 
-            // 解码图片
             options = new BitmapFactory.Options();
             options.inSampleSize = scale;
             options.inPreferredConfig = Bitmap.Config.RGB_565;
             options.inPurgeable = true;
             options.inInputShareable = true;
-            options.inDither = false;
 
             Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
             is.close();
@@ -260,19 +278,20 @@ public class FavoriteVideoAdapter extends BaseAdapter {
             return null;
         } finally {
             if (conn != null) {
-                try {
-                    conn.disconnect();
-                } catch (Exception e) {}
+                conn.disconnect();
             }
         }
     }
 
     public void updateData(List<VideoCard> newList) {
         if (newList == null) {
-            this.list = new ArrayList<VideoCard>();
-        } else {
-            this.list = newList;
+            this.list.clear();
+            loadingMap.clear();
+            notifyDataSetChanged();
+            return;
         }
+        this.list.clear();
+        this.list.addAll(newList);
         loadingMap.clear();
         notifyDataSetChanged();
     }
@@ -291,9 +310,9 @@ public class FavoriteVideoAdapter extends BaseAdapter {
     }
 
     static class ViewHolder {
-        TextView title;
-        TextView upName;
-        TextView view;
         ImageView cover;
+        TextView title;
+        TextView author;
+        TextView play;
     }
 }

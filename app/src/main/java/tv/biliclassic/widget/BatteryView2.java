@@ -18,6 +18,7 @@ public class BatteryView2 extends ImageView {
     private int mLevel;
     private Paint mPaint;
     private Rect mRect;
+    private boolean mReceiverRegistered = false;
 
     public BatteryView2(Context context) {
         super(context);
@@ -37,27 +38,43 @@ public class BatteryView2 extends ImageView {
     private void initView(Context context, AttributeSet attrs) {
         this.mPaint = new Paint();
         this.mRect = new Rect();
-        this.mBatteryReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context2, Intent intent) {
-                BatteryView2.this.refreshBattery(intent);
-            }
-        };
-        IntentFilter filter = new IntentFilter("android.intent.action.BATTERY_CHANGED");
-        Intent intent = context.registerReceiver(this.mBatteryReceiver, filter);
-        refreshBattery(intent);
+
+        if (this.mBatteryReceiver == null) {
+            this.mBatteryReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context2, Intent intent) {
+                    BatteryView2.this.refreshBattery(intent);
+                }
+            };
+        }
+
+        if (!mReceiverRegistered) {
+            IntentFilter filter = new IntentFilter("android.intent.action.BATTERY_CHANGED");
+            Intent intent = context.registerReceiver(this.mBatteryReceiver, filter);
+            mReceiverRegistered = true;
+            refreshBattery(intent);
+        }
     }
 
     @Override
     protected void onDetachedFromWindow() {
-        Context context = getContext();
-        if (this.mBatteryReceiver != null && context != null) {
+        unregisterReceiver();
+        super.onDetachedFromWindow();
+    }
+
+    public void release() {
+        unregisterReceiver();
+    }
+
+    private void unregisterReceiver() {
+        if (mReceiverRegistered && mBatteryReceiver != null) {
             try {
-                context.unregisterReceiver(this.mBatteryReceiver);
+                getContext().unregisterReceiver(mBatteryReceiver);
+                mReceiverRegistered = false;
             } catch (Exception e) {
+                mReceiverRegistered = false;
             }
         }
-        super.onDetachedFromWindow();
     }
 
     @Override

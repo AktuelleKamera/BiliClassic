@@ -32,20 +32,33 @@ import tv.biliclassic.util.StringUtil;
 
 public class HistoryApi {
 
+    public static class HistoryResult {
+        public ApiResult apiResult;
+        public List<VideoCard> newItems;
+
+        public HistoryResult(ApiResult apiResult, List<VideoCard> newItems) {
+            this.apiResult = apiResult;
+            this.newItems = newItems;
+        }
+    }
+
     /**
      * 获取视频历史记录
+     * 返回 HistoryResult，包含 ApiResult 和新数据列表
      */
-    public static ApiResult getHistory(ApiResult lastResult, List<VideoCard> videoList)
-            throws IOException, JSONException {
-
+    public static HistoryResult getHistory(ApiResult lastResult) throws IOException, JSONException {
+        // 构建 URL
         String url = "https://api.bilibili.com/x/web-interface/history/cursor?type=archive"
                 + "&view_at=" + lastResult.timestamp
                 + "&business=" + lastResult.business
                 + "&max=" + lastResult.offset;
 
-        // 构建带 Cookie 的请求头
+        // 构建请求头
         ArrayList<String> headers = new ArrayList<String>();
         String cookies = SharedPreferencesUtil.getString("cookies", "");
+        if (cookies == null) {
+            cookies = "";
+        }
         headers.add("Cookie");
         headers.add(cookies);
         headers.add("User-Agent");
@@ -58,10 +71,12 @@ public class HistoryApi {
         JSONObject result = NetWorkUtil.getJson(url, headers);
         ApiResult apiResult = new ApiResult(result);
 
+        List<VideoCard> newItems = new ArrayList<VideoCard>();
+
         if (result.getInt("code") != 0) {
             apiResult.code = result.getInt("code");
             apiResult.message = result.optString("message", "请求失败");
-            return apiResult;
+            return new HistoryResult(apiResult, newItems);
         }
 
         if (!result.isNull("data")) {
@@ -91,7 +106,7 @@ public class HistoryApi {
                         viewStr = "看到" + StringUtil.toTime(progress);
                     }
 
-                    videoList.add(new VideoCard(title, upName, viewStr, cover, aid, bvid));
+                    newItems.add(new VideoCard(title, upName, viewStr, cover, aid, bvid));
                 }
             }
 
@@ -107,6 +122,6 @@ public class HistoryApi {
             }
         }
 
-        return apiResult;
+        return new HistoryResult(apiResult, newItems);
     }
 }

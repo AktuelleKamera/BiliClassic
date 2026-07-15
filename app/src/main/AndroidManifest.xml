@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_DOWNLOAD_MANAGER" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -29,6 +30,22 @@
             android:name=".CrashReportActivity"
             android:screenOrientation="portrait" />
 
+        <activity
+            android:name=".ReplyListActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".PartitionDetailActivity"
+            android:screenOrientation="portrait"/>
+
+        <activity
+            android:name=".SetupActivity"
+            android:screenOrientation="portrait"/>
+
+        <activity
+            android:name=".WebViewActivity"
+            android:screenOrientation="portrait"/>
+
         <!-- MainActivity -->
         <activity
             android:name=".MainActivity"
@@ -43,10 +60,12 @@
         <activity
             android:name=".tv.TvMainActivity"
             android:configChanges="orientation|screenSize"
+            android:screenOrientation="sensorLandscape"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
 
         <activity
             android:name=".tv.TvSettingsActivity"
+            android:screenOrientation="sensorLandscape"
             android:theme="@android:style/Theme.Black.NoTitleBar" />
 
         <activity
@@ -105,7 +124,7 @@
         <activity
             android:name=".player.PlayerAnimActivity"
             android:hardwareAccelerated="false"
-            android:screenOrientation="sensor"
+            android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
 
@@ -121,7 +140,7 @@
         <activity
             android:name=".player.BiliPlayerActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
-            android:screenOrientation="landscape"
+            android:screenOrientation="sensorLandscape"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
 
         <!-- 视频下载后台服务 -->

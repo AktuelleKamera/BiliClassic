@@ -212,6 +212,7 @@ public class VideoInfoApi {
         long pubTime = data.getLong("pubdate") * 1000;
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         videoInfo.timeDesc = sdf.format(new Date(pubTime));
+        videoInfo.pubdate = data.getLong("pubdate");
 
         videoInfo.duration = StringUtil.toTime(data.getInt("duration"));
 
@@ -257,7 +258,7 @@ public class VideoInfoApi {
             videoInfo.is360 = (rights.optInt("is_360", 0) == 1);
         }
 
-        // ========== 解析可用画质 ==========
+        // 解析可用画质
         videoInfo.qualities = new ArrayList<Integer>();
 
         // 方法1：从 accept_quality 获取

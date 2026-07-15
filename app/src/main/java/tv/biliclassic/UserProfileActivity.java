@@ -44,7 +44,7 @@ public class UserProfileActivity extends BaseActivity {
     private TextView tvUserNameTitle;
     private TextView tvUserSign;
     private TextView tvFans;
-    private TextView tvLevel;
+    private ImageView ivLevel;          // 改为 ivLevel，表示等级图标
     private TextView tvFollowing;
     private View loadingLayout;
     private View contentLayout;
@@ -53,6 +53,7 @@ public class UserProfileActivity extends BaseActivity {
     private TextView videoEmptyView;
     private View footerView;
     private ProgressBar footerProgressBar;
+    private TextView footerText;
 
     private long mid;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -121,7 +122,7 @@ public class UserProfileActivity extends BaseActivity {
         tvUserNameTitle = (TextView) findViewById(R.id.tv_user_name_title);
         tvUserSign = (TextView) findViewById(R.id.tv_user_sign);
         tvFans = (TextView) findViewById(R.id.tv_fans);
-        tvLevel = (TextView) findViewById(R.id.tv_level);
+        ivLevel = (ImageView) findViewById(R.id.tv_level);      // 注意 id 为 tv_level
         tvFollowing = (TextView) findViewById(R.id.tv_following);
         loadingLayout = findViewById(R.id.loading_layout);
         contentLayout = findViewById(R.id.content_layout);
@@ -131,11 +132,19 @@ public class UserProfileActivity extends BaseActivity {
 
         footerView = getLayoutInflater().inflate(R.layout.list_footer, null);
         footerProgressBar = (ProgressBar) footerView.findViewById(R.id.footer_progress);
+        footerText = (TextView) footerView.findViewById(R.id.footer_text);
+        if (footerProgressBar != null) {
+            footerProgressBar.setVisibility(View.GONE);
+        }
+        if (footerText != null) {
+            footerText.setText("嘿咻…嘿咻…");
+        }
         footerView.setVisibility(View.GONE);
         listView.addFooterView(footerView);
 
         listView.setDivider(null);
         listView.setDividerHeight(0);
+        listView.setEmptyView(videoEmptyView);
 
         tvUserSign.setMaxWidth(Integer.MAX_VALUE);
         tvUserSign.setMaxLines(Integer.MAX_VALUE);
@@ -143,33 +152,6 @@ public class UserProfileActivity extends BaseActivity {
 
         videoAdapter = new VideoListAdapter();
         listView.setAdapter(videoAdapter);
-
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                if (view == footerView) {
-                    return;
-                }
-                if (position >= videoList.size()) {
-                    return;
-                }
-                VideoCard item = videoList.get(position);
-                if (item == null) {
-                    return;
-                }
-
-                Intent intent = new Intent(UserProfileActivity.this, VideoDetailActivity.class);
-                if (item.aid != 0) {
-                    intent.putExtra("aid", item.aid);
-                } else if (item.bvid != null && item.bvid.length() > 0) {
-                    intent.putExtra("bvid", item.bvid);
-                } else {
-                    Toast.makeText(UserProfileActivity.this, "无法获取视频信息", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                startActivity(intent);
-            }
-        });
 
         listView.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
@@ -261,14 +243,42 @@ public class UserProfileActivity extends BaseActivity {
         }
 
         tvFans.setText("粉丝: " + userInfo.fans);
-        tvLevel.setText("Lv." + userInfo.level);
         tvFollowing.setText("关注: " + userInfo.following);
+
+        // 等级图标
+        int levelResId = getLevelDrawable(userInfo.level, userInfo.isSeniorMember);
+        if (levelResId != 0) {
+            ivLevel.setImageResource(levelResId);
+            ivLevel.setVisibility(View.VISIBLE);
+        } else {
+            ivLevel.setVisibility(View.GONE);
+        }
 
         if (userInfo.avatar != null && userInfo.avatar.length() > 0) {
             loadAvatar(userInfo.avatar);
         }
 
         addAvatarBorder(ivAvatar);
+    }
+
+    /**
+     * 根据等级获取对应的 drawable 资源
+     */
+    private int getLevelDrawable(int level, boolean isSeniorMember) {
+        // 硬核会员优先
+        if (isSeniorMember && level >= 6) {
+            return R.drawable.level_h;
+        }
+        switch (level) {
+            case 0: return R.drawable.level_0;
+            case 1: return R.drawable.level_1;
+            case 2: return R.drawable.level_2;
+            case 3: return R.drawable.level_3;
+            case 4: return R.drawable.level_4;
+            case 5: return R.drawable.level_5;
+            case 6: return R.drawable.level_6;
+            default: return 0;
+        }
     }
 
     private void addAvatarBorder(ImageView imageView) {
@@ -438,56 +448,75 @@ public class UserProfileActivity extends BaseActivity {
         isVideoEnd = false;
         isLoadingMore = false;
         videoProgressBar.setVisibility(View.VISIBLE);
-        videoEmptyView.setVisibility(View.GONE);
         footerView.setVisibility(View.GONE);
+
+        Log.d("UserProfile", "开始加载视频列表，mid=" + mid);
 
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
                     final List<VideoCard> items = new ArrayList<VideoCard>();
+                    Log.d("UserProfile", "调用 API: getUserVideos, page=1, mid=" + mid);
                     UserInfoApi.getUserVideos(mid, 1, "", items);
+                    Log.d("UserProfile", "API 返回，视频数量: " + (items == null ? "null" : items.size()));
+
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
                             if (isDestroyed) return;
                             videoProgressBar.setVisibility(View.GONE);
+                            Log.d("UserProfile", "UI 线程更新，视频数量=" + (items == null ? 0 : items.size()));
+
                             if (items == null || items.size() == 0) {
                                 videoEmptyView.setText("该用户暂无视频");
-                                videoEmptyView.setVisibility(View.VISIBLE);
                                 footerView.setVisibility(View.GONE);
+                                Log.d("UserProfile", "视频列表为空，显示空视图");
                                 return;
                             }
+
                             int added = 0;
                             for (VideoCard item : items) {
                                 if (item.aid != 0 && !videoIdSet.contains(item.aid)) {
                                     videoIdSet.add(item.aid);
                                     videoList.add(item);
                                     added++;
+                                    Log.d("UserProfile", "添加视频: aid=" + item.aid + ", title=" + item.title);
                                 }
                             }
+                            Log.d("UserProfile", "新增视频数=" + added + ", 当前总数=" + videoList.size());
+
                             if (added > 0) {
                                 videoAdapter.notifyDataSetChanged();
                                 currentPage = 2;
                                 if (!isVideoEnd) {
                                     footerView.setVisibility(View.VISIBLE);
+                                    if (footerProgressBar != null) {
+                                        footerProgressBar.setVisibility(View.GONE);
+                                    }
+                                    if (footerText != null) {
+                                        footerText.setText("嘿咻…嘿咻…");
+                                        footerText.setVisibility(View.VISIBLE);
+                                    }
                                 }
+                                Log.d("UserProfile", "视频列表更新成功，当前页=" + currentPage);
                             } else {
                                 videoEmptyView.setText("暂无视频");
-                                videoEmptyView.setVisibility(View.VISIBLE);
                                 footerView.setVisibility(View.GONE);
+                                Log.d("UserProfile", "无可添加的视频");
                             }
                         }
                     });
                 } catch (final Exception e) {
+                    Log.e("UserProfile", "加载视频列表异常: " + e.getMessage(), e);
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
                             if (isDestroyed) return;
                             videoProgressBar.setVisibility(View.GONE);
                             videoEmptyView.setText("加载失败: " + e.getMessage());
-                            videoEmptyView.setVisibility(View.VISIBLE);
                             footerView.setVisibility(View.GONE);
+                            Log.e("UserProfile", "UI 显示错误: " + e.getMessage());
                         }
                     });
                     e.printStackTrace();
@@ -496,21 +525,43 @@ public class UserProfileActivity extends BaseActivity {
         }).start();
     }
 
+    private void showLoadEndTip() {
+        if (footerView == null) return;
+        footerView.setVisibility(View.VISIBLE);
+        if (footerProgressBar != null) {
+            footerProgressBar.setVisibility(View.GONE);
+        }
+        if (footerText != null) {
+            footerText.setText(getString(R.string.emoticon__no_more_data));
+            footerText.setVisibility(View.VISIBLE);
+        }
+    }
+
     private void loadMoreVideos() {
         if (isLoadingVideos || isVideoEnd || isDestroyed) return;
         isLoadingVideos = true;
 
-        footerProgressBar.setVisibility(View.VISIBLE);
+        if (footerProgressBar != null) {
+            footerProgressBar.setVisibility(View.VISIBLE);
+        }
+        if (footerText != null) {
+            footerText.setText("嘿咻…嘿咻…");
+            footerText.setVisibility(View.VISIBLE);
+        }
         footerView.setVisibility(View.VISIBLE);
 
         final int page = currentPage;
+        Log.d("UserProfile", "加载更多视频，页码=" + page);
 
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
                     final List<VideoCard> items = new ArrayList<VideoCard>();
+                    Log.d("UserProfile", "调用 API: getUserVideos, page=" + page);
                     final int result = UserInfoApi.getUserVideos(mid, page, "", items);
+                    Log.d("UserProfile", "API 返回结果码=" + result + ", 视频数=" + (items == null ? 0 : items.size()));
+
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
@@ -521,8 +572,8 @@ public class UserProfileActivity extends BaseActivity {
 
                             if (items == null || items.size() == 0 || result == 1) {
                                 isVideoEnd = true;
-                                footerView.setVisibility(View.GONE);
-                                Toast.makeText(UserProfileActivity.this, "已经到底了", Toast.LENGTH_SHORT).show();
+                                showLoadEndTip();
+                                Log.d("UserProfile", "已加载到末尾或没有更多数据");
                                 return;
                             }
 
@@ -532,26 +583,37 @@ public class UserProfileActivity extends BaseActivity {
                                     videoIdSet.add(item.aid);
                                     videoList.add(item);
                                     added++;
+                                    Log.d("UserProfile", "加载更多添加视频: aid=" + item.aid);
                                 }
                             }
+                            Log.d("UserProfile", "加载更多新增视频数=" + added);
 
                             if (added > 0) {
                                 videoAdapter.notifyDataSetChanged();
                                 currentPage = page + 1;
                                 footerView.setVisibility(View.VISIBLE);
+                                if (footerProgressBar != null) {
+                                    footerProgressBar.setVisibility(View.GONE);
+                                }
+                                if (footerText != null) {
+                                    footerText.setVisibility(View.GONE);
+                                }
+                                Log.d("UserProfile", "加载更多成功，当前页=" + currentPage);
                             } else {
                                 if (items.size() > 0 && !isVideoEnd) {
                                     currentPage = page + 1;
+                                    Log.d("UserProfile", "没有新视频但未结束，继续加载下一页");
                                     loadMoreVideos();
                                 } else {
                                     isVideoEnd = true;
-                                    footerView.setVisibility(View.GONE);
-                                    Toast.makeText(UserProfileActivity.this, "已经到底了", Toast.LENGTH_SHORT).show();
+                                    showLoadEndTip();
+                                    Log.d("UserProfile", "没有可添加的视频，标记结束");
                                 }
                             }
                         }
                     });
                 } catch (final Exception e) {
+                    Log.e("UserProfile", "加载更多异常: " + e.getMessage(), e);
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
@@ -561,6 +623,7 @@ public class UserProfileActivity extends BaseActivity {
                             isLoadingMore = false;
                             footerView.setVisibility(View.GONE);
                             Toast.makeText(UserProfileActivity.this, "加载更多失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            Log.e("UserProfile", "加载更多 UI 错误: " + e.getMessage());
                         }
                     });
                     e.printStackTrace();
@@ -587,7 +650,7 @@ public class UserProfileActivity extends BaseActivity {
         }
     }
 
-    // ========== VideoListAdapter ==========
+    // VideoListAdapter
 
     class VideoListAdapter extends BaseAdapter {
 
@@ -638,45 +701,61 @@ public class UserProfileActivity extends BaseActivity {
                 Bitmap cached = imageCache.get(finalUrl);
                 if (cached != null && !cached.isRecycled()) {
                     coverView.setImageBitmap(cached);
-                    return convertView;
                 }
 
                 Boolean isLoading = loadingMap.get(position);
-                if (isLoading != null && isLoading) {
-                    return convertView;
-                }
-
-                final int currentPos = position;
-                loadingMap.put(currentPos, true);
-                if (executor != null && !executor.isShutdown()) {
-                    executor.execute(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (isDestroyed) return;
-                            final Bitmap bitmap = downloadImage(finalUrl, false);
-                            loadingMap.remove(currentPos);
-                            if (bitmap != null && !bitmap.isRecycled()) {
-                                imageCache.put(finalUrl, bitmap);
-                                mainHandler.post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        if (isDestroyed) return;
-                                        Object tag = coverView.getTag();
-                                        if (tag != null && tag.equals(finalUrl)) {
-                                            Bitmap bmp = imageCache.get(finalUrl);
-                                            if (bmp != null && !bmp.isRecycled()) {
-                                                coverView.setImageBitmap(bmp);
-                                            } else {
-                                                coverView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+                if (isLoading == null || !isLoading) {
+                    final int currentPos = position;
+                    loadingMap.put(currentPos, true);
+                    if (executor != null && !executor.isShutdown()) {
+                        executor.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (isDestroyed) return;
+                                final Bitmap bitmap = downloadImage(finalUrl, false);
+                                loadingMap.remove(currentPos);
+                                if (bitmap != null && !bitmap.isRecycled()) {
+                                    imageCache.put(finalUrl, bitmap);
+                                    mainHandler.post(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            if (isDestroyed) return;
+                                            Object tag = coverView.getTag();
+                                            if (tag != null && tag.equals(finalUrl)) {
+                                                Bitmap bmp = imageCache.get(finalUrl);
+                                                if (bmp != null && !bmp.isRecycled()) {
+                                                    coverView.setImageBitmap(bmp);
+                                                } else {
+                                                    coverView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+                                                }
                                             }
                                         }
-                                    }
-                                });
+                                    });
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 }
             }
+
+            final int pos = position;
+            final VideoCard clickItem = item;
+            convertView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (clickItem == null) return;
+                    Intent intent = new Intent(UserProfileActivity.this, VideoDetailActivity.class);
+                    if (clickItem.aid != 0) {
+                        intent.putExtra("aid", clickItem.aid);
+                    } else if (clickItem.bvid != null && clickItem.bvid.length() > 0) {
+                        intent.putExtra("bvid", clickItem.bvid);
+                    } else {
+                        Toast.makeText(UserProfileActivity.this, "无法获取视频信息", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    startActivity(intent);
+                }
+            });
 
             return convertView;
         }

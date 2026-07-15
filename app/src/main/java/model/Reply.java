@@ -20,20 +20,20 @@ public class Reply implements Serializable {
     public String pubTime;
     public UserInfo sender;
     public String message;
-    public ArrayList pictureList = new ArrayList();
+    public ArrayList<String> pictureList = new ArrayList<String>();
     public int likeCount;
     public boolean upLiked;
     public boolean upReplied;
     public boolean liked;
     public int childCount;
     public boolean isDynamic;
-    public ArrayList childMsgList = new ArrayList();
+    public ArrayList<Reply> childMsgList = new ArrayList<Reply>();
     public boolean isTop;
+    public int replyCount;
 
     public Reply() {
     }
 
-    // 解析评论 JSON
     public Reply(boolean isRoot, JSONObject replyJson) throws JSONException {
         this.rpid = replyJson.getLong("rpid");
         this.oid = replyJson.getLong("oid");
@@ -45,19 +45,17 @@ public class Reply implements Serializable {
         }
 
         JSONObject content = replyJson.getJSONObject("content");
-        JSONObject replyCtrl = replyJson.getJSONObject("reply_control");
+        JSONObject replyCtrl = replyJson.optJSONObject("reply_control");
         long ctime = replyJson.getLong("ctime") * 1000;
 
-        // 处理时间
         String time;
-        if (System.currentTimeMillis() - ctime < 3 * 24 * 60 * 60 * 1000 && replyCtrl.has("time_desc")) {
+        if (replyCtrl != null && System.currentTimeMillis() - ctime < 3 * 24 * 60 * 60 * 1000 && replyCtrl.has("time_desc")) {
             time = replyCtrl.getString("time_desc");
         } else {
             time = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(ctime);
         }
 
-        // IP 属地
-        if (replyCtrl.has("location")) {
+        if (replyCtrl != null && replyCtrl.has("location")) {
             String location = replyCtrl.getString("location");
             if (location != null && location.length() > 5) {
                 time = time + " | IP:" + location.substring(5);
@@ -65,12 +63,10 @@ public class Reply implements Serializable {
         }
         this.pubTime = time;
 
-        // 置顶标记
-        if (replyCtrl.has("is_up_top") && replyCtrl.getBoolean("is_up_top")) {
+        if (replyCtrl != null && replyCtrl.has("is_up_top") && replyCtrl.getBoolean("is_up_top")) {
             this.isTop = true;
         }
 
-        // 消息内容（去掉 HTML 标签）
         String rawMessage = content.getString("message");
         this.message = stripHtml(rawMessage);
         if (this.isTop) {
@@ -80,16 +76,13 @@ public class Reply implements Serializable {
         this.likeCount = replyJson.getInt("like");
         this.liked = replyJson.getInt("action") == 1;
 
-        // UP主操作状态
         if (replyJson.has("up_action") && !replyJson.isNull("up_action")) {
             JSONObject upAction = replyJson.getJSONObject("up_action");
             this.upLiked = upAction.optBoolean("like", false);
             this.upReplied = upAction.optBoolean("reply", false);
         }
 
-        // 根评论额外信息
         if (isRoot) {
-            // 图片列表
             if (content.has("pictures") && !content.isNull("pictures")) {
                 JSONArray pictures = content.getJSONArray("pictures");
                 for (int j = 0; j < pictures.length(); j++) {
@@ -103,7 +96,6 @@ public class Reply implements Serializable {
 
             this.childCount = replyJson.getInt("rcount");
 
-            // 子评论（楼中楼）
             if (replyJson.has("replies") && !replyJson.isNull("replies")) {
                 JSONArray childReplies = replyJson.getJSONArray("replies");
                 for (int j = 0; j < childReplies.length(); j++) {
@@ -114,14 +106,11 @@ public class Reply implements Serializable {
         }
     }
 
-    // 简单去除 HTML 标签
     private String stripHtml(String html) {
         if (html == null || html.length() == 0) {
             return "";
         }
-        // 去掉 <br> 标签
         String result = html.replaceAll("<br\\s*/?>", "\n");
-        // 去掉其他 HTML 标签
         result = result.replaceAll("<[^>]+>", "");
         return result;
     }

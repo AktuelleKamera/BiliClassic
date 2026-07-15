@@ -1,5 +1,8 @@
 <resources>
-    <string name="app_name">BiliClassic</string>
+    <string name="app_name">哔哩经典</string>
+    <string name="emoticon__no_more_data">╮(╯3╰)╭ 再怎么找也没有啦~</string>
+    <string name="emoticon__no_network">╮(╯▽╰)╭ 啊咧~没有联网的个说~</string>
+    <string name="emoticon__failed_need_retry">╮(╯_╰)╭ 失败的个说~</string>
     <string name="VideoView_buffering">正在缓冲...</string>
     <string name="VideoView_buffering_long_time">缓冲不动了喵,休息~休息一下</string>
     <string name="VideoView_timed_text_split_char">/</string>

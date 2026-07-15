@@ -4,7 +4,9 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:padding="10dp"
-    android:background="#F5F5F5">
+    android:background="@drawable/item_click_effect_white"
+    android:clickable="true"
+    android:focusable="true">
 
     <ImageView
         android:id="@+id/avatar"
@@ -48,59 +50,91 @@
 
         </LinearLayout>
 
-        <LinearLayout
+        <!-- 评论内容 -->
+        <TextView
+            android:id="@+id/message"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:orientation="horizontal">
+            android:layout_marginTop="4dp"
+            android:text="评论内容"
+            android:textSize="13sp"
+            android:textColor="#555555"
+            android:lineSpacingExtra="2dp" />
+
+        <!-- 展开按钮 -->
+        <TextView
+            android:id="@+id/btn_expand"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="right"
+            android:layout_marginTop="2dp"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:text="展开"
+            android:textSize="12sp"
+            android:textColor="#D86DA5"
+            android:background="@drawable/item_click_effect"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone" />
+
+        <!-- 图片容器 -->
+        <LinearLayout
+            android:id="@+id/picture_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp"
+            android:visibility="gone" />
+
+        <!-- 点赞和回复按钮 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <ImageView
+                android:id="@+id/like_icon"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_action_like"
+                android:contentDescription="点赞" />
 
             <TextView
-                android:id="@+id/message"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="评论内容"
-                android:textSize="13sp"
-                android:textColor="#555555"
-                android:lineSpacingExtra="2dp"
-                android:layout_gravity="center_vertical" />
-
-            <LinearLayout
+                android:id="@+id/like_count"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_gravity="center_vertical"
-                android:layout_marginLeft="6dp">
+                android:layout_marginLeft="4dp"
+                android:text="0"
+                android:textSize="11sp"
+                android:textColor="#999999" />
 
-                <ImageView
-                    android:id="@+id/like_icon"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@drawable/ic_action_rating_important"
-                    android:contentDescription="点赞" />
-
-                <TextView
-                    android:id="@+id/like_count"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginLeft="4dp"
-                    android:text="0"
-                    android:textSize="11sp"
-                    android:textColor="#999999" />
-
-            </LinearLayout>
+            <TextView
+                android:id="@+id/reply_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="8dp"
+                android:text="回复"
+                android:textSize="11sp"
+                android:textColor="#FF4081"
+                android:padding="2dp"
+                android:clickable="true"
+                android:focusable="true" />
 
         </LinearLayout>
 
+        <!-- 回复容器 -->
         <LinearLayout
             android:id="@+id/replies_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:orientation="vertical"
-            android:padding="6dp"
             android:background="#E8E8E8"
+            android:padding="6dp"
             android:visibility="gone">
 
             <TextView
@@ -109,7 +143,26 @@
                 android:layout_height="wrap_content"
                 android:textSize="12sp"
                 android:textColor="#666666"
-                android:lineSpacingExtra="2dp" />
+                android:lineSpacingExtra="2dp"
+                android:clickable="true"
+                android:linksClickable="true"
+                android:focusable="false"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/replies_more"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#DDDDDD"
+                android:padding="6dp"
+                android:layout_marginTop="4dp"
+                android:text="共0条回复，点击查看"
+                android:textSize="12sp"
+                android:textColor="#666666"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone" />
 
         </LinearLayout>
 

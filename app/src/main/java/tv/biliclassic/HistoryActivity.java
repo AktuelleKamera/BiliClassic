@@ -40,8 +40,22 @@ public class HistoryActivity extends BaseActivity {
     private ApiResult lastResult = new ApiResult();
     private boolean isLoading = false;
     private boolean isEnd = false;
+    private boolean mHasError = false;
 
     private Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    // 网络检查
+    private boolean isNetworkAvailable() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
+                    getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return false;
+            android.net.NetworkInfo info = cm.getActiveNetworkInfo();
+            return info != null && info.isConnected();
+        } catch (Exception e) {
+            return true;
+        }
+    }
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -63,6 +77,13 @@ public class HistoryActivity extends BaseActivity {
         backBtn.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 finish();
+            }
+        });
+
+        emptyView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                retryLoadHistory();
             }
         });
 
@@ -126,7 +147,44 @@ public class HistoryActivity extends BaseActivity {
         }
     }
 
+    private void retryLoadHistory() {
+        Log.d(TAG, "retryLoadHistory - 用户手动重试");
+        mHasError = false;
+        isEnd = false;
+        isLoading = false;
+        videoList.clear();
+        adapter.notifyDataSetChanged();
+        emptyView.setVisibility(View.GONE);
+        progressBar.setVisibility(View.VISIBLE);
+        loadHistory();
+    }
+
     private void loadHistory() {
+        // 检查网络
+        if (!isNetworkAvailable()) {
+            mainHandler.post(new Runnable() {
+                public void run() {
+                    progressBar.setVisibility(View.GONE);
+                    emptyView.setText(getString(R.string.emoticon__no_network));
+                    emptyView.setVisibility(View.VISIBLE);
+                    historyList.setVisibility(View.GONE);
+                    mHasError = true;
+                }
+            });
+            return;
+        }
+
+        if (mHasError) {
+            Log.d(TAG, "loadHistory - 已有错误，显示空视图等待用户操作");
+            if (emptyView.getVisibility() == View.VISIBLE) {
+                return;
+            }
+            emptyView.setText("加载失败，点击重试");
+            emptyView.setVisibility(View.VISIBLE);
+            progressBar.setVisibility(View.GONE);
+            return;
+        }
+
         String cookies = SharedPreferencesUtil.getString("cookies", "");
         Log.d(TAG, "loadHistory - cookies length: " + (cookies == null ? "null" : String.valueOf(cookies.length())));
 
@@ -135,8 +193,9 @@ public class HistoryActivity extends BaseActivity {
             mainHandler.post(new Runnable() {
                 public void run() {
                     progressBar.setVisibility(View.GONE);
-                    emptyView.setText("请先登录");
+                    emptyView.setText("还没有登录");
                     emptyView.setVisibility(View.VISIBLE);
+                    historyList.setVisibility(View.GONE);
                 }
             });
             return;
@@ -147,6 +206,7 @@ public class HistoryActivity extends BaseActivity {
 
         progressBar.setVisibility(View.VISIBLE);
         emptyView.setVisibility(View.GONE);
+        historyList.setVisibility(View.VISIBLE);
         videoList.clear();
         adapter.notifyDataSetChanged();
 
@@ -160,7 +220,9 @@ public class HistoryActivity extends BaseActivity {
             public void run() {
                 try {
                     Log.d(TAG, "loadHistory - 开始请求历史记录");
-                    final ApiResult result = HistoryApi.getHistory(lastResult, videoList);
+                    final HistoryApi.HistoryResult historyResult = HistoryApi.getHistory(lastResult);
+                    final ApiResult result = historyResult.apiResult;
+                    final List<VideoCard> newItems = historyResult.newItems;
 
                     Log.e(TAG, "========== 历史记录响应 ==========");
                     Log.e(TAG, "code: " + result.code);
@@ -174,20 +236,22 @@ public class HistoryActivity extends BaseActivity {
 
                     mainHandler.post(new Runnable() {
                         public void run() {
+                            // 检查 Activity 是否存活
+                            if (isFinishing() || isDestroyed()) {
+                                return;
+                            }
+
                             progressBar.setVisibility(View.GONE);
                             isLoading = false;
 
                             if (result.code == 0) {
                                 lastResult = result;
                                 adapter.notifyDataSetChanged();
+                                mHasError = false;
 
                                 if (result.isBottom) {
                                     isEnd = true;
                                     footerView.setVisibility(View.GONE);
-                                    if (videoList.size() == 0) {
-                                        emptyView.setText("暂无历史记录");
-                                        emptyView.setVisibility(View.VISIBLE);
-                                    }
                                 } else {
                                     footerView.setVisibility(View.VISIBLE);
                                 }
@@ -195,17 +259,24 @@ public class HistoryActivity extends BaseActivity {
                                 if (videoList.size() == 0) {
                                     emptyView.setText("暂无历史记录");
                                     emptyView.setVisibility(View.VISIBLE);
+                                    historyList.setVisibility(View.GONE);
                                 } else {
                                     emptyView.setVisibility(View.GONE);
+                                    historyList.setVisibility(View.VISIBLE);
                                 }
                             } else {
                                 String msg = result.message;
                                 if (msg == null || msg.length() == 0) {
-                                    msg = "错误码: " + result.code;
+                                    msg = "加载失败";
                                 }
-                                emptyView.setText(msg);
+                                if (msg.contains("banned") || msg.contains("request was banned")) {
+                                    msg = "请求过于频繁，请稍后重试";
+                                }
+                                emptyView.setText(msg + "\n点击重试");
                                 emptyView.setVisibility(View.VISIBLE);
-                                Toast.makeText(HistoryActivity.this, msg, Toast.LENGTH_SHORT).show();
+                                historyList.setVisibility(View.GONE);
+                                mHasError = true;
+                                footerView.setVisibility(View.GONE);
                             }
                         }
                     });
@@ -219,8 +290,14 @@ public class HistoryActivity extends BaseActivity {
                             if (errMsg == null || errMsg.length() == 0) {
                                 errMsg = "加载失败";
                             }
-                            emptyView.setText(errMsg);
+                            if (errMsg.contains("banned") || errMsg.contains("request was banned")) {
+                                errMsg = "请求过于频繁，请稍后重试";
+                            }
+                            emptyView.setText(errMsg + "\n点击重试");
                             emptyView.setVisibility(View.VISIBLE);
+                            historyList.setVisibility(View.GONE);
+                            mHasError = true;
+                            footerView.setVisibility(View.GONE);
                         }
                     });
                 }
@@ -237,9 +314,13 @@ public class HistoryActivity extends BaseActivity {
     }
 
     private void loadMoreHistory() {
-        if (isLoading || isEnd) return;
-        isLoading = true;
+        if (mHasError || isLoading || isEnd) return;
 
+        if (!isNetworkAvailable()) {
+            return;
+        }
+
+        isLoading = true;
         footerProgressBar.setVisibility(View.VISIBLE);
         footerView.setVisibility(View.VISIBLE);
 
@@ -247,9 +328,12 @@ public class HistoryActivity extends BaseActivity {
             public void run() {
                 try {
                     Log.d(TAG, "loadMoreHistory - 加载更多");
-                    final ApiResult result = HistoryApi.getHistory(lastResult, videoList);
+                    final HistoryApi.HistoryResult historyResult = HistoryApi.getHistory(lastResult);
 
-                    Log.d(TAG, "loadMoreHistory - code: " + result.code + ", isBottom: " + result.isBottom);
+                    final ApiResult result = historyResult.apiResult;
+                    final List<VideoCard> newItems = historyResult.newItems;
+
+                    Log.d(TAG, "loadMoreHistory - code: " + result.code + ", isBottom: " + result.isBottom + ", newItems: " + newItems.size());
 
                     mainHandler.post(new Runnable() {
                         public void run() {
@@ -257,22 +341,32 @@ public class HistoryActivity extends BaseActivity {
                             isLoading = false;
 
                             if (result.code == 0) {
-                                lastResult = result;
+                                // 在 UI 线程合并数据
+                                videoList.addAll(newItems);
                                 adapter.notifyDataSetChanged();
+                                lastResult = result;
+                                mHasError = false;
 
                                 if (result.isBottom) {
                                     isEnd = true;
                                     footerView.setVisibility(View.GONE);
-                                    Toast.makeText(HistoryActivity.this, "已经到底啦", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(HistoryActivity.this, getString(R.string.emoticon__no_more_data), Toast.LENGTH_SHORT).show();
                                 } else {
                                     footerView.setVisibility(View.VISIBLE);
                                 }
                             } else {
                                 footerView.setVisibility(View.GONE);
+                                mHasError = true;
                                 String msg = result.message;
                                 if (msg == null || msg.length() == 0) {
-                                    msg = "加载更多失败";
+                                    msg = "加载失败";
                                 }
+                                if (msg.contains("banned") || msg.contains("request was banned")) {
+                                    msg = "请求过于频繁，请稍后重试";
+                                }
+                                emptyView.setText(msg + "\n点击重试");
+                                emptyView.setVisibility(View.VISIBLE);
+                                historyList.setVisibility(View.GONE);
                                 Toast.makeText(HistoryActivity.this, msg, Toast.LENGTH_SHORT).show();
                             }
                         }
@@ -284,11 +378,17 @@ public class HistoryActivity extends BaseActivity {
                             footerProgressBar.setVisibility(View.GONE);
                             isLoading = false;
                             footerView.setVisibility(View.GONE);
+                            mHasError = true;
                             String errMsg = e.getMessage();
                             if (errMsg == null || errMsg.length() == 0) {
-                                errMsg = "加载更多失败";
+                                errMsg = "加载失败";
                             }
-                            Toast.makeText(HistoryActivity.this, errMsg, Toast.LENGTH_SHORT).show();
+                            if (errMsg.contains("banned") || errMsg.contains("request was banned")) {
+                                errMsg = "请求过于频繁，请稍后重试";
+                            }
+                            emptyView.setText(errMsg + "\n点击重试");
+                            emptyView.setVisibility(View.VISIBLE);
+                            historyList.setVisibility(View.GONE);
                         }
                     });
                 }

@@ -1,5 +1,7 @@
 package tv.biliclassic;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -17,7 +19,10 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+import tv.biliclassic.api.FavoriteApi;
+import tv.biliclassic.model.FavoriteFolder;
 import tv.biliclassic.model.VideoCard;
+import tv.biliclassic.util.BroadcastConstants;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.StringUtil;
@@ -33,6 +38,9 @@ public class RelatedVideosFragment extends Fragment {
 
     private long aid;
     private String bvid;
+
+    // 收藏防连点
+    private boolean mIsFavoriteUpdating = false;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -57,6 +65,24 @@ public class RelatedVideosFragment extends Fragment {
             }
         });
 
+        adapter.setOnVideoLongClickListener(new RelatedVideosAdapter.OnVideoLongClickListener() {
+            @Override
+            public void onVideoLongClick(VideoCard video, int position) {
+                if (video == null || video.aid == 0) {
+                    Toast.makeText(getActivity(), "无法收藏该视频", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (mIsFavoriteUpdating) return;
+                long mid = SharedPreferencesUtil.getLong("mid", 0);
+                String cookies = SharedPreferencesUtil.getString("cookies", "");
+                if (mid == 0 || cookies == null || cookies.length() == 0) {
+                    Toast.makeText(getActivity(), "请先登录的说~", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                showFavoriteDialog(video.aid);
+            }
+        });
+
         Bundle args = getArguments();
         if (args != null) {
             aid = args.getLong("aid", 0);
@@ -66,6 +92,116 @@ public class RelatedVideosFragment extends Fragment {
         loadRelatedVideos();
 
         return view;
+    }
+
+    private void showFavoriteDialog(final long aid) {
+        if (aid == 0) return;
+
+        final long mid = SharedPreferencesUtil.getLong("mid", 0);
+        if (mid == 0) {
+            Toast.makeText(getActivity(), "请先登录的说~", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        mIsFavoriteUpdating = true;
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    final ArrayList folders = FavoriteApi.getFavoriteFoldersFast(mid);
+
+                    if (getActivity() == null) return;
+
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mIsFavoriteUpdating = false;
+                            if (folders == null || folders.size() == 0) {
+                                Toast.makeText(getActivity(), "暂无收藏夹，请先在网页端创建", Toast.LENGTH_LONG).show();
+                                return;
+                            }
+
+                            final String[] folderNames = new String[folders.size()];
+                            final long[] folderIds = new long[folders.size()];
+                            for (int i = 0; i < folders.size(); i++) {
+                                FavoriteFolder folder = (FavoriteFolder) folders.get(i);
+                                folderNames[i] = folder.name + " (" + folder.videoCount + "个视频)";
+                                folderIds[i] = folder.fid;
+                            }
+
+                            new AlertDialog.Builder(getActivity())
+                                    .setTitle("选择收藏夹")
+                                    .setItems(folderNames, new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            long fid = folderIds[which];
+                                            addToFavorite(aid, fid);
+                                        }
+                                    })
+                                    .setNegativeButton("取消", null)
+                                    .show();
+                        }
+                    });
+
+                } catch (final Exception e) {
+                    e.printStackTrace();
+                    if (getActivity() == null) return;
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mIsFavoriteUpdating = false;
+                            Toast.makeText(getActivity(), "加载收藏夹失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+
+    private void addToFavorite(final long aid, final long fid) {
+        if (aid == 0 || mIsFavoriteUpdating) return;
+
+        mIsFavoriteUpdating = true;
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    final int code = FavoriteApi.addFavorite(aid, null, fid);
+
+                    if (getActivity() == null) return;
+
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mIsFavoriteUpdating = false;
+                            if (code == 0) {
+                                Toast.makeText(getActivity(), "收藏好了喵～(=w=)", Toast.LENGTH_SHORT).show();
+                                if (getActivity() != null) {
+                                    getActivity().sendBroadcast(new Intent(BroadcastConstants.ACTION_FAVORITE_CHANGED));
+                                }
+                            } else if (code == 11201) {
+                                Toast.makeText(getActivity(), "已收藏过该视频", Toast.LENGTH_SHORT).show();
+                            } else {
+                                Toast.makeText(getActivity(), "收藏失败喵: " + code, Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    });
+
+                } catch (final Exception e) {
+                    e.printStackTrace();
+                    if (getActivity() == null) return;
+                    getActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mIsFavoriteUpdating = false;
+                            Toast.makeText(getActivity(), "收藏失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            }
+        }).start();
     }
 
     @Override
@@ -154,8 +290,22 @@ public class RelatedVideosFragment extends Fragment {
                         showError(message);
                     }
                 } catch (final Exception e) {
-                    android.util.Log.e("RelatedVideos", "异常: " + e.getMessage(), e);
-                    showError("加载失败: " + e.getMessage());
+                    final String errorMsg = e.getMessage();
+                    if (isAdded()) {
+                        getActivity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (!isAdded() || getView() == null) {
+                                    return;
+                                }
+                                progressBar.setVisibility(View.GONE);
+                                emptyView.setText("加载失败: " + errorMsg);
+                                emptyView.setVisibility(View.VISIBLE);
+                                Toast.makeText(getActivity(), "加载失败: " + errorMsg, Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                    e.printStackTrace();
                 }
             }
         }).start();

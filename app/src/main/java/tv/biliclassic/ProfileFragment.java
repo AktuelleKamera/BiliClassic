@@ -280,7 +280,7 @@ public class ProfileFragment extends Fragment {
                 }
             });
 
-            tvCoin.setText("加载中...");
+            tvCoin.setText("加载中……");
 
             loadAvatarFromFileOrNetwork(mid);
 

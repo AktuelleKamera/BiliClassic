@@ -14,8 +14,12 @@ import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.PagerTabStrip;
 import android.support.v4.view.ViewPager;
 import android.view.View;
+import android.view.KeyEvent;
 import android.view.ViewGroup;
+import android.view.Gravity;
+import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
+import android.widget.LinearLayout;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -23,16 +27,22 @@ import android.widget.ListView;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.util.Log;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import tv.biliclassic.api.BangumiApi;
 import tv.biliclassic.api.FavoriteApi;
-import tv.biliclassic.api.ReplyApi;
+import tv.biliclassic.api.InteractionApi;
+import tv.biliclassic.util.ReplyHelper;
+import tv.biliclassic.api.VideoInfoApi;
 import tv.biliclassic.download.VideoDownloadService;
 import tv.biliclassic.download.VideoDownloadEnvironment;
+import tv.biliclassic.util.BroadcastConstants;
 import tv.biliclassic.model.FavoriteFolder;
+import tv.biliclassic.model.VideoInfo;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class VideoDetailActivity extends BaseActivity {
@@ -47,20 +57,11 @@ public class VideoDetailActivity extends BaseActivity {
     private boolean isCleaned = false;
     private int currentPagePosition = 0;
 
-    // 下载选择相关
-    private String mPendingVideoUrl;
-    private String mPendingTitle;
-    private String mPendingPageTitle;
-    private long mPendingAid;
-    private long mPendingCid;
-    private int mPendingPage;
-    private String mPendingCoverUrl;
-    private String mPendingUpName;
-    private String[] mPendingQnNames;
-    private int[] mPendingQnValues;
-    private String mPendingBvid;
-    private String mPendingDescription;
-    private String mPendingTags;
+    // 番剧相关
+    private boolean isBangumi = false;
+    private long epid = -1;
+    private long mBangumiMediaId = 0;
+    private boolean fromBangumi = false;
     private boolean mOfflineMode;
 
     // 下载对话框数据
@@ -85,7 +86,15 @@ public class VideoDetailActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video_detail);
 
+        findViewById(R.id.btn_back).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        });
+
         mOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
+        fromBangumi = getIntent().getBooleanExtra("from_bangumi", false);
 
         PagerTabStrip tabStrip = (PagerTabStrip) findViewById(R.id.pager_tab_strip);
         if (tabStrip != null) {
@@ -124,6 +133,245 @@ public class VideoDetailActivity extends BaseActivity {
             }
         });
 
+        // 从番剧分集点击进入（两个 Tab：视频详情 + 评论，显示 AV 号）
+        long bangumiMediaId = intent.getLongExtra("bangumi_media_id", 0);
+        if (bangumiMediaId > 0) {
+            isBangumi = false;
+            mBangumiMediaId = bangumiMediaId;
+
+            viewPager = (ViewPager) findViewById(R.id.viewpager);
+            viewPager.setAdapter(new TwoTabPagerAdapter(getSupportFragmentManager()));
+            viewPager.setOffscreenPageLimit(1);
+            viewPager.setOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
+                @Override
+                public void onPageSelected(int position) {
+                    currentPagePosition = position;
+                }
+            });
+
+            // 初始化底部按钮
+            initBottomButtons();
+
+            return;
+        }
+
+        // 外部点击番剧进入（番剧详情页 + 评论，显示番剧名称）
+        if (!mOfflineMode && (aid != 0 || (bvid != null && bvid.length() > 0))) {
+            if (fromBangumi) {
+                isBangumi = true;
+
+                // 直接显示番剧名称，不调用 updateAvidDisplay()
+                String bangumiTitle = intent.getStringExtra("bangumi_title");
+                if (bangumiTitle != null && bangumiTitle.length() > 0) {
+                    tvAvid.setText(bangumiTitle);
+                } else {
+                    tvAvid.setText("番剧详情");
+                }
+
+                fetchBangumiInfoFromAid(aid);
+                return;
+            }
+            checkAndSetup();
+            return;
+        }
+
+        // 普通视频
+        updateAvidDisplay();
+        initNormalVideo();
+
+        // 初始化底部按钮
+        initBottomButtons();
+    }
+
+    private void fetchBangumiInfoFromAid(final long aid) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    VideoInfo info = VideoInfoApi.getVideoInfo(aid);
+                    if (info != null && info.epid > 0) {
+                        epid = info.epid;
+                        BangumiApi.SeasonInfo seasonInfo = BangumiApi.getSeasonInfoFromEpid(epid);
+                        Log.d("Bangumi", "aid=" + aid + ", epid=" + epid +
+                                ", seasonId=" + (seasonInfo != null ? seasonInfo.seasonId : 0) +
+                                ", mediaId=" + (seasonInfo != null ? seasonInfo.mediaId : 0));
+
+                        if (seasonInfo != null && seasonInfo.seasonId > 0) {
+                            mBangumiMediaId = seasonInfo.seasonId;  // 存储 season_id
+                            final tv.biliclassic.model.Bangumi bangumi = BangumiApi.getBangumi(seasonInfo.seasonId);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (bangumi != null && bangumi.info != null) {
+                                        tvAvid.setText(bangumi.info.title);
+                                        initBangumiView();
+                                        initBottomButtons();
+                                        return;
+                                    }
+                                    isBangumi = false;
+                                    updateAvidDisplay();
+                                    initNormalVideo();
+                                    initBottomButtons();
+                                }
+                            });
+                        } else {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    isBangumi = false;
+                                    updateAvidDisplay();
+                                    initNormalVideo();
+                                    initBottomButtons();
+                                }
+                            });
+                        }
+                    } else {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                isBangumi = false;
+                                updateAvidDisplay();
+                                initNormalVideo();
+                                initBottomButtons();
+                            }
+                        });
+                    }
+                } catch (final Exception e) {
+                    e.printStackTrace();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            isBangumi = false;
+                            updateAvidDisplay();
+                            initNormalVideo();
+                            initBottomButtons();
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+
+    private void checkAndSetup() {
+        final long finalAid = aid;
+        final String finalBvid = bvid;
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    VideoInfo info;
+                    if (finalAid != 0) {
+                        info = VideoInfoApi.getVideoInfo(finalAid);
+                    } else {
+                        info = VideoInfoApi.getVideoInfo(finalBvid);
+                    }
+
+                    if (info == null) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(VideoDetailActivity.this, "获取视频信息失败", Toast.LENGTH_SHORT).show();
+                                finish();
+                            }
+                        });
+                        return;
+                    }
+
+                    final VideoInfo finalInfo = info;
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (finalInfo.epid > 0) {
+                                // 是番剧
+                                isBangumi = true;
+                                tvAvid.setText(finalInfo.title != null ? finalInfo.title : "番剧");
+                                fetchBangumiInfoFromAid(finalAid);
+                            } else {
+                                // 普通视频更新标题
+                                isBangumi = false;
+                                updateAvidDisplay();
+                                initNormalVideo();
+                                initBottomButtons();
+                            }
+                        }
+                    });
+
+                } catch (final Exception e) {
+                    e.printStackTrace();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(VideoDetailActivity.this, "加载失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            finish();
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+
+    // 番剧视图（只有两个 Tab：番剧详情 + 评论）
+    private void initBangumiView() {
+        PagerTabStrip tabStrip = (PagerTabStrip) findViewById(R.id.pager_tab_strip);
+        if (tabStrip != null) {
+            tabStrip.setTabIndicatorColor(0xFFFCA3C5);
+            tabStrip.setBackgroundColor(0xFFD86DA5);
+            tabStrip.setTextColor(0xFFFFFFFF);
+        }
+
+        viewPager = (ViewPager) findViewById(R.id.viewpager);
+        viewPager.setAdapter(new BangumiPagerAdapter(getSupportFragmentManager()));
+        viewPager.setOffscreenPageLimit(1);
+
+        viewPager.setOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
+            @Override
+            public void onPageSelected(int position) {
+                currentPagePosition = position;
+            }
+        });
+
+        findViewById(R.id.btn_back).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        });
+    }
+
+    // 普通视频视图（三个 Tab）
+    private void initNormalVideo() {
+        viewPager = (ViewPager) findViewById(R.id.viewpager);
+        viewPager.setAdapter(new VideoDetailPagerAdapter(getSupportFragmentManager()));
+        viewPager.setOffscreenPageLimit(mOfflineMode ? 1 : 3);
+
+        viewPager.setOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
+            @Override
+            public void onPageSelected(int position) {
+                currentPagePosition = position;
+            }
+        });
+
+        findViewById(R.id.btn_back).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        });
+    }
+
+    // 初始化底部四个shit按钮
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_MENU) {
+            showInteractionMenu();
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    private void initBottomButtons() {
+        // 分享按钮
         ImageView btnShare = (ImageView) findViewById(R.id.btn_share);
         if (btnShare != null) {
             btnShare.setOnClickListener(new View.OnClickListener() {
@@ -155,10 +403,17 @@ public class VideoDetailActivity extends BaseActivity {
                         long mid = SharedPreferencesUtil.getLong("mid", 0);
                         String cookies = SharedPreferencesUtil.getString("cookies", "");
                         if (mid == 0 || cookies == null || cookies.length() == 0) {
-                            Toast.makeText(VideoDetailActivity.this, "请先登录", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(VideoDetailActivity.this, "登录以后才能收藏喵～(*_*)", Toast.LENGTH_SHORT).show();
                             return;
                         }
                         showFavoriteDialog();
+                    }
+                });
+                btnFavorite.setOnLongClickListener(new View.OnLongClickListener() {
+                    @Override
+                    public boolean onLongClick(View v) {
+                        showInteractionMenu();
+                        return true;
                     }
                 });
                 checkFavoriteState();
@@ -177,7 +432,7 @@ public class VideoDetailActivity extends BaseActivity {
                         long mid = SharedPreferencesUtil.getLong("mid", 0);
                         String cookies = SharedPreferencesUtil.getString("cookies", "");
                         if (mid == 0 || cookies == null || cookies.length() == 0) {
-                            Toast.makeText(VideoDetailActivity.this, "请先登录", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(VideoDetailActivity.this, "请先登录的说~", Toast.LENGTH_SHORT).show();
                             return;
                         }
                         showSendCommentDialog();
@@ -207,24 +462,6 @@ public class VideoDetailActivity extends BaseActivity {
                 });
             }
         }
-
-        viewPager = (ViewPager) findViewById(R.id.viewpager);
-        viewPager.setAdapter(new VideoDetailPagerAdapter(getSupportFragmentManager()));
-        viewPager.setOffscreenPageLimit(mOfflineMode ? 1 : 3);
-
-        viewPager.setOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
-            @Override
-            public void onPageSelected(int position) {
-                currentPagePosition = position;
-            }
-        });
-
-        findViewById(R.id.btn_back).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
-        });
     }
 
     @Override
@@ -252,13 +489,20 @@ public class VideoDetailActivity extends BaseActivity {
         cleanupHandler.removeCallbacksAndMessages(null);
         isCleaned = false;
         if (viewPager != null && viewPager.getAdapter() == null) {
-            viewPager.setAdapter(new VideoDetailPagerAdapter(getSupportFragmentManager()));
+            if (isBangumi) {
+                viewPager.setAdapter(new BangumiPagerAdapter(getSupportFragmentManager()));
+            } else {
+                if (mBangumiMediaId > 0) {
+                    viewPager.setAdapter(new TwoTabPagerAdapter(getSupportFragmentManager()));
+                } else {
+                    viewPager.setAdapter(new VideoDetailPagerAdapter(getSupportFragmentManager()));
+                }
+            }
             viewPager.setCurrentItem(currentPagePosition, false);
         }
         if (!mOfflineMode && btnFavorite != null) {
             checkFavoriteState();
         }
-        // 重置删除对话框状态
         mIsDeleteDialogShowing = false;
     }
 
@@ -352,15 +596,38 @@ public class VideoDetailActivity extends BaseActivity {
         }
     }
 
-    // 显示发送评论对话框
     private void showSendCommentDialog() {
+        final LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+
         final EditText input = new EditText(this);
         input.setHint("输入评论内容...");
         input.setLines(3);
+        layout.addView(input);
+
+        final TextView clearText = new TextView(this);
+        clearText.setText("清空");
+        clearText.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
+        clearText.setPadding(0, 8, 0, 0);
+        clearText.setTextSize(14);
+        clearText.setTextColor(0xFF666666);
+        clearText.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                input.setText("");
+                input.requestFocus();
+                android.view.inputmethod.InputMethodManager imm =
+                        (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+                }
+            }
+        });
+        layout.addView(clearText);
 
         new AlertDialog.Builder(this)
                 .setTitle("发送评论")
-                .setView(input)
+                .setView(layout)
                 .setPositiveButton("发送", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -376,53 +643,25 @@ public class VideoDetailActivity extends BaseActivity {
                 .show();
     }
 
-    // 发送评论
     private void sendComment(final String text) {
         Toast.makeText(this, "正在发送评论...", Toast.LENGTH_SHORT).show();
 
-        // 确保 aid 正确（如果是 BV 号，从 Fragment 获取 aid）
         final long finalAid = getCorrectAid();
 
-        new Thread(new Runnable() {
+        ReplyHelper.sendReply(this, finalAid, 0, 0, text, new ReplyHelper.ReplyCallback() {
             @Override
-            public void run() {
-                try {
-                    // 清理脏 csrf
-                    String cookies = SharedPreferencesUtil.getString("cookies", "");
-                    String cleanCsrf = extractCsrfFromCookie(cookies);
-                    if (cleanCsrf != null && cleanCsrf.length() > 0) {
-                        SharedPreferencesUtil.putString("csrf", cleanCsrf);
-                    }
-
-                    final ReplyApi.ReplyResult result = ReplyApi.sendReply(finalAid, 0, 0, text, ReplyApi.REPLY_TYPE_VIDEO);
-
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (result.code == 0) {
-                                Toast.makeText(VideoDetailActivity.this, "评论发送成功", Toast.LENGTH_SHORT).show();
-                                // 刷新评论列表
-                                refreshComments();
-                            } else {
-                                Toast.makeText(VideoDetailActivity.this, "发送失败: " + result.code, Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                    });
-
-                } catch (final Exception e) {
-                    e.printStackTrace();
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(VideoDetailActivity.this, "发送失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                }
+            public void onSuccess() {
+                Toast.makeText(VideoDetailActivity.this, "评论发送成功", Toast.LENGTH_SHORT).show();
+                refreshComments();
             }
-        }).start();
+
+            @Override
+            public void onFailed(String error) {
+                // 错误已在 ReplyHelper 中 Toast 显示
+            }
+        });
     }
 
-    // 获取正确的 aid（支持 BV 号）
     private long getCorrectAid() {
         if (aid != 0L) {
             return aid;
@@ -430,7 +669,6 @@ public class VideoDetailActivity extends BaseActivity {
         if (videoDetailFragment != null && videoDetailFragment.videoInfo != null) {
             return videoDetailFragment.videoInfo.aid;
         }
-        // 如果 fragment 还没加载，尝试从 bvid 获取
         if (bvid != null && bvid.length() > 0) {
             try {
                 return FavoriteApi.getAidByBvid(bvid);
@@ -441,15 +679,13 @@ public class VideoDetailActivity extends BaseActivity {
         return 0L;
     }
 
-    // 刷新评论列表
     private void refreshComments() {
-        // 切换到评论 Tab
         if (viewPager != null) {
-            viewPager.setCurrentItem(2);
+            int commentPosition = isBangumi ? 1 : 2;
+            viewPager.setCurrentItem(commentPosition);
         }
-        // 通知 CommentFragment 刷新
         Fragment fragment = getSupportFragmentManager().findFragmentByTag(
-                "android:switcher:" + R.id.viewpager + ":2");
+                "android:switcher:" + R.id.viewpager + ":" + (isBangumi ? 1 : 2));
         if (fragment instanceof CommentFragment) {
             ((CommentFragment) fragment).refreshComments();
         }
@@ -467,9 +703,6 @@ public class VideoDetailActivity extends BaseActivity {
         return null;
     }
 
-    // 收藏功能
-
-    // 检查收藏状态
     private void checkFavoriteState() {
         final long finalAid = getCorrectAid();
         if (finalAid == 0L) return;
@@ -510,7 +743,128 @@ public class VideoDetailActivity extends BaseActivity {
         }).start();
     }
 
-    // 显示收藏对话框
+    private void showInteractionMenu() {
+        final long finalAid = getCorrectAid();
+        if (finalAid == 0L) {
+            Toast.makeText(VideoDetailActivity.this, "无法获取视频信息", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        long mid = SharedPreferencesUtil.getLong("mid", 0);
+        String cookies = SharedPreferencesUtil.getString("cookies", "");
+        if (mid == 0 || cookies == null || cookies.length() == 0) {
+            Toast.makeText(VideoDetailActivity.this, "登录以后才能操作喵～(*_*)", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final String[] items = {"点赞", "投币", "收藏", "三连"};
+        new AlertDialog.Builder(VideoDetailActivity.this)
+                .setTitle("互动操作")
+                .setItems(items, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (which == 0) {
+                            new Thread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        final int code = InteractionApi.like(finalAid, 1);
+                                        VideoDetailActivity.this.runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                if (code == 0) {
+                                                    Toast.makeText(VideoDetailActivity.this, "点赞成功", Toast.LENGTH_SHORT).show();
+                                                } else if (code == 65006) {
+                                                    Toast.makeText(VideoDetailActivity.this, "重复点赞", Toast.LENGTH_SHORT).show();
+                                                } else {
+                                                    Toast.makeText(VideoDetailActivity.this, "点赞失败", Toast.LENGTH_SHORT).show();
+                                                }
+                                            }
+                                        });
+                                    } catch (final Exception e) {
+                                        VideoDetailActivity.this.runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                Toast.makeText(VideoDetailActivity.this, "点赞失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                            }
+                                        });
+                                    }
+                                }
+                            }).start();
+                        } else if (which == 1) {
+                            final String[] coinItems = {"1枚硬币", "2枚硬币"};
+                            new AlertDialog.Builder(VideoDetailActivity.this)
+                                    .setTitle("投币")
+                                    .setItems(coinItems, new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface coinDialog, int coinWhich) {
+                                            final int multiply = coinWhich == 1 ? 2 : 1;
+                                            new Thread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    try {
+                                                        final int code = InteractionApi.coin(finalAid, multiply);
+                                                        VideoDetailActivity.this.runOnUiThread(new Runnable() {
+                                                            @Override
+                                                            public void run() {
+                                                                if (code == 0) {
+                                                                    Toast.makeText(VideoDetailActivity.this, "投币" + multiply + "枚成功", Toast.LENGTH_SHORT).show();
+                                                                } else if (code == -401) {
+                                                                    Toast.makeText(VideoDetailActivity.this, "需要验证码，请到网页端投币", Toast.LENGTH_SHORT).show();
+                                                                } else {
+                                                                    Toast.makeText(VideoDetailActivity.this, "投币失败", Toast.LENGTH_SHORT).show();
+                                                                }
+                                                            }
+                                                        });
+                                                    } catch (final Exception e) {
+                                                        VideoDetailActivity.this.runOnUiThread(new Runnable() {
+                                                            @Override
+                                                            public void run() {
+                                                                Toast.makeText(VideoDetailActivity.this, "投币失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                                            }
+                                                        });
+                                                    }
+                                                }
+                                            }).start();
+                                        }
+                                    })
+                                    .setNegativeButton("取消", null)
+                                    .show();
+                        } else if (which == 2) {
+                            showFavoriteDialog();
+                        } else if (which == 3) {
+                            new Thread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        final int code = InteractionApi.triple(finalAid);
+                                        VideoDetailActivity.this.runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                if (code == 0) {
+                                                    Toast.makeText(VideoDetailActivity.this, "三连成功", Toast.LENGTH_SHORT).show();
+                                                } else if (code == -401) {
+                                                    Toast.makeText(VideoDetailActivity.this, "需要验证码，请到网页端三连", Toast.LENGTH_SHORT).show();
+                                                } else {
+                                                    Toast.makeText(VideoDetailActivity.this, "三连失败", Toast.LENGTH_SHORT).show();
+                                                }
+                                            }
+                                        });
+                                    } catch (final Exception e) {
+                                        VideoDetailActivity.this.runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                Toast.makeText(VideoDetailActivity.this, "三连失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                            }
+                                        });
+                                    }
+                                }
+                            }).start();
+                        }
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
     private void showFavoriteDialog() {
         if (mIsFavoriteUpdating) {
             return;
@@ -518,13 +872,17 @@ public class VideoDetailActivity extends BaseActivity {
 
         final long finalAid = getCorrectAid();
         if (finalAid == 0L) {
-            Toast.makeText(this, "无法获取视频信息", Toast.LENGTH_SHORT).show();
+            if (!isFinishing()) {
+                Toast.makeText(this, "无法获取视频信息", Toast.LENGTH_SHORT).show();
+            }
             return;
         }
 
         final long mid = SharedPreferencesUtil.getLong("mid", 0);
         if (mid == 0) {
-            Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
+            if (!isFinishing()) {
+                Toast.makeText(this, "请先登录的说~", Toast.LENGTH_SHORT).show();
+            }
             return;
         }
 
@@ -536,35 +894,77 @@ public class VideoDetailActivity extends BaseActivity {
                 try {
                     final ArrayList folders = FavoriteApi.getFavoriteFoldersFast(mid);
 
+                    final ArrayList stateNames = new ArrayList();
+                    final ArrayList stateFids = new ArrayList();
+                    final ArrayList stateList = new ArrayList();
+                    FavoriteApi.getFavoriteState(finalAid, stateNames, stateFids, stateList);
+
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            if (isFinishing()) return;
                             mIsFavoriteLoading = false;
                             if (folders == null || folders.size() == 0) {
                                 Toast.makeText(VideoDetailActivity.this, "暂无收藏夹，请先在网页端创建", Toast.LENGTH_LONG).show();
                                 return;
                             }
 
-                            if (mIsFavorited) {
-                                showUnfavoriteConfirmDialog();
-                                return;
-                            }
-
                             final String[] folderNames = new String[folders.size()];
                             final long[] folderIds = new long[folders.size()];
+                            final boolean[] favStates = new boolean[folders.size()];
                             for (int i = 0; i < folders.size(); i++) {
                                 FavoriteFolder folder = (FavoriteFolder) folders.get(i);
                                 folderNames[i] = folder.name + " (" + folder.videoCount + "个视频)";
                                 folderIds[i] = folder.fid;
+                                favStates[i] = false;
+                                for (int j = 0; j < stateFids.size(); j++) {
+                                    if (((Long) stateFids.get(j)).longValue() == folder.fid) {
+                                        favStates[i] = ((Boolean) stateList.get(j)).booleanValue();
+                                        break;
+                                    }
+                                }
                             }
+
+                            ArrayAdapter adapter = new ArrayAdapter<String>(
+                                    VideoDetailActivity.this,
+                                    android.R.layout.simple_list_item_1,
+                                    folderNames) {
+                                @Override
+                                public View getView(int position, View convertView, ViewGroup parent) {
+                                    View view = super.getView(position, convertView, parent);
+                                    if (view instanceof TextView) {
+                                        TextView tv = (TextView) view;
+                                        if (favStates[position]) {
+                                            tv.setTextColor(0xFFD86DA5);
+                                        } else {
+                                            tv.setTextColor(0xFF000000);
+                                        }
+                                    }
+                                    return view;
+                                }
+                            };
 
                             new AlertDialog.Builder(VideoDetailActivity.this)
                                     .setTitle("选择收藏夹")
-                                    .setItems(folderNames, new DialogInterface.OnClickListener() {
+                                    .setAdapter(adapter, new DialogInterface.OnClickListener() {
                                         @Override
                                         public void onClick(DialogInterface dialog, int which) {
-                                            long fid = folderIds[which];
-                                            addToFavorite(finalAid, fid);
+                                            final long fid = folderIds[which];
+                                            if (favStates[which]) {
+                                                new AlertDialog.Builder(VideoDetailActivity.this)
+                                                        .setTitle("删除收藏")
+                                                        .setMessage("是否从该收藏夹中删除？")
+                                                        .setPositiveButton("删除", new DialogInterface.OnClickListener() {
+                                                            @Override
+                                                            public void onClick(DialogInterface delDialog, int delWhich) {
+                                                                removeFromFolder(finalAid, fid);
+                                                            }
+                                                        })
+                                                        .setNegativeButton("取消", null)
+                                                        .show();
+                                            } else {
+                                                addToFavorite(finalAid, fid);
+                                            }
                                         }
                                     })
                                     .setNegativeButton("取消", null)
@@ -577,6 +977,7 @@ public class VideoDetailActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            if (isFinishing()) return;
                             mIsFavoriteLoading = false;
                             Toast.makeText(VideoDetailActivity.this, "加载收藏夹失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
@@ -584,25 +985,6 @@ public class VideoDetailActivity extends BaseActivity {
                 }
             }
         }).start();
-    }
-
-    private void showUnfavoriteConfirmDialog() {
-        new AlertDialog.Builder(this)
-                .setTitle("已收藏")
-                .setMessage("该视频已经收藏过了，是否要取消收藏？")
-                .setPositiveButton("取消收藏", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        removeFromFavorite();
-                    }
-                })
-                .setNegativeButton("保留", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        // 什么都不做
-                    }
-                })
-                .show();
     }
 
     private void addToFavorite(final long finalAid, final long fid) {
@@ -619,15 +1001,17 @@ public class VideoDetailActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            if (isFinishing()) return;
                             mIsFavoriteUpdating = false;
                             if (code == 0) {
                                 mIsFavorited = true;
-                                Toast.makeText(VideoDetailActivity.this, "收藏成功", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(VideoDetailActivity.this, "收藏好了喵～(=w=)", Toast.LENGTH_SHORT).show();
+                                sendBroadcast(new Intent(BroadcastConstants.ACTION_FAVORITE_CHANGED));
                             } else if (code == 11201) {
                                 mIsFavorited = true;
                                 Toast.makeText(VideoDetailActivity.this, "已收藏过该视频", Toast.LENGTH_SHORT).show();
                             } else {
-                                Toast.makeText(VideoDetailActivity.this, "收藏失败: " + code, Toast.LENGTH_SHORT).show();
+                                Toast.makeText(VideoDetailActivity.this, "收藏失败喵: " + code, Toast.LENGTH_SHORT).show();
                             }
                         }
                     });
@@ -637,8 +1021,9 @@ public class VideoDetailActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            if (isFinishing()) return;
                             mIsFavoriteUpdating = false;
-                            Toast.makeText(VideoDetailActivity.this, "收藏失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(VideoDetailActivity.this, "收藏失败喵: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     });
                 }
@@ -646,9 +1031,8 @@ public class VideoDetailActivity extends BaseActivity {
         }).start();
     }
 
-    private void removeFromFavorite() {
-        final long finalAid = getCorrectAid();
-        if (finalAid == 0L || mIsFavoriteUpdating) return;
+    private void removeFromFolder(final long targetAid, final long targetFid) {
+        if (targetAid == 0L || mIsFavoriteUpdating) return;
 
         mIsFavoriteUpdating = true;
 
@@ -656,17 +1040,19 @@ public class VideoDetailActivity extends BaseActivity {
             @Override
             public void run() {
                 try {
-                    final int code = FavoriteApi.deleteFavorite(finalAid, bvid, 0);
+                    final int code = FavoriteApi.deleteFavorite(targetAid, bvid, targetFid);
 
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            if (isFinishing()) return;
                             mIsFavoriteUpdating = false;
                             if (code == 0) {
                                 mIsFavorited = false;
-                                Toast.makeText(VideoDetailActivity.this, "已取消收藏", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(VideoDetailActivity.this, "已从收藏夹删除", Toast.LENGTH_SHORT).show();
+                                sendBroadcast(new Intent(BroadcastConstants.ACTION_FAVORITE_CHANGED));
                             } else {
-                                Toast.makeText(VideoDetailActivity.this, "取消收藏失败", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(VideoDetailActivity.this, "删除收藏失败", Toast.LENGTH_SHORT).show();
                             }
                         }
                     });
@@ -676,16 +1062,15 @@ public class VideoDetailActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            if (isFinishing()) return;
                             mIsFavoriteUpdating = false;
-                            Toast.makeText(VideoDetailActivity.this, "取消收藏失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(VideoDetailActivity.this, "删除收藏失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     });
                 }
             }
         }).start();
     }
-
-    // 删除离线视频
 
     private void showDeleteConfirmDialog() {
         mIsDeleteDialogShowing = true;
@@ -765,9 +1150,12 @@ public class VideoDetailActivity extends BaseActivity {
         return file.delete();
     }
 
-    // 下载相关
-
     private void showDownloadChoiceDialog() {
+        if (isBangumi) {
+            Toast.makeText(this, "番剧页面暂不支持离线下载，敬请谅解~", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         if (!fragmentReady || videoDetailFragment == null) {
             Toast.makeText(this, "请等待页面加载完成", Toast.LENGTH_SHORT).show();
             return;
@@ -792,6 +1180,8 @@ public class VideoDetailActivity extends BaseActivity {
             qualityGroup.check(R.id.quality_360);
         } else if (defaultQuality == 32) {
             qualityGroup.check(R.id.quality_480);
+        } else if (defaultQuality == 80) {
+            qualityGroup.check(R.id.quality_1080);
         } else {
             qualityGroup.check(R.id.quality_720);
         }
@@ -812,9 +1202,12 @@ public class VideoDetailActivity extends BaseActivity {
                 } else if (checkedId == R.id.quality_480) {
                     mSelectedQuality = 32;
                     mSelectedQualityName = "480P 清晰";
-                } else {
+                } else if (checkedId == R.id.quality_720) {
                     mSelectedQuality = 64;
                     mSelectedQualityName = "720P 高清";
+                } else {
+                    mSelectedQuality = 80;
+                    mSelectedQualityName = "1080P 超清";
                 }
 
                 for (int i = 0; i < mPages.size(); i++) {
@@ -835,7 +1228,6 @@ public class VideoDetailActivity extends BaseActivity {
         mDownloadDialog = builder.show();
     }
 
-    // 分P列表适配器（带CheckBox）
     private class PageListAdapter extends BaseAdapter {
         @Override
         public int getCount() {
@@ -936,8 +1328,6 @@ public class VideoDetailActivity extends BaseActivity {
         this.fragmentReady = true;
     }
 
-    // URI解析
-
     private void parseExternalUri(Uri data) {
         String scheme = data.getScheme();
         String host = data.getHost();
@@ -974,8 +1364,49 @@ public class VideoDetailActivity extends BaseActivity {
         }
     }
 
-    // ViewPager适配器
+    // 两个 Tab 的适配器（视频详情 + 评论）
+    private class TwoTabPagerAdapter extends FragmentPagerAdapter {
+        private String[] titles = {"视频详情", "评论"};
 
+        public TwoTabPagerAdapter(FragmentManager fm) {
+            super(fm);
+        }
+
+        @Override
+        public Fragment getItem(int position) {
+            if (position == 0) {
+                VideoDetailFragment fragment = new VideoDetailFragment();
+                Bundle args = new Bundle();
+                args.putLong("aid", aid);
+                if (bvid != null) {
+                    args.putString("bvid", bvid);
+                }
+                fragment.setArguments(args);
+                return fragment;
+            } else {
+                CommentFragment fragment = new CommentFragment();
+                Bundle args = new Bundle();
+                args.putLong("aid", aid);
+                if (bvid != null) {
+                    args.putString("bvid", bvid);
+                }
+                fragment.setArguments(args);
+                return fragment;
+            }
+        }
+
+        @Override
+        public int getCount() {
+            return 2;
+        }
+
+        @Override
+        public CharSequence getPageTitle(int position) {
+            return titles[position];
+        }
+    }
+
+    // 普通视频 ViewPager 适配器（三个 Tab）
     private class VideoDetailPagerAdapter extends FragmentPagerAdapter {
         private String[] titles = {"视频详情", "相关视频", "评论"};
 
@@ -1021,6 +1452,41 @@ public class VideoDetailActivity extends BaseActivity {
         @Override
         public int getCount() {
             return mOfflineMode ? 1 : 3;
+        }
+
+        @Override
+        public CharSequence getPageTitle(int position) {
+            return titles[position];
+        }
+    }
+
+    // 番剧 ViewPager 适配器（只有两个 Tab）
+    private class BangumiPagerAdapter extends FragmentPagerAdapter {
+        private String[] titles = {"番剧", "评论"};
+
+        public BangumiPagerAdapter(FragmentManager fm) {
+            super(fm);
+        }
+
+        @Override
+        public Fragment getItem(int position) {
+            if (position == 0) {
+                return BangumiDetailFragment.newInstance(mBangumiMediaId);
+            } else {
+                CommentFragment fragment = new CommentFragment();
+                Bundle commentArgs = new Bundle();
+                commentArgs.putLong("aid", aid);
+                if (bvid != null) {
+                    commentArgs.putString("bvid", bvid);
+                }
+                fragment.setArguments(commentArgs);
+                return fragment;
+            }
+        }
+
+        @Override
+        public int getCount() {
+            return 2;
         }
 
         @Override

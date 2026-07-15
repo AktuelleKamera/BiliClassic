@@ -16,6 +16,7 @@ import android.widget.PopupWindow;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.RadioGroup;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -42,7 +43,6 @@ import tv.danmaku.ijk.media.player.IMediaPlayer;
 
 public class DanmakuManager {
 
-    // SharedPreferences keys
     private static final String KEY_TEXT_SIZE = "danmaku_text_size";
     private static final String KEY_TRANSPARENCY = "danmaku_transparency";
     private static final String KEY_SPEED = "danmaku_speed";
@@ -92,19 +92,13 @@ public class DanmakuManager {
         mRes = activity.getResources();
     }
 
-    /**
-     * 设置离线弹幕文件路径（用于已缓存视频播放）
-     */
     public void setOfflineDanmakuFile(File danmakuFile) {
         mOfflineDanmakuFile = danmakuFile;
     }
 
-    // lifecycle
-
     public static boolean isSimpleEngineEnabled() {
         int mode = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, -1);
         if (mode < 0) {
-            // 首次运行：ARMv5/v6 默认用 BT-5
             String abi = android.os.Build.CPU_ABI;
             boolean isLegacyCpu = abi != null && abi.startsWith("armeabi") && !abi.contains("v7");
             mode = isLegacyCpu ? 1 : 0;
@@ -114,6 +108,7 @@ public class DanmakuManager {
     }
 
     public void init() {
+        mReleased = false;
         mUseSimpleEngine = isSimpleEngineEnabled();
 
         if (mUseSimpleEngine) {
@@ -143,13 +138,19 @@ public class DanmakuManager {
     }
 
     private void initFullEngine() {
+        for (int i = mContainer.getChildCount() - 1; i >= 0; i--) {
+            View child = mContainer.getChildAt(i);
+            if (child instanceof DanmakuView) {
+                ((DanmakuView) child).release();
+                mContainer.removeView(child);
+            }
+        }
         mDanmakuView = new DanmakuView(mActivity);
         mContainer.addView(mDanmakuView,
                 new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT));
 
-        // 持久化设置
         float textSize = SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, 0.8f);
         float transparency = SharedPreferencesUtil.getFloat(KEY_TRANSPARENCY, 0.4f);
         float speed = SharedPreferencesUtil.getFloat(KEY_SPEED, 1.0f);
@@ -177,10 +178,9 @@ public class DanmakuManager {
             mDanmakuCacheFile = new File(mActivity.getCacheDir(), "danmaku_" + mCid + ".xml");
         }
 
-        // 离线弹幕优先：如果提供了离线弹幕文件路径且存在，直接使用
         if (mOfflineDanmakuFile != null && mOfflineDanmakuFile.exists() && mOfflineDanmakuFile.length() > 0) {
             mDanmakuCacheFile = mOfflineDanmakuFile;
-            mDanmakuUrl = null; // 不需要在线获取
+            mDanmakuUrl = null;
         }
 
         if (mDanmakuUrl != null || (mDanmakuCacheFile != null && mDanmakuCacheFile.exists())) {
@@ -211,8 +211,6 @@ public class DanmakuManager {
         }
         mLoaded = false;
     }
-
-    // 视频同步
 
     public void onVideoPrepared(IMediaPlayer mp) {
         mMediaPlayer = mp;
@@ -258,8 +256,6 @@ public class DanmakuManager {
         }
     }
 
-    // 可见性
-
     public void toggleVisibility() {
         mEnabled = !mEnabled;
         updateVisibility();
@@ -275,8 +271,6 @@ public class DanmakuManager {
             if (mEnabled) mDanmakuView.show(); else mDanmakuView.hide();
         }
     }
-
-    // 弹幕设置
 
     public void showOptionsPanel() {
         if (mOptionsPanel != null && mOptionsPanel.isShowing()) {
@@ -396,8 +390,6 @@ public class DanmakuManager {
         mOptionsPanel.showAtLocation(root, Gravity.RIGHT, 0, 0);
     }
 
-    // 输入并发送弹幕
-
     public void showInputPanel(final PlayControl playControl) {
         if (mUseSimpleEngine) {
             toast("简易引擎暂不支持发送弹幕");
@@ -409,6 +401,11 @@ public class DanmakuManager {
                 final EditText inputEdit = (EditText) mInputOverlay.findViewById(R.id.input);
                 View clearBtn = mInputOverlay.findViewById(R.id.clear);
                 View sendBtn = mInputOverlay.findViewById(R.id.send);
+
+                View optionsView = mInputOverlay.findViewById(R.id.danmaku_input_options);
+                final RadioGroup modeGroup = (RadioGroup) optionsView.findViewById(R.id.input_options_group_type);
+                final RadioGroup sizeGroup = (RadioGroup) optionsView.findViewById(R.id.input_options_group_textsize);
+
                 if (clearBtn != null) {
                     clearBtn.setOnClickListener(new View.OnClickListener() {
                         public void onClick(View v) { hideInputPanel(playControl); }
@@ -422,8 +419,28 @@ public class DanmakuManager {
                                 toast("请输入弹幕内容");
                                 return;
                             }
+                            int mode = 1;
+                            if (modeGroup != null) {
+                                int checkedId = modeGroup.getCheckedRadioButtonId();
+                                if (checkedId == R.id.input_options_top_type) {
+                                    mode = 5;
+                                } else if (checkedId == R.id.input_options_bottom_type) {
+                                    mode = 4;
+                                } else {
+                                    mode = 1;
+                                }
+                            }
+                            int textSize = 25;
+                            if (sizeGroup != null) {
+                                int checkedId = sizeGroup.getCheckedRadioButtonId();
+                                if (checkedId == R.id.input_options_small_textsize) {
+                                    textSize = 18;
+                                } else {
+                                    textSize = 25;
+                                }
+                            }
                             hideInputPanel(playControl);
-                            sendDanmaku(text);
+                            sendDanmaku(text, mode, textSize);
                         }
                     });
                 }
@@ -432,6 +449,11 @@ public class DanmakuManager {
         mWasPlayingBeforeInput = playControl.isPlaying();
         if (mWasPlayingBeforeInput) {
             playControl.pausePlayer();
+            if (mSimpleEngine != null && mLoaded) {
+                mSimpleEngine.pauseDanmaku();
+            } else if (mDanmakuView != null && mLoaded) {
+                mDanmakuView.pause();
+            }
         }
         if (mInputOverlay != null) {
             mInputOverlay.setVisibility(View.VISIBLE);
@@ -441,6 +463,11 @@ public class DanmakuManager {
     public void hideInputPanel(PlayControl playControl) {
         if (mInputOverlay != null) {
             mInputOverlay.setVisibility(View.GONE);
+        }
+        if (mSimpleEngine != null && mLoaded) {
+            mSimpleEngine.resumeDanmaku();
+        } else if (mDanmakuView != null && mLoaded) {
+            mDanmakuView.resume();
         }
         if (mWasPlayingBeforeInput && playControl.isPrepared()) {
             playControl.resumePlayer();
@@ -461,8 +488,6 @@ public class DanmakuManager {
             mOptionsPanel = null;
         }
     }
-
-    // 加载弹幕
 
     private void startLoadDanmaku() {
         new Thread(new Runnable() {
@@ -563,7 +588,6 @@ public class DanmakuManager {
     private void prepareSimpleEngine() {
         try {
             mSimpleEngine.setDanmakuData(mDanmakuCacheFile);
-            // 不手动 start，等 setTimeProvider 后自动启动
             mLoaded = true;
         } catch (Exception e) {
             android.util.Log.e("DanmakuManager", "简易弹幕初始化失败: " + e.getMessage());
@@ -588,7 +612,7 @@ public class DanmakuManager {
             IDataSource<?> dataSource = loader.getDataSource();
             parser.load(dataSource);
 
-                    mDanmakuView.setCallback(new DrawHandler.Callback() {
+            mDanmakuView.setCallback(new DrawHandler.Callback() {
                 @Override
                 public void prepared() {
                     if (mReleased || mDanmakuView == null) return;
@@ -621,9 +645,7 @@ public class DanmakuManager {
         }
     }
 
-    // 发送弹幕
-
-    private void sendDanmaku(final String text) {
+    private void sendDanmaku(final String text, final int mode, final int textSize) {
         if (mCid <= 0) {
             toast("无法发送弹幕：缺少视频信息");
             return;
@@ -638,19 +660,19 @@ public class DanmakuManager {
                     }
                     int result = DanmakuApi.sendVideoDanmakuByAid(
                             mCid, text, mAid, progress,
-                            DanmakuApi.COLOR_WHITE, DanmakuApi.MODE_SCROLL);
+                            DanmakuApi.COLOR_WHITE, mode);
                     final String msg;
                     if (result == 0) {
                         msg = "弹幕发送成功";
                         if (mDanmakuView != null && mLoaded) {
                             BaseDanmaku danmaku = master.flame.danmaku.danmaku.parser.DanmakuFactory
-                                    .createDanmaku(BaseDanmaku.TYPE_SCROLL_RL);
+                                    .createDanmaku(getDanmakuType(mode));
                             if (danmaku != null) {
                                 danmaku.text = text;
                                 danmaku.padding = 5;
                                 danmaku.priority = 1;
                                 danmaku.textColor = Color.WHITE;
-                                danmaku.textSize = 25 * (mDanmakuView.getWidth() / 640f);
+                                danmaku.textSize = textSize * (mDanmakuView.getWidth() / 640f);
                                 danmaku.time = mDanmakuView.getCurrentTime() + 100;
                                 danmaku.isLive = false;
                                 mDanmakuView.addDanmaku(danmaku);
@@ -675,7 +697,15 @@ public class DanmakuManager {
         }).start();
     }
 
-    // UI管理
+    private int getDanmakuType(int mode) {
+        if (mode == 5) {
+            return BaseDanmaku.TYPE_FIX_TOP;
+        } else if (mode == 4) {
+            return BaseDanmaku.TYPE_FIX_BOTTOM;
+        } else {
+            return BaseDanmaku.TYPE_SCROLL_RL;
+        }
+    }
 
     private void showSimpleOptionsPanel() {
         LayoutInflater inflater = LayoutInflater.from(mActivity);
@@ -693,7 +723,6 @@ public class DanmakuManager {
             });
         }
 
-        // 隐藏屏蔽区和描边
         hideIfNotNull(panel, R.id.options_block_group);
         hideIfNotNull(panel, R.id.option_block_top);
         hideIfNotNull(panel, R.id.option_block_scroll);
@@ -703,7 +732,6 @@ public class DanmakuManager {
         hideIfNotNull(panel, R.id.options_duplicate_merging_enable);
         hideIfNotNull(panel, R.id.option_danmaku_stroke_width_scaling);
 
-        // 隐藏 section headers（简单遍历 text views 匹配）
         hideSectionHeaders(panel);
 
         float textScale = SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, 0.8f);
@@ -843,8 +871,6 @@ public class DanmakuManager {
     private void toast(String msg) {
         Toast.makeText(mActivity, msg, Toast.LENGTH_SHORT).show();
     }
-
-    // 播放控制接口
 
     public interface PlayControl {
         boolean isPlaying();

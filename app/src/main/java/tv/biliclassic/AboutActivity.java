@@ -15,27 +15,25 @@ public class AboutActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.bili_about);
 
-        // 获取版本号
-        String versionName = "0.4.4";
-        try {
-            PackageInfo packageInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
-            versionName = packageInfo.versionName;
-        } catch (PackageManager.NameNotFoundException e) {
-            versionName = "0.4.4";
-        }
-
-        // 应用名称和版本号
         TextView appBrief = (TextView) findViewById(R.id.app_brief);
+        String versionName = getVersionName();
         appBrief.setText("哔哩经典 " + versionName);
 
-        // 反馈论坛链接
         TextView releaseWebsite = (TextView) findViewById(R.id.release_website);
         releaseWebsite.setText(Html.fromHtml("<a href=\"https://github.com/AktuelleKamera/BiliClassic\">GitHub Issues</a>"));
         releaseWebsite.setMovementMethod(LinkMovementMethod.getInstance());
 
-        // B 站链接
         TextView bilibiliWebsite = (TextView) findViewById(R.id.bilibili_website);
         bilibiliWebsite.setText(Html.fromHtml("<a href=\"https://www.bilibili.com\">哔哩哔哩弹幕网</a>"));
         bilibiliWebsite.setMovementMethod(LinkMovementMethod.getInstance());
+    }
+
+    private String getVersionName() {
+        try {
+            PackageInfo packageInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+            return packageInfo.versionName;
+        } catch (PackageManager.NameNotFoundException e) {
+            return "0.4.5";
+        }
     }
 }

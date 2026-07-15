@@ -12,6 +12,7 @@ import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.InputStream;
 import java.lang.ref.SoftReference;
@@ -35,13 +36,18 @@ public class RelatedVideosAdapter extends BaseAdapter {
         void onVideoClick(VideoCard video, int position);
     }
 
+    public interface OnVideoLongClickListener {
+        void onVideoLongClick(VideoCard video, int position);
+    }
+
     private Context context;
     private List<VideoCard> list;
     private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Map<String, SoftReference<Bitmap>> imageCache = new HashMap<String, SoftReference<Bitmap>>();
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
-    private OnVideoClickListener mListener;
+    private OnVideoClickListener mClickListener;
+    private OnVideoLongClickListener mLongClickListener;
 
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
@@ -76,7 +82,11 @@ public class RelatedVideosAdapter extends BaseAdapter {
     }
 
     public void setOnVideoClickListener(OnVideoClickListener listener) {
-        this.mListener = listener;
+        this.mClickListener = listener;
+    }
+
+    public void setOnVideoLongClickListener(OnVideoLongClickListener listener) {
+        this.mLongClickListener = listener;
     }
 
     public void reloadExecutor() {
@@ -85,7 +95,7 @@ public class RelatedVideosAdapter extends BaseAdapter {
 
     @Override
     public int getCount() {
-        return list.size();
+        return list == null ? 0 : list.size();
     }
 
     @Override
@@ -99,7 +109,7 @@ public class RelatedVideosAdapter extends BaseAdapter {
     }
 
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
+    public View getView(final int position, View convertView, ViewGroup parent) {
         ViewHolder holder;
 
         if (convertView == null) {
@@ -122,7 +132,6 @@ public class RelatedVideosAdapter extends BaseAdapter {
         holder.upName.setText(item.upName);
         holder.progress.setText(item.view);
 
-        // 占位图
         holder.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
 
         if (item.cover != null && item.cover.length() > 0) {
@@ -135,13 +144,11 @@ public class RelatedVideosAdapter extends BaseAdapter {
             final ImageView coverView = holder.cover;
             coverView.setTag(finalCoverUrl);
 
-            // 从缓存中查找
             SoftReference<Bitmap> softBitmap = imageCache.get(finalCoverUrl);
             if (softBitmap != null) {
                 Bitmap cachedBitmap = softBitmap.get();
                 if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
                     coverView.setImageBitmap(cachedBitmap);
-                    // 继续执行点击监听
                 } else {
                     imageCache.remove(finalCoverUrl);
                 }
@@ -173,15 +180,28 @@ public class RelatedVideosAdapter extends BaseAdapter {
             }
         }
 
-        // ========== 添加点击监听 ==========
-        final int pos = position;
         final VideoCard clickItem = item;
+        final int pos = position;
+
+        // 点击
         convertView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mListener != null) {
-                    mListener.onVideoClick(clickItem, pos);
+                if (mClickListener != null) {
+                    mClickListener.onVideoClick(clickItem, pos);
                 }
+            }
+        });
+
+        // 长按
+        convertView.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                if (mLongClickListener != null) {
+                    mLongClickListener.onVideoLongClick(clickItem, pos);
+                    return true;
+                }
+                return false;
             }
         });
 
@@ -200,13 +220,11 @@ public class RelatedVideosAdapter extends BaseAdapter {
 
             InputStream is = conn.getInputStream();
 
-            // 先获取图片尺寸
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
             BitmapFactory.decodeStream(is, null, options);
             is.close();
 
-            // 重新连接
             conn.disconnect();
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(8000);
@@ -215,7 +233,6 @@ public class RelatedVideosAdapter extends BaseAdapter {
             conn.connect();
             is = conn.getInputStream();
 
-            // 目标宽度 160px
             int targetWidth = (int) (160 * context.getResources().getDisplayMetrics().density);
             int scale = 1;
             if (options.outWidth > targetWidth) {

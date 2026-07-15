@@ -36,6 +36,7 @@ public class VideoInfo implements Serializable {
     public String description;
     public String duration;
     public Stats stats;
+    public long pubdate;  // 发布时间（Unix 时间戳，秒）
     public String timeDesc;
     public ArrayList<String> pagenames = new ArrayList<String>();
     public ArrayList<Long> cids = new ArrayList<Long>();

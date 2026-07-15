@@ -43,7 +43,7 @@ public class TvMainActivity extends FragmentActivity {
         adapter = new TvGridAdapter(this);
         gridView.setAdapter(adapter);
 
-        // ========== 关键：设置 rootContainer ==========
+        // 设置 rootContainer
         FrameLayout rootContainer = (FrameLayout) findViewById(R.id.root_container);
         adapter.setRootContainer(rootContainer);
 

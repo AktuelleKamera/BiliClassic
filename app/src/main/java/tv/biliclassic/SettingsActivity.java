@@ -39,7 +39,7 @@ public class SettingsActivity extends BaseActivity {
     private static final String KEY_PLAYER_PREFERENCE = "player_preference";
     private static final String KEY_AUTO_CHECK_UPDATE = "auto_check_update";
     private static final String KEY_DEFAULT_TAB = "default_tab";
-    private static final String KEY_VIDEO_QUALITY = "video_quality";
+    public static final String KEY_VIDEO_QUALITY = "video_quality";
     private static final String KEY_MODERN_MODE = "modern_mode";
     public static final String KEY_DECODER_TYPE = "decoder_type";
     private static final String KEY_BUILTIN_PLAYER = "use_builtin_player";
@@ -49,6 +49,7 @@ public class SettingsActivity extends BaseActivity {
     private static final int QUALITY_360P = 16;
     private static final int QUALITY_480P = 32;
     private static final int QUALITY_720P = 64;
+    private static final int QUALITY_1080P = 80;
 
     // 播放器偏好值
     private static final int PLAYER_AUTO = -1;
@@ -114,6 +115,11 @@ public class SettingsActivity extends BaseActivity {
     private CheckBox checkboxOnlinePlay;
     private LinearLayout onlinePlayItem;
     private View onlinePlayWarning;
+
+    // TV模式强制开关
+    private CheckBox checkboxForceTvMode;
+    private LinearLayout forceTvModeItem;
+    private View forceTvModeWarning;
 
     private Handler mainHandler = new Handler();
 
@@ -237,7 +243,11 @@ public class SettingsActivity extends BaseActivity {
                     onlinePlayWarning.setVisibility(View.VISIBLE);
                 }
 
-                boolean onlinePlayEnabled = SharedPreferencesUtil.getBoolean(KEY_ONLINE_PLAY, false);
+                boolean onlinePlayEnabled = SharedPreferencesUtil.getBoolean(KEY_ONLINE_PLAY, true);
+                if (!SharedPreferencesUtil.contains(KEY_ONLINE_PLAY)) {
+                    onlinePlayEnabled = true;
+                    SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, true);
+                }
                 checkboxOnlinePlay.setChecked(onlinePlayEnabled);
 
                 checkboxOnlinePlay.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -282,6 +292,46 @@ public class SettingsActivity extends BaseActivity {
                     @Override
                     public void onClick(View v) {
                         checkboxOnlinePlay.toggle();
+                    }
+                });
+            }
+        }
+
+        // TV模式强制开关
+        checkboxForceTvMode = (CheckBox) findViewById(R.id.checkbox_force_tv_mode);
+        forceTvModeItem = (LinearLayout) findViewById(R.id.force_tv_mode_item);
+        forceTvModeWarning = findViewById(R.id.force_tv_mode_warning);
+
+        if (forceTvModeItem != null) {
+            if (Build.VERSION.SDK_INT < 14) {
+                forceTvModeItem.setVisibility(View.GONE);
+                if (forceTvModeWarning != null) {
+                    forceTvModeWarning.setVisibility(View.GONE);
+                }
+                SharedPreferencesUtil.putBoolean("force_tv_mode", false);
+            } else {
+                forceTvModeItem.setVisibility(View.VISIBLE);
+                if (forceTvModeWarning != null) {
+                    forceTvModeWarning.setVisibility(View.VISIBLE);
+                }
+
+                boolean forceTvMode = SharedPreferencesUtil.getBoolean("force_tv_mode", false);
+                checkboxForceTvMode.setChecked(forceTvMode);
+
+                checkboxForceTvMode.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                        SharedPreferencesUtil.putBoolean("force_tv_mode", isChecked);
+                        Toast.makeText(SettingsActivity.this,
+                                isChecked ? "已开启TV模式强制开关，重启后生效" : "已关闭TV模式强制开关，重启后生效",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+                forceTvModeItem.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        checkboxForceTvMode.toggle();
                     }
                 });
             }
@@ -506,7 +556,9 @@ public class SettingsActivity extends BaseActivity {
 
     // 获取在线播放状态
     public static boolean isOnlinePlayEnabled() {
-        return SharedPreferencesUtil.getBoolean(KEY_ONLINE_PLAY, false);
+        // Android 2.3+ 且使用内置播放器时，默认开启在线播放
+        boolean defaultEnabled = isBuiltinPlayerSupported() && getPlayerPreference() == PLAYER_BUILTIN;
+        return SharedPreferencesUtil.getBoolean(KEY_ONLINE_PLAY, defaultEnabled);
     }
 
     // 获取现代模式状态
@@ -624,13 +676,13 @@ public class SettingsActivity extends BaseActivity {
     }
 
     public static boolean useBuiltinPlayer() {
-        return SharedPreferencesUtil.getBoolean(KEY_BUILTIN_PLAYER, true);
+        return SharedPreferencesUtil.getBoolean(KEY_BUILTIN_PLAYER, Build.VERSION.SDK_INT >= 9);
     }
 
     // 视频画质选择
     private void showVideoQualityDialog() {
-        final String[] qualities = {"360P 流畅", "480P 清晰", "720P 高清"};
-        final int[] qualityValues = {QUALITY_360P, QUALITY_480P, QUALITY_720P};
+        final String[] qualities = {"360P 流畅", "480P 清晰", "720P 高清", "1080P 超清"};
+        final int[] qualityValues = {QUALITY_360P, QUALITY_480P, QUALITY_720P, QUALITY_1080P};
         int currentQuality = getVideoQuality();
 
         int checkedIndex = 0;
@@ -661,7 +713,9 @@ public class SettingsActivity extends BaseActivity {
 
     private void updateVideoQualityDisplay() {
         int quality = getVideoQuality();
-        if (quality == QUALITY_720P) {
+        if (quality == QUALITY_1080P) {
+            videoQualityText.setText("1080P 超清");
+        } else if (quality == QUALITY_720P) {
             videoQualityText.setText("720P 高清");
         } else if (quality == QUALITY_480P) {
             videoQualityText.setText("480P 清晰");
@@ -679,7 +733,7 @@ public class SettingsActivity extends BaseActivity {
         if (Build.VERSION.SDK_INT < 14) {
             return 0; // TextureView 需要 API 14+
         }
-        return SharedPreferencesUtil.getInt(SharedPreferencesUtil.RENDERER_TYPE, 0);
+        return SharedPreferencesUtil.getInt(SharedPreferencesUtil.RENDERER_TYPE, 1);
     }
 
     // 渲染方式选择
@@ -1282,7 +1336,7 @@ public class SettingsActivity extends BaseActivity {
 
     private boolean checkLogin() {
         if (!isLoggedIn()) {
-            Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "请先登录的说~", Toast.LENGTH_SHORT).show();
             return false;
         }
         return true;
@@ -1503,7 +1557,7 @@ public class SettingsActivity extends BaseActivity {
 
     // 回声洞
     private void loadEchoHole() {
-        echoHoleText.setText("加载中...");
+        echoHoleText.setText("嘿咻…嘿咻…");
         echoHoleItem.setEnabled(false);
         new Thread(new Runnable() {
             public void run() {

@@ -32,7 +32,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
     private android.widget.ProgressBar footerProgressBar;
 
     private FavoriteVideoAdapter adapter;
-    private List<VideoCard> videoList = new ArrayList<VideoCard>();
+    private ArrayList<VideoCard> videoList = new ArrayList<VideoCard>();
 
     private long fid;
     private String folderName;
@@ -40,7 +40,15 @@ public class FavoriteVideoListActivity extends BaseActivity {
     private boolean isLoading = false;
     private boolean isEnd = false;
 
+    private Handler longPressHandler = new Handler();
+    private Runnable longPressRunnable;
+    private int longPressPosition = -1;
+    private boolean isLongPressTriggered = false;
+
     private Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    private static final int MAX_RETRY = 1;
+    private int retryCount = 0;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -64,6 +72,12 @@ public class FavoriteVideoListActivity extends BaseActivity {
         footerView.setVisibility(View.GONE);
 
         adapter = new FavoriteVideoAdapter(this, videoList);
+        adapter.setOnDeleteClickListener(new FavoriteVideoAdapter.OnDeleteClickListener() {
+            @Override
+            public void onDeleteClick(int position) {
+                showDeleteConfirm(position);
+            }
+        });
         listView.setAdapter(adapter);
 
         findViewById(R.id.btn_back).setOnClickListener(new View.OnClickListener() {
@@ -72,53 +86,19 @@ public class FavoriteVideoListActivity extends BaseActivity {
             }
         });
 
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            public void onItemClick(AdapterView parent, View view, int position, long id) {
-                if (videoList == null || position >= videoList.size()) {
-                    Toast.makeText(FavoriteVideoListActivity.this, "数据加载中，请稍后", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                VideoCard video = videoList.get(position);
-                if (video == null) {
-                    return;
-                }
-
-                Intent intent = new Intent(FavoriteVideoListActivity.this, VideoDetailActivity.class);
-                if (video.aid != 0L) {
-                    intent.putExtra("aid", video.aid);
-                } else if (video.bvid != null && video.bvid.length() > 0) {
-                    intent.putExtra("bvid", video.bvid);
-                } else {
-                    Toast.makeText(FavoriteVideoListActivity.this, "无法获取视频信息", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                startActivity(intent);
-            }
-        });
-
-        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-            public boolean onItemLongClick(AdapterView parent, View view, int position, long id) {
-                if (videoList == null || position >= videoList.size()) {
-                    return true;
-                }
-                showDeleteConfirm(position);
-                return true;
-            }
-        });
-
         listView.setOnScrollListener(new AbsListView.OnScrollListener() {
             public void onScrollStateChanged(AbsListView view, int scrollState) {
                 if (scrollState == SCROLL_STATE_IDLE) {
                     int lastVisible = view.getLastVisiblePosition();
                     int totalCount = adapter.getCount();
-                    if (lastVisible >= totalCount - 1 && !isLoading && !isEnd && totalCount > 0) {
+                    if (lastVisible >= totalCount - 1 && !isLoading && !isEnd && totalCount > 0 && totalCount >= 30) {
                         loadMoreVideos();
                     }
                 }
             }
 
             public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
-                if (!isLoading && !isEnd && totalItemCount > 0) {
+                if (!isLoading && !isEnd && totalItemCount > 0 && totalItemCount >= 30) {
                     if (firstVisibleItem + visibleItemCount >= totalItemCount - 3) {
                         loadMoreVideos();
                     }
@@ -150,8 +130,66 @@ public class FavoriteVideoListActivity extends BaseActivity {
                 .show();
     }
 
+    private void showLoading() {
+        View headerContainer = findViewById(R.id.header_container);
+        if (headerContainer != null) {
+            headerContainer.setVisibility(View.VISIBLE);
+            headerContainer.requestLayout();
+            headerContainer.invalidate();
+        }
+        if (emptyView != null) {
+            emptyView.setVisibility(View.GONE);
+        }
+        if (footerView != null) {
+            footerView.setVisibility(View.GONE);
+        }
+        listView.setVisibility(View.VISIBLE);
+    }
+
+    private void hideAllLoading() {
+        View headerContainer = findViewById(R.id.header_container);
+        if (headerContainer != null) {
+            headerContainer.setVisibility(View.GONE);
+        }
+    }
+
+    private boolean isNetworkAvailable() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
+                    getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return false;
+            android.net.NetworkInfo info = cm.getActiveNetworkInfo();
+            return info != null && info.isConnected();
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    private void showNoNetwork() {
+        hideAllLoading();
+        emptyView.setText(getString(R.string.emoticon__no_network));
+        emptyView.setVisibility(View.VISIBLE);
+        listView.setVisibility(View.GONE);
+    }
+
+    private void showLoadError() {
+        hideAllLoading();
+        emptyView.setText(getString(R.string.emoticon__failed_need_retry));
+        emptyView.setVisibility(View.VISIBLE);
+        listView.setVisibility(View.GONE);
+    }
+
     private void deleteVideo(final int position) {
+        if (fid == 0) {
+            Toast.makeText(this, "收藏夹ID无效，无法删除", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         final VideoCard video = videoList.get(position);
+        if (video == null) {
+            Toast.makeText(this, "视频信息无效", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         NetWorkUtil.refreshHeaders();
 
@@ -165,7 +203,6 @@ public class FavoriteVideoListActivity extends BaseActivity {
         new Thread(new Runnable() {
             public void run() {
                 try {
-                    // 使用带 bvid 参数的方法，传 null 表示没有 bvid
                     final int result = FavoriteApi.deleteFavorite(video.aid, null, fid);
                     Log.e("FavoriteVideo", "删除结果: " + result);
                     mainHandler.post(new Runnable() {
@@ -174,10 +211,19 @@ public class FavoriteVideoListActivity extends BaseActivity {
                                 Toast.makeText(FavoriteVideoListActivity.this, "删除成功", Toast.LENGTH_SHORT).show();
                                 videoList.remove(position);
                                 adapter.notifyDataSetChanged();
+
+                                Intent broadcastIntent = new Intent();
+                                broadcastIntent.setAction("tv.biliclassic.FAVORITE_CHANGED");
+                                sendBroadcast(broadcastIntent);
+
                                 if (videoList.size() == 0) {
                                     emptyView.setText("暂无收藏视频");
                                     emptyView.setVisibility(View.VISIBLE);
                                     footerView.setVisibility(View.GONE);
+                                    setResult(RESULT_OK);
+                                    finish();
+                                } else {
+                                    setResult(RESULT_OK);
                                 }
                             } else if (result == -401) {
                                 Toast.makeText(FavoriteVideoListActivity.this, "登录已过期，请重新登录", Toast.LENGTH_SHORT).show();
@@ -199,21 +245,33 @@ public class FavoriteVideoListActivity extends BaseActivity {
     }
 
     private void loadVideos() {
+        retryCount = 0;
+        doLoadVideos();
+    }
+
+    private void doLoadVideos() {
         final long mid = SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0L);
 
         if (mid == 0L) {
-            emptyView.setText("请先登录");
+            emptyView.setText("请先登录的说~");
             emptyView.setVisibility(View.VISIBLE);
             footerView.setVisibility(View.GONE);
+            listView.setVisibility(View.GONE);
             return;
         }
 
         NetWorkUtil.refreshHeaders();
 
+        if (!isNetworkAvailable()) {
+            showNoNetwork();
+            return;
+        }
+
         isLoading = true;
+        showLoading();
         emptyView.setVisibility(View.GONE);
-        footerView.setVisibility(View.VISIBLE);
-        footerProgressBar.setVisibility(View.VISIBLE);
+        footerView.setVisibility(View.GONE);
+        footerProgressBar.setVisibility(View.GONE);
         currentPage = 1;
         isEnd = false;
         videoList.clear();
@@ -221,25 +279,37 @@ public class FavoriteVideoListActivity extends BaseActivity {
         new Thread(new Runnable() {
             public void run() {
                 try {
-                    final int result = FavoriteApi.getFolderVideos(mid, fid, currentPage, (ArrayList<VideoCard>) videoList);
+                    final int result = FavoriteApi.getFolderVideos(mid, fid, currentPage, videoList);
 
                     mainHandler.post(new Runnable() {
                         public void run() {
                             isLoading = false;
+                            hideAllLoading();
                             footerProgressBar.setVisibility(View.GONE);
 
                             if (videoList.size() == 0) {
                                 emptyView.setText("暂无收藏视频");
                                 emptyView.setVisibility(View.VISIBLE);
                                 footerView.setVisibility(View.GONE);
+                                isEnd = true;
+                                listView.setVisibility(View.GONE);
                             } else {
                                 adapter.notifyDataSetChanged();
-                                if (result == 1) {
+                                retryCount = 0;
+                                listView.setVisibility(View.VISIBLE);
+                                emptyView.setVisibility(View.GONE);
+
+                                if (videoList.size() < 30) {
                                     isEnd = true;
                                     footerView.setVisibility(View.GONE);
                                 } else {
-                                    footerView.setVisibility(View.VISIBLE);
-                                    currentPage++;
+                                    if (result == 1) {
+                                        isEnd = true;
+                                        footerView.setVisibility(View.GONE);
+                                    } else {
+                                        footerView.setVisibility(View.VISIBLE);
+                                        currentPage++;
+                                    }
                                 }
                             }
                         }
@@ -248,10 +318,14 @@ public class FavoriteVideoListActivity extends BaseActivity {
                     mainHandler.post(new Runnable() {
                         public void run() {
                             isLoading = false;
+                            hideAllLoading();
                             footerView.setVisibility(View.GONE);
-                            emptyView.setText("加载失败: " + e.getMessage());
-                            emptyView.setVisibility(View.VISIBLE);
-                            Toast.makeText(FavoriteVideoListActivity.this, "加载失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            if (retryCount < MAX_RETRY && isNetworkAvailable()) {
+                                retryCount++;
+                                doLoadVideos();
+                            } else {
+                                showLoadError();
+                            }
                         }
                     });
                 }
@@ -261,8 +335,14 @@ public class FavoriteVideoListActivity extends BaseActivity {
 
     private void loadMoreVideos() {
         if (isLoading || isEnd) return;
-        isLoading = true;
+        if (videoList.size() == 0) return;
 
+        if (!isNetworkAvailable()) {
+            Toast.makeText(this, getString(R.string.emoticon__no_network), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        isLoading = true;
         footerProgressBar.setVisibility(View.VISIBLE);
         footerView.setVisibility(View.VISIBLE);
 
@@ -271,7 +351,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
         new Thread(new Runnable() {
             public void run() {
                 try {
-                    final int result = FavoriteApi.getFolderVideos(mid, fid, currentPage, (ArrayList<VideoCard>) videoList);
+                    final int result = FavoriteApi.getFolderVideos(mid, fid, currentPage, videoList);
 
                     mainHandler.post(new Runnable() {
                         public void run() {
@@ -281,7 +361,9 @@ public class FavoriteVideoListActivity extends BaseActivity {
                             if (result == 1) {
                                 isEnd = true;
                                 footerView.setVisibility(View.GONE);
-                                Toast.makeText(FavoriteVideoListActivity.this, "已经到底啦", Toast.LENGTH_SHORT).show();
+                                if (videoList.size() > 0) {
+                                    Toast.makeText(FavoriteVideoListActivity.this, getString(R.string.emoticon__no_more_data), Toast.LENGTH_SHORT).show();
+                                }
                             } else if (result == 0) {
                                 adapter.notifyDataSetChanged();
                                 currentPage++;
@@ -306,8 +388,10 @@ public class FavoriteVideoListActivity extends BaseActivity {
         }).start();
     }
 
+    @Override
     protected void onDestroy() {
         super.onDestroy();
+        longPressHandler.removeCallbacks(longPressRunnable);
         if (adapter != null) {
             adapter.clearCache();
         }

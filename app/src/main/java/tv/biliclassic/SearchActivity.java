@@ -426,6 +426,8 @@ public class SearchActivity extends BaseActivity {
         }
 
         String lowerKeyword = keyword.toLowerCase();
+
+        // GTA 作弊码 → SettingsActivity
         if (lowerKeyword.equals("nuttertools") ||
                 lowerKeyword.equals("professionaltools") ||
                 lowerKeyword.equals("thugstools")) {
@@ -439,12 +441,38 @@ public class SearchActivity extends BaseActivity {
                 e.printStackTrace();
             }
 
-            Toast.makeText(this, "作弊码已启用！正在跳转设置...", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "作弊码已启用！", Toast.LENGTH_LONG).show();
 
             new Handler().postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     startActivity(new Intent(SearchActivity.this, SettingsActivity.class));
+                }
+            }, 800);
+            return true;
+        }
+
+        // giveusatank → 打开神秘页面
+        // 来自 GTA 3 的神秘作弊码……
+        if (lowerKeyword.equals("giveusatank")) {
+            try {
+                Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+                if (vibrator != null) {
+                    vibrator.vibrate(300);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            Toast.makeText(this, "作弊码已启用！", Toast.LENGTH_LONG).show();
+
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    Intent intent = new Intent(SearchActivity.this, WebViewActivity.class);
+                    intent.putExtra("url", "http://www.biliclassic.cn/buy");
+                    intent.putExtra("title", "不必追求2.3版本");
+                    startActivity(intent);
                 }
             }, 800);
             return true;
@@ -839,7 +867,7 @@ public class SearchActivity extends BaseActivity {
     private void showNoMore() {
         isEnd = true;
         footerView.setVisibility(View.GONE);
-        Toast.makeText(this, "已经到底啦", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, getString(R.string.emoticon__no_more_data), Toast.LENGTH_SHORT).show();
     }
 
     private ArrayList<String> buildHeaders() {

@@ -66,7 +66,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginLeft="5dp"
-            android:text="嘿咻…嘿咻…"
+            android:text="加载中…"
             android:textSize="14sp"
             android:textColor="#999999" />
 
@@ -86,7 +86,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:background="#FFFFFF"
+            android:background="#F5F5F5"
             android:padding="12dp">
 
             <ImageView
@@ -119,21 +119,22 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
-                    <TextView
+                    <ImageView
                         android:id="@+id/tv_level"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Lv.0"
-                        android:textSize="11sp"
-                        android:textColor="#FF6699" />
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitCenter"
+                        android:visibility="gone" />
 
                     <TextView
                         android:id="@+id/tv_fans"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginLeft="12dp"
+                        android:layout_marginLeft="8dp"
                         android:text="粉丝: 0"
                         android:textSize="11sp"
                         android:textColor="#999999" />
@@ -142,7 +143,7 @@
                         android:id="@+id/tv_following"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginLeft="12dp"
+                        android:layout_marginLeft="10dp"
                         android:text="关注: 0"
                         android:textSize="11sp"
                         android:textColor="#999999" />

@@ -1,19 +1,26 @@
 package tv.biliclassic;
 
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Vibrator;
+import android.text.ClipboardManager;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
+import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
@@ -38,22 +45,30 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import tv.biliclassic.api.ReplyApi;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class CommentAdapter extends BaseAdapter {
 
     private Context context;
     private List<CommentFragment.CommentItem> list;
+    private long mAid;
+    private CommentFragment mFragment;
     private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Map<String, SoftReference<Bitmap>> imageCache = new HashMap<String, SoftReference<Bitmap>>();
     private List<String> cacheKeys = new ArrayList<String>();
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
 
+    private long mMid;
+    private int mReplyType = 1;
+
+    public void setMid(long mid) { mMid = mid; }
+    public void setReplyType(int type) { mReplyType = type; }
+
     private boolean isScrolling = false;
     private static final int MAX_CACHE_SIZE = 80;
 
-    // 点击监听接口
     public interface OnUserClickListener {
         void onUserClick(long mid, String userName);
     }
@@ -61,6 +76,16 @@ public class CommentAdapter extends BaseAdapter {
 
     public void setOnUserClickListener(OnUserClickListener listener) {
         this.userClickListener = listener;
+    }
+
+    public interface OnReplyClickListener {
+        void onReplyClick(CommentFragment.CommentItem comment, CommentFragment.ReplyItem reply);
+    }
+
+    private OnReplyClickListener replyClickListener;
+
+    public void setOnReplyClickListener(OnReplyClickListener listener) {
+        this.replyClickListener = listener;
     }
 
     private boolean isLowMemoryDevice() {
@@ -89,9 +114,11 @@ public class CommentAdapter extends BaseAdapter {
         }
     }
 
-    public CommentAdapter(Context context, List<CommentFragment.CommentItem> list) {
+    public CommentAdapter(Context context, List<CommentFragment.CommentItem> list, long aid, CommentFragment fragment) {
         this.context = context;
         this.list = list;
+        this.mAid = aid;
+        this.mFragment = fragment;
         initExecutor();
     }
 
@@ -130,30 +157,210 @@ public class CommentAdapter extends BaseAdapter {
             holder.avatar = (ImageView) convertView.findViewById(R.id.avatar);
             holder.userName = (TextView) convertView.findViewById(R.id.user_name);
             holder.message = (TextView) convertView.findViewById(R.id.message);
+            holder.likeIcon = (ImageView) convertView.findViewById(R.id.like_icon);
             holder.likeCount = (TextView) convertView.findViewById(R.id.like_count);
+            holder.replyButton = (TextView) convertView.findViewById(R.id.reply_button);
             holder.time = (TextView) convertView.findViewById(R.id.time);
             holder.repliesContainer = (LinearLayout) convertView.findViewById(R.id.replies_container);
             holder.repliesText = (TextView) convertView.findViewById(R.id.replies_text);
+            holder.repliesMore = (TextView) convertView.findViewById(R.id.replies_more);
+            holder.pictureContainer = (LinearLayout) convertView.findViewById(R.id.picture_container);
             convertView.setTag(holder);
+            convertView.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    final ViewHolder h = (ViewHolder) v.getTag();
+                    switch (event.getAction()) {
+                        case MotionEvent.ACTION_DOWN:
+                            v.setBackgroundColor(0x40D86DA5);
+                            h.copyText = ((TextView) h.message).getText().toString();
+                            h.longPressRunnable = new Runnable() {
+                                @Override
+                                public void run() {
+                                    final long itemMid = h.mid;
+                                    final String text = h.copyText;
+                                    if (itemMid == mMid && mMid != 0) {
+                                        final long oid = h.oid;
+                                        final long rpid = h.rpid;
+                                        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                                        builder.setItems(new String[]{"复制评论", "删除评论"}, new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                if (which == 0) {
+                                                    copyToClipboard(text);
+                                                } else if (which == 1) {
+                                                    deleteComment(oid, rpid);
+                                                }
+                                            }
+                                        });
+                                        builder.show();
+                                    } else {
+                                        copyToClipboard(text);
+                                    }
+                                }
+                            };
+                            mainHandler.postDelayed(h.longPressRunnable, ViewConfiguration.getLongPressTimeout());
+                            break;
+                        case MotionEvent.ACTION_UP:
+                        case MotionEvent.ACTION_CANCEL:
+                            if (h.longPressRunnable != null) {
+                                mainHandler.removeCallbacks(h.longPressRunnable);
+                            }
+                            v.setBackgroundResource(R.drawable.item_click_effect_white);
+                            break;
+                    }
+                    return false;
+                }
+            });
         } else {
             holder = (ViewHolder) convertView.getTag();
+            convertView.setBackgroundResource(R.drawable.item_click_effect_white);
         }
 
         final CommentFragment.CommentItem item = list.get(position);
+        holder.copyText = item.message;
         holder.userName.setText(item.userName);
-        holder.message.setText(item.message);
+        holder.message.setText(item.message != null ? item.message : "");
+        holder.mid = item.mid;
+        holder.oid = mAid;
+        holder.rpid = item.rpid;
+
         holder.likeCount.setText(String.valueOf(item.likeCount));
+        final ViewHolder h2 = holder;
+        if (h2.likeIcon != null) {
+            if (item.liked) {
+                h2.likeCount.setTextColor(0xFFD86DA5);
+                h2.likeIcon.setColorFilter(0xFFD86DA5, android.graphics.PorterDuff.Mode.SRC_ATOP);
+            } else {
+                h2.likeCount.setTextColor(0xFF999999);
+                h2.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
+            }
+            h2.likeIcon.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    final int pos = list.indexOf(item);
+                    if (pos < 0) return;
+                    final boolean wasLiked = item.liked;
+                    item.liked = !wasLiked;
+                    if (item.liked) {
+                        item.likeCount++;
+                        h2.likeCount.setTextColor(0xFFD86DA5);
+                        h2.likeIcon.setColorFilter(0xFFD86DA5, android.graphics.PorterDuff.Mode.SRC_ATOP);
+                    } else {
+                        item.likeCount--;
+                        h2.likeCount.setTextColor(0xFF999999);
+                        h2.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
+                    }
+                    h2.likeCount.setText(String.valueOf(item.likeCount));
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                int code;
+                                if (item.liked) {
+                                    code = ReplyApi.likeComment(mAid, item.rpid, mReplyType);
+                                } else {
+                                    code = ReplyApi.unlikeComment(mAid, item.rpid, mReplyType);
+                                }
+                                if (code != 0) {
+                                    mainHandler.post(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            item.liked = wasLiked;
+                                            if (wasLiked) {
+                                                item.likeCount++;
+                                                h2.likeCount.setTextColor(0xFFD86DA5);
+                                                h2.likeIcon.setColorFilter(0xFFD86DA5, android.graphics.PorterDuff.Mode.SRC_ATOP);
+                                            } else {
+                                                item.likeCount--;
+                                                h2.likeCount.setTextColor(0xFF999999);
+                                                h2.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
+                                            }
+                                            h2.likeCount.setText(String.valueOf(item.likeCount));
+                                            Toast.makeText(context, "操作失败", Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                mainHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        item.liked = wasLiked;
+                                        if (wasLiked) {
+                                            item.likeCount++;
+                                            h2.likeCount.setTextColor(0xFFD86DA5);
+                                            h2.likeIcon.setColorFilter(0xFFD86DA5, android.graphics.PorterDuff.Mode.SRC_ATOP);
+                                        } else {
+                                            item.likeCount--;
+                                            h2.likeCount.setTextColor(0xFF999999);
+                                            h2.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
+                                        }
+                                        h2.likeCount.setText(String.valueOf(item.likeCount));
+                                        Toast.makeText(context, "网络错误", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            }
+                        }
+                    }).start();
+                }
+            });
+        }
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA);
         holder.time.setText(sdf.format(new Date(item.time * 1000)));
         holder.avatar.setImageResource(R.drawable.bili_default_avatar);
         addAvatarBorder(holder.avatar);
 
+        // 显示图片
+        if (holder.pictureContainer != null) {
+            if (item.pictureList != null && item.pictureList.size() > 0) {
+                holder.pictureContainer.removeAllViews();
+                holder.pictureContainer.setVisibility(View.VISIBLE);
+
+                // 限制最多显示3张
+                int maxShow = Math.min(item.pictureList.size(), 3);
+                for (int i = 0; i < maxShow; i++) {
+                    final String imgUrl = item.pictureList.get(i);
+                    ImageView imgView = new ImageView(context);
+                    int size = dpToPx(80);
+                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
+                    lp.rightMargin = dpToPx(4);
+                    imgView.setLayoutParams(lp);
+                    imgView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    imgView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+                    holder.pictureContainer.addView(imgView);
+                    loadCommentImage(imgView, imgUrl);
+                }
+
+                if (item.pictureList.size() > 3) {
+                    TextView moreTv = new TextView(context);
+                    moreTv.setText("+" + (item.pictureList.size() - 3));
+                    moreTv.setTextSize(14);
+                    moreTv.setTextColor(0xFFFFFFFF);
+                    moreTv.setGravity(Gravity.CENTER);
+                    moreTv.setBackgroundColor(0x88000000);
+                    int size = dpToPx(80);
+                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
+                    lp.rightMargin = dpToPx(4);
+                    moreTv.setLayoutParams(lp);
+                    holder.pictureContainer.addView(moreTv);
+                }
+            } else {
+                holder.pictureContainer.setVisibility(View.GONE);
+            }
+        }
+
         List<CommentFragment.ReplyItem> replies = item.replies;
+        int totalReplyCount = item.replyCount;
+
         if (replies != null && replies.size() > 0) {
             holder.repliesContainer.setVisibility(View.VISIBLE);
+            holder.repliesText.setVisibility(View.VISIBLE);
+
+            int showCount = Math.min(replies.size(), 2);
             SpannableStringBuilder ssb = new SpannableStringBuilder();
-            for (int i = 0; i < replies.size(); i++) {
+            for (int i = 0; i < showCount; i++) {
                 CommentFragment.ReplyItem ri = replies.get(i);
                 if (i > 0) ssb.append("\n");
                 int start = ssb.length();
@@ -161,6 +368,7 @@ public class CommentAdapter extends BaseAdapter {
                 ssb.append(uname);
                 ssb.append(": ");
                 final long mid = ri.mid;
+                final CommentFragment.ReplyItem finalRi = ri;
                 ssb.setSpan(new ClickableSpan() {
                     @Override
                     public void onClick(View widget) {
@@ -177,15 +385,77 @@ public class CommentAdapter extends BaseAdapter {
                         ds.setUnderlineText(false);
                     }
                 }, start, start + uname.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                ssb.append(ri.message != null ? ri.message : "");
+                int messageStart = ssb.length();
+                String replyText = ri.message != null ? ri.message : "";
+                ssb.append(replyText);
+                if (replyClickListener != null && replyText.length() > 0) {
+                    ssb.setSpan(new ClickableSpan() {
+                        @Override
+                        public void onClick(View widget) {
+                            replyClickListener.onReplyClick(item, finalRi);
+                        }
+                        @Override
+                        public void updateDrawState(TextPaint ds) {
+                            ds.setUnderlineText(false);
+                        }
+                    }, messageStart, messageStart + replyText.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
             }
             holder.repliesText.setText(ssb);
             holder.repliesText.setMovementMethod(LinkMovementMethod.getInstance());
+
+            if (totalReplyCount > 2) {
+                holder.repliesMore.setVisibility(View.VISIBLE);
+                holder.repliesMore.setText("共" + totalReplyCount + "条回复，点击查看");
+                final CommentFragment.CommentItem finalItem = item;
+                final int finalTotalReplyCount = totalReplyCount;
+                holder.repliesMore.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (mFragment != null) {
+                            mFragment.showAllReplies(finalItem);
+                        } else {
+                            Toast.makeText(context, "共" + finalTotalReplyCount + "条回复", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+            } else {
+                holder.repliesMore.setVisibility(View.GONE);
+            }
+        } else if (totalReplyCount > 0) {
+            holder.repliesContainer.setVisibility(View.VISIBLE);
+            holder.repliesText.setVisibility(View.GONE);
+            holder.repliesMore.setVisibility(View.VISIBLE);
+            holder.repliesMore.setText("共" + totalReplyCount + "条回复，点击查看");
+            final CommentFragment.CommentItem finalItem = item;
+            final int finalTotalReplyCount = totalReplyCount;
+            holder.repliesMore.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (mFragment != null) {
+                        mFragment.showAllReplies(finalItem);
+                    } else {
+                        Toast.makeText(context, "共" + finalTotalReplyCount + "条回复", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
         } else {
             holder.repliesContainer.setVisibility(View.GONE);
+            holder.repliesText.setVisibility(View.GONE);
+            if (holder.repliesMore != null) holder.repliesMore.setVisibility(View.GONE);
         }
 
-        // ========== 点击头像或用户名进入用户主页 ==========
+        if (holder.replyButton != null) {
+            holder.replyButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (replyClickListener != null) {
+                        replyClickListener.onReplyClick(item, null);
+                    }
+                }
+            });
+        }
+
         final long mid = item.mid;
         final String userName = item.userName;
 
@@ -206,25 +476,28 @@ public class CommentAdapter extends BaseAdapter {
         holder.userName.setOnClickListener(userClickListener);
 
         if (item.userAvatar != null && item.userAvatar.length() > 0) {
-            final String avatarUrl = item.userAvatar;
+            String avatarUrl = item.userAvatar;
+            if (avatarUrl.startsWith("https://")) {
+                avatarUrl = "http://" + avatarUrl.substring(8);
+            }
+            final String finalAvatarUrl = avatarUrl;
             final ImageView avatarView = holder.avatar;
             final int currentPos = position;
-            avatarView.setTag(avatarUrl);
+            avatarView.setTag(finalAvatarUrl);
 
-            SoftReference<Bitmap> softBitmap = imageCache.get(avatarUrl);
-            if (softBitmap != null) {
-                Bitmap cachedBitmap = softBitmap.get();
+            SoftReference<Bitmap> softRef = imageCache.get(finalAvatarUrl);
+            if (softRef != null) {
+                Bitmap cachedBitmap = softRef.get();
                 if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
                     avatarView.setImageBitmap(cachedBitmap);
                     addAvatarBorder(avatarView);
                     return convertView;
                 } else {
-                    imageCache.remove(avatarUrl);
-                    cacheKeys.remove(avatarUrl);
+                    imageCache.remove(finalAvatarUrl);
+                    cacheKeys.remove(finalAvatarUrl);
                 }
             }
 
-            // 滑动时跳过网络下载，等滑动停止后再加载
             if (isScrolling) {
                 return convertView;
             }
@@ -238,24 +511,21 @@ public class CommentAdapter extends BaseAdapter {
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    try {
-                        final Bitmap bitmap = downloadImage(avatarUrl);
-                        if (bitmap != null && !bitmap.isRecycled()) {
-                            addToCache(avatarUrl, bitmap);
-                            mainHandler.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    Object tag = avatarView.getTag();
-                                    if (tag != null && tag.equals(avatarUrl)) {
-                                        avatarView.setImageBitmap(bitmap);
-                                        addAvatarBorder(avatarView);
-                                    }
+                    final Bitmap bitmap = downloadImage(finalAvatarUrl);
+                    loadingMap.remove(currentPos);
+
+                    if (bitmap != null && !bitmap.isRecycled()) {
+                        addToCache(finalAvatarUrl, bitmap);
+                        mainHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                Object tag = avatarView.getTag();
+                                if (tag != null && tag.equals(finalAvatarUrl)) {
+                                    avatarView.setImageBitmap(bitmap);
+                                    addAvatarBorder(avatarView);
                                 }
-                            });
-                        }
-                    } catch (Exception e) {
-                    } finally {
-                        loadingMap.remove(currentPos);
+                            }
+                        });
                     }
                 }
             });
@@ -264,14 +534,86 @@ public class CommentAdapter extends BaseAdapter {
         return convertView;
     }
 
+    private void loadCommentImage(final ImageView imageView, String urlStr) {
+        if (urlStr == null || urlStr.length() == 0) return;
+        final String finalUrl = urlStr;
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                HttpURLConnection conn = null;
+                try {
+                    URL url = new URL(finalUrl);
+                    conn = (HttpURLConnection) url.openConnection();
+                    conn.setConnectTimeout(8000);
+                    conn.setReadTimeout(8000);
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+                    conn.connect();
+
+                    InputStream is = conn.getInputStream();
+
+                    BitmapFactory.Options opts = new BitmapFactory.Options();
+                    opts.inJustDecodeBounds = true;
+                    BitmapFactory.decodeStream(is, null, opts);
+                    is.close();
+
+                    //计算采样率
+                    int targetSize = dpToPx(80);
+                    int scale = 1;
+                    if (opts.outWidth > targetSize || opts.outHeight > targetSize) {
+                        int widthRatio = opts.outWidth / targetSize;
+                        int heightRatio = opts.outHeight / targetSize;
+                        scale = Math.max(widthRatio, heightRatio);
+                        if (scale < 1) scale = 1;
+                        if (scale > 8) scale = 8;
+                    }
+
+                    // 重新连接并解码
+                    conn.disconnect();
+                    conn = (HttpURLConnection) url.openConnection();
+                    conn.setConnectTimeout(8000);
+                    conn.setReadTimeout(8000);
+                    conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+                    conn.connect();
+                    is = conn.getInputStream();
+
+                    opts = new BitmapFactory.Options();
+                    opts.inSampleSize = scale;
+                    opts.inPreferredConfig = Bitmap.Config.RGB_565;
+
+                    final Bitmap bitmap = BitmapFactory.decodeStream(is, null, opts);
+                    is.close();
+                    conn.disconnect();
+
+                    if (bitmap != null && !bitmap.isRecycled()) {
+                        mainHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                imageView.setImageBitmap(bitmap);
+                            }
+                        });
+                    }
+                } catch (OutOfMemoryError e) {
+                    System.gc();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    if (conn != null) {
+                        try { conn.disconnect(); } catch (Exception e) {}
+                    }
+                }
+            }
+        }).start();
+    }
+
     private void addToCache(String key, Bitmap bitmap) {
         if (cacheKeys.size() >= MAX_CACHE_SIZE) {
             String oldestKey = cacheKeys.remove(0);
             SoftReference<Bitmap> oldRef = imageCache.remove(oldestKey);
             if (oldRef != null) {
-                Bitmap oldBmp = oldRef.get();
-                if (oldBmp != null && !oldBmp.isRecycled()) {
-                    oldBmp.recycle();
+                Bitmap old = oldRef.get();
+                if (old != null && !old.isRecycled()) {
+                    old.recycle();
                 }
             }
         }
@@ -286,9 +628,7 @@ public class CommentAdapter extends BaseAdapter {
             imageView.setBackgroundDrawable(borderDrawable);
             int paddingPx = dpToPx(2);
             imageView.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        } catch (Exception e) {}
     }
 
     private int dpToPx(int dp) {
@@ -313,7 +653,7 @@ public class CommentAdapter extends BaseAdapter {
             BitmapFactory.decodeStream(is, null, options);
             is.close();
 
-            int targetSize = 48;
+            int targetSize = dpToPx(48);
             int scale = 1;
             if (options.outWidth > targetSize || options.outHeight > targetSize) {
                 int widthRatio = options.outWidth / targetSize;
@@ -338,6 +678,9 @@ public class CommentAdapter extends BaseAdapter {
             Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
             is.close();
             return bitmap;
+        } catch (OutOfMemoryError e) {
+            System.gc();
+            return null;
         } catch (Exception e) {
             return null;
         } finally {
@@ -365,13 +708,79 @@ public class CommentAdapter extends BaseAdapter {
         loadingMap.clear();
     }
 
+    private void copyToClipboard(String text) {
+        if (text != null && text.length() > 0) {
+            ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+            clipboard.setText(text);
+            try {
+                Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+                if (vibrator != null) vibrator.vibrate(50);
+            } catch (Exception e) { e.printStackTrace(); }
+            Toast.makeText(context, "已复制评论", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void deleteComment(final long oid, final long rpid) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    int code = ReplyApi.deleteComment(oid, rpid, mReplyType);
+                    if (code == 0) {
+                        mainHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                int pos = -1;
+                                for (int i = 0; i < list.size(); i++) {
+                                    if (list.get(i).rpid == rpid) {
+                                        pos = i;
+                                        break;
+                                    }
+                                }
+                                if (pos >= 0) {
+                                    list.remove(pos);
+                                    notifyDataSetChanged();
+                                }
+                                Toast.makeText(context, "已删除", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    } else {
+                        mainHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(context, "删除失败", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                } catch (final Exception e) {
+                    e.printStackTrace();
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(context, "删除失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+
     static class ViewHolder {
         ImageView avatar;
         TextView userName;
         TextView message;
+        ImageView likeIcon;
         TextView likeCount;
+        TextView replyButton;
         TextView time;
         LinearLayout repliesContainer;
         TextView repliesText;
+        TextView repliesMore;
+        LinearLayout pictureContainer;
+        String copyText;
+        Runnable longPressRunnable;
+        long mid;
+        long oid;
+        long rpid;
     }
 }

@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="@drawable/bili_texture_background">
 
     <!-- 顶栏 -->
@@ -34,44 +33,61 @@
 
     <!-- 粉色分割线 -->
     <View
+        android:id="@+id/divider_line"
         android:layout_width="match_parent"
         android:layout_height="2px"
-        android:background="#D86DA5" />
+        android:background="#D86DA5"
+        android:layout_below="@id/title_bar" />
 
     <!-- ActionBar下方阴影 -->
     <ImageView
+        android:id="@+id/shadow"
         android:layout_width="match_parent"
         android:layout_height="6.0dp"
         android:background="@drawable/shadow_top_dig"
-        android:contentDescription="@null" />
+        android:contentDescription="@null"
+        android:layout_below="@id/divider_line" />
 
-    <!-- 列表 -->
-    <ListView
-        android:id="@+id/list_view"
+    <!-- 列表容器 -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:divider="@null"
-        android:dividerHeight="0dp" />
+        android:layout_below="@id/shadow">
 
-    <!-- 加载中 -->
-    <ProgressBar
-        android:id="@+id/progress_bar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginTop="50dp"
-        android:visibility="gone" />
+        <!-- 加载头部 -->
+        <FrameLayout
+            android:id="@+id/header_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone">
 
-    <!-- 空视图 -->
-    <TextView
-        android:id="@+id/empty_view"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginTop="50dp"
-        android:text="暂无收藏夹"
-        android:textSize="14sp"
-        android:textColor="#999999"
-        android:visibility="gone" />
+            <include
+                android:id="@+id/list_header"
+                layout="@layout/list_header" />
 
-</LinearLayout>
+        </FrameLayout>
+
+        <!-- 列表 -->
+        <ListView
+            android:id="@+id/list_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:divider="@null"
+            android:dividerHeight="0dp"
+            android:visibility="gone" />
+
+        <!-- 空视图 -->
+        <TextView
+            android:id="@+id/empty_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="50dp"
+            android:text="暂无收藏夹"
+            android:textSize="14sp"
+            android:textColor="#999999"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+</RelativeLayout>

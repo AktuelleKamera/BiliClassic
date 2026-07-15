@@ -336,6 +336,56 @@
 
             </LinearLayout>
 
+            <!-- TV模式强制开关 -->
+            <LinearLayout
+                android:id="@+id/force_tv_mode_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="20dp"
+                android:layout_marginBottom="12dp"
+                android:focusable="true"
+                android:clickable="true">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="TV模式"
+                        android:textSize="18sp"
+                        android:textColor="#FFFFFF"
+                        android:fontFamily="sans-serif-light"
+                        android:textStyle="normal" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="强制启用TV模式界面和横屏布局"
+                        android:textSize="12sp"
+                        android:textColor="#999999"
+                        android:fontFamily="sans-serif-light"
+                        android:textStyle="normal" />
+
+                </LinearLayout>
+
+                <CheckBox
+                    android:id="@+id/checkbox_force_tv_mode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:focusable="false"
+                    android:clickable="false"
+                    android:padding="0dp"
+                    android:minHeight="0dp" />
+
+            </LinearLayout>
+
             <Button
                 android:id="@+id/btn_cookie"
                 android:layout_width="match_parent"

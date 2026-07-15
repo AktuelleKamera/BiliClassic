@@ -602,10 +602,6 @@ public class GestureController {
         }
     }
 
-    // ============================================================
-    // 手势监听器
-    // ============================================================
-
     private class GestureListener extends GestureDetector.SimpleOnGestureListener {
 
         private Runnable mHideUIRunnable = new Runnable() {
@@ -717,7 +713,7 @@ public class GestureController {
                     mSeekBarStartProgress = mSeekBar.getProgress();
                     Log.d(TAG, "开始手势快进，起始进度: " + mSeekBarStartProgress);
                 }
-                int maxSeekable = getMaxSeekableValue();
+                int maxSeekable = getMaxSeekableValue();  // 固定返回 1000
                 mSeekbarProgress = (int) (mSeekBarStartProgress - (maxSeekable * deltaFactorX));
                 mSeekbarProgress = Math.min(Math.max(mSeekbarProgress, 0), mSeekBar.getMax());
                 mSeekBar.setProgress(mSeekbarProgress);
@@ -755,10 +751,6 @@ public class GestureController {
             mHandler.postDelayed(mHideUIRunnable, delay);
         }
     }
-
-    // ============================================================
-    // 以下为辅助方法
-    // ============================================================
 
     private void updateCurrentPositionForGesture() {
         if (mSeekBar != null) {

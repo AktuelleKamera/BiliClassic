@@ -101,7 +101,7 @@
                 android:layout_height="wrap_content"
                 android:text="清空"
                 android:textSize="12sp"
-                android:textColor="#FF6699"
+                android:textColor="#D86DA5"
                 android:focusable="true"
                 android:clickable="true"
                 android:padding="8dp" />

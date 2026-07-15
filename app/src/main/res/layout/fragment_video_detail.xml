@@ -91,7 +91,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text=""
-                        android:textColor="#FF6699"
+                        android:textColor="#D86DA5"
                         android:singleLine="true" />
 
                 </LinearLayout>
@@ -158,11 +158,39 @@
             android:layout_height="1px"
             android:background="#CCCCCC" />
 
+        <!-- 发布时间 -->
+        <LinearLayout
+            android:id="@+id/time_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#F5F5F5"
+            android:orientation="vertical"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <TextView
+                android:id="@+id/tv_pubdate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="发布时间:"
+                android:textSize="12sp"
+                android:textColor="#999999" />
+
+        </LinearLayout>
+
+        <!-- 灰色分割线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1px"
+            android:background="#CCCCCC" />
+
         <!-- 简介内容 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
+            android:orientation="horizontal"
             android:background="#F5F5F5"
             android:paddingLeft="10dp"
             android:paddingRight="10dp"
@@ -171,12 +199,21 @@
 
             <TextView
                 android:id="@+id/tv_desc"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:text="这里显示视频的简介内容"
                 android:textSize="14sp"
                 android:textColor="#333333"
                 android:lineSpacingExtra="4dp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginLeft="8dp">
+
+            </LinearLayout>
 
         </LinearLayout>
 
@@ -211,7 +248,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:divider="#E0E0E0"
-            android:dividerHeight="1dp" />
+            android:dividerHeight="1dp"
+            android:focusable="false"
+            android:focusableInTouchMode="false"
+            android:descendantFocusability="blocksDescendants" />
 
         <!-- 底部留白 -->
         <View

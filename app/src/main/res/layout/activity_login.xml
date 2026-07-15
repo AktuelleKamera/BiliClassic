@@ -63,7 +63,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="加载中..."
+            android:text="嘿咻…嘿咻…"
             android:textSize="12sp"
             android:textColor="#999999" />
 

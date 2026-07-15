@@ -959,7 +959,6 @@ public class OfflineActivity extends BaseActivity {
                 loadCoverFromLocal(item, holder.cover, position);
             }
 
-            // ========== 添加点击监听 ==========
             final int pos = position;
             final OfflineItem clickItem = item;
             convertView.setOnClickListener(new View.OnClickListener() {

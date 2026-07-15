@@ -9,15 +9,20 @@ import android.widget.Toast;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
+import tv.biliclassic.util.SharedPreferencesUtil;
+
 public class TvUtil {
 
     private static final String TAG = "TvUtil";
 
-    // 开发调试开关
-    private static final boolean FORCE_TV_MODE = false;
+    private static final String KEY_FORCE_TV_MODE = "force_tv_mode";
+
+    public static boolean isForceTvModeEnabled() {
+        return SharedPreferencesUtil.getBoolean(KEY_FORCE_TV_MODE, false);
+    }
 
     public static boolean isTv(Context context) {
-        if (FORCE_TV_MODE) {
+        if (isForceTvModeEnabled()) {
             Log.d(TAG, "isTv: 强制 TV 模式开启");
             return true;
         }

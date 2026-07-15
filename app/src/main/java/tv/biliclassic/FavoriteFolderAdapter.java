@@ -130,10 +130,8 @@ public class FavoriteFolderAdapter extends BaseAdapter {
         holder.name.setText(item.name != null ? item.name : "");
         holder.count.setText((item.videoCount >= 0 ? item.videoCount : 0) + "个视频");
 
-        // 占位图
         holder.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
 
-        // 加载封面
         if (item.cover != null && item.cover.length() > 0) {
             String coverUrl = item.cover;
             if (coverUrl.startsWith("https://")) {
@@ -145,7 +143,6 @@ public class FavoriteFolderAdapter extends BaseAdapter {
             final int currentPos = position;
             coverView.setTag(finalCoverUrl);
 
-            // 检查缓存（加同步锁）
             Bitmap cachedBitmap = null;
             synchronized (imageCache) {
                 SoftReference<Bitmap> softBitmap = imageCache.get(finalCoverUrl);
@@ -190,13 +187,33 @@ public class FavoriteFolderAdapter extends BaseAdapter {
             });
         }
 
+        // ====== 关键修改：点击时保存 fid，跳转时按 fid 查找 ======
+        final long clickedFid = item.fid;
+        final String clickedName = item.name;
         final int pos = position;
-        final FavoriteFolder clickItem = item;
+
         convertView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (context instanceof FavoriteFolderListActivity) {
-                    ((FavoriteFolderListActivity) context).onFolderClick(clickItem, pos);
+                    // 从 list 中按 fid 查找，确保准确
+                    FavoriteFolder target = null;
+                    for (FavoriteFolder f : list) {
+                        if (f.fid == clickedFid) {
+                            target = f;
+                            break;
+                        }
+                    }
+                    System.out.println("Adapter点击: clickedFid=" + clickedFid + ", target=" + (target != null ? target.name : "null"));
+                    if (target != null) {
+                        ((FavoriteFolderListActivity) context).onFolderClick(target, pos);
+                    } else {
+                        // 如果找不到（理论上不会），用保存的名称和 fid 构造临时对象
+                        FavoriteFolder fallback = new FavoriteFolder();
+                        fallback.fid = clickedFid;
+                        fallback.name = clickedName;
+                        ((FavoriteFolderListActivity) context).onFolderClick(fallback, pos);
+                    }
                 }
             }
         });
@@ -216,13 +233,11 @@ public class FavoriteFolderAdapter extends BaseAdapter {
 
             InputStream is = conn.getInputStream();
 
-            // 获取图片尺寸
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
             BitmapFactory.decodeStream(is, null, options);
             is.close();
 
-            // 重新连接
             conn.disconnect();
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(8000);
@@ -231,7 +246,6 @@ public class FavoriteFolderAdapter extends BaseAdapter {
             conn.connect();
             is = conn.getInputStream();
 
-            // 计算采样率
             int targetWidth = (int) (120 * context.getResources().getDisplayMetrics().density);
             int scale = 1;
             if (options.outWidth > targetWidth) {
@@ -240,7 +254,6 @@ public class FavoriteFolderAdapter extends BaseAdapter {
                 if (scale > 4) scale = 4;
             }
 
-            // 使用 RGB_565 格式节省清朝老设备的内存
             options = new BitmapFactory.Options();
             options.inSampleSize = scale;
             options.inPreferredConfig = Bitmap.Config.RGB_565;
@@ -264,16 +277,18 @@ public class FavoriteFolderAdapter extends BaseAdapter {
 
     public void updateData(List<FavoriteFolder> newList) {
         if (newList == null) {
-            this.list = new ArrayList<FavoriteFolder>();
-        } else {
-            this.list = newList;
+            this.list.clear();
+            loadingMap.clear();
+            notifyDataSetChanged();
+            return;
         }
+        this.list.clear();
+        this.list.addAll(newList);
         loadingMap.clear();
         notifyDataSetChanged();
     }
 
     public void clearCache() {
-        // 加同步锁，防止 ConcurrentModificationException
         synchronized (imageCache) {
             for (SoftReference<Bitmap> ref : imageCache.values()) {
                 Bitmap bmp = ref.get();

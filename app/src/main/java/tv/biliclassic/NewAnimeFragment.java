@@ -1,5 +1,6 @@
 package tv.biliclassic;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
@@ -48,17 +49,19 @@ public class NewAnimeFragment extends Fragment {
     private Map<String, SoftReference<Bitmap>> imageCache = new HashMap<String, SoftReference<Bitmap>>();
     private Map<String, Boolean> loadingMap = new HashMap<String, Boolean>();
 
-    private LinearLayout loadingContainer;
+    private View headerContainer;
     private ScrollView contentContainer;
     private LinearLayout gridContainer;
 
     private int screenWidth = 0;
     private int screenHeight = 0;
     private boolean dataLoaded = false;
-    private boolean sizeConfirmed = false;
     private boolean isDestroyed = false;
 
     private File cacheDir;
+
+    private static final int MAX_RETRY = 1;
+    private int retryCount = 0;
 
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
@@ -89,11 +92,13 @@ public class NewAnimeFragment extends Fragment {
             }
         }
 
-        loadingContainer = (LinearLayout) view.findViewById(R.id.loading_container);
+        headerContainer = view.findViewById(R.id.header_container);
         contentContainer = (ScrollView) view.findViewById(R.id.content_container);
         gridContainer = (LinearLayout) view.findViewById(R.id.grid_container);
 
-        loadingContainer.setVisibility(View.VISIBLE);
+        if (headerContainer != null) {
+            headerContainer.setVisibility(View.GONE);
+        }
         contentContainer.setVisibility(View.GONE);
 
         return view;
@@ -109,7 +114,7 @@ public class NewAnimeFragment extends Fragment {
                     getScreenSizeAndLoad();
                 }
             }
-        }, 1500);
+        }, 500);
     }
 
     private void getScreenSizeAndLoad() {
@@ -133,61 +138,6 @@ public class NewAnimeFragment extends Fragment {
 
         if (!dataLoaded && !isDestroyed) {
             dataLoaded = true;
-
-            // 先尝试加载缓存
-            List<AnimeItem> cachedItems = loadLocalCache();
-            if (cachedItems != null && cachedItems.size() > 0) {
-                loadingContainer.setVisibility(View.GONE);
-                contentContainer.setVisibility(View.VISIBLE);
-                displayAnimeList(cachedItems);
-            } else {
-                loadAnimeData();
-                loadingContainer.setVisibility(View.GONE);
-                contentContainer.setVisibility(View.VISIBLE);
-            }
-
-            // 延迟重新检测屏幕尺寸（横屏适配）
-            delayHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    if (!isDestroyed) {
-                        recheckScreenSize();
-                    }
-                }
-            }, 1000);
-        }
-    }
-
-    private void recheckScreenSize() {
-        if (isDestroyed) return;
-
-        int newWidth = getResources().getDisplayMetrics().widthPixels;
-        int newHeight = getResources().getDisplayMetrics().heightPixels;
-
-        if (isLandscapeDevice() && newWidth < newHeight) {
-            int temp = newWidth;
-            newWidth = newHeight;
-            newHeight = temp;
-        }
-
-        if ((newWidth != screenWidth || newHeight != screenHeight) && newWidth > 0 && newHeight > 0) {
-            screenWidth = newWidth;
-            screenHeight = newHeight;
-            refreshLayout();
-        }
-        sizeConfirmed = true;
-    }
-
-    private void refreshLayout() {
-        if (isDestroyed || gridContainer == null) {
-            return;
-        }
-        gridContainer.removeAllViews();
-
-        List<AnimeItem> cachedItems = loadLocalCache();
-        if (cachedItems != null && cachedItems.size() > 0) {
-            displayAnimeList(cachedItems);
-        } else {
             loadAnimeData();
         }
     }
@@ -213,9 +163,16 @@ public class NewAnimeFragment extends Fragment {
         return false;
     }
 
-    @Override
-    public void onLowMemory() {
-        super.onLowMemory();
+    private boolean isNetworkAvailable() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
+                    getActivity().getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return false;
+            android.net.NetworkInfo info = cm.getActiveNetworkInfo();
+            return info != null && info.isConnected();
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     @Override
@@ -251,7 +208,87 @@ public class NewAnimeFragment extends Fragment {
         loadingMap.clear();
     }
 
-    // ==================== 缓存方法 ====================
+    private void showLoading() {
+        if (headerContainer != null) {
+            headerContainer.setVisibility(View.VISIBLE);
+        }
+        if (contentContainer != null) {
+            contentContainer.setVisibility(View.GONE);
+        }
+    }
+
+    private void hideAllLoading() {
+        if (headerContainer != null) {
+            headerContainer.setVisibility(View.GONE);
+        }
+        if (contentContainer != null) {
+            contentContainer.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void showNoNetworkButCache() {
+        // 有缓存时，不显示错误，静默使用缓存
+        // 但可以显示一个轻提示，在 header 中显示"网络不可用，显示缓存"
+        if (headerContainer != null) {
+            headerContainer.setVisibility(View.VISIBLE);
+            TextView textView = (TextView) headerContainer.findViewById(R.id.header_text);
+            if (textView != null) {
+                textView.setText("网络不可用，显示缓存");
+            }
+        }
+        if (contentContainer != null) {
+            contentContainer.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void showNoNetwork() {
+        if (getActivity() == null) return;
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                hideAllLoading();
+                if (gridContainer != null && gridContainer.getChildCount() == 0) {
+                    showErrorText(getString(R.string.emoticon__no_network));
+                } else {
+                    // 有内容，只显示 header 提示
+                    if (headerContainer != null) {
+                        headerContainer.setVisibility(View.VISIBLE);
+                        TextView textView = (TextView) headerContainer.findViewById(R.id.header_text);
+                        if (textView != null) {
+                            textView.setText("网络不可用，显示缓存");
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    private void showLoadError() {
+        if (getActivity() == null) return;
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                hideAllLoading();
+                showErrorText(getString(R.string.emoticon__failed_need_retry));
+            }
+        });
+    }
+
+    private void showErrorText(String msg) {
+        if (getActivity() == null) return;
+        if (gridContainer != null) {
+            gridContainer.removeAllViews();
+            TextView tv = new TextView(getActivity());
+            tv.setText(msg);
+            tv.setTextSize(16);
+            tv.setTextColor(0xFF999999);
+            tv.setGravity(android.view.Gravity.CENTER);
+            tv.setPadding(0, dpToPx(100), 0, 0);
+            gridContainer.addView(tv);
+        }
+    }
+
+    // 缓存方法
 
     private List<AnimeItem> loadLocalCache() {
         if (cacheDir == null) return null;
@@ -270,10 +307,21 @@ public class NewAnimeFragment extends Fragment {
             }
             reader.close();
 
-            // 检查是否过期（超过24小时）
+            try {
+                JSONObject root = new JSONObject(sb.toString());
+                String version = root.optString("version");
+                if (version == null || version.length() == 0) {
+                    jsonFile.delete();
+                    return null;
+                }
+            } catch (Exception e) {
+                jsonFile.delete();
+                return null;
+            }
+
             long lastModified = jsonFile.lastModified();
             long now = System.currentTimeMillis();
-            if (now - lastModified > 24 * 60 * 60 * 1000) {
+            if (now - lastModified > 60 * 60 * 1000) {
                 jsonFile.delete();
                 return null;
             }
@@ -281,14 +329,12 @@ public class NewAnimeFragment extends Fragment {
             String jsonStr = sb.toString();
             List<AnimeItem> items = parseAnimeJson(jsonStr);
 
-            // 检查封面图片缓存目录是否存在
             File coverDir = new File(cacheDir, "covers");
             if (!coverDir.exists() || !coverDir.isDirectory()) {
                 jsonFile.delete();
                 return null;
             }
 
-            // 检查是否有至少一张封面图片存在
             boolean hasCover = false;
             for (AnimeItem item : items) {
                 if (item.coverUrl != null && item.coverUrl.length() > 0) {
@@ -376,68 +422,164 @@ public class NewAnimeFragment extends Fragment {
         return null;
     }
 
-    // ==================== 网络加载 ====================
+    // 网络加载
 
     private void loadAnimeData() {
+        retryCount = 0;
+        doLoadAnimeData();
+    }
+
+    private void doLoadAnimeData() {
         if (isDestroyed) return;
 
+        showLoading();
+
+        // 先尝试加载缓存
+        List<AnimeItem> cachedItems = loadLocalCache();
+        if (cachedItems != null && cachedItems.size() > 0) {
+            // 有缓存，先显示
+            hideAllLoading();
+            displayAnimeList(cachedItems);
+
+            // 检查网络，如果无网络则显示提示
+            if (!isNetworkAvailable()) {
+                showNoNetworkButCache();
+                return;
+            }
+
+            // 有网络则后台更新
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    fetchAnimeDataFromNetwork();
+                }
+            }).start();
+            return;
+        }
+
+        // 无缓存，检查网络
+        if (!isNetworkAvailable()) {
+            showNoNetwork();
+            return;
+        }
+
+        // 无缓存有网络，请求数据
         new Thread(new Runnable() {
             @Override
             public void run() {
                 if (isDestroyed) return;
+                fetchAnimeDataFromNetwork();
+            }
+        }).start();
+    }
 
-                try {
-                    String url = SettingsActivity.getNewAnimeApiUrl();
+    private void fetchAnimeDataFromNetwork() {
+        try {
+            String url = SettingsActivity.getNewAnimeApiUrl();
 
-                    HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-                    conn.connect();
+            HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(8000);
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.connect();
 
-                    InputStream is = conn.getInputStream();
-                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                    byte[] buffer = new byte[1024];
-                    int len;
-                    while ((len = is.read(buffer)) != -1) {
-                        baos.write(buffer, 0, len);
+            InputStream is = conn.getInputStream();
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                baos.write(buffer, 0, len);
+            }
+            final String jsonStr = baos.toString("UTF-8");
+            is.close();
+            conn.disconnect();
+
+            try {
+                JSONObject root = new JSONObject(jsonStr);
+                String version = root.optString("version");
+                if (version == null || version.length() == 0) {
+                    clearCache();
+                }
+            } catch (Exception e) {
+                clearCache();
+            }
+
+            final List<AnimeItem> items = parseAnimeJson(jsonStr);
+
+            if (getActivity() != null && !isDestroyed) {
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isDestroyed) return;
+                        if (items == null || items.size() == 0) {
+                            showLoadError();
+                            return;
+                        }
+                        saveToCache(jsonStr);
+                        hideAllLoading();
+                        displayAnimeList(items);
+                        retryCount = 0;
                     }
-                    final String jsonStr = baos.toString("UTF-8");
-                    is.close();
-                    conn.disconnect();
-
-                    final List<AnimeItem> items = parseAnimeJson(jsonStr);
-
-                    if (getActivity() != null && !isDestroyed) {
-                        getActivity().runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (isDestroyed) return;
-                                if (items == null || items.size() == 0) {
-                                    MsgUtil.showMsg(getActivity(), "获取番剧数据失败");
-                                    loadDefaultAnimeData();
-                                    return;
-                                }
-                                saveToCache(jsonStr);
-                                displayAnimeList(items);
-                            }
-                        });
+                });
+            }
+        } catch (final Exception e) {
+            e.printStackTrace();
+            if (getActivity() == null || isDestroyed) return;
+            if (!isNetworkAvailable()) {
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        // 如果有缓存，显示缓存提示
+                        List<AnimeItem> cached = loadLocalCache();
+                        if (cached != null && cached.size() > 0) {
+                            showNoNetworkButCache();
+                        } else {
+                            showNoNetwork();
+                        }
                     }
-                } catch (final Exception e) {
-                    e.printStackTrace();
-                    if (getActivity() != null && !isDestroyed) {
-                        getActivity().runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (isDestroyed) return;
-                                MsgUtil.showMsg(getActivity(), "网络请求失败，使用默认数据");
-                                loadDefaultAnimeData();
-                            }
-                        });
+                });
+            } else if (retryCount < MAX_RETRY) {
+                retryCount++;
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        doLoadAnimeData();
+                    }
+                });
+            } else {
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        showLoadError();
+                    }
+                });
+            }
+        }
+    }
+
+    private void clearCache() {
+        if (cacheDir == null) return;
+        try {
+            File jsonFile = new File(cacheDir, "data.json");
+            if (jsonFile.exists()) {
+                jsonFile.delete();
+            }
+            File coverDir = new File(cacheDir, "covers");
+            if (coverDir.exists() && coverDir.isDirectory()) {
+                File[] files = coverDir.listFiles();
+                if (files != null) {
+                    for (File f : files) {
+                        if (f != null && f.exists()) {
+                            f.delete();
+                        }
                     }
                 }
             }
-        }).start();
+            imageCache.clear();
+            loadingMap.clear();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private List<AnimeItem> parseAnimeJson(String jsonStr) {
@@ -450,8 +592,17 @@ public class NewAnimeFragment extends Fragment {
                 String title = obj.optString("title");
                 String image = obj.optString("image");
                 boolean isBig = obj.optBoolean("is_big");
+                String aidStr = obj.optString("aid");
+                String epidStr = obj.optString("epid");
                 if (title != null && title.length() > 0 && image != null && image.length() > 0) {
-                    items.add(new AnimeItem(title, image, isBig));
+                    AnimeItem item = new AnimeItem(title, image, isBig);
+                    if (aidStr != null && aidStr.length() > 0) {
+                        try { item.aid = Long.parseLong(aidStr); } catch (Exception e) {}
+                    }
+                    if (epidStr != null && epidStr.length() > 0) {
+                        try { item.epid = Long.parseLong(epidStr); } catch (Exception e) {}
+                    }
+                    items.add(item);
                 }
             }
         } catch (Exception e) {
@@ -460,23 +611,7 @@ public class NewAnimeFragment extends Fragment {
         return items;
     }
 
-    private void loadDefaultAnimeData() {
-        if (isDestroyed) return;
-
-        List<AnimeItem> items = new ArrayList<AnimeItem>();
-        items.add(new AnimeItem("进击的巨人", "http://www.biliclassic.cn/api/main/bigimg1.jpg", true));
-        items.add(new AnimeItem("约会大作战", "http://www.biliclassic.cn/api/main/simg1.jpg", false));
-        items.add(new AnimeItem("某科学的超电磁炮S", "http://www.biliclassic.cn/api/main/simg2.jpg", false));
-        items.add(new AnimeItem("我的青春恋爱物语果然有问题", "http://www.biliclassic.cn/api/main/bigimg2.jpg", true));
-        items.add(new AnimeItem("打工吧！魔王大人", "http://www.biliclassic.cn/api/main/simg3.jpg", false));
-        items.add(new AnimeItem("翠星之加尔刚蒂亚", "http://www.biliclassic.cn/api/main/simg4.jpg", false));
-        items.add(new AnimeItem("潜行吧！奈亚子W", "http://www.biliclassic.cn/api/main/bigimg3.jpg", true));
-        items.add(new AnimeItem("恶魔阿萨谢尔在召唤你Z", "http://www.biliclassic.cn/api/main/simg5.jpg", false));
-        items.add(new AnimeItem("旋风管家！Cuties", "http://www.biliclassic.cn/api/main/simg6.jpg", false));
-        displayAnimeList(items);
-    }
-
-    // ==================== 显示方法 ====================
+    // 显示方法
 
     private void displayAnimeList(List<AnimeItem> items) {
         if (isDestroyed || items == null || items.size() == 0 || gridContainer == null || getActivity() == null) {
@@ -525,7 +660,7 @@ public class NewAnimeFragment extends Fragment {
         }
     }
 
-    private View createLargeCard(AnimeItem item, boolean isFirst) {
+    private View createLargeCard(final AnimeItem item, boolean isFirst) {
         if (isDestroyed || getActivity() == null) {
             return new View(getActivity());
         }
@@ -558,6 +693,13 @@ public class NewAnimeFragment extends Fragment {
         ivCover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
         ivCover.setTag(item.coverUrl);
 
+        card.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openAnimeDetail(item);
+            }
+        });
+
         if (item.coverUrl != null && item.coverUrl.length() > 0 && !isDestroyed) {
             loadImageLazy(ivCover, item.coverUrl, true);
         }
@@ -565,7 +707,7 @@ public class NewAnimeFragment extends Fragment {
         return card;
     }
 
-    private View createSmallCard(AnimeItem item) {
+    private View createSmallCard(final AnimeItem item) {
         if (isDestroyed || getActivity() == null) {
             return new View(getActivity());
         }
@@ -596,6 +738,13 @@ public class NewAnimeFragment extends Fragment {
         ivCover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
         ivCover.setTag(item.coverUrl);
 
+        card.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openAnimeDetail(item);
+            }
+        });
+
         if (item.coverUrl != null && item.coverUrl.length() > 0 && !isDestroyed) {
             loadImageLazy(ivCover, item.coverUrl, false);
         }
@@ -603,12 +752,34 @@ public class NewAnimeFragment extends Fragment {
         return card;
     }
 
-    // ==================== 图片加载 ====================
+    private void openAnimeDetail(AnimeItem item) {
+        if (getActivity() == null) return;
+
+        Intent intent;
+
+        if (item.epid > 0) {
+            intent = new Intent(getActivity(), VideoDetailActivity.class);
+            intent.putExtra("from_bangumi", true);
+            intent.putExtra("bangumi_title", item.title);
+            if (item.aid > 0) {
+                intent.putExtra("aid", item.aid);
+            } else {
+                intent.putExtra("epid", item.epid);
+            }
+        } else if (item.aid > 0) {
+            intent = new Intent(getActivity(), VideoDetailActivity.class);
+            intent.putExtra("aid", item.aid);
+        } else {
+            Toast.makeText(getActivity(), "无法获取视频信息", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        startActivity(intent);
+    }
 
     private void loadImageLazy(final ImageView imageView, final String urlStr, final boolean isLarge) {
         if (isDestroyed || imageView == null || getActivity() == null) return;
 
-        // 1. 检查内存缓存
         if (imageCache.containsKey(urlStr)) {
             SoftReference<Bitmap> ref = imageCache.get(urlStr);
             Bitmap cached = ref.get();
@@ -620,7 +791,6 @@ public class NewAnimeFragment extends Fragment {
             }
         }
 
-        // 2. 检查本地文件缓存
         Bitmap localCached = getBitmapFromCache(urlStr);
         if (localCached != null && !localCached.isRecycled()) {
             imageCache.put(urlStr, new SoftReference<Bitmap>(localCached));
@@ -650,7 +820,6 @@ public class NewAnimeFragment extends Fragment {
                 loadingMap.remove(urlStr);
 
                 if (bitmap != null && !bitmap.isRecycled()) {
-                    // 保存到本地缓存
                     saveCoverToCache(urlStr, bitmap);
                     imageCache.put(urlStr, new SoftReference<Bitmap>(bitmap));
 
@@ -676,7 +845,6 @@ public class NewAnimeFragment extends Fragment {
     private Bitmap downloadImage(String urlStr, boolean isLarge) {
         HttpURLConnection conn = null;
         try {
-            // 如果是 https，转为 http
             String finalUrl = urlStr;
             if (finalUrl.startsWith("https://")) {
                 finalUrl = "http://" + finalUrl.substring(8);
@@ -761,6 +929,8 @@ public class NewAnimeFragment extends Fragment {
         String title;
         String coverUrl;
         boolean isLarge;
+        long aid;
+        long epid;
 
         AnimeItem(String title, String coverUrl, boolean isLarge) {
             this.title = title;

@@ -61,41 +61,41 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="图片加载设置"
-                android:textSize="15sp"
                 android:textColor="#333333"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/image_thread_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
+                android:layout_marginTop="6dp"
                 android:background="#FFFFFF"
-                android:padding="12dp"
                 android:clickable="true"
-                android:layout_marginTop="6dp">
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="图片加载线程"
-                    android:textSize="15sp"
-                    android:textColor="#333333" />
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/image_thread_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="13sp"
+                    android:layout_marginRight="8dp"
                     android:textColor="#999999"
-                    android:layout_marginRight="8dp" />
+                    android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_edit"
-                    android:contentDescription="选择" />
+                    android:contentDescription="选择"
+                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -103,8 +103,8 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginTop="12dp"
                 android:layout_marginBottom="12dp"
+                android:layout_marginTop="12dp"
                 android:background="#E0E0E0" />
 
             <!-- 横屏适配设置 -->
@@ -112,37 +112,37 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="横屏适配"
-                android:textSize="15sp"
                 android:textColor="#333333"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/landscape_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:background="#FFFFFF"
-                android:padding="12dp"
                 android:clickable="true"
-                android:gravity="center_vertical">
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="自动横屏模式"
-                    android:textSize="15sp"
-                    android:textColor="#333333" />
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
                 <CheckBox
                     android:id="@+id/checkbox_landscape"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
-                    android:focusable="false"
                     android:clickable="false"
-                    android:padding="0dp"
-                    android:minHeight="0dp" />
+                    android:focusable="false"
+                    android:minHeight="0dp"
+                    android:padding="0dp" />
 
             </LinearLayout>
 
@@ -150,29 +150,29 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
                 android:layout_marginLeft="4dp"
                 android:layout_marginRight="4dp"
+                android:layout_marginTop="8dp"
                 android:text="* 已适配设备：HTC ChaCha / 三星 Galaxy Y Pro / 三星 Galaxy Pro / 索尼 A5100"
-                android:textSize="11sp"
-                android:textColor="#999999" />
+                android:textColor="#999999"
+                android:textSize="11sp" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
                 android:layout_marginLeft="4dp"
                 android:layout_marginRight="4dp"
+                android:layout_marginTop="2dp"
                 android:text="* 如果你需要在这些设备上使用竖屏模式，请取消勾选上方选项哦~"
-                android:textSize="11sp"
-                android:textColor="#999999" />
+                android:textColor="#999999"
+                android:textSize="11sp" />
 
             <!-- 分隔线 -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginTop="12dp"
                 android:layout_marginBottom="12dp"
+                android:layout_marginTop="12dp"
                 android:background="#E0E0E0" />
 
             <!-- 现代模式 -->
@@ -180,19 +180,19 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="数据源"
-                android:textSize="15sp"
                 android:textColor="#333333"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/modern_mode_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:background="#FFFFFF"
-                android:padding="12dp"
                 android:clickable="true"
-                android:gravity="center_vertical">
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -204,16 +204,16 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="现代模式"
-                        android:textSize="15sp"
-                        android:textColor="#333333" />
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="使用新版API获取更多番剧和放送信息"
-                        android:textSize="11sp"
-                        android:textColor="#999999" />
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
 
                 </LinearLayout>
 
@@ -222,29 +222,29 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
-                    android:focusable="false"
                     android:clickable="false"
-                    android:padding="0dp"
-                    android:minHeight="0dp" />
+                    android:focusable="false"
+                    android:minHeight="0dp"
+                    android:padding="0dp" />
 
             </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
+                android:layout_marginTop="4dp"
                 android:text="开启后新番专题和放送时间表将使用新版数据源，重启后生效"
-                android:textSize="11sp"
-                android:textColor="#999999" />
+                android:textColor="#999999"
+                android:textSize="11sp" />
 
             <!-- 分隔线 -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginTop="12dp"
                 android:layout_marginBottom="12dp"
+                android:layout_marginTop="12dp"
                 android:background="#E0E0E0" />
 
             <!-- ========== 实验 ========== -->
@@ -252,20 +252,20 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="实验室"
-                android:textSize="15sp"
                 android:textColor="#333333"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/online_play_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
+                android:layout_marginTop="6dp"
                 android:background="#FFFFFF"
-                android:padding="12dp"
                 android:clickable="true"
                 android:gravity="center_vertical"
-                android:layout_marginTop="6dp">
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -277,8 +277,8 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="在线播放"
-                        android:textSize="15sp"
-                        android:textColor="#333333" />
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
 
                     <TextView
                         android:id="@+id/online_play_desc"
@@ -286,8 +286,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="实验性功能，直接在线播放视频（可能不稳定）"
-                        android:textSize="11sp"
-                        android:textColor="#999999" />
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
 
                 </LinearLayout>
 
@@ -296,10 +296,10 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
-                    android:focusable="false"
                     android:clickable="false"
-                    android:padding="0dp"
-                    android:minHeight="0dp" />
+                    android:focusable="false"
+                    android:minHeight="0dp"
+                    android:padding="0dp" />
 
             </LinearLayout>
 
@@ -307,19 +307,76 @@
                 android:id="@+id/online_play_warning"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
+                android:layout_marginTop="4dp"
                 android:text="⚠ 实验性功能，开启后视频将直接在线播放而不缓存到本地，安卓2.3以下不可用"
-                android:textSize="11sp"
-                android:textColor="#FF6B35" />
+                android:textColor="#FF6B35"
+                android:textSize="11sp" />
+
+            <LinearLayout
+                android:id="@+id/force_tv_mode_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="#FFFFFF"
+                android:clickable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="TV模式"
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="强制启用TV模式界面和横屏布局"
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+                <CheckBox
+                    android:id="@+id/checkbox_force_tv_mode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:minHeight="0dp"
+                    android:padding="0dp" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/force_tv_mode_warning"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="12dp"
+                android:layout_marginRight="12dp"
+                android:layout_marginTop="4dp"
+                android:text="⚠ 实验性功能，强制开启TV模式可能导致布局异常，安卓4.0以下不可用"
+                android:textColor="#FF6B35"
+                android:textSize="11sp" />
 
             <!-- 分隔线 -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginTop="12dp"
                 android:layout_marginBottom="12dp"
+                android:layout_marginTop="12dp"
                 android:background="#E0E0E0" />
 
             <!-- 播放器设置 -->
@@ -327,41 +384,41 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="播放器设置"
-                android:textSize="15sp"
                 android:textColor="#333333"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/player_choice_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:background="#FFFFFF"
-                android:padding="12dp"
-                android:clickable="true">
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="默认播放器"
-                    android:textSize="15sp"
-                    android:textColor="#333333" />
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/player_choice_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
                     android:text="自动检测"
-                    android:textSize="13sp"
                     android:textColor="#999999"
-                    android:layout_marginRight="8dp" />
+                    android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_edit"
-                    android:contentDescription="选择" />
+                    android:contentDescription="选择"
+                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -370,34 +427,34 @@
                 android:id="@+id/decoder_choice_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
+                android:layout_marginTop="4dp"
                 android:background="#FFFFFF"
-                android:padding="12dp"
                 android:clickable="true"
-                android:layout_marginTop="4dp">
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="解码方式"
-                    android:textSize="15sp"
-                    android:textColor="#333333" />
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/decoder_choice_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
                     android:text="IJK播放器"
-                    android:textSize="13sp"
                     android:textColor="#999999"
-                    android:layout_marginRight="8dp" />
+                    android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_edit"
-                    android:contentDescription="选择" />
+                    android:contentDescription="选择"
+                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -406,11 +463,11 @@
                 android:id="@+id/decoder_settings_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="#FFFFFF"
-                android:padding="12dp"
                 android:layout_marginTop="4dp"
-                android:clickable="true">
+                android:background="#FFFFFF"
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -422,16 +479,16 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="解码设置"
-                        android:textSize="15sp"
-                        android:textColor="#333333" />
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="解码性能调优: 循环滤波/跳帧/OpenSL"
-                        android:textSize="11sp"
-                        android:textColor="#999999" />
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
 
                 </LinearLayout>
 
@@ -439,8 +496,8 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:layout_gravity="center_vertical"
-                    android:src="@android:drawable/ic_menu_edit"
-                    android:contentDescription="设置" />
+                    android:contentDescription="设置"
+                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -449,11 +506,11 @@
                 android:id="@+id/renderer_type_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="#FFFFFF"
-                android:padding="12dp"
                 android:layout_marginTop="4dp"
-                android:clickable="true">
+                android:background="#FFFFFF"
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -465,16 +522,16 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="视频渲染方式"
-                        android:textSize="15sp"
-                        android:textColor="#333333" />
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="切换 SurfaceView / TextureView"
-                        android:textSize="11sp"
-                        android:textColor="#999999" />
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
 
                 </LinearLayout>
 
@@ -482,18 +539,18 @@
                     android:id="@+id/renderer_type_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="SurfaceView"
-                    android:textSize="13sp"
-                    android:textColor="#999999"
+                    android:layout_gravity="center_vertical"
                     android:layout_marginRight="8dp"
-                    android:layout_gravity="center_vertical" />
+                    android:text="SurfaceView"
+                    android:textColor="#999999"
+                    android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:layout_gravity="center_vertical"
-                    android:src="@android:drawable/ic_menu_edit"
-                    android:contentDescription="选择" />
+                    android:contentDescription="选择"
+                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -502,36 +559,36 @@
                 android:id="@+id/danmaku_engine_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="#FFFFFF"
-                android:padding="12dp"
                 android:layout_marginTop="4dp"
-                android:clickable="true">
+                android:background="#FFFFFF"
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="弹幕引擎"
-                    android:textSize="15sp"
-                    android:textColor="#333333" />
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/danmaku_engine_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="完整版"
-                    android:textSize="13sp"
-                    android:textColor="#999999"
+                    android:layout_gravity="center_vertical"
                     android:layout_marginRight="8dp"
-                    android:layout_gravity="center_vertical" />
+                    android:text="完整版"
+                    android:textColor="#999999"
+                    android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:layout_gravity="center_vertical"
-                    android:src="@android:drawable/ic_menu_edit"
-                    android:contentDescription="选择" />
+                    android:contentDescription="选择"
+                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -539,57 +596,57 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
+                android:layout_marginTop="8dp"
                 android:background="#F0F0F0"
-                android:padding="10dp"
-                android:layout_marginTop="8dp">
+                android:orientation="vertical"
+                android:padding="10dp">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp"
                     android:text="关于播放器"
-                    android:textSize="12sp"
                     android:textColor="#999999"
-                    android:layout_marginBottom="6dp" />
+                    android:textSize="12sp" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="• 内置播放器：集成了 IJK V3 软解播放器和系统硬解播放器，无需安装第三方应用。可在设置中切换解码方式（IJK软解/系统硬解）。IJK V3目前仅支持Android 2.3。"
-                    android:textSize="11sp"
+                    android:layout_marginBottom="4dp"
+                    android:text="• 内置播放器：推荐使用，集成了 IJK V3 软解播放器和系统硬解播放器，无需安装第三方应用。可在设置中切换解码方式（IJK软解/系统硬解）。IJK V3目前仅支持Android 2.3+。"
                     android:textColor="#4CAF50"
-                    android:layout_marginBottom="4dp" />
+                    android:textSize="11sp" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
                     android:text="• MX Player / VLC：自带解码器，支持 H.264 High Profile，在老设备上播放流畅，推荐使用。"
-                    android:textSize="11sp"
                     android:textColor="#666666"
-                    android:layout_marginBottom="4dp" />
+                    android:textSize="11sp" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
                     android:text="• VPlayer / MoboPlayer / RockPlaye Liter：轻量级播放器，部分老设备兼容性较好，可作为备选。"
-                    android:textSize="11sp"
                     android:textColor="#666666"
-                    android:layout_marginBottom="4dp" />
+                    android:textSize="11sp" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
                     android:text="• 系统播放器：依赖手机硬件解码。Android 6.0 以下系统不支持 H.264 High Profile 软解，部分视频可能无法播放或只有声音。"
-                    android:textSize="11sp"
                     android:textColor="#D32F2F"
-                    android:layout_marginBottom="4dp" />
+                    android:textSize="11sp" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="• 建议：如果你的设备是 Android 6.0 以下，请优先选择 MX Player 或 VLC。"
-                    android:textSize="11sp"
-                    android:textColor="#666666" />
+                    android:text="• 建议：如果你的设备是 Android 2.3 以下，请优先选择 MX Player 或 MoboPlayer。"
+                    android:textColor="#666666"
+                    android:textSize="11sp" />
 
             </LinearLayout>
 
@@ -597,8 +654,8 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginTop="12dp"
                 android:layout_marginBottom="12dp"
+                android:layout_marginTop="12dp"
                 android:background="#E0E0E0" />
 
             <!-- ========== 默认首页 ========== -->
@@ -606,122 +663,122 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="界面设置"
-                android:textSize="15sp"
                 android:textColor="#333333"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/default_tab_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:background="#FFFFFF"
-                android:padding="12dp"
-                android:clickable="true">
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="默认首页"
-                    android:textSize="15sp"
-                    android:textColor="#333333" />
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/default_tab_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
                     android:text="新番专题"
-                    android:textSize="13sp"
                     android:textColor="#999999"
-                    android:layout_marginRight="8dp" />
+                    android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_edit"
-                    android:contentDescription="选择" />
+                    android:contentDescription="选择"
+                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
+                android:layout_marginTop="4dp"
                 android:text="选择启动时默认显示的页面"
-                android:textSize="11sp"
-                android:textColor="#999999" />
+                android:textColor="#999999"
+                android:textSize="11sp" />
 
             <!-- 分隔线 -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginTop="12dp"
                 android:layout_marginBottom="12dp"
+                android:layout_marginTop="12dp"
                 android:background="#E0E0E0" />
 
             <!-- 视频画质 -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
                 android:text="播放设置"
-                android:textSize="15sp"
                 android:textColor="#333333"
-                android:textStyle="bold"
-                android:layout_marginTop="12dp" />
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/video_quality_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:background="#FFFFFF"
-                android:padding="12dp"
-                android:clickable="true">
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="视频画质"
-                    android:textSize="15sp"
-                    android:textColor="#333333" />
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/video_quality_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
                     android:text="360P 流畅"
-                    android:textSize="13sp"
                     android:textColor="#999999"
-                    android:layout_marginRight="8dp" />
+                    android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_edit"
-                    android:contentDescription="选择" />
+                    android:contentDescription="选择"
+                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
+                android:layout_marginTop="4dp"
                 android:text="选择视频播放的画质，老设备建议使用 360P"
-                android:textSize="11sp"
-                android:textColor="#999999" />
+                android:textColor="#999999"
+                android:textSize="11sp" />
 
             <!-- 分隔线 -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginTop="12dp"
                 android:layout_marginBottom="12dp"
+                android:layout_marginTop="12dp"
                 android:background="#E0E0E0" />
 
             <!-- 设备信息 -->
@@ -729,40 +786,40 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="设备信息"
-                android:textSize="15sp"
                 android:textColor="#333333"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/device_info_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:background="#FFFFFF"
-                android:padding="12dp"
-                android:clickable="true">
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="查看设备信息"
-                    android:textSize="15sp"
-                    android:textColor="#333333" />
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
                     android:text="点击查看"
-                    android:textSize="13sp"
                     android:textColor="#999999"
-                    android:layout_marginRight="8dp" />
+                    android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_info_details"
-                    android:contentDescription="查看" />
+                    android:contentDescription="查看"
+                    android:src="@android:drawable/ic_menu_info_details" />
 
             </LinearLayout>
 
@@ -770,8 +827,8 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginTop="12dp"
                 android:layout_marginBottom="12dp"
+                android:layout_marginTop="12dp"
                 android:background="#E0E0E0" />
 
             <!-- 缓存管理 -->
@@ -779,144 +836,144 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="缓存管理"
-                android:textSize="15sp"
                 android:textColor="#333333"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <!-- 图片缓存 -->
             <LinearLayout
+                android:id="@+id/clear_cache_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:background="#FFFFFF"
-                android:padding="12dp"
                 android:clickable="true"
-                android:id="@+id/clear_cache_item">
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="清除图片缓存"
-                    android:textSize="15sp"
-                    android:textColor="#333333" />
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/cache_size"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
                     android:text="0 KB"
-                    android:textSize="13sp"
                     android:textColor="#999999"
-                    android:layout_marginRight="8dp" />
+                    android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_delete"
-                    android:contentDescription="清除" />
+                    android:contentDescription="清除"
+                    android:src="@android:drawable/ic_menu_delete" />
 
             </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
+                android:layout_marginTop="4dp"
                 android:text="清除后下次启动会自动重新下载"
-                android:textSize="11sp"
-                android:textColor="#999999" />
+                android:textColor="#999999"
+                android:textSize="11sp" />
 
             <!-- 播放缓存 -->
             <LinearLayout
+                android:id="@+id/clear_play_cache_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="#FFFFFF"
-                android:padding="12dp"
                 android:layout_marginTop="8dp"
+                android:background="#FFFFFF"
                 android:clickable="true"
-                android:id="@+id/clear_play_cache_item">
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="清除播放缓存"
-                    android:textSize="15sp"
-                    android:textColor="#333333" />
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/play_cache_size"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
                     android:text="0 MB"
-                    android:textSize="13sp"
                     android:textColor="#999999"
-                    android:layout_marginRight="8dp" />
+                    android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_delete"
-                    android:contentDescription="清除" />
+                    android:contentDescription="清除"
+                    android:src="@android:drawable/ic_menu_delete" />
 
             </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
+                android:layout_marginTop="4dp"
                 android:text="清除所有已缓存的视频文件，释放存储空间"
-                android:textSize="11sp"
-                android:textColor="#999999" />
+                android:textColor="#999999"
+                android:textSize="11sp" />
 
             <!-- Cookie 导入导出 -->
             <LinearLayout
+                android:id="@+id/cookie_manage_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="#FFFFFF"
-                android:padding="12dp"
                 android:layout_marginTop="8dp"
+                android:background="#FFFFFF"
                 android:clickable="true"
-                android:id="@+id/cookie_manage_item">
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="Cookie导入/导出"
-                    android:textSize="15sp"
-                    android:textColor="#333333" />
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_edit"
-                    android:contentDescription="管理" />
+                    android:contentDescription="管理"
+                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
+                android:layout_marginTop="4dp"
                 android:text="导出需登录，导入无需"
-                android:textSize="11sp"
-                android:textColor="#999999" />
+                android:textColor="#999999"
+                android:textSize="11sp" />
 
             <!-- 分隔线 -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginTop="12dp"
                 android:layout_marginBottom="12dp"
+                android:layout_marginTop="12dp"
                 android:background="#E0E0E0" />
 
             <!-- 回声洞 -->
@@ -924,60 +981,60 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="回声洞"
-                android:textSize="15sp"
                 android:textColor="#333333"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/echo_hole_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:background="#FFFFFF"
-                android:padding="12dp"
-                android:clickable="true">
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="回声洞"
-                    android:textSize="15sp"
-                    android:textColor="#333333" />
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/echo_hole_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
                     android:text="随一个"
-                    android:textSize="13sp"
                     android:textColor="#999999"
-                    android:layout_marginRight="8dp" />
+                    android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_myplaces"
-                    android:contentDescription="回声洞" />
+                    android:contentDescription="回声洞"
+                    android:src="@android:drawable/ic_menu_myplaces" />
 
             </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
+                android:layout_marginTop="4dp"
                 android:text="从服务器随机获取一条历史留言"
-                android:textSize="11sp"
-                android:textColor="#999999" />
+                android:textColor="#999999"
+                android:textSize="11sp" />
 
             <!-- 分隔线 -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginTop="12dp"
                 android:layout_marginBottom="12dp"
+                android:layout_marginTop="12dp"
                 android:background="#E0E0E0" />
 
             <!-- 崩溃日志管理 -->
@@ -985,60 +1042,60 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="崩溃日志"
-                android:textSize="15sp"
                 android:textColor="#333333"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/clear_crash_log_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:background="#FFFFFF"
-                android:padding="12dp"
-                android:clickable="true">
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="删除崩溃日志"
-                    android:textSize="15sp"
-                    android:textColor="#333333" />
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/crash_log_size"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
                     android:text="无日志"
-                    android:textSize="13sp"
                     android:textColor="#999999"
-                    android:layout_marginRight="8dp" />
+                    android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_delete"
-                    android:contentDescription="清除" />
+                    android:contentDescription="清除"
+                    android:src="@android:drawable/ic_menu_delete" />
 
             </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
+                android:layout_marginTop="4dp"
                 android:text="删除所有崩溃日志文件，释放存储空间"
-                android:textSize="11sp"
-                android:textColor="#999999" />
+                android:textColor="#999999"
+                android:textSize="11sp" />
 
             <!-- 分隔线 -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:layout_marginTop="12dp"
                 android:layout_marginBottom="12dp"
+                android:layout_marginTop="12dp"
                 android:background="#E0E0E0" />
 
             <!-- 检查更新 -->
@@ -1046,41 +1103,41 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="检查更新"
-                android:textSize="15sp"
                 android:textColor="#333333"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <LinearLayout
                 android:id="@+id/check_update_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:background="#FFFFFF"
-                android:padding="12dp"
-                android:clickable="true">
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="手动检查更新"
-                    android:textSize="15sp"
-                    android:textColor="#333333" />
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
                 <TextView
                     android:id="@+id/check_update_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
                     android:text="点击检查"
-                    android:textSize="13sp"
                     android:textColor="#999999"
-                    android:layout_marginRight="8dp" />
+                    android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_info_details"
-                    android:contentDescription="检查" />
+                    android:contentDescription="检查"
+                    android:src="@android:drawable/ic_menu_info_details" />
 
             </LinearLayout>
 
@@ -1089,41 +1146,41 @@
                 android:id="@+id/auto_check_update_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:background="#FFFFFF"
-                android:padding="12dp"
                 android:clickable="true"
-                android:gravity="center_vertical">
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="自动检查更新"
-                    android:textSize="15sp"
-                    android:textColor="#333333" />
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
                 <CheckBox
                     android:id="@+id/checkbox_auto_update"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
-                    android:focusable="false"
                     android:clickable="false"
-                    android:padding="0dp"
-                    android:minHeight="0dp" />
+                    android:focusable="false"
+                    android:minHeight="0dp"
+                    android:padding="0dp" />
 
             </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
+                android:layout_marginTop="4dp"
                 android:text="开启后将定期自动检查新版本，建议开启，毕竟咱也不是专业负优化团队~"
-                android:textSize="11sp"
-                android:textColor="#999999" />
+                android:textColor="#999999"
+                android:textSize="11sp" />
 
         </LinearLayout>
 

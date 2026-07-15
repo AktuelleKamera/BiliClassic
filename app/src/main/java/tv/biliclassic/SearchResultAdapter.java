@@ -155,7 +155,6 @@ public class SearchResultAdapter extends BaseAdapter {
             }
         }
 
-        // ========== 添加点击监听 ==========
         final int pos = position;
         final SearchActivity.SearchResultItem clickItem = item;
         convertView.setOnClickListener(new View.OnClickListener() {

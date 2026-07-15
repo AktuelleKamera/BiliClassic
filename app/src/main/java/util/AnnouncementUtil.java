@@ -332,16 +332,22 @@ public class AnnouncementUtil {
             }
         }
 
-        String minVersion = obj.optString("min_version", "");
-        String maxVersion = obj.optString("max_version", "");
-        if (minVersion != null && minVersion.length() > 0) {
-            if (compareVersion(getVersionName(null), minVersion) < 0) {
-                return null;
+        int minVerCode = obj.optInt("min_version_code", -1);
+        if (minVerCode >= 0) {
+            if (BuildConfig.VERSION_CODE < minVerCode) return null;
+        } else {
+            String minVersion = obj.optString("min_version", "");
+            if (minVersion != null && minVersion.length() > 0) {
+                if (compareVersion(getVersionName(null), minVersion) < 0) return null;
             }
         }
-        if (maxVersion != null && maxVersion.length() > 0) {
-            if (compareVersion(getVersionName(null), maxVersion) > 0) {
-                return null;
+        int maxVerCode = obj.optInt("max_version_code", -1);
+        if (maxVerCode >= 0) {
+            if (BuildConfig.VERSION_CODE > maxVerCode) return null;
+        } else {
+            String maxVersion = obj.optString("max_version", "");
+            if (maxVersion != null && maxVersion.length() > 0) {
+                if (compareVersion(getVersionName(null), maxVersion) > 0) return null;
             }
         }
 

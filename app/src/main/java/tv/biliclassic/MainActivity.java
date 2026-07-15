@@ -31,6 +31,7 @@ import java.util.List;
 
 import tv.biliclassic.util.AnnouncementUtil;
 import tv.biliclassic.util.DeviceInfoUtil;
+import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class MainActivity extends BaseActivity {
@@ -84,6 +85,51 @@ public class MainActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        try {
+            currentVersionCode = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+            currentVersionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            currentVersionCode = 0;
+            currentVersionName = "0.0.0";
+        }
+
+        boolean setupShown = SharedPreferencesUtil.getBoolean("setup_shown", false);
+        int lastVersionCode = SharedPreferencesUtil.getInt("last_version_code", 0);
+        boolean hasSetupKey = SharedPreferencesUtil.getSharedPreferences().contains("setup_shown");
+        boolean hasLastVersionKey = SharedPreferencesUtil.getSharedPreferences().contains("last_version_code");
+
+        if (!hasSetupKey && !hasLastVersionKey) {
+            // 两个键都不存在：可能是首次安装，也可能是从旧版本（0.4.4 及以前）升级
+            boolean hasOldData = SharedPreferencesUtil.getSharedPreferences().getAll().size() > 0;
+            if (hasOldData) {
+                // SharedPreferences 里有旧数据（设置、cookies等）→ 老用户升级
+                // 跳过"初次使用"，设 last_version_code 为当前-1 以触发"升级完成"
+                SharedPreferencesUtil.putBoolean("setup_shown", true);
+                SharedPreferencesUtil.putInt("last_version_code", currentVersionCode > 0 ? currentVersionCode - 1 : 0);
+                setupShown = true;
+                lastVersionCode = currentVersionCode > 0 ? currentVersionCode - 1 : 0;
+            } else {
+                // 完全空文件 → 真·首次安装，记录版本号，让 setupShown=false 走初次使用流程
+                SharedPreferencesUtil.putInt("last_version_code", currentVersionCode);
+                lastVersionCode = currentVersionCode;
+            }
+        }
+
+        if (!setupShown) {
+            Intent intent = new Intent(this, SetupActivity.class);
+            intent.putExtra("mode", "first");
+            startActivity(intent);
+            finish();
+            return;
+        } else if (lastVersionCode > 0 && currentVersionCode > lastVersionCode) {
+            Intent intent = new Intent(this, SetupActivity.class);
+            intent.putExtra("mode", "upgrade");
+            startActivity(intent);
+            finish();
+            return;
+        }
+
+        NetWorkUtil.refreshHeaders();
         int sdkInt = getSdkInt();
 
         // Android 4.0+ 正常检测 TV 模式
@@ -111,15 +157,6 @@ public class MainActivity extends BaseActivity {
 
         setContentView(R.layout.activity_main);
         checkLegacyVersionCompatibility();
-
-        try {
-            currentVersionCode = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
-            currentVersionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-        } catch (Exception e) {
-            currentVersionCode = 0;
-            currentVersionName = "0.0.0";
-        }
-
         checkAndShowCrashDialog();
 
         PagerTabStrip tabStrip = (PagerTabStrip) findViewById(R.id.pager_tab_strip);

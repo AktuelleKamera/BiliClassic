@@ -1,3 +1,19 @@
+/*
+ * 本软件基于以下项目修改，致谢前辈：
+ *   - 哔哩终端 (BiliTerminal) by RobinNotBad
+ *   - 腕上哔哩 (WristBilibili) by luern0313
+ *
+ * 本程序是自由软件，遵循 GNU 通用公共许可证第 3 版（或更高版本）发布。
+ * 你可以重新分发或修改它，希望它能为你带来快乐。
+ *
+ * 详情请参阅 GNU 通用公共许可证：
+ * <https://www.gnu.org/licenses/>
+ *
+ * 修改者：一只毛子球 (BiliClassic)
+ * 修改时间：2026年7月12日
+ *
+ * 安卓2也要看B站！
+ */
 package tv.biliclassic;
 
 import android.content.Intent;
@@ -5,6 +21,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Paint;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,14 +30,18 @@ import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import tv.biliclassic.api.PlayerApi;
 import tv.biliclassic.api.VideoInfoApi;
@@ -40,11 +61,9 @@ public class VideoDetailFragment extends Fragment {
         public int page;
     }
 
-    private static final int QUALITY_360P = 16;
-    private static final int QUALITY_720P = 64;
 
     private ImageView ivCover;
-    private TextView tvTitle, tvUpName, tvUpNameNew, tvPlay, tvDanmaku, tvDesc, tvPartCount;
+    private TextView tvTitle, tvUpName, tvUpNameNew, tvPlay, tvDanmaku, tvDesc, tvPartCount, tvPubDate;
     private Button btnPlay;
     private ObservableListView lvParts;
     private LinearLayout tagsContainer;
@@ -61,6 +80,11 @@ public class VideoDetailFragment extends Fragment {
 
     private boolean mOfflineMode;
 
+    // 防连点
+    private boolean isPlayButtonClicked = false;
+    private Handler mHandler = new Handler();
+    private ScrollView mScrollView;
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_video_detail, container, false);
@@ -73,6 +97,7 @@ public class VideoDetailFragment extends Fragment {
         tvDanmaku = (TextView) view.findViewById(R.id.tv_danmaku);
         tvDesc = (TextView) view.findViewById(R.id.tv_desc);
         tvPartCount = (TextView) view.findViewById(R.id.tv_part_count);
+        tvPubDate = (TextView) view.findViewById(R.id.tv_pubdate);
         btnPlay = (Button) view.findViewById(R.id.btn_play);
         lvParts = (ObservableListView) view.findViewById(R.id.lv_parts);
         tagsContainer = (LinearLayout) view.findViewById(R.id.tags_container);
@@ -114,9 +139,55 @@ public class VideoDetailFragment extends Fragment {
     }
 
     @Override
+    public void onViewCreated(View view, Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        if (lvParts != null) {
+            lvParts.setFocusable(false);
+            lvParts.setFocusableInTouchMode(false);
+        }
+
+        final ScrollView scrollView = (ScrollView) view.findViewById(R.id.scroll_view);
+        if (scrollView != null) {
+            scrollView.setFocusableInTouchMode(true);
+            scrollView.requestFocus();
+            scrollView.post(new Runnable() {
+                @Override
+                public void run() {
+                    scrollView.fullScroll(ScrollView.FOCUS_UP);
+                    scrollView.scrollTo(0, 0);
+                }
+            });
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 重置防连点
+        isPlayButtonClicked = false;
+        // 滚动到顶部
+        forceScrollToTop();
+    }
+
+    @Override
     public void onDestroyView() {
         super.onDestroyView();
+        mHandler.removeCallbacksAndMessages(null);
         clearImages();
+    }
+
+    // 强制滚动到顶部
+    private void forceScrollToTop() {
+        if (mScrollView == null) return;
+        // fullScroll 确保滚动到顶部
+        mScrollView.fullScroll(ScrollView.FOCUS_UP);
+        mScrollView.scrollTo(0, 0);
+        if (ivCover != null) {
+            ivCover.setFocusable(true);
+            ivCover.setFocusableInTouchMode(true);
+            ivCover.requestFocus();
+        }
     }
 
     public void clearImages() {
@@ -176,17 +247,8 @@ public class VideoDetailFragment extends Fragment {
         return videoPages;
     }
 
-    // ========== 下载：准备阶段（解析视频地址+获取可用画质） ==========
+    // 下载：准备阶段（解析视频地址+获取可用画质）
 
-    /**
-     * 准备下载指定分P：
-     * 1. 解析视频地址（使用默认画质）
-     * 2. 获取可用画质列表
-     * 3. 调用 Activity 的画质选择 + 下载服务启动流程
-     */
-    /**
-     * 准备下载指定分P（带画质参数）
-     */
     public void prepareDownload(final VideoPage page, final int quality, final String qualityName) {
         if (!isAdded() || getActivity() == null) return;
         if (page == null) {
@@ -266,23 +328,17 @@ public class VideoDetailFragment extends Fragment {
             }
         }).start();
     }
+
     private int getSafeQuality() {
-        int preferred = SettingsActivity.getVideoQuality();
-        if (videoInfo != null && videoInfo.qualities != null && videoInfo.qualities.size() > 0) {
-            List<Integer> available = videoInfo.qualities;
-            if (available.contains(preferred)) return preferred;
-            if (preferred == QUALITY_720P && available.contains(QUALITY_360P)) return QUALITY_360P;
-            int highest = available.get(0);
-            return highest;
-        }
-        return preferred;
+        return SettingsActivity.getVideoQuality();
     }
 
-    // ========== 数据加载 ==========
+
+    // 数据加载
 
     private void loadVideoData() {
         if (!isAdded() || getActivity() == null) return;
-        tvTitle.setText("加载中...");
+        tvTitle.setText("加载中…");
 
         if (mOfflineMode) {
             loadVideoDataFromOffline();
@@ -342,9 +398,6 @@ public class VideoDetailFragment extends Fragment {
         }).start();
     }
 
-    /**
-     * 离线模式：从本地 entry.json 加载视频信息
-     */
     private void loadVideoDataFromOffline() {
         new Thread(new Runnable() {
             @Override
@@ -361,7 +414,6 @@ public class VideoDetailFragment extends Fragment {
                     final java.util.ArrayList<tv.biliclassic.download.VideoDownloadEntry> entries =
                             env.loadEntriesForAvid(aid);
 
-                    // 用第一个 entry 构建 VideoInfo
                     videoInfo = new VideoInfo();
                     videoInfo.aid = aid;
                     if (entries != null && entries.size() > 0) {
@@ -378,7 +430,6 @@ public class VideoDetailFragment extends Fragment {
                             videoInfo.cids.add(e.cid);
                             videoInfo.pages.add(e.page);
                         }
-                        // 构建 UP主信息
                         if (firstEntry.upName != null && firstEntry.upName.length() > 0) {
                             videoInfo.staff = new java.util.ArrayList<UserInfo>();
                             UserInfo up = new UserInfo();
@@ -400,7 +451,6 @@ public class VideoDetailFragment extends Fragment {
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
                                 displayVideoInfo();
-                                // 加载本地缓存的标签
                                 if (videoInfo.tags != null && videoInfo.tags.length() > 0) {
                                     String[] splitTags = videoInfo.tags.split("/");
                                     for (int i = 0; i < splitTags.length && i < 9; i++) {
@@ -594,6 +644,16 @@ public class VideoDetailFragment extends Fragment {
             tvDesc.setText("暂无简介");
         }
 
+        if (tvPubDate != null) {
+            if (videoInfo.pubdate > 0) {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA);
+                String dateStr = sdf.format(new Date(videoInfo.pubdate * 1000));
+                tvPubDate.setText("发布时间: " + dateStr);
+            } else {
+                tvPubDate.setText("发布时间: --");
+            }
+        }
+
         videoPages.clear();
         if (videoInfo.pagenames != null && videoInfo.pagenames.size() > 0) {
             partList.clear();
@@ -628,6 +688,21 @@ public class VideoDetailFragment extends Fragment {
         if (getActivity() instanceof VideoDetailActivity) {
             ((VideoDetailActivity) getActivity()).setVideoDetailFragment(this);
         }
+
+        // 数据加载完成后强制滚动到顶部
+        forceScrollToTop();
+        mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                forceScrollToTop();
+            }
+        }, 200);
+        mHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                forceScrollToTop();
+            }
+        }, 500);
     }
 
     private void loadCoverImage(String url) {
@@ -677,15 +752,26 @@ public class VideoDetailFragment extends Fragment {
     }
 
     private void playVideo() {
-        if (!isAdded() || getActivity() == null) return;
+        // 防连点
+        if (isPlayButtonClicked) {
+            return;
+        }
+        isPlayButtonClicked = true;
+
+        if (!isAdded() || getActivity() == null) {
+            isPlayButtonClicked = false;
+            return;
+        }
         if (videoInfo == null) {
             Toast.makeText(getActivity(), "视频信息未加载", Toast.LENGTH_SHORT).show();
+            isPlayButtonClicked = false;
             return;
         }
 
         // 离线模式：直接播放本地缓存文件
         if (mOfflineMode) {
             playOfflineVideo();
+            isPlayButtonClicked = false;
             return;
         }
 
@@ -697,6 +783,7 @@ public class VideoDetailFragment extends Fragment {
         }
         if (targetCid == 0) {
             Toast.makeText(getActivity(), "无法获取视频地址", Toast.LENGTH_SHORT).show();
+            isPlayButtonClicked = false;
             return;
         }
 
@@ -706,7 +793,6 @@ public class VideoDetailFragment extends Fragment {
         final String tempPartTitle = (videoInfo.pagenames != null && videoInfo.pagenames.size() > 1 && tempPartIndex < videoInfo.pagenames.size())
                 ? videoInfo.pagenames.get(tempPartIndex) : tempTitle;
 
-        // 构建分P列表数据
         final long[] cidArray;
         final String[] partNameArray;
         if (videoInfo.cids != null && videoInfo.cids.size() > 1) {
@@ -727,10 +813,11 @@ public class VideoDetailFragment extends Fragment {
                         playerData.aid = tempAid;
                         playerData.cid = targetCid;
                         playerData.title = tempPartTitle;
-                        int quality = getSafeQuality();
-                        playerData.qn = quality;
-                        PlayerApi.getVideo(playerData, false);
-                        final String videoUrl = playerData.videoUrl;
+                    int quality = getSafeQuality();
+                    playerData.qn = quality;
+                    PlayerApi.getVideo(playerData, false);
+                    reconcileQuality(playerData);
+                    final String videoUrl = playerData.videoUrl;
                         if (getActivity() != null) {
                             getActivity().runOnUiThread(new Runnable() {
                                 @Override
@@ -749,9 +836,11 @@ public class VideoDetailFragment extends Fragment {
                                             intent.putExtra("pagenames", partNameArray);
                                         }
                                         putQualityExtras(intent, playerData);
+                                        isPlayButtonClicked = false;
                                         startActivity(intent);
                                     } else {
                                         Toast.makeText(getActivity(), "获取播放地址失败", Toast.LENGTH_SHORT).show();
+                                        isPlayButtonClicked = false;
                                     }
                                 }
                             });
@@ -763,6 +852,7 @@ public class VideoDetailFragment extends Fragment {
                                 public void run() {
                                     if (!isAdded() || getActivity() == null) return;
                                     Toast.makeText(getActivity(), "获取播放地址失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                    isPlayButtonClicked = false;
                                 }
                             });
                         }
@@ -783,6 +873,7 @@ public class VideoDetailFragment extends Fragment {
                     int quality = getSafeQuality();
                     playerData.qn = quality;
                     PlayerApi.getVideo(playerData, false);
+                    reconcileQuality(playerData);
                     final String videoUrl = playerData.videoUrl;
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(new Runnable() {
@@ -801,9 +892,11 @@ public class VideoDetailFragment extends Fragment {
                                         intent.putExtra("pagenames", partNameArray);
                                     }
                                     putQualityExtras(intent, playerData);
+                                    isPlayButtonClicked = false;
                                     startActivity(intent);
                                 } else {
                                     Toast.makeText(getActivity(), "获取播放地址失败", Toast.LENGTH_SHORT).show();
+                                    isPlayButtonClicked = false;
                                 }
                             }
                         });
@@ -815,6 +908,7 @@ public class VideoDetailFragment extends Fragment {
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
                                 Toast.makeText(getActivity(), "获取播放地址失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                                isPlayButtonClicked = false;
                             }
                         });
                     }
@@ -823,9 +917,6 @@ public class VideoDetailFragment extends Fragment {
         }).start();
     }
 
-    /**
-     * 离线播放：直接使用本地缓存的视频文件
-     */
     private void playOfflineVideo() {
         int pageIndex = currentPartIndex;
         if (pageIndex < 0) pageIndex = 0;
@@ -852,7 +943,6 @@ public class VideoDetailFragment extends Fragment {
             return;
         }
 
-        // 读取 entry.json 获取画质信息
         int qualityQn = 0;
         String qualityName = null;
         try {
@@ -881,7 +971,6 @@ public class VideoDetailFragment extends Fragment {
         if (danmakuFile.exists()) {
             intent.putExtra("danmaku_cache_path", danmakuFile.getAbsolutePath());
         }
-        // 离线模式标记
         intent.putExtra("offline_mode", true);
         intent.putExtra("current_qn", qualityQn);
         if (qualityName != null && qualityName.length() > 0) {
@@ -890,18 +979,52 @@ public class VideoDetailFragment extends Fragment {
             String shortName = tv.biliclassic.download.VideoDownloadEnvironment.getQualityName(qualityQn);
             intent.putExtra("qn_str_array", new String[]{shortName});
         }
+        isPlayButtonClicked = false;
         startActivity(intent);
     }
 
     private void putQualityExtras(Intent intent, PlayerData playerData) {
-        if (playerData != null && playerData.qnStrList != null && playerData.qnStrList.length > 0) {
-            intent.putExtra("qn_str_array", playerData.qnStrList);
+        if (playerData == null) return;
+
+        if (playerData.qnStrList != null && playerData.qnStrList.length > 0) {
+            String[] fixedNames = new String[playerData.qnStrList.length];
+            for (int i = 0; i < playerData.qnStrList.length; i++) {
+                String name = playerData.qnStrList[i];
+                if (name != null) {
+                    if (name.contains("1080P") && name.contains("高清")) {
+                        name = name.replace("高清", "超清");
+                    }
+                    if (name.contains("720") && name.contains("准高清")) {
+                        name = name.replace("准高清", "高清");
+                    }
+                }
+                fixedNames[i] = name;
+            }
+            intent.putExtra("qn_str_array", fixedNames);
         }
-        if (playerData != null && playerData.qnValueList != null && playerData.qnValueList.length > 0) {
+        if (playerData.qnValueList != null && playerData.qnValueList.length > 0) {
             intent.putExtra("qn_value_array", playerData.qnValueList);
         }
-        if (playerData != null) {
-            intent.putExtra("current_qn", playerData.qn);
+        intent.putExtra("current_qn", playerData.qn);
+    }
+
+    private void reconcileQuality(PlayerData playerData) {
+        if (playerData.qnValueList != null && playerData.qnValueList.length > 0) {
+            int bestQn = playerData.qnValueList[0];
+            boolean found = false;
+            for (int q : playerData.qnValueList) {
+                if (q == playerData.qn) { bestQn = q; found = true; break; }
+                if (q < playerData.qn && (bestQn > playerData.qn || q > bestQn)) bestQn = q;
+            }
+            if (!found) {
+                playerData.qn = bestQn;
+                playerData.timeStamp = 0;
+                try {
+                    PlayerApi.getVideo(playerData, false);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 }

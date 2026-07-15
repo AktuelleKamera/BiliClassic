@@ -1,2 +1,4 @@
+rootProject.name = '哔哩经典'
+
 include ':app', ':player'
 include ':app', ':DanmakuFlameMaster'

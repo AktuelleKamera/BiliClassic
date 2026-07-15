@@ -31,6 +31,7 @@ public class RecommendFragment extends Fragment {
     private LinearLayout footerContainer;
     private ProgressBar footerProgressBar;
     private ScrollView scrollView;
+    private View headerContainer;
 
     private RecommendGridAdapter adapter;
     private List<VideoCard> videoList = new ArrayList<VideoCard>();
@@ -40,21 +41,9 @@ public class RecommendFragment extends Fragment {
     private boolean isLoading = false;
     private boolean isEnd = false;
 
-    /**
-     * 安全显示 Toast（防止 getActivity() 为 null）
-     */
     private void showToast(String msg) {
         if (getActivity() != null) {
             Toast.makeText(getActivity(), msg, Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    /**
-     * 安全显示 Toast（带时长参数）
-     */
-    private void showToast(String msg, int duration) {
-        if (getActivity() != null) {
-            Toast.makeText(getActivity(), msg, duration).show();
         }
     }
 
@@ -69,10 +58,13 @@ public class RecommendFragment extends Fragment {
         footerContainer = (LinearLayout) view.findViewById(R.id.footer_container);
         footerProgressBar = (ProgressBar) view.findViewById(R.id.footer_progress);
         scrollView = (ScrollView) view.findViewById(R.id.scroll_view);
+        headerContainer = view.findViewById(R.id.header_container);
 
+        if (headerContainer != null) {
+            headerContainer.setVisibility(View.GONE);
+        }
         footerContainer.setVisibility(View.GONE);
 
-        // 设置双列
         gridView.setNumColumns(2);
         gridView.setVerticalSpacing(dpToPx(8));
         gridView.setHorizontalSpacing(dpToPx(8));
@@ -85,12 +77,7 @@ public class RecommendFragment extends Fragment {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 VideoCard item = videoList.get(position);
-                if (item == null) {
-                    return;
-                }
-                if (getActivity() == null) {
-                    return;
-                }
+                if (item == null || getActivity() == null) return;
                 Intent intent = new Intent(getActivity(), VideoDetailActivity.class);
                 if (item.aid != 0) {
                     intent.putExtra("aid", item.aid);
@@ -104,15 +91,11 @@ public class RecommendFragment extends Fragment {
             }
         });
 
-        // 让 GridView 不拦截方向键事件
         gridView.setFocusable(false);
-
-        // 让 ScrollView 接收方向键
         scrollView.setFocusable(true);
         scrollView.setFocusableInTouchMode(true);
         scrollView.requestFocus();
 
-        // 触摸检测滚动到底部
         scrollView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -123,14 +106,12 @@ public class RecommendFragment extends Fragment {
             }
         });
 
-        // 方向键检测
         scrollView.setOnKeyListener(new View.OnKeyListener() {
             @Override
             public boolean onKey(View v, int keyCode, KeyEvent event) {
                 if (event.getAction() == KeyEvent.ACTION_UP) {
                     if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN ||
                             keyCode == KeyEvent.KEYCODE_PAGE_DOWN) {
-                        // 延迟检测滚动到底部
                         new Handler().postDelayed(new Runnable() {
                             @Override
                             public void run() {
@@ -139,7 +120,6 @@ public class RecommendFragment extends Fragment {
                         }, 150);
                     }
                 }
-                // 返回 false 让系统继续处理
                 return false;
             }
         });
@@ -149,9 +129,6 @@ public class RecommendFragment extends Fragment {
         return view;
     }
 
-    /**
-     * 检测是否滚动到底部
-     */
     private void checkScrollToBottom() {
         if (scrollView == null) return;
         View child = scrollView.getChildAt(0);
@@ -170,24 +147,48 @@ public class RecommendFragment extends Fragment {
         return (int) (dp * density + 0.5f);
     }
 
+    private void showLoading() {
+        if (headerContainer != null) {
+            headerContainer.setVisibility(View.VISIBLE);
+        }
+        if (emptyView != null) {
+            emptyView.setVisibility(View.GONE);
+        }
+        if (progressBar != null) {
+            progressBar.setVisibility(View.GONE);
+        }
+        if (gridView != null) {
+            gridView.setVisibility(View.GONE);
+        }
+        hideFooter();
+    }
+
+    private void hideAllLoading() {
+        if (headerContainer != null) {
+            headerContainer.setVisibility(View.GONE);
+        }
+    }
+
     private void showFooter() {
-        footerContainer.setVisibility(View.VISIBLE);
-        if (footerProgressBar != null) {
-            footerProgressBar.setVisibility(View.VISIBLE);
+        if (footerContainer != null) {
+            footerContainer.setVisibility(View.VISIBLE);
+            if (footerProgressBar != null) {
+                footerProgressBar.setVisibility(View.VISIBLE);
+            }
         }
     }
 
     private void hideFooter() {
-        footerContainer.setVisibility(View.GONE);
+        if (footerContainer != null) {
+            footerContainer.setVisibility(View.GONE);
+        }
     }
 
     private void loadRecommend() {
-        progressBar.setVisibility(View.VISIBLE);
-        emptyView.setVisibility(View.GONE);
-        gridView.setVisibility(View.GONE);
-        hideFooter();
+        showLoading();
         currentPage = 1;
         isEnd = false;
+        videoList.clear();
 
         new Thread(new Runnable() {
             @Override
@@ -196,21 +197,17 @@ public class RecommendFragment extends Fragment {
                     final List<VideoCard> items = new ArrayList<VideoCard>();
                     RecommendApi.getRecommend(items);
 
-                    if (getActivity() == null) {
-                        return;
-                    }
+                    if (getActivity() == null) return;
 
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            if (getActivity() == null) {
-                                return;
-                            }
-                            progressBar.setVisibility(View.GONE);
+                            if (getActivity() == null) return;
+                            hideAllLoading();
+
                             if (items == null || items.size() == 0) {
                                 emptyView.setVisibility(View.VISIBLE);
                                 gridView.setVisibility(View.GONE);
-                                hideFooter();
                                 return;
                             }
                             videoList.clear();
@@ -218,28 +215,22 @@ public class RecommendFragment extends Fragment {
                             adapter.notifyDataSetChanged();
                             gridView.setVisibility(View.VISIBLE);
                             currentPage = 2;
-                            hideFooter();
 
                             if (items.size() < 20) {
                                 isEnd = true;
                             }
 
                             scrollView.smoothScrollTo(0, 0);
-                            // 让 ScrollView 重新获得焦点
                             scrollView.requestFocus();
                         }
                     });
                 } catch (final Exception e) {
-                    if (getActivity() == null) {
-                        return;
-                    }
+                    if (getActivity() == null) return;
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            if (getActivity() == null) {
-                                return;
-                            }
-                            progressBar.setVisibility(View.GONE);
+                            if (getActivity() == null) return;
+                            hideAllLoading();
                             emptyView.setText("加载失败: " + e.getMessage());
                             emptyView.setVisibility(View.VISIBLE);
                             showToast("加载失败: " + e.getMessage());
@@ -252,15 +243,7 @@ public class RecommendFragment extends Fragment {
     }
 
     public void loadMoreRecommend() {
-        if (isLoading) {
-            return;
-        }
-        if (isEnd) {
-            return;
-        }
-        if (videoList.size() == 0) {
-            return;
-        }
+        if (isLoading || isEnd || videoList.size() == 0) return;
 
         isLoading = true;
         showFooter();
@@ -302,9 +285,8 @@ public class RecommendFragment extends Fragment {
 
                             if (newItems.size() < 20) {
                                 isEnd = true;
+                                showToast("已经到底啦");
                             }
-
-                            hideFooter();
                         }
                     });
                 } catch (final Exception e) {
@@ -335,7 +317,6 @@ public class RecommendFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // 清理资源
         if (adapter != null) {
             adapter.clearCache();
         }

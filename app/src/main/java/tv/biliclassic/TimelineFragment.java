@@ -19,6 +19,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,10 +30,14 @@ public class TimelineFragment extends Fragment {
     private ListView listView;
     private ProgressBar progressBar;
     private TextView emptyView;
+    private View headerContainer;
 
     private TimelineAdapter adapter;
     private List<timelineDay> timelineList = new ArrayList<timelineDay>();
     private Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    private static final int MAX_RETRY = 1;
+    private int retryCount = 0;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -42,6 +47,11 @@ public class TimelineFragment extends Fragment {
         listView = (ListView) view.findViewById(R.id.timeline_list);
         progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
         emptyView = (TextView) view.findViewById(R.id.empty_view);
+        headerContainer = view.findViewById(R.id.header_container);
+
+        if (headerContainer != null) {
+            headerContainer.setVisibility(View.GONE);
+        }
 
         listView.setDivider(null);
         listView.setDividerHeight(0);
@@ -67,10 +77,34 @@ public class TimelineFragment extends Fragment {
         }
     }
 
+    private void showLoading() {
+        if (headerContainer != null) {
+            headerContainer.setVisibility(View.VISIBLE);
+        }
+        if (emptyView != null) {
+            emptyView.setVisibility(View.GONE);
+        }
+        if (progressBar != null) {
+            progressBar.setVisibility(View.GONE);
+        }
+        if (listView != null) {
+            listView.setVisibility(View.GONE);
+        }
+    }
+
+    private void hideAllLoading() {
+        if (headerContainer != null) {
+            headerContainer.setVisibility(View.GONE);
+        }
+    }
+
     private void loadtimeline() {
-        progressBar.setVisibility(View.VISIBLE);
-        emptyView.setVisibility(View.GONE);
-        listView.setVisibility(View.GONE);
+        retryCount = 0;
+        doLoadtimeline();
+    }
+
+    private void doLoadtimeline() {
+        showLoading();
 
         new Thread(new Runnable() {
             @Override
@@ -114,7 +148,7 @@ public class TimelineFragment extends Fragment {
                     getActivity().runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            progressBar.setVisibility(View.GONE);
+                            hideAllLoading();
                             if (items == null || items.size() == 0) {
                                 emptyView.setText("暂无放送时间表数据");
                                 emptyView.setVisibility(View.VISIBLE);
@@ -126,15 +160,42 @@ public class TimelineFragment extends Fragment {
                             adapter.notifyDataSetChanged();
                             listView.setVisibility(View.VISIBLE);
                             listView.requestFocus();
+                            retryCount = 0;
                         }
                     });
 
                 } catch (final Exception e) {
                     e.printStackTrace();
-                    showError("加载失败: " + e.getMessage());
+                    // 检查是否有网络
+                    if (!isNetworkAvailable()) {
+                        showNoNetwork();
+                    } else if (retryCount < MAX_RETRY) {
+                        retryCount++;
+                        // 静默重试
+                        getActivity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                doLoadtimeline();
+                            }
+                        });
+                    } else {
+                        showError("加载失败: " + e.getMessage());
+                    }
                 }
             }
         }).start();
+    }
+
+    private boolean isNetworkAvailable() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
+                    getActivity().getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return false;
+            android.net.NetworkInfo info = cm.getActiveNetworkInfo();
+            return info != null && info.isConnected();
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     private List<timelineDay> parsetimeline(String jsonStr) throws Exception {
@@ -174,10 +235,6 @@ public class TimelineFragment extends Fragment {
         return result;
     }
 
-    /**
-     * 根据英文星期名获取 B站 day_index
-     * 6=周四, 7=周五, 1=周六, 2=周日, 3=周一, 4=周二, 5=周三
-     */
     private int getDayIndexFromEn(String dayEn) {
         if (dayEn == null) return 6;
         if (dayEn.equalsIgnoreCase("Monday")) return 3;
@@ -190,16 +247,28 @@ public class TimelineFragment extends Fragment {
         return 6;
     }
 
+    private void showNoNetwork() {
+        if (getActivity() == null) return;
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                hideAllLoading();
+                emptyView.setText(getString(R.string.emoticon__no_network));
+                emptyView.setVisibility(View.VISIBLE);
+                listView.setVisibility(View.GONE);
+            }
+        });
+    }
+
     private void showError(final String msg) {
         if (getActivity() == null) return;
         getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                progressBar.setVisibility(View.GONE);
-                emptyView.setText(msg);
+                hideAllLoading();
+                emptyView.setText(getString(R.string.emoticon__failed_need_retry));
                 emptyView.setVisibility(View.VISIBLE);
                 listView.setVisibility(View.GONE);
-                Toast.makeText(getActivity(), msg, Toast.LENGTH_SHORT).show();
             }
         });
     }

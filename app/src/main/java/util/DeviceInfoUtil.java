@@ -26,6 +26,46 @@ public class DeviceInfoUtil {
 
         android.util.Log.e("DeviceInfoUtil", "检查 HTC ChaCha 系列...");
 
+        // BlackBerry Q10 检测（BB10 设备）
+        if ("RIM".equalsIgnoreCase(manufacturer) || "BlackBerry".equalsIgnoreCase(manufacturer)) {
+            if (model != null && (model.toLowerCase().contains("q10") ||
+                    model.toLowerCase().contains("q5") ||
+                    model.toLowerCase().contains("z10") ||
+                    model.toLowerCase().contains("z30") ||
+                    model.toLowerCase().contains("z3") ||
+                    model.toLowerCase().contains("p'9982") ||
+                    model.toLowerCase().contains("p'9983"))) {
+                android.util.Log.e("DeviceInfoUtil", "✅ 匹配到 BlackBerry BB10 系列！");
+                sb.append("BlackBerry BB10\n");
+                if (model.toLowerCase().contains("q10")) {
+                    sb.append("BlackBerry Q10\n");
+                    sb.append("全键盘赛高！BB10最后的荣光！\n");
+                    sb.append("信仰手机desu！\n");
+                } else if (model.toLowerCase().contains("q5")) {
+                    sb.append("BlackBerry Q5\n");
+                    sb.append("黑莓全键盘！彩色后盖！\n");
+                    sb.append("依旧黑莓5c（）\n");
+                } else if (model.toLowerCase().contains("z10")) {
+                    sb.append("BlackBerry Z10\n");
+                    sb.append("全触屏BB10！滑动操作丝滑如德芙~\n");
+                    sb.append("上下左右随便滑，你也是触屏大师！\n");
+                } else if (model.toLowerCase().contains("z30")) {
+                    sb.append("BlackBerry Z30\n");
+                    sb.append("大屏BB10旗舰！立体声双喇叭！\n");
+                    sb.append("看番听歌都超带感的喔！\n");
+                } else if (model.toLowerCase().contains("z3")) {
+                    sb.append("BlackBerry Z3\n");
+                    sb.append("Jakarta特供款！印尼限定版！\n");
+                    sb.append("异国风情满满desu~\n");
+                } else {
+                    sb.append(model + "\n");
+                }
+                sb.append("BB10已死，但经典永存！\n");
+                sb.append("架构: ARMv7-A | 请使用v7a解码包~");
+                return sb.toString();
+            }
+        }
+
         // HTC ChaCha 系列
         if ("HTC".equalsIgnoreCase(manufacturer)) {
             android.util.Log.e("DeviceInfoUtil", "厂商匹配 HTC，检查型号...");

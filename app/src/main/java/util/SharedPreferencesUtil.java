@@ -76,6 +76,11 @@ public class SharedPreferencesUtil {
         return android.preference.PreferenceManager.getDefaultSharedPreferences(sAppContext);
     }
 
+    public static boolean contains(String key) {
+        if (sharedPreferences == null) return false;
+        return sharedPreferences.contains(key);
+    }
+
     public static String getString(String key, String def) {
         if (sharedPreferences == null) return def;
         return sharedPreferences.getString(key, def);

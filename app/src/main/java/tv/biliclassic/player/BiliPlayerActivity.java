@@ -67,6 +67,7 @@ import tv.biliclassic.widget.RadioGridGroup;
 import tv.danmaku.ijk.media.player.AndroidMediaPlayer;
 import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
+import tv.biliclassic.widget.BatteryView2;
 import tv.biliclassic.util.DeviceInfoUtil;
 import util.LocalStreamProxy;
 
@@ -136,6 +137,7 @@ public class BiliPlayerActivity extends Activity implements
     private TextView btnLock;
     private TextView btnSendDanmaku;
     private TextView btnMediaInfo;
+    private BatteryView2 batteryView;
 
     private String videoUrl;
     private String videoTitle;
@@ -146,6 +148,7 @@ public class BiliPlayerActivity extends Activity implements
 
     private boolean isPlaying = false;
     private boolean isPrepared = false;
+    private boolean mIsFirstInit = true;
     private boolean mPlaybackCompleted;
     private boolean controlsVisible = true;
     private boolean surfaceReady = false;
@@ -522,7 +525,6 @@ public class BiliPlayerActivity extends Activity implements
 
         float baseScaleX = (float) containerWidth / videoWidth;
         float baseScaleY = (float) containerHeight / videoHeight;
-        float baseScale = Math.min(baseScaleX, baseScaleY);
 
         float adjustedScale;
         if (targetRatio > containerRatio) {
@@ -551,96 +553,126 @@ public class BiliPlayerActivity extends Activity implements
             finalTranslateX = 0;
             finalTranslateY = 0;
         }
-
-// ====== TextureView 用 View 变换 ======
-        if (mRendererType == RENDERER_TEXTUREVIEW && videoView instanceof TextureView) {
-            TextureView tv = (TextureView) videoView;
+       // TextureView
+        if (mRendererType == RENDERER_TEXTUREVIEW) {
+            final TextureView tv = (TextureView) videoView;
             if (tv.getSurfaceTexture() == null) return;
 
-            if (!mTextureViewConfigured) {
-                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) tv.getLayoutParams();
-                if (lp == null || lp.width != ViewGroup.LayoutParams.MATCH_PARENT) {
-                    lp = new FrameLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT);
-                    lp.gravity = android.view.Gravity.CENTER;
-                    tv.setLayoutParams(lp);
-                }
-                mTextureViewConfigured = true;
-            }
+            final FrameLayout tvContainer = (FrameLayout) findViewById(R.id.video_container);
+            if (tvContainer == null) return;
 
-            int viewWidth = tv.getWidth();
-            int viewHeight = tv.getHeight();
+            final float fScale = scale;
+            final float fTranslateX = translateX;
+            final float fTranslateY = translateY;
 
-            if (viewWidth == 0 || viewHeight == 0) {
-                final float fs = scale;
-                final float ftx = translateX;
-                final float fty = translateY;
-                tv.post(new Runnable() {
-                    public void run() {
-                        applyVideoScale(fs, ftx, fty);
+            tv.post(new Runnable() {
+                @Override
+                public void run() {
+                    int containerWidth = tvContainer.getWidth();
+                    int containerHeight = tvContainer.getHeight();
+                    if (containerWidth == 0 || containerHeight == 0) return;
+                    if (videoWidth == 0 || videoHeight == 0) return;
+
+                    boolean portrait = getRequestedOrientation() == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+
+                    // 竖屏 setRotation
+                    if (portrait) {
+                        tv.setPivotX(containerWidth / 2f);
+                        tv.setPivotY(containerHeight / 2f);
+                        tv.setScaleX(1f);
+                        tv.setScaleY(1f);
+                        tv.setTranslationX(0);
+                        tv.setTranslationY(0);
+                        return;
                     }
-                });
-                return;
-            }
 
-            // ====== 根据 currentAspectRatio 计算目标比例 ======
-            float tvContainerRatio = (float) viewWidth / viewHeight;
-            float tvVideoRatio = (float) videoWidth / videoHeight;
+                    // 横屏：重置旋转
+                    tv.setRotation(0);
+                    tv.setPivotX(0);
+                    tv.setPivotY(0);
 
-            float tvTargetRatio;
-            switch (currentAspectRatio) {
-                case ASPECT_RATIO_ADJUST_CONTENT:
-                    tvTargetRatio = tvVideoRatio;
-                    break;
-                case ASPECT_RATIO_ADJUST_SCREEN:
-                    tvTargetRatio = tvContainerRatio;
-                    break;
-                case ASPECT_RATIO_4_3_INSIDE:
-                    tvTargetRatio = 4f / 3f;
-                    break;
-                case ASPECT_RATIO_16_9_INSIDE:
-                    tvTargetRatio = 16f / 9f;
-                    break;
-                case ASPECT_RATIO_9_16_INSIDE:
-                    tvTargetRatio = 9f / 16f;
-                    break;
-                default:
-                    tvTargetRatio = tvVideoRatio;
-                    break;
-            }
+                    float containerRatio = (float) containerWidth / containerHeight;
+                    float videoRatio = (float) videoWidth / videoHeight;
 
-            float fitScale;
-            if (tvTargetRatio > tvContainerRatio) {
-                fitScale = (float) viewWidth / videoWidth;
-            } else {
-                fitScale = (float) viewHeight / videoHeight;
-            }
+                    float targetRatio;
+                    switch (currentAspectRatio) {
+                        case ASPECT_RATIO_ADJUST_CONTENT:
+                            targetRatio = videoRatio;
+                            break;
+                        case ASPECT_RATIO_ADJUST_SCREEN:
+                            targetRatio = containerRatio;
+                            break;
+                        case ASPECT_RATIO_4_3_INSIDE:
+                            targetRatio = 4f / 3f;
+                            break;
+                        case ASPECT_RATIO_16_9_INSIDE:
+                            targetRatio = 16f / 9f;
+                            break;
+                        case ASPECT_RATIO_9_16_INSIDE:
+                            targetRatio = 9f / 16f;
+                            break;
+                        default:
+                            targetRatio = videoRatio;
+                            break;
+                    }
 
-            fitScale = fitScale * scale;
+                    int targetWidth, targetHeight;
+                    if (targetRatio > containerRatio) {
+                        targetWidth = containerWidth;
+                        targetHeight = (int) (containerWidth / targetRatio);
+                    } else {
+                        targetHeight = containerHeight;
+                        targetWidth = (int) (containerHeight * targetRatio);
+                    }
 
-            float sw = videoWidth * fitScale;
-            float sh = videoHeight * fitScale;
-            float ox = (viewWidth - sw) / 2 + finalTranslateX;
-            float oy = (viewHeight - sh) / 2 + finalTranslateY;
+                    if (targetWidth < 1) targetWidth = 1;
+                    if (targetHeight < 1) targetHeight = 1;
 
-            tv.setPivotX(0);
-            tv.setPivotY(0);
-            tv.setScaleX(fitScale);
-            tv.setScaleY(fitScale);
-            tv.setTranslationX(ox);
-            tv.setTranslationY(oy);
+                    float userScale = fScale;
+                    if (userScale < 1.0f) userScale = 1.0f;
+                    targetWidth = (int) (targetWidth * userScale);
+                    targetHeight = (int) (targetHeight * userScale);
+
+                    float maxTranslateX = Math.max(0, (targetWidth - containerWidth) / 2.0f);
+                    float maxTranslateY = Math.max(0, (targetHeight - containerHeight) / 2.0f);
+                    float finalTranslateX = fTranslateX * maxTranslateX;
+                    float finalTranslateY = fTranslateY * maxTranslateY;
+
+                    if (finalTranslateX > maxTranslateX) finalTranslateX = maxTranslateX;
+                    if (finalTranslateX < -maxTranslateX) finalTranslateX = -maxTranslateX;
+                    if (finalTranslateY > maxTranslateY) finalTranslateY = maxTranslateY;
+                    if (finalTranslateY < -maxTranslateY) finalTranslateY = -maxTranslateY;
+
+                    if (fScale <= 1.0f) {
+                        finalTranslateX = 0;
+                        finalTranslateY = 0;
+                    }
+
+                    FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) tv.getLayoutParams();
+                    if (lp == null) {
+                        lp = new FrameLayout.LayoutParams(targetWidth, targetHeight);
+                        lp.gravity = android.view.Gravity.LEFT | android.view.Gravity.TOP;
+                    } else {
+                        lp.width = targetWidth;
+                        lp.height = targetHeight;
+                        lp.gravity = android.view.Gravity.LEFT | android.view.Gravity.TOP;
+                    }
+
+                    lp.leftMargin = (containerWidth - targetWidth) / 2 + (int) finalTranslateX;
+                    lp.topMargin = (containerHeight - targetHeight) / 2 + (int) finalTranslateY;
+                    lp.rightMargin = 0;
+                    lp.bottomMargin = 0;
+
+                    tv.setLayoutParams(lp);
+                    tv.requestLayout();
+                }
+            });
             return;
         }
-
-        // ====== IJK 硬解 + SurfaceView：用 View 变换 ======
+        // IJK 硬解 + SurfaceView：直接改尺寸切换比例
         if (decoderType == DECODER_IJK_HARD && mRendererType == RENDERER_SURFACEVIEW) {
-            FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) videoView.getLayoutParams();
-            if (params == null || params.width != containerWidth || params.height != containerHeight) {
-                params = new FrameLayout.LayoutParams(containerWidth, containerHeight);
-                params.gravity = android.view.Gravity.CENTER;
-                videoView.setLayoutParams(params);
-                videoView.requestLayout();
+            // 确保容器尺寸有效
+            if (containerWidth == 0 || containerHeight == 0) {
                 final float fScale = scale;
                 final float fTranslateX = translateX;
                 final float fTranslateY = translateY;
@@ -653,23 +685,87 @@ public class BiliPlayerActivity extends Activity implements
                 return;
             }
 
-            float pivotX = containerWidth / 2.0f;
-            float pivotY = containerHeight / 2.0f;
-            videoView.setPivotX(pivotX);
-            videoView.setPivotY(pivotY);
+            // 计算目标尺寸
+            float ijkContainerRatio = (float) containerWidth / containerHeight;
+            float ijkVideoRatio = (float) videoWidth / videoHeight;
 
-            float viewScale = finalScale / baseScale;
-            if (viewScale < 0.1f) viewScale = 0.1f;
-            if (viewScale > 5.0f) viewScale = 5.0f;
+            float ijkTargetRatio;
+            switch (currentAspectRatio) {
+                case ASPECT_RATIO_ADJUST_CONTENT:
+                    ijkTargetRatio = ijkVideoRatio;
+                    break;
+                case ASPECT_RATIO_ADJUST_SCREEN:
+                    ijkTargetRatio = ijkContainerRatio;
+                    break;
+                case ASPECT_RATIO_4_3_INSIDE:
+                    ijkTargetRatio = 4f / 3f;
+                    break;
+                case ASPECT_RATIO_16_9_INSIDE:
+                    ijkTargetRatio = 16f / 9f;
+                    break;
+                case ASPECT_RATIO_9_16_INSIDE:
+                    ijkTargetRatio = 9f / 16f;
+                    break;
+                default:
+                    ijkTargetRatio = ijkVideoRatio;
+                    break;
+            }
 
-            videoView.setScaleX(viewScale);
-            videoView.setScaleY(viewScale);
-            videoView.setTranslationX(finalTranslateX);
-            videoView.setTranslationY(finalTranslateY);
+            int ijkTargetWidth, ijkTargetHeight;
+            if (ijkTargetRatio > ijkContainerRatio) {
+                ijkTargetWidth = containerWidth;
+                ijkTargetHeight = (int) (containerWidth / ijkTargetRatio);
+            } else {
+                ijkTargetHeight = containerHeight;
+                ijkTargetWidth = (int) (containerHeight * ijkTargetRatio);
+            }
+
+            if (ijkTargetWidth < 1) ijkTargetWidth = 1;
+            if (ijkTargetHeight < 1) ijkTargetHeight = 1;
+
+            // 如果尺寸没有变化，不操作
+            FrameLayout.LayoutParams currentParams = (FrameLayout.LayoutParams) videoView.getLayoutParams();
+            if (currentParams != null && currentParams.width == ijkTargetWidth && currentParams.height == ijkTargetHeight) {
+                return;
+            }
+
+            // 判断是否是真正的第一次初始化
+            boolean isInit = mIsFirstInit && scale == 1.0f && translateX == 0 && translateY == 0;
+
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ijkTargetWidth, ijkTargetHeight);
+            params.gravity = android.view.Gravity.CENTER;
+            videoView.setLayoutParams(params);
+            videoView.requestLayout();
+
+            if (isInit) {
+                mIsFirstInit = false;
+                return;
+            }
+
+            final long currentPos = mediaPlayer != null ? mediaPlayer.getCurrentPosition() : 0;
+            final boolean wasPlaying = (mediaPlayer != null && isPlaying);
+
+            if (wasPlaying) {
+                mediaPlayer.pause();
+            }
+
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (mediaPlayer != null) {
+                        mediaPlayer.seekTo(currentPos);
+                        if (wasPlaying) {
+                            mediaPlayer.start();
+                            isPlaying = true;
+                            updatePlayPauseButton();
+                        }
+                    }
+                }
+            }, 300);
             return;
         }
 
-        // ====== IJK 软解 + SurfaceView：用 LayoutParams 改尺寸 ======
+        // IJK 软解 + SurfaceView：用 LayoutParams 改尺寸
         if (decoderType == DECODER_IJK_SOFT && mRendererType == RENDERER_SURFACEVIEW) {
             FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) videoView.getLayoutParams();
             if (params == null) {
@@ -687,7 +783,7 @@ public class BiliPlayerActivity extends Activity implements
             return;
         }
 
-        // ====== 系统解码器 + SurfaceView ======
+        // 系统解码器 + SurfaceView
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) videoView.getLayoutParams();
         if (params == null) {
             params = new FrameLayout.LayoutParams(scaledWidth, scaledHeight);
@@ -844,7 +940,7 @@ public class BiliPlayerActivity extends Activity implements
             }
         }
 
-        // ========== 评论覆盖层 ==========
+        // 评论覆盖层
         commentOverlay = findViewById(R.id.comment_overlay);
         if (commentOverlay != null) {
             commentScrim = commentOverlay.findViewById(R.id.comment_scrim);
@@ -862,7 +958,7 @@ public class BiliPlayerActivity extends Activity implements
             commentList.addFooterView(commentFooterView);
 
             commentItems = new ArrayList<CommentFragment.CommentItem>();
-            commentAdapter = new CommentAdapter(this, commentItems);
+            commentAdapter = new CommentAdapter(this, commentItems, mAid, null);
             commentList.setAdapter(commentAdapter);
 
             // 设置点击用户跳转
@@ -894,7 +990,7 @@ public class BiliPlayerActivity extends Activity implements
                 });
             }
 
-            // 设置ListView滚动监听实现分页加载
+            // 分页加载
             commentList.setOnScrollListener(new AbsListView.OnScrollListener() {
                 @Override
                 public void onScrollStateChanged(AbsListView view, int scrollState) {
@@ -1269,7 +1365,7 @@ public class BiliPlayerActivity extends Activity implements
 
         if (commentEmpty != null) {
             commentEmpty.setVisibility(View.VISIBLE);
-            commentEmpty.setText("加载中...");
+            commentEmpty.setText("嘿咻…嘿咻…");
         }
 
         commentFooterView.setVisibility(View.GONE);
@@ -1479,7 +1575,7 @@ public class BiliPlayerActivity extends Activity implements
                     commentIsLoadingMore = false;
 
                     if (commentIsEnd) {
-                        Toast.makeText(BiliPlayerActivity.this, "已经到底啦", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(BiliPlayerActivity.this, getString(R.string.emoticon__no_more_data), Toast.LENGTH_SHORT).show();
                     }
                 } else {
                     commentItems.clear();
@@ -1847,6 +1943,7 @@ public class BiliPlayerActivity extends Activity implements
         if (mDanmakuManager != null) {
             mDanmakuManager.pause();
             mDanmakuManager.release();
+            mDanmakuManager = null;
         }
 
         releasePlayer();
@@ -1866,8 +1963,6 @@ public class BiliPlayerActivity extends Activity implements
                 if (mDanmakuManager == null && mDanmakuContainer != null) {
                     mDanmakuManager = new DanmakuManager(BiliPlayerActivity.this,
                             mDanmakuContainer, mAid, mCid, danmakuInputStub);
-                    mDanmakuManager.init();
-                } else if (mDanmakuManager != null) {
                     mDanmakuManager.init();
                 }
 
@@ -2127,8 +2222,17 @@ public class BiliPlayerActivity extends Activity implements
             mGestureController.setDuration(mDuration);
         }
 
-        // TextureView 不需要 adjustVideoSize，它由 Matrix 控制
-        if (!(mRendererType == RENDERER_TEXTUREVIEW && videoView instanceof TextureView)) {
+        // 获取视频尺寸
+        videoWidth = mp.getVideoWidth();
+        videoHeight = mp.getVideoHeight();
+
+        // 竖屏视频切竖屏
+        if (VideoAspectRatioHelper.isPortraitVideo(videoWidth, videoHeight)) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        }
+
+        // TextureView 不需要 adjustVideoSize
+        if (!(mRendererType == RENDERER_TEXTUREVIEW && mRendererType == RENDERER_TEXTUREVIEW)) {
             adjustVideoSize();
         }
         updateTopBarForOrientation();
@@ -2145,14 +2249,10 @@ public class BiliPlayerActivity extends Activity implements
         }
         aspectRatioFixed = false;
 
-        // 获取视频尺寸
-        videoWidth = mp.getVideoWidth();
-        videoHeight = mp.getVideoHeight();
         if (mGestureController != null) {
             mGestureController.setMaxScale(3.0f);
         }
 
-        // 重置 TextureView 配置标记
         mTextureViewConfigured = false;
 
         // 应用缩放
@@ -2351,6 +2451,7 @@ public class BiliPlayerActivity extends Activity implements
         if (mDanmakuManager != null) {
             mDanmakuManager.pause();
             mDanmakuManager.release();
+            mDanmakuManager = null;
         }
 
         releasePlayer();
@@ -2365,8 +2466,6 @@ public class BiliPlayerActivity extends Activity implements
                 if (mDanmakuManager == null && mDanmakuContainer != null) {
                     mDanmakuManager = new DanmakuManager(BiliPlayerActivity.this,
                             mDanmakuContainer, mAid, mCid, danmakuInputStub);
-                    mDanmakuManager.init();
-                } else if (mDanmakuManager != null) {
                     mDanmakuManager.init();
                 }
 
@@ -2394,13 +2493,6 @@ public class BiliPlayerActivity extends Activity implements
                 showBuffering(false);
                 if (!aspectRatioFixed) {
                     aspectRatioFixed = true;
-                    videoView.post(new Runnable() {
-                        public void run() {
-                            if (isPrepared && mediaPlayer != null) {
-                                applyAspectRatio(currentAspectRatio);
-                            }
-                        }
-                    });
                 }
                 break;
         }
@@ -2413,7 +2505,7 @@ public class BiliPlayerActivity extends Activity implements
 
     private void adjustVideoSize() {
         // TextureView 不在这里处理，由 applyVideoScale 的 Matrix 控制
-        if (mRendererType == RENDERER_TEXTUREVIEW && videoView instanceof TextureView) {
+        if (mRendererType == RENDERER_TEXTUREVIEW && mRendererType == RENDERER_TEXTUREVIEW) {
             return;
         }
 
@@ -2455,8 +2547,13 @@ public class BiliPlayerActivity extends Activity implements
 
         currentAspectRatio = mode;
 
-        // ====== TextureView 通过 Matrix 控制 ======
-        if (mRendererType == RENDERER_TEXTUREVIEW && videoView instanceof TextureView) {
+        if (decoderType == DECODER_IJK_HARD && mRendererType == RENDERER_SURFACEVIEW) {
+            applyVideoScale(1.0f, 0, 0);
+            return;
+        }
+
+        // TextureView 通过 Matrix 控制
+        if (mRendererType == RENDERER_TEXTUREVIEW && mRendererType == RENDERER_TEXTUREVIEW) {
             // 重新应用缩放
             if (mGestureController != null) {
                 applyVideoScale(mGestureController.getCurrentScale(),
@@ -2468,7 +2565,7 @@ public class BiliPlayerActivity extends Activity implements
             return;
         }
 
-        // ====== SurfaceView 用 LayoutParams ======
+        // SurfaceView 用 LayoutParams
         float containerRatio = (float) containerWidth / containerHeight;
         float videoRatio = (float) videoWidth / videoHeight;
 
@@ -3255,6 +3352,10 @@ public class BiliPlayerActivity extends Activity implements
         if (mDanmakuManager != null) {
             mDanmakuManager.release();
             mDanmakuManager = null;
+        }
+        if (batteryView != null) {
+            batteryView.release();
+            batteryView = null;
         }
         if (mGestureController != null) {
             mGestureController.release();

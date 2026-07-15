@@ -13,7 +13,7 @@ import java.io.Serializable;
  */
 public class VideoDownloadEntry implements Serializable {
 
-    // ========== JSON key 常量 ==========
+    // JSON key 常量
     private static final String KEY_AVID = "avid";
     private static final String KEY_BVID = "bvid";
     private static final String KEY_TITLE = "title";
@@ -36,13 +36,13 @@ public class VideoDownloadEntry implements Serializable {
     private static final String KEY_DESC = "description";
     private static final String KEY_TAGS = "tags";
 
-    // ========== 状态常量 ==========
+    // 状态常量
     public static final int STATE_STOPPED = 1000;
     public static final int STATE_PREPARING = 1001;
     public static final int STATE_IN_QUEUE = 1002;
     public static final int STATE_DOWNLOADING = 1003;
 
-    // ========== 字段 ==========
+    // 字段
     public long avid;
     public String bvid;
     public String title;
@@ -96,7 +96,7 @@ public class VideoDownloadEntry implements Serializable {
         return Math.min(Math.max(pct, 0), 100);
     }
 
-    // ========== JSON 序列化 ==========
+    // JSON 序列化
 
     public void writeToJSONObject(JSONObject obj) throws JSONException {
         obj.put(KEY_AVID, avid);
@@ -152,7 +152,7 @@ public class VideoDownloadEntry implements Serializable {
         return obj;
     }
 
-    // ========== 文件读写 ==========
+    // 文件读写
 
     /**
      * 保存到 entry.json

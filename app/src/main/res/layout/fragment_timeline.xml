@@ -10,6 +10,19 @@
         android:layout_height="1px"
         android:background="#FCA3C5" />
 
+    <!-- 加载头部 -->
+    <FrameLayout
+        android:id="@+id/header_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone">
+
+        <include
+            android:id="@+id/list_header"
+            layout="@layout/list_header" />
+
+    </FrameLayout>
+
     <ProgressBar
         android:id="@+id/progress_bar"
         android:layout_width="wrap_content"

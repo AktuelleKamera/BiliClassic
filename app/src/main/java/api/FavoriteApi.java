@@ -254,6 +254,11 @@ public class FavoriteApi {
     // 获取收藏夹内的视频列表
     // 返回 0=成功, 1=无更多数据, -1=失败
     public static int getFolderVideos(long mid, long fid, int page, ArrayList videoList) throws IOException, JSONException {
+        // 如果是第一页，清空列表，防止重复
+        if (page == 1) {
+            videoList.clear();
+        }
+
         String url = "https://api.bilibili.com/x/space/fav/arc?vmid=" + mid
                 + "&ps=30&fid=" + fid + "&tid=0&keyword=&pn=" + page + "&order=fav_time";
         Log.d(TAG, "获取收藏夹视频: " + url);

@@ -38,7 +38,7 @@ public class VideoDownloadEnvironment {
         this.page = page;
     }
 
-    // ========== 目录获取 ==========
+    // 目录获取
 
     public File getDownloadRootDir() {
         return downloadRootDir;
@@ -60,7 +60,7 @@ public class VideoDownloadEnvironment {
         return dir;
     }
 
-    // ========== 文件路径 ==========
+    // 文件路径
 
     public File getEntryFile(boolean create) throws IOException {
         return new File(getPageDir(create), ENTRY_FILE_NAME);
@@ -90,7 +90,7 @@ public class VideoDownloadEnvironment {
         }
     }
 
-    // ========== 保存 / 加载 entry ==========
+    // 保存 / 加载 entry
 
     public boolean saveEntry(VideoDownloadEntry entry) {
         try {
@@ -118,7 +118,7 @@ public class VideoDownloadEnvironment {
         }
     }
 
-    // ========== 扫描目录 ==========
+    // 扫描目录
 
     /**
      * 加载指定 avid 下所有分P的 entry
@@ -215,7 +215,7 @@ public class VideoDownloadEnvironment {
         dir.delete();
     }
 
-    // ========== 工具方法 ==========
+    // 工具方法
 
     private static boolean isDigitsOnly(String str) {
         if (str == null || str.length() == 0) return false;
@@ -244,10 +244,10 @@ public class VideoDownloadEnvironment {
             case 32: return "480P 清晰";
             case 64: return "720P 高清";
             case 74: return "720P60 高帧率";
-            case 80: return "1080P 高清";
+            case 80: return "1080P 超清";
             case 112: return "1080P+ 高码率";
             case 116: return "1080P60 高帧率";
-            case 120: return "4K 超清";
+            case 120: return "4K 超高清";
             default: return qn + "P";
         }
     }

@@ -33,13 +33,25 @@ public abstract class BaseActivity extends FragmentActivity {
             appContext = getApplicationContext();
         }
 
-        // TV 模式检测：自动横屏 + 全屏
+        // 屏幕方向设置
+        // TV 模式：横屏
         if (TvUtil.isTv(this)) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        } else if (shouldEnableLandscape()) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        } else {
+            // 判断是否为平板
+            boolean isTablet = getResources().getBoolean(R.bool.is_tablet);
+            if (isTablet) {
+                // 平板：自动旋转（横竖屏都可）
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
+            } else if (shouldEnableLandscape()) {
+                // 横屏设备（如 ChaCha 等）：横屏
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            } else {
+                // 手机：强制竖屏
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            }
         }
 
         super.onCreate(savedInstanceState);

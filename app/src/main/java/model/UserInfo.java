@@ -33,6 +33,7 @@ public class UserInfo implements Serializable {
     public int following;
     public boolean followed;
     public String notice;
+    public boolean isSeniorMember;  // 硬核会员
 
     public int official;
     public String officialDesc;
@@ -49,7 +50,7 @@ public class UserInfo implements Serializable {
 
     public String sys_notice = "";
 
-    // 直播功能暂时不需要，注释掉
+    // 直播功能暂时没有喵，注释掉
     // public LiveRoom live_room = null;
 
     public int is_senior_member = 0;
@@ -67,6 +68,7 @@ public class UserInfo implements Serializable {
         this.official = official;
         this.officialDesc = officialDesc;
         this.is_senior_member = isSeniorMember;
+        this.isSeniorMember = isSeniorMember == 1;
     }
 
     public UserInfo(long mid, String name, String avatar, String sign, int fans, int following, int level, boolean followed, String notice, int official, String officialDesc, String sysNotice, int isSeniorMember) {
@@ -83,6 +85,7 @@ public class UserInfo implements Serializable {
         this.officialDesc = officialDesc;
         this.sys_notice = sysNotice;
         this.is_senior_member = isSeniorMember;
+        this.isSeniorMember = isSeniorMember == 1;
     }
 
     public UserInfo(long mid, String name, String avatar, String sign, int fans, int following, int level, boolean followed, String notice, int official, String officialDesc, long currentExp, long nextExp, int isSeniorMember) {
@@ -100,6 +103,7 @@ public class UserInfo implements Serializable {
         this.current_exp = currentExp;
         this.next_exp = nextExp;
         this.is_senior_member = isSeniorMember;
+        this.isSeniorMember = isSeniorMember == 1;
     }
 
     public UserInfo(long mid, String name, String avatar, String sign, int fans, int following, int level, boolean followed, String notice, int official, String officialDesc, int vipRole, String sysNotice, int isSeniorMember) {
@@ -117,6 +121,7 @@ public class UserInfo implements Serializable {
         this.vip_role = vipRole;
         this.sys_notice = sysNotice;
         this.is_senior_member = isSeniorMember;
+        this.isSeniorMember = isSeniorMember == 1;
     }
 
     public UserInfo(long mid, String name, String avatar, String sign, int fans, int following, int level, boolean followed, String notice, int official, String officialDesc, long mtime, int isSeniorMember) {
@@ -133,6 +138,7 @@ public class UserInfo implements Serializable {
         this.officialDesc = officialDesc;
         this.mtime = mtime;
         this.is_senior_member = isSeniorMember;
+        this.isSeniorMember = isSeniorMember == 1;
     }
 
     public UserInfo() {

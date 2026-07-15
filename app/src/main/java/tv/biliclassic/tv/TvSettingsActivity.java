@@ -37,8 +37,8 @@ public class TvSettingsActivity extends FragmentActivity {
     private Button btnThreads, btnPlayer, btnDecoder, btnDecoderSettings, btnRendererType, btnDanmakuEngine;
     private Button btnQuality, btnHomeTab, btnCookie, btnClearCache, btnClearPlayCache, btnCrashLog;
     private Button btnEchoHole, btnDeviceInfo, btnCheckUpdate, btnAbout;
-    private CheckBox checkboxOnlinePlay, checkboxLandscape, checkboxModernMode;
-    private LinearLayout onlinePlayItem, landscapeItem, modernModeItem;
+    private CheckBox checkboxOnlinePlay, checkboxLandscape, checkboxModernMode, checkboxForceTvMode;
+    private LinearLayout onlinePlayItem, landscapeItem, modernModeItem, forceTvModeItem;
 
     private int currentVersionCode = -1;
     private String currentVersionName = "";
@@ -51,6 +51,7 @@ public class TvSettingsActivity extends FragmentActivity {
     private static final int QUALITY_360P = 16;
     private static final int QUALITY_480P = 32;
     private static final int QUALITY_720P = 64;
+    private static final int QUALITY_1080P = 80;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,6 +88,8 @@ public class TvSettingsActivity extends FragmentActivity {
         landscapeItem = (LinearLayout) findViewById(R.id.landscape_item);
         checkboxModernMode = (CheckBox) findViewById(R.id.checkbox_modern_mode);
         modernModeItem = (LinearLayout) findViewById(R.id.modern_mode_item);
+        checkboxForceTvMode = (CheckBox) findViewById(R.id.checkbox_force_tv_mode);
+        forceTvModeItem = (LinearLayout) findViewById(R.id.force_tv_mode_item);
 
         Button btnBack = (Button) findViewById(R.id.btn_back);
         btnBack.setOnClickListener(new View.OnClickListener() {
@@ -145,6 +148,25 @@ public class TvSettingsActivity extends FragmentActivity {
                         Toast.LENGTH_SHORT).show();
             }
         });
+
+        // TV模式强制开关
+        if (checkboxForceTvMode != null) {
+            boolean forceTvMode = SharedPreferencesUtil.getBoolean("force_tv_mode", false);
+            checkboxForceTvMode.setChecked(forceTvMode);
+            if (forceTvModeItem != null) {
+                forceTvModeItem.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        checkboxForceTvMode.toggle();
+                        boolean checked = checkboxForceTvMode.isChecked();
+                        SharedPreferencesUtil.putBoolean("force_tv_mode", checked);
+                        Toast.makeText(TvSettingsActivity.this,
+                                checked ? "已开启TV模式强制开关，重启后生效" : "已关闭TV模式强制开关，重启后生效",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        }
 
         // 各按钮点击事件
         btnThreads.setOnClickListener(new View.OnClickListener() {
@@ -408,8 +430,8 @@ public class TvSettingsActivity extends FragmentActivity {
     // ---- 画质 ----
 
     private void showQualityDialog() {
-        final String[] qualities = {"流畅 360P", "清晰 480P", "高清 720P"};
-        final int[] values = {QUALITY_360P, QUALITY_480P, QUALITY_720P};
+        final String[] qualities = {"流畅 360P", "清晰 480P", "高清 720P", "超清 1080P"};
+        final int[] values = {QUALITY_360P, QUALITY_480P, QUALITY_720P, QUALITY_1080P};
         int current = SharedPreferencesUtil.getInt("video_quality", QUALITY_360P);
         int checked = 0;
         for (int i = 0; i < values.length; i++) {
@@ -504,7 +526,7 @@ public class TvSettingsActivity extends FragmentActivity {
     }
 
     private void exportCookieToFile() {
-        if (!isLoggedIn()) { Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show(); return; }
+        if (!isLoggedIn()) { Toast.makeText(this, "请先登录的说~", Toast.LENGTH_SHORT).show(); return; }
         try {
             File file = getCookieSaveFile();
             java.io.FileWriter fw = new java.io.FileWriter(file);
@@ -517,7 +539,7 @@ public class TvSettingsActivity extends FragmentActivity {
     }
 
     private void exportCookieToClipboard() {
-        if (!isLoggedIn()) { Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show(); return; }
+        if (!isLoggedIn()) { Toast.makeText(this, "请先登录的说~", Toast.LENGTH_SHORT).show(); return; }
         try {
             ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             cm.setText(getCookieJson());
@@ -750,7 +772,7 @@ public class TvSettingsActivity extends FragmentActivity {
     // ---- 回声洞 ----
 
     private void loadEchoHole() {
-        btnEchoHole.setText("加载中...");
+        btnEchoHole.setText("嘿咻…嘿咻…");
         btnEchoHole.setEnabled(false);
         new Thread(new Runnable() {
             @Override
@@ -850,7 +872,7 @@ public class TvSettingsActivity extends FragmentActivity {
     // ---- 关于 ----
 
     private void showAboutDialog() {
-        String version = "0.4.4";
+        String version = "0.4.5";
         try { version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) {}
         new AlertDialog.Builder(this)
                 .setTitle("关于")

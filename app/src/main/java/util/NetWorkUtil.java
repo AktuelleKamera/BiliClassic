@@ -69,9 +69,76 @@ public class NetWorkUtil {
         sCookieString = mergeCookies(sCookieString, cookie);
     }
 
+    public static synchronized void ensureBrowserCookies() {
+        Map cookieMap = parseCookieMap(SharedPreferencesUtil.getString("cookies", ""));
+
+        // b_nut
+        if (!cookieMap.containsKey("b_nut")) {
+            cookieMap.put("b_nut", String.valueOf(System.currentTimeMillis() / 1000));
+        }
+
+        // b_lsid: 8位大写hex + "_" + 当前时间hex
+        if (!cookieMap.containsKey("b_lsid")) {
+            java.util.Random rnd = new java.util.Random();
+            String hex = "0123456789ABCDEF";
+            StringBuffer sb = new StringBuffer();
+            for (int i = 0; i < 8; i++) sb.append(hex.charAt(rnd.nextInt(16)));
+            sb.append("_");
+            sb.append(Long.toHexString(System.currentTimeMillis()).toUpperCase());
+            cookieMap.put("b_lsid", sb.toString());
+        }
+
+        // _uuid: 8-4-4-4-12 + 5位time%100000 + infoc
+        if (!cookieMap.containsKey("_uuid")) {
+            java.util.Random rnd = new java.util.Random();
+            String hex = "0123456789ABCDEF";
+            StringBuffer sb = new StringBuffer();
+            int[] groups = {8, 4, 4, 4, 12};
+            for (int g = 0; g < groups.length; g++) {
+                for (int i = 0; i < groups[g]; i++) sb.append(hex.charAt(rnd.nextInt(16)));
+                if (g < groups.length - 1) sb.append("-");
+            }
+            sb.append(String.format("%05d", System.currentTimeMillis() % 100000));
+            sb.append("infoc");
+            cookieMap.put("_uuid", sb.toString());
+        }
+
+        // LIVE_BUVID
+        if (!cookieMap.containsKey("LIVE_BUVID")) {
+            long min = 1000000000000000L;
+            long max = 9999999999999999L;
+            cookieMap.put("LIVE_BUVID", "AUTO" + (min + (long)(new java.util.Random().nextDouble() * (max - min))));
+        }
+
+        // browser_resolution (默认1280x720)
+        if (!cookieMap.containsKey("browser_resolution")) {
+            cookieMap.put("browser_resolution", "1280-720");
+        }
+
+        // buvid_fp (随机32位hex)
+        if (!cookieMap.containsKey("buvid_fp")) {
+            java.util.Random rnd = new java.util.Random();
+            String hex = "0123456789abcdef";
+            StringBuffer sb = new StringBuffer();
+            for (int i = 0; i < 32; i++) sb.append(hex.charAt(rnd.nextInt(16)));
+            cookieMap.put("buvid_fp", sb.toString());
+        }
+
+        // 其他静态cookie
+        if (!cookieMap.containsKey("enable_web_push")) cookieMap.put("enable_web_push", "DISABLE");
+        if (!cookieMap.containsKey("home_feed_column")) cookieMap.put("home_feed_column", "4");
+        if (!cookieMap.containsKey("PVID")) cookieMap.put("PVID", "1");
+
+        String newCookie = mapToCookieString(cookieMap);
+        SharedPreferencesUtil.putString("cookies", newCookie);
+        setCookieString(newCookie);
+    }
+
     public static synchronized void refreshHeaders() {
-        String cookie = SharedPreferencesUtil.getString("cookies", "");
+        ensureBrowserCookies();
+        String cookie = cleanCookieString(SharedPreferencesUtil.getString("cookies", ""));
         if (cookie == null) cookie = "";
+        SharedPreferencesUtil.putString("cookies", cookie);
         sCookieString = mergeCookies(sCookieString, cookie);
     }
 
@@ -494,6 +561,101 @@ public class NetWorkUtil {
             }
         }
         return sb.toString();
+    }
+
+    private static String cleanCookieString(String cookie) {
+        if (cookie == null || cookie.length() == 0) return "";
+        StringBuffer sb = new StringBuffer();
+        String[] pairs = cookie.split("; ");
+        for (int i = 0; i < pairs.length; i++) {
+            String pair = pairs[i].trim();
+            if (pair.indexOf("=") != -1 && !isSetCookieAttribute(pair)) {
+                if (sb.length() > 0) sb.append("; ");
+                sb.append(pair);
+            }
+        }
+        return sb.toString();
+    }
+
+    private static boolean isSetCookieAttribute(String part) {
+        if (part == null) return false;
+        String lower = part.toLowerCase();
+        return lower.startsWith("path") ||
+                lower.startsWith("domain") ||
+                lower.startsWith("expires") ||
+                lower.startsWith("secure") ||
+                lower.startsWith("httponly") ||
+                lower.startsWith("samesite") ||
+                lower.startsWith("max-age") ||
+                lower.startsWith("comment") ||
+                lower.startsWith("discard");
+    }
+
+    /**
+     * 获取 buvid3（设备标识）
+     * 需要先请求 B站 首页，从 Set-Cookie 中提取
+     */
+    private static String randomHex(int len) {
+        java.util.Random rnd = new java.util.Random();
+        String hex = "0123456789abcdef";
+        StringBuffer sb = new StringBuffer();
+        for (int i = 0; i < len; i++) {
+            sb.append(hex.charAt(rnd.nextInt(hex.length())));
+        }
+        return sb.toString();
+    }
+
+    public static synchronized String fetchBuvid3() {
+        try {
+            String url = "https://www.bilibili.com";
+            HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", USER_AGENT_WEB);
+            conn.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(8000);
+            conn.setInstanceFollowRedirects(false);
+            conn.connect();
+
+            Map<String, List<String>> headerFields = conn.getHeaderFields();
+            List<String> setCookies = headerFields.get("Set-Cookie");
+            conn.disconnect();
+
+            if (setCookies != null) {
+                StringBuffer allCookies = new StringBuffer();
+                for (int i = 0; i < setCookies.size(); i++) {
+                    String sc = (String) setCookies.get(i);
+                    if (sc != null) {
+                        String clean = extractCookiePairs(sc);
+                        if (clean != null && clean.length() > 0) {
+                            if (allCookies.length() > 0) allCookies.append("; ");
+                            allCookies.append(clean);
+                        }
+                        if (sc.contains("bili_ticket") || sc.contains("sid=") || sc.contains("DedeUserID__ckMd5")) {
+                            Log.d("NetWorkUtil", "首页Set-Cookie关键: " + extractCookiePairs(sc));
+                        }
+                    }
+                }
+                String merged = allCookies.toString();
+                if (merged.length() > 0) {
+                    Log.d("NetWorkUtil", "首页Set-Cookie全部: " + merged);
+                    String existing = SharedPreferencesUtil.getString("cookies", "");
+                    String newCookie = mergeCookies(existing, merged);
+                    SharedPreferencesUtil.putString("cookies", newCookie);
+                    setCookieString(newCookie);
+                    // 补充浏览器必备 cookie
+                    ensureBrowserCookies();
+                    String buvid3 = getInfoFromCookie("buvid3", merged);
+                    if (buvid3 != null && buvid3.length() > 0) {
+                        Log.d("NetWorkUtil", "获取到 buvid3: " + buvid3);
+                        return buvid3;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e("NetWorkUtil", "获取 buvid3 失败: " + e.getMessage());
+        }
+        return null;
     }
 
     private static void closeQuietly(java.io.Closeable c) {

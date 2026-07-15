@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F5F5">
+
+    <!-- 顶栏 -->
+    <RelativeLayout
+        android:id="@+id/title_bar"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="#FFFFFF">
+
+        <ImageView
+            android:id="@+id/btn_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_centerVertical="true"
+            android:padding="1dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_action_back"
+            android:contentDescription="返回" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="评论详情"
+            android:textColor="#333333"
+            android:textSize="18sp"/>
+
+    </RelativeLayout>
+
+    <!-- 粉色分割线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="2px"
+        android:background="#D86DA5" />
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="6.0dp"
+        android:background="@drawable/shadow_top_dig"
+        android:contentDescription="@null" />
+
+    <!-- 原评论 - 直接复用 item_comment -->
+    <include
+        android:id="@+id/root_comment"
+        layout="@layout/item_comment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:visibility="gone" />
+
+    <!-- 分割线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:background="#F0F0F0" />
+
+    <TextView
+        android:id="@+id/tv_reply_list_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="全部回复"
+        android:textSize="16sp"
+        android:textColor="#D86DA5"
+        android:padding="10dp"
+        android:paddingBottom="6dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#E0E0E0" />
+
+    <TextView
+        android:id="@+id/tv_empty"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:text="暂无回复"
+        android:textSize="14sp"
+        android:textColor="#999999"
+        android:gravity="center"
+        android:visibility="gone" />
+
+    <ListView
+        android:id="@+id/lv_replies"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:divider="#E0E0E0"
+        android:dividerHeight="1dp"
+        android:footerDividersEnabled="false"
+        android:visibility="gone" />
+
+</LinearLayout>

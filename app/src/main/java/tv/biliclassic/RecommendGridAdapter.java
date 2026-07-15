@@ -9,6 +9,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import java.util.List;
 import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -18,74 +19,30 @@ import java.io.InputStream;
 import java.lang.ref.SoftReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Executors;
 
 import tv.biliclassic.model.VideoCard;
-import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class RecommendGridAdapter extends BaseAdapter {
 
+    private static final String TAG = "RecommendAdapter";
     private Context context;
     private List<VideoCard> list;
-    private ExecutorService executor;
+    private ExecutorService executor = Executors.newFixedThreadPool(4);
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Map<String, SoftReference<Bitmap>> imageCache = new HashMap<String, SoftReference<Bitmap>>();
-    private List<String> cacheKeys = new ArrayList<String>();
-    private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
-
-    private boolean isScrolling = false;
-    private static final int MAX_CACHE_SIZE = 60;
-
-    private boolean isLowMemoryDevice() {
-        int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        return maxMemory < 16384;
-    }
-
-    private int getConfiguredThreadCount() {
-        int savedThreads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
-        if (savedThreads > 0) {
-            return savedThreads;
-        }
-        return isLowMemoryDevice() ? 1 : 2;
-    }
-
-    private void initExecutor() {
-        if (executor != null && !executor.isShutdown()) {
-            executor.shutdownNow();
-        }
-        int threadCount = getConfiguredThreadCount();
-        if (threadCount <= 1) {
-            executor = new ThreadPoolExecutor(1, 1, 60L, TimeUnit.SECONDS,
-                    new LinkedBlockingQueue<Runnable>());
-        } else {
-            executor = new ThreadPoolExecutor(threadCount, threadCount, 60L, TimeUnit.SECONDS,
-                    new LinkedBlockingQueue<Runnable>());
-        }
-    }
 
     public RecommendGridAdapter(Context context, List<VideoCard> list) {
         this.context = context;
         this.list = list;
-        initExecutor();
-    }
-
-    public void setScrolling(boolean scrolling) {
-        this.isScrolling = scrolling;
-        if (!scrolling) {
-            notifyDataSetChanged();
-        }
     }
 
     @Override
     public int getCount() {
-        return list.size();
+        return list == null ? 0 : list.size();
     }
 
     @Override
@@ -125,15 +82,10 @@ public class RecommendGridAdapter extends BaseAdapter {
         VideoCard item = list.get(position);
         if (item != null) {
             holder.title.setText(item.title);
-
-            String viewText = (item.view != null && item.view.length() > 0) ? item.view : "0";
-            holder.view.setText(viewText);
-
-            String danmakuText = (item.danmaku > 0) ? String.valueOf(item.danmaku) : "0";
-            holder.danmaku.setText(danmakuText);
+            holder.view.setText(item.view != null ? item.view : "0");
+            holder.danmaku.setText(item.danmaku > 0 ? String.valueOf(item.danmaku) : "0");
         }
 
-        // 先设置默认占位图，并清除之前的图片引用
         holder.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
 
         if (item != null && item.cover != null && item.cover.length() > 0) {
@@ -143,8 +95,10 @@ public class RecommendGridAdapter extends BaseAdapter {
             }
             final String finalUrl = coverUrl;
             final ImageView coverView = holder.cover;
-            final int currentPos = position;
-            coverView.setTag(finalUrl);
+            final int pos = position;
+
+            // 用 position 作为 tag，用于校验
+            coverView.setTag(pos);
 
             // 检查缓存
             SoftReference<Bitmap> softBitmap = imageCache.get(finalUrl);
@@ -155,47 +109,27 @@ public class RecommendGridAdapter extends BaseAdapter {
                     return convertView;
                 } else {
                     imageCache.remove(finalUrl);
-                    cacheKeys.remove(finalUrl);
                 }
             }
 
-            if (isScrolling) {
-                return convertView;
-            }
-
-            // 避免重复加载
-            Boolean isLoading = loadingMap.get(currentPos);
-            if (isLoading != null && isLoading) {
-                return convertView;
-            }
-
-            loadingMap.put(currentPos, true);
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    try {
-                        final Bitmap bitmap = downloadImage(finalUrl);
-                        if (bitmap != null && !bitmap.isRecycled()) {
-                            imageCache.put(finalUrl, new SoftReference<Bitmap>(bitmap));
-                            if (!cacheKeys.contains(finalUrl)) {
-                                if (cacheKeys.size() >= MAX_CACHE_SIZE) {
-                                    cacheKeys.remove(0);
-                                }
-                                cacheKeys.add(finalUrl);
-                        }
+                    final Bitmap bitmap = downloadImage(finalUrl);
+                    if (bitmap != null && !bitmap.isRecycled()) {
+                        imageCache.put(finalUrl, new SoftReference<Bitmap>(bitmap));
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
                                 Object tag = coverView.getTag();
-                                if (tag != null && tag.equals(finalUrl)) {
+                                if (tag != null && tag instanceof Integer && ((Integer) tag) == pos) {
                                     coverView.setImageBitmap(bitmap);
+                                    Log.d(TAG, "设置图片 position=" + pos);
+                                } else {
+                                    Log.d(TAG, "跳过 position=" + pos + ", 当前tag=" + tag);
                                 }
                             }
                         });
-                    }
-                    } catch (Exception e) {
-                    } finally {
-                        loadingMap.remove(currentPos);
                     }
                 }
             });
@@ -224,13 +158,9 @@ public class RecommendGridAdapter extends BaseAdapter {
             int targetWidth = 160;
             int targetHeight = 90;
             int scale = 1;
-
-            int outWidth = options.outWidth;
-            int outHeight = options.outHeight;
-
-            if (outWidth > targetWidth || outHeight > targetHeight) {
-                int widthRatio = outWidth / targetWidth;
-                int heightRatio = outHeight / targetHeight;
+            if (options.outWidth > targetWidth || options.outHeight > targetHeight) {
+                int widthRatio = options.outWidth / targetWidth;
+                int heightRatio = options.outHeight / targetHeight;
                 scale = Math.max(widthRatio, heightRatio);
                 if (scale < 1) scale = 1;
                 if (scale > 8) scale = 8;
@@ -250,9 +180,9 @@ public class RecommendGridAdapter extends BaseAdapter {
 
             Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
             is.close();
-
             return bitmap;
         } catch (Exception e) {
+            Log.e(TAG, "下载失败: " + urlStr, e);
             return null;
         } finally {
             if (conn != null) {
@@ -268,7 +198,6 @@ public class RecommendGridAdapter extends BaseAdapter {
 
     public void updateData(List<VideoCard> newList) {
         this.list = newList;
-        loadingMap.clear();
         notifyDataSetChanged();
     }
 
@@ -280,8 +209,6 @@ public class RecommendGridAdapter extends BaseAdapter {
             }
         }
         imageCache.clear();
-        cacheKeys.clear();
-        loadingMap.clear();
     }
 
     static class ViewHolder {
