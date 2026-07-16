@@ -138,7 +138,7 @@
             android:paddingBottom="8dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            style="@style/Widget.App.Seekbar.Pink"/>
+            style="@style/Widget.App.Seekbar.Player"/>
         <View
             android:id="@+id/divider_line"
             style="@style/CommonUnderline"/>
