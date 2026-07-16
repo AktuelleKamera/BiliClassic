@@ -10,6 +10,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.util.DisplayMetrics;
@@ -189,6 +190,7 @@ public class BiliPlayerActivity extends Activity implements
     private boolean enableGesture = true;
     private boolean keepBackground;
     private boolean autoRotation;
+    private boolean portraitRotation;
 
     private View optionsMenuBtn;
     private ViewStub optionsMenuStub;
@@ -392,6 +394,8 @@ public class BiliPlayerActivity extends Activity implements
         completionAction = SharedPreferencesUtil.getInt(SharedPreferencesUtil.COMPLETION_ACTION, COMPLETION_ACTION_PAUSE);
         autoRotation = SharedPreferencesUtil.getBoolean(
                 SharedPreferencesUtil.PLAYER_AUTO_ROTATION, false);
+        portraitRotation = SharedPreferencesUtil.getBoolean(
+                SharedPreferencesUtil.PLAYER_PORTRAIT_ROTATION, false);
         applyAutoRotation();
 
         if (DeviceInfoUtil.isUnsupportedCpu()) {
@@ -577,7 +581,7 @@ public class BiliPlayerActivity extends Activity implements
                     if (containerWidth == 0 || containerHeight == 0) return;
                     if (videoWidth == 0 || videoHeight == 0) return;
 
-                    boolean portrait = getRequestedOrientation() == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+                    boolean portrait = isPortraitLayout();
 
                     // 竖屏 setRotation
                     if (portrait) {
@@ -1096,7 +1100,7 @@ public class BiliPlayerActivity extends Activity implements
 
         if (btnLock != null) {
             // 竖屏时隐藏锁屏按钮
-            if (getRequestedOrientation() == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
+            if (isPortraitLayout()) {
                 btnLock.setVisibility(View.GONE);
             }
             btnLock.setOnClickListener(new View.OnClickListener() {
@@ -2325,7 +2329,7 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         if (btnAspectRatio != null) {
-            if (getRequestedOrientation() == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
+            if (isPortraitLayout()) {
                 btnAspectRatio.setVisibility(View.GONE);
             } else {
                 btnAspectRatio.setVisibility(View.VISIBLE);
@@ -2796,8 +2800,14 @@ public class BiliPlayerActivity extends Activity implements
                 R.id.player_options_keep_background);
         final CheckBox autoRotationCb = (CheckBox) panel.findViewById(
                 R.id.player_options_auto_rotation);
+        final CheckBox portraitRotationCb = (CheckBox) panel.findViewById(
+                R.id.player_options_portrait_rotation);
         View screenOrientation = panel.findViewById(R.id.player_options_screen_orientation);
 
+        if (portraitRotationCb != null) {
+            portraitRotationCb.setVisibility(autoRotation ? View.VISIBLE : View.GONE);
+            portraitRotationCb.setChecked(portraitRotation);
+        }
         if (screenOrientation != null) {
             screenOrientation.setVisibility(autoRotation ? View.GONE : View.VISIBLE);
         }
@@ -2866,6 +2876,10 @@ public class BiliPlayerActivity extends Activity implements
                         optionsMenuItemOrientation.setVisibility(
                                 isChecked ? View.GONE : View.VISIBLE);
                     }
+                    if (portraitRotationCb != null) {
+                        portraitRotationCb.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+                    }
+                    updateTopBarForOrientation();
                     View orientationItem = panel.findViewById(
                             R.id.player_options_screen_orientation);
                     if (orientationItem != null) {
@@ -2873,6 +2887,19 @@ public class BiliPlayerActivity extends Activity implements
                     }
                 }
             });
+        }
+
+        if (portraitRotationCb != null) {
+            portraitRotationCb.setOnCheckedChangeListener(
+                    new CompoundButton.OnCheckedChangeListener() {
+                        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                            portraitRotation = isChecked;
+                            SharedPreferencesUtil.putBoolean(
+                                    SharedPreferencesUtil.PLAYER_PORTRAIT_ROTATION, isChecked);
+                            applyAutoRotation();
+                            updateTopBarForOrientation();
+                        }
+                    });
         }
 
         if (screenOrientation != null) {
@@ -2924,8 +2951,12 @@ public class BiliPlayerActivity extends Activity implements
         if (autoRotation) {
             if (isPrepared && VideoAspectRatioHelper.isPortraitVideo(videoWidth, videoHeight)) {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-            } else {
+            } else if (portraitRotation) {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD) {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            } else {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
             }
         } else {
             int orientation = getResources().getConfiguration().orientation;
@@ -3540,7 +3571,7 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     private void updateTopBarForOrientation() {
-        boolean portrait = getRequestedOrientation() == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+        boolean portrait = isPortraitLayout();
         if (tvDateTime != null) tvDateTime.setVisibility(portrait ? View.GONE : View.VISIBLE);
         if (tvNetworkStatus != null) tvNetworkStatus.setVisibility(portrait ? View.GONE : View.VISIBLE);
         if (mBatteryView != null) mBatteryView.setVisibility(portrait ? View.GONE : View.VISIBLE);
@@ -3551,6 +3582,15 @@ public class BiliPlayerActivity extends Activity implements
         if (portrait && playerLocked) {
             unlock();
         }
+    }
+
+    private boolean isPortraitLayout() {
+        if (getRequestedOrientation() == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
+            return true;
+        }
+        return autoRotation && portraitRotation
+                && getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_PORTRAIT;
     }
 
     @Override
@@ -3564,7 +3604,7 @@ public class BiliPlayerActivity extends Activity implements
                 updateResetScaleButtonVisibility(mGestureController.getCurrentScale());
             }
             if (btnAspectRatio != null) {
-                if (getRequestedOrientation() == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
+                if (isPortraitLayout()) {
                     btnAspectRatio.setVisibility(View.GONE);
                 } else {
                     btnAspectRatio.setVisibility(View.VISIBLE);

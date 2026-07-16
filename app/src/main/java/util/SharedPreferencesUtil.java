@@ -55,6 +55,7 @@ public class SharedPreferencesUtil {
     public static final String PLAYER_PREFERENCE = "player_preference";
     public static final String KEEP_BACKGROUND = "keep_background";
     public static final String PLAYER_AUTO_ROTATION = "player_auto_rotation";
+    public static final String PLAYER_PORTRAIT_ROTATION = "player_portrait_rotation";
     public static final String DANMAKU_ENGINE_MODE = "danmaku_engine_mode"; // 0=完整, 1=简易
     public static final String RENDERER_TYPE = "renderer_type"; // 0=SurfaceView, 1=TextureView
     public static final String COMPLETION_ACTION = "completion_action"; // 0=loop,1=next,2=next_loop,3=pause,4=exit

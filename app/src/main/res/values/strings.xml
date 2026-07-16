@@ -48,6 +48,7 @@
     <string name="Player_options_title_enable_gesture">启用播放手势</string>
     <string name="Player_options_title_keep_background">后台恢复播放</string>
     <string name="Player_options_title_auto_rotation">重力自动旋屏</string>
+    <string name="Player_options_title_portrait_rotation">允许旋转至竖屏</string>
     <string name="Player_playback_options_pannel_title">播放控制</string>
     <string name="Player_danmaku_options_pannel_title">弹幕控制</string>
     <string name="Player_danmaku_options_pannel_title_danmaku_block">弹幕屏蔽</string>

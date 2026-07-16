@@ -130,6 +130,27 @@
                     android:layout_height="wrap_content"
                     android:button="@drawable/ic_btn_player_options_switch"/>
             </LinearLayout>
+            <LinearLayout
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingLeft="16dp"
+                android:paddingTop="8dp"
+                android:paddingRight="16dp"
+                android:paddingBottom="8dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/Player_options_title_portrait_rotation"
+                    android:layout_weight="1"
+                    style="@style/PlayerOptionsPannelItemText"/>
+                <CheckBox
+                    android:id="@+id/player_options_portrait_rotation"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:button="@drawable/ic_btn_player_options_switch"/>
+            </LinearLayout>
             <TextView
                 android:textSize="15sp"
                 android:textColor="@color/videoplay__video_title_text"
