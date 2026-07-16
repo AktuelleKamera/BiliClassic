@@ -29,7 +29,7 @@
 
     <style name="Widget.App.Seekbar.Holo" parent="@android:attr/progressBarStyleHorizontal">
         <item name="android:progressDrawable">@drawable/media_player_progress_pink</item>
-        <item name="android:thumb">@drawable/abcp_pink__scrubber_control_normal_holo</item>
+        <item name="android:thumb">@drawable/abcp_pink__scrubber_control_holo</item>
         <item name="android:thumbOffset">1dp</item>
         <item name="android:maxHeight">2dp</item>
         <item name="android:minHeight">2dp</item>
