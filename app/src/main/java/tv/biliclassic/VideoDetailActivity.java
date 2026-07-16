@@ -271,8 +271,11 @@ public class VideoDetailActivity extends BaseActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(VideoDetailActivity.this, "获取视频信息失败", Toast.LENGTH_SHORT).show();
-                                finish();
+                                //Toast.makeText(VideoDetailActivity.this, "视频已失效，可查看评论区", Toast.LENGTH_LONG).show();
+                                isBangumi = false;
+                                updateAvidDisplay();
+                                initNormalVideo();
+                                initBottomButtons();
                             }
                         });
                         return;
@@ -302,8 +305,11 @@ public class VideoDetailActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            Toast.makeText(VideoDetailActivity.this, "加载失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                            finish();
+                            Toast.makeText(VideoDetailActivity.this, "视频信息加载失败", Toast.LENGTH_SHORT).show();
+                            isBangumi = false;
+                            updateAvidDisplay();
+                            initNormalVideo();
+                            initBottomButtons();
                         }
                     });
                 }

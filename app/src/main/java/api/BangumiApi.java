@@ -439,7 +439,7 @@ public class BangumiApi {
             for (int i = 0; i < otherSections.length(); i++) {
                 JSONObject sectionJson = otherSections.getJSONObject(i);
                 Bangumi.Section section = analyzeSection(sectionJson);
-                if (section.episodeList != null && !section.episodeList.isEmpty()) {
+                if (section.episodeList != null && section.episodeList.size() > 0) {
                     if (section.title == null || section.title.length() == 0) {
                         section.title = "其他";
                     }

@@ -185,49 +185,78 @@ public class HistoryAdapter extends BaseAdapter {
 
     private Bitmap downloadImage(String urlStr) {
         HttpURLConnection conn = null;
+        InputStream is = null;
         try {
+            // Android 2.3 兼容：https 转 http
+            if (urlStr != null && urlStr.startsWith("https://")) {
+                urlStr = "http://" + urlStr.substring(8);
+            }
+
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(10000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
             conn.connect();
 
-            InputStream is = conn.getInputStream();
+            is = conn.getInputStream();
 
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true;
-            BitmapFactory.decodeStream(is, null, options);
+            // 第一步：只读取图片尺寸，不加载像素
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inJustDecodeBounds = true;
+            BitmapFactory.decodeStream(is, null, opts);
             is.close();
 
+            // 第二步：根据图片尺寸计算采样率
+            int sampleSize = 1;
+            int targetSize = 200;  // 历史记录缩略图目标尺寸
+
+            while (opts.outWidth / sampleSize > targetSize
+                    || opts.outHeight / sampleSize > targetSize) {
+                sampleSize *= 2;
+                if (sampleSize > 16) break;  // 限制最大采样
+            }
+
+            // 重新连接，获取输入流
             conn.disconnect();
             conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(10000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
             conn.connect();
             is = conn.getInputStream();
 
-            int targetWidth = (int) (160 * context.getResources().getDisplayMetrics().density);
-            int scale = 1;
-            if (options.outWidth > targetWidth) {
-                scale = options.outWidth / targetWidth;
-                if (scale < 1) scale = 1;
-                if (scale > 4) scale = 4;
+            // 第三步：用采样率解码
+            opts.inJustDecodeBounds = false;
+            opts.inSampleSize = sampleSize;
+            opts.inPreferredConfig = Bitmap.Config.RGB_565;  // 节省内存
+            return BitmapFactory.decodeStream(is, null, opts);
+
+        } catch (OutOfMemoryError e) {
+            System.gc();
+            // OOM 时固定用 8 倍采样重试
+            try {
+                if (conn != null) conn.disconnect();
+                conn = (HttpURLConnection) new URL(urlStr).openConnection();
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(10000);
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+                conn.connect();
+                is = conn.getInputStream();
+                BitmapFactory.Options optsRetry = new BitmapFactory.Options();
+                optsRetry.inSampleSize = 8;
+                optsRetry.inPreferredConfig = Bitmap.Config.RGB_565;
+                return BitmapFactory.decodeStream(is, null, optsRetry);
+            } catch (Exception ex) {
+                return null;
             }
-
-            options = new BitmapFactory.Options();
-            options.inSampleSize = scale;
-            options.inPreferredConfig = Bitmap.Config.RGB_565;
-            options.inPurgeable = true;
-            options.inInputShareable = true;
-
-            Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
-            is.close();
-            return bitmap;
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         } finally {
+            try {
+                if (is != null) is.close();
+            } catch (Exception e) {}
             if (conn != null) {
                 conn.disconnect();
             }

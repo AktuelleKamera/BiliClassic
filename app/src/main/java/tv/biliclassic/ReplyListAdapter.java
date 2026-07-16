@@ -6,12 +6,17 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Vibrator;
 import android.view.Gravity;
 import android.text.ClipboardManager;
+import android.text.SpannableString;
+import android.text.style.ReplacementSpan;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -29,11 +34,14 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -54,7 +62,9 @@ public class ReplyListAdapter extends BaseAdapter {
     private List<String> cacheKeys = new ArrayList<String>();
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
     private boolean isScrolling = false;
+    private Set<Long> expandedRpids = new HashSet<Long>();
     private static final int MAX_CACHE_SIZE = 80;
+    private float mDensity;
 
     private long mOid;
     private int mReplyType = 1;
@@ -75,6 +85,7 @@ public class ReplyListAdapter extends BaseAdapter {
     public ReplyListAdapter(Context context, List<ReplyListActivity.ReplyData> list) {
         this.context = context;
         this.list = list;
+        mDensity = context.getResources().getDisplayMetrics().density;
         initExecutor();
     }
 
@@ -120,7 +131,7 @@ public class ReplyListAdapter extends BaseAdapter {
     }
 
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
+    public View getView(final int position, View convertView, ViewGroup parent) {
         ViewHolder holder;
         if (convertView == null) {
             convertView = LayoutInflater.from(context).inflate(R.layout.item_comment, parent, false);
@@ -188,7 +199,18 @@ public class ReplyListAdapter extends BaseAdapter {
         final ReplyListActivity.ReplyData rd = list.get(position);
         holder.copyText = rd.message;
         holder.userName.setText(rd.userName != null ? rd.userName : "用户");
-        holder.message.setText(rd.message != null ? rd.message : "");
+        String msgText = rd.message != null ? rd.message : "";
+        if (rd.isTop && msgText.startsWith("[置顶]")) {
+            msgText = msgText.substring(4);
+        }
+        if (rd.isTop) {
+            SpannableString ss = new SpannableString("\u200B" + msgText);
+            ss.setSpan(new BadgeSpan(mDensity), 0, 1,
+                    android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            holder.message.setText(ss);
+        } else {
+            holder.message.setText(msgText);
+        }
         holder.mid = rd.mid;
         holder.oid = mOid;
         holder.rpid = rd.rpid;
@@ -303,32 +325,78 @@ public class ReplyListAdapter extends BaseAdapter {
                 holder.pictureContainer.removeAllViews();
                 holder.pictureContainer.setVisibility(View.VISIBLE);
 
-                int maxShow = Math.min(rd.pictureList.size(), 3);
-                for (int i = 0; i < maxShow; i++) {
+                boolean expanded = expandedRpids.contains(rd.rpid);
+                int showCount = expanded ? Math.min(rd.pictureList.size(), 9) : Math.min(rd.pictureList.size(), 3);
+                int imgSize = dpToPx(80);
+                int margin = dpToPx(4);
+
+                holder.pictureContainer.setOrientation(LinearLayout.VERTICAL);
+                int cols = 3;
+                for (int i = 0; i < showCount; i++) {
+                    if (i % cols == 0) {
+                        LinearLayout row = new LinearLayout(context);
+                        row.setOrientation(LinearLayout.HORIZONTAL);
+                        holder.pictureContainer.addView(row);
+                    }
+                    LinearLayout row = (LinearLayout) holder.pictureContainer.getChildAt(
+                            holder.pictureContainer.getChildCount() - 1);
+
                     final String imgUrl = rd.pictureList.get(i);
+                    final int clickIndex = i;
                     ImageView imgView = new ImageView(context);
-                    int size = dpToPx(80);
-                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
-                    lp.rightMargin = dpToPx(4);
+                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(imgSize, imgSize);
+                    lp.rightMargin = margin;
+                    lp.bottomMargin = (i / cols < (showCount - 1) / cols) ? margin : 0;
                     imgView.setLayoutParams(lp);
                     imgView.setScaleType(ImageView.ScaleType.CENTER_CROP);
                     imgView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
-                    holder.pictureContainer.addView(imgView);
+                    row.addView(imgView);
                     loadReplyImage(imgView, imgUrl);
+                    imgView.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            Intent intent = new Intent(context, ImageViewerActivity.class);
+                            intent.putStringArrayListExtra("imageList", new ArrayList<String>(rd.pictureList));
+                            intent.putExtra("index", clickIndex);
+                            context.startActivity(intent);
+                        }
+                    });
                 }
 
                 if (rd.pictureList.size() > 3) {
-                    TextView moreTv = new TextView(context);
-                    moreTv.setText("+" + (rd.pictureList.size() - 3));
-                    moreTv.setTextSize(14);
-                    moreTv.setTextColor(0xFFFFFFFF);
-                    moreTv.setGravity(Gravity.CENTER);
-                    moreTv.setBackgroundColor(0x88000000);
-                    int size = dpToPx(80);
-                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
-                    lp.rightMargin = dpToPx(4);
-                    moreTv.setLayoutParams(lp);
-                    holder.pictureContainer.addView(moreTv);
+                    View toggleView;
+                    if (!expanded) {
+                        TextView moreTv = new TextView(context);
+                        moreTv.setText("+" + (rd.pictureList.size() - 3));
+                        moreTv.setTextSize(14);
+                        moreTv.setTextColor(0xFFFFFFFF);
+                        moreTv.setGravity(Gravity.CENTER);
+                        moreTv.setBackgroundColor(0x88000000);
+                        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(imgSize, imgSize);
+                        lp.leftMargin = margin;
+                        moreTv.setLayoutParams(lp);
+                        toggleView = moreTv;
+                    } else {
+                        TextView collapseTv = new TextView(context);
+                        collapseTv.setText("收起");
+                        collapseTv.setTextSize(12);
+                        collapseTv.setTextColor(0xFFD86DA5);
+                        collapseTv.setGravity(Gravity.CENTER);
+                        collapseTv.setPadding(0, dpToPx(4), 0, 0);
+                        toggleView = collapseTv;
+                    }
+                    toggleView.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            if (expandedRpids.contains(rd.rpid)) {
+                                expandedRpids.remove(rd.rpid);
+                            } else {
+                                expandedRpids.add(rd.rpid);
+                            }
+                            notifyDataSetChanged();
+                        }
+                    });
+                    holder.pictureContainer.addView(toggleView);
                 }
             } else {
                 holder.pictureContainer.setVisibility(View.GONE);
@@ -650,5 +718,67 @@ public class ReplyListAdapter extends BaseAdapter {
         long mid;
         long oid;
         long rpid;
+    }
+
+    private static class BadgeSpan extends android.text.style.ReplacementSpan {
+        private int mWidth;
+        private int mPaddingPx;
+        private int mGapPx;
+        private int mCornerPx;
+        private float mStrokePx;
+        private static final String TEXT = "置顶";
+
+        BadgeSpan(float density) {
+            mPaddingPx = (int)(4 * density + 0.5f);
+            mGapPx = (int)(4 * density + 0.5f);
+            mCornerPx = (int)(2 * density + 0.5f);
+            mStrokePx = 1 * density + 0.5f;
+        }
+
+        @Override
+        public int getSize(Paint paint, CharSequence text, int start, int end, Paint.FontMetricsInt fm) {
+            mWidth = (int)(paint.measureText(TEXT) + mPaddingPx * 2 + mStrokePx * 2 + mGapPx);
+            if (fm != null) {
+                android.graphics.Paint.FontMetricsInt pfm = paint.getFontMetricsInt();
+                fm.ascent = pfm.ascent - mPaddingPx;
+                fm.descent = pfm.descent + mPaddingPx;
+                fm.top = fm.ascent;
+                fm.bottom = fm.descent;
+            }
+            return mWidth;
+        }
+
+        @Override
+        public void draw(Canvas canvas, CharSequence text, int start, int end, float x, int top, int y, int bottom, Paint paint) {
+            int origColor = paint.getColor();
+            android.graphics.Paint.Style origStyle = paint.getStyle();
+            float origStrokeWidth = paint.getStrokeWidth();
+            boolean origAntiAlias = paint.isAntiAlias();
+
+            android.graphics.Paint.FontMetricsInt pfm = paint.getFontMetricsInt();
+            float half = mStrokePx / 2f;
+            float rectTop = y + pfm.ascent - mPaddingPx + half;
+            float rectBottom = y + pfm.descent + mPaddingPx - half;
+
+            android.graphics.RectF rect = new android.graphics.RectF(
+                x + half, rectTop,
+                x + mWidth - mGapPx - half, rectBottom
+            );
+
+            paint.setStyle(android.graphics.Paint.Style.STROKE);
+            paint.setStrokeWidth(mStrokePx);
+            paint.setColor(0xFFD86DA5);
+            paint.setAntiAlias(true);
+            canvas.drawRoundRect(rect, mCornerPx, mCornerPx, paint);
+
+            paint.setColor(0xFFD86DA5);
+            paint.setStyle(android.graphics.Paint.Style.FILL);
+            canvas.drawText(TEXT, x + mPaddingPx, y, paint);
+
+            paint.setColor(origColor);
+            paint.setStyle(origStyle);
+            paint.setStrokeWidth(origStrokeWidth);
+            paint.setAntiAlias(origAntiAlias);
+        }
     }
 }

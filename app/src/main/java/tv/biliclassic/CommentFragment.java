@@ -81,9 +81,19 @@ public class CommentFragment extends Fragment {
         listView.addFooterView(footerView);
         footerView.setVisibility(View.GONE);
 
+        Bundle args = getArguments();
+        if (args != null) {
+            aid = args.getLong("aid", 0);
+            bvid = args.getString("bvid");
+        }
+
+        Log.e(TAG, "========== onCreateView ==========");
+        Log.e(TAG, "aid=" + aid + ", bvid=" + bvid);
+
         adapter = new CommentAdapter(getActivity(), commentList, aid, this);
         adapter.setMid(SharedPreferencesUtil.getLong("mid", 0));
         adapter.setReplyType(1);
+        adapter.setBvid(bvid);
         listView.setAdapter(adapter);
 
         // 排序按钮（按时间 / 按热度）
@@ -129,15 +139,6 @@ public class CommentFragment extends Fragment {
                 showReplyDialog(comment, reply);
             }
         });
-
-        Bundle args = getArguments();
-        if (args != null) {
-            aid = args.getLong("aid", 0);
-            bvid = args.getString("bvid");
-        }
-
-        Log.e(TAG, "========== onCreateView ==========");
-        Log.e(TAG, "aid=" + aid + ", bvid=" + bvid);
 
         // 滚动监听 - 保存滚动位置
         listView.setOnScrollListener(new AbsListView.OnScrollListener() {
@@ -202,9 +203,6 @@ public class CommentFragment extends Fragment {
         super.onStop();
         // 在停止前保存滚动位置
         saveCurrentScrollPosition();
-        if (adapter != null) {
-            adapter.clearCache();
-        }
     }
 
     @Override
@@ -358,6 +356,22 @@ public class CommentFragment extends Fragment {
                             }
 
                             JSONArray replies = data.optJSONArray("replies");
+                            JSONArray topReplies = data.optJSONArray("top_replies");
+                            boolean isBegin = cursor != null && cursor.optBoolean("is_begin", false);
+                            if (topReplies != null && topReplies.length() > 0 && isBegin) {
+                                if (replies != null && replies.length() > 0) {
+                                    JSONArray merged = new JSONArray();
+                                    for (int t = 0; t < topReplies.length(); t++) {
+                                        merged.put(topReplies.get(t));
+                                    }
+                                    for (int r = 0; r < replies.length(); r++) {
+                                        merged.put(replies.get(r));
+                                    }
+                                    replies = merged;
+                                } else {
+                                    replies = topReplies;
+                                }
+                            }
                             if (replies != null && replies.length() > 0) {
                                 Log.e(TAG, "获取到 " + replies.length() + " 条评论");
                                 parseFirstComments(replies);
@@ -454,6 +468,8 @@ public class CommentFragment extends Fragment {
                 item.likeCount = reply.optInt("like", 0);
                 item.liked = reply.optInt("action", 0) == 1;
                 item.time = reply.optLong("ctime", 0);
+                JSONObject replyCtrl = reply.optJSONObject("reply_control");
+                item.isTop = replyCtrl != null && replyCtrl.optBoolean("is_up_top", false);
 
                 JSONArray replyReplies = reply.optJSONArray("replies");
                 if (replyReplies != null && replyReplies.length() > 0) {
@@ -650,6 +666,8 @@ public class CommentFragment extends Fragment {
                 item.likeCount = reply.optInt("like", 0);
                 item.liked = reply.optInt("action", 0) == 1;
                 item.time = reply.optLong("ctime", 0);
+                JSONObject replyCtrl = reply.optJSONObject("reply_control");
+                item.isTop = replyCtrl != null && replyCtrl.optBoolean("is_up_top", false);
 
                 JSONArray replyReplies = reply.optJSONArray("replies");
                 if (replyReplies != null && replyReplies.length() > 0) {
@@ -841,8 +859,13 @@ public class CommentFragment extends Fragment {
             public void run() {
                 footerProgressBar.setVisibility(View.GONE);
                 isLoading = false;
-                footerView.setVisibility(View.GONE);
-                Toast.makeText(getActivity(), msg, Toast.LENGTH_SHORT).show();
+                footerView.setVisibility(View.VISIBLE);
+                if ("没有更多评论".equals(msg)) {
+                    footerText.setText(getString(R.string.emoticon__no_more_data));
+                } else {
+                    footerText.setText(msg);
+                }
+                footerText.setVisibility(View.VISIBLE);
             }
         });
     }
@@ -879,6 +902,7 @@ public class CommentFragment extends Fragment {
         intent.putExtra("total_count", item.replyCount);
         intent.putExtra("root_like_count", item.likeCount);
         intent.putExtra("root_liked", item.liked);
+        intent.putExtra("root_is_top", item.isTop);
         startActivity(intent);
     }
 
@@ -898,6 +922,7 @@ public class CommentFragment extends Fragment {
         public String message;
         public int likeCount;
         public boolean liked;
+        public boolean isTop;
         public long time;
         public long mid;
         public int replyCount;

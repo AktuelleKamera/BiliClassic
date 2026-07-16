@@ -6,12 +6,17 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Vibrator;
 import android.text.ClipboardManager;
+import android.text.SpannableString;
+import android.text.style.ReplacementSpan;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -53,6 +58,7 @@ public class ReplyListActivity extends BaseActivity {
     private TextView tvTitle;
     private TextView tvEmpty;
     private View rootCommentView;
+    private LinearLayout mRootPictureContainer;
 
     private long aid;
     private String bvid;
@@ -65,6 +71,8 @@ public class ReplyListActivity extends BaseActivity {
     private List<String> rootPictureList;
     private int totalReplyCount;
     private boolean rootLiked;
+    private boolean rootIsTop;
+    private boolean rootPictureExpanded = false;
     private int mRootLikeCount;
 
     private List<ReplyData> allReplies = new ArrayList<ReplyData>();
@@ -107,7 +115,9 @@ public class ReplyListActivity extends BaseActivity {
         rootTime = getIntent().getLongExtra("root_time", 0);
         rootAvatarUrl = getIntent().getStringExtra("root_avatar");
         rootPictureList = (List<String>) getIntent().getSerializableExtra("root_pictures");
+        rootIsTop = getIntent().getBooleanExtra("root_is_top", false);
         totalReplyCount = getIntent().getIntExtra("total_count", 0);
+        Log.e("ReplyList", "onCreate aid=" + aid + " bvid=" + bvid + " rpid=" + rpid + " msg=" + (rootCommentMessage != null ? rootCommentMessage.substring(0, Math.min(20, rootCommentMessage.length())) : "null"));
 
         if (aid == 0 && (bvid == null || bvid.length() == 0)) {
             Toast.makeText(this, "视频参数无效", Toast.LENGTH_SHORT).show();
@@ -171,14 +181,25 @@ public class ReplyListActivity extends BaseActivity {
             TextView rootUserNameView = (TextView) rootCommentView.findViewById(R.id.user_name);
             final TextView rootMsgView = (TextView) rootCommentView.findViewById(R.id.message);
             TextView rootTimeView = (TextView) rootCommentView.findViewById(R.id.time);
-            LinearLayout rootPictureContainer = (LinearLayout) rootCommentView.findViewById(R.id.picture_container);
+            mRootPictureContainer = (LinearLayout) rootCommentView.findViewById(R.id.picture_container);
             final TextView rootLikeCount = (TextView) rootCommentView.findViewById(R.id.like_count);
             TextView rootReplyBtn = (TextView) rootCommentView.findViewById(R.id.reply_button);
             final ImageView rootLikeIcon = (ImageView) rootCommentView.findViewById(R.id.like_icon);
             final TextView rootExpandBtn = (TextView) rootCommentView.findViewById(R.id.btn_expand);
 
             rootUserNameView.setText(rootUserName);
-            rootMsgView.setText(rootCommentMessage);
+            String rootMsg = rootCommentMessage;
+            if (rootIsTop) {
+                if (rootMsg != null && rootMsg.startsWith("[置顶]")) {
+                    rootMsg = rootMsg.substring(4);
+                }
+                SpannableString ss = new SpannableString("\u200B" + rootMsg);
+                ss.setSpan(new BadgeSpan(this), 0, 1,
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                rootMsgView.setText(ss);
+            } else {
+                rootMsgView.setText(rootMsg);
+            }
 
             if (rootTime > 0) {
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA);
@@ -314,40 +335,7 @@ public class ReplyListActivity extends BaseActivity {
             loadAvatar(rootAvatar, rootAvatarUrl);
 
             // 图片
-            if (rootPictureList != null && rootPictureList.size() > 0) {
-                rootPictureContainer.removeAllViews();
-                rootPictureContainer.setVisibility(View.VISIBLE);
-
-                int maxShow = Math.min(rootPictureList.size(), 3);
-                for (int i = 0; i < maxShow; i++) {
-                    final String imgUrl = rootPictureList.get(i);
-                    ImageView imgView = new ImageView(this);
-                    int size = dpToPx(80);
-                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
-                    lp.rightMargin = dpToPx(4);
-                    imgView.setLayoutParams(lp);
-                    imgView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                    imgView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
-                    rootPictureContainer.addView(imgView);
-                    loadImage(imgView, imgUrl);
-                }
-
-                if (rootPictureList.size() > 3) {
-                    TextView moreTv = new TextView(this);
-                    moreTv.setText("+" + (rootPictureList.size() - 3));
-                    moreTv.setTextSize(14);
-                    moreTv.setTextColor(0xFFFFFFFF);
-                    moreTv.setGravity(Gravity.CENTER);
-                    moreTv.setBackgroundColor(0x88000000);
-                    int size = dpToPx(80);
-                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
-                    lp.rightMargin = dpToPx(4);
-                    moreTv.setLayoutParams(lp);
-                    rootPictureContainer.addView(moreTv);
-                }
-            } else {
-                rootPictureContainer.setVisibility(View.GONE);
-            }
+            updateRootPictures();
 
             // 点赞点击
             final long mid = SharedPreferencesUtil.getLong("mid", 0);
@@ -522,6 +510,84 @@ public class ReplyListActivity extends BaseActivity {
         tvEmpty.setVisibility(View.GONE);
     }
 
+    private void updateRootPictures() {
+        if (rootPictureList == null || rootPictureList.size() == 0) {
+            if (mRootPictureContainer != null) mRootPictureContainer.setVisibility(View.GONE);
+            return;
+        }
+        mRootPictureContainer.removeAllViews();
+        mRootPictureContainer.setVisibility(View.VISIBLE);
+
+        int showCount = rootPictureExpanded ? Math.min(rootPictureList.size(), 9) : Math.min(rootPictureList.size(), 3);
+        int imgSize = dpToPx(80);
+        int margin = dpToPx(4);
+
+        mRootPictureContainer.setOrientation(LinearLayout.VERTICAL);
+        for (int i = 0; i < showCount; i++) {
+            if (i % 3 == 0) {
+                LinearLayout row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                mRootPictureContainer.addView(row);
+            }
+            LinearLayout row = (LinearLayout) mRootPictureContainer.getChildAt(
+                    mRootPictureContainer.getChildCount() - 1);
+
+            final String imgUrl = rootPictureList.get(i);
+            final int clickIndex = i;
+            ImageView imgView = new ImageView(this);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(imgSize, imgSize);
+            lp.rightMargin = margin;
+            lp.bottomMargin = (i / 3 < (showCount - 1) / 3) ? margin : 0;
+            imgView.setLayoutParams(lp);
+            imgView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            imgView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+            row.addView(imgView);
+            loadImage(imgView, imgUrl);
+            imgView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent intent = new Intent(ReplyListActivity.this, ImageViewerActivity.class);
+                    intent.putStringArrayListExtra("imageList", new ArrayList<String>(rootPictureList));
+                    intent.putExtra("index", clickIndex);
+                    startActivity(intent);
+                }
+            });
+        }
+
+        if (rootPictureList.size() > 3) {
+            View toggleView;
+            if (!rootPictureExpanded) {
+                TextView moreTv = new TextView(this);
+                moreTv.setText("+" + (rootPictureList.size() - 3));
+                moreTv.setTextSize(14);
+                moreTv.setTextColor(0xFFFFFFFF);
+                moreTv.setGravity(Gravity.CENTER);
+                moreTv.setBackgroundColor(0x88000000);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(imgSize, imgSize);
+                lp.leftMargin = margin;
+                moreTv.setLayoutParams(lp);
+                toggleView = moreTv;
+            } else {
+                TextView collapseTv = new TextView(this);
+                collapseTv.setText("收起");
+                collapseTv.setTextSize(12);
+                collapseTv.setTextColor(0xFFD86DA5);
+                collapseTv.setGravity(Gravity.CENTER);
+                collapseTv.setPadding(0, dpToPx(4), 0, 0);
+                toggleView = collapseTv;
+            }
+            final View fToggle = toggleView;
+            fToggle.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    rootPictureExpanded = !rootPictureExpanded;
+                    updateRootPictures();
+                }
+            });
+            mRootPictureContainer.addView(fToggle);
+        }
+    }
+
     private void loadReplies() {
         if (isLoading) return;
         isLoading = true;
@@ -592,6 +658,7 @@ public class ReplyListActivity extends BaseActivity {
                             rd.avatar = null;
                         }
                         rd.message = reply.message != null ? reply.message : "";
+                        rd.isTop = reply.isTop;
                         if (reply.pictureList != null && reply.pictureList.size() > 0) {
                             rd.pictureList = new ArrayList<String>();
                             for (Object pic : reply.pictureList) {
@@ -996,6 +1063,70 @@ public class ReplyListActivity extends BaseActivity {
         long time;
         int likeCount;
         boolean liked;
+        boolean isTop;
         List<String> pictureList;
+    }
+
+    private static class BadgeSpan extends android.text.style.ReplacementSpan {
+        private int mWidth;
+        private int mPaddingPx;
+        private int mGapPx;
+        private int mCornerPx;
+        private float mStrokePx;
+        private static final String TEXT = "置顶";
+
+        BadgeSpan(android.content.Context context) {
+            float density = context.getResources().getDisplayMetrics().density;
+            mPaddingPx = (int)(4 * density + 0.5f);
+            mGapPx = (int)(4 * density + 0.5f);
+            mCornerPx = (int)(2 * density + 0.5f);
+            mStrokePx = 1 * density + 0.5f;
+        }
+
+        @Override
+        public int getSize(Paint paint, CharSequence text, int start, int end, Paint.FontMetricsInt fm) {
+            mWidth = (int)(paint.measureText(TEXT) + mPaddingPx * 2 + mStrokePx * 2 + mGapPx);
+            if (fm != null) {
+                android.graphics.Paint.FontMetricsInt pfm = paint.getFontMetricsInt();
+                fm.ascent = pfm.ascent - mPaddingPx;
+                fm.descent = pfm.descent + mPaddingPx;
+                fm.top = fm.ascent;
+                fm.bottom = fm.descent;
+            }
+            return mWidth;
+        }
+
+        @Override
+        public void draw(Canvas canvas, CharSequence text, int start, int end, float x, int top, int y, int bottom, Paint paint) {
+            int origColor = paint.getColor();
+            android.graphics.Paint.Style origStyle = paint.getStyle();
+            float origStrokeWidth = paint.getStrokeWidth();
+            boolean origAntiAlias = paint.isAntiAlias();
+
+            android.graphics.Paint.FontMetricsInt pfm = paint.getFontMetricsInt();
+            float half = mStrokePx / 2f;
+            float rectTop = y + pfm.ascent - mPaddingPx + half;
+            float rectBottom = y + pfm.descent + mPaddingPx - half;
+
+            android.graphics.RectF rect = new android.graphics.RectF(
+                x + half, rectTop,
+                x + mWidth - mGapPx - half, rectBottom
+            );
+
+            paint.setStyle(android.graphics.Paint.Style.STROKE);
+            paint.setStrokeWidth(mStrokePx);
+            paint.setColor(0xFFD86DA5);
+            paint.setAntiAlias(true);
+            canvas.drawRoundRect(rect, mCornerPx, mCornerPx, paint);
+
+            paint.setColor(0xFFD86DA5);
+            paint.setStyle(android.graphics.Paint.Style.FILL);
+            canvas.drawText(TEXT, x + mPaddingPx, y, paint);
+
+            paint.setColor(origColor);
+            paint.setStyle(origStyle);
+            paint.setStrokeWidth(origStrokeWidth);
+            paint.setAntiAlias(origAntiAlias);
+        }
     }
 }

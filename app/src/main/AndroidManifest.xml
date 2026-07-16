@@ -31,6 +31,10 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".ImageViewerActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".ReplyListActivity"
             android:screenOrientation="portrait" />
 
@@ -66,7 +70,7 @@
         <activity
             android:name=".tv.TvSettingsActivity"
             android:screenOrientation="sensorLandscape"
-            android:theme="@android:style/Theme.Black.NoTitleBar" />
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
 
         <activity
             android:name=".SearchActivity"

@@ -1407,6 +1407,22 @@ public class BiliPlayerActivity extends Activity implements
                             }
 
                             org.json.JSONArray replies = data.optJSONArray("replies");
+                            org.json.JSONArray topReplies = data.optJSONArray("top_replies");
+                            boolean isBegin = cursor != null && cursor.optBoolean("is_begin", false);
+                            if (topReplies != null && topReplies.length() > 0 && isBegin) {
+                                if (replies != null && replies.length() > 0) {
+                                    org.json.JSONArray merged = new org.json.JSONArray();
+                                    for (int t = 0; t < topReplies.length(); t++) {
+                                        merged.put(topReplies.get(t));
+                                    }
+                                    for (int r = 0; r < replies.length(); r++) {
+                                        merged.put(replies.get(r));
+                                    }
+                                    replies = merged;
+                                } else {
+                                    replies = topReplies;
+                                }
+                            }
                             if (replies != null && replies.length() > 0) {
                                 parseCommentReplies(replies, false);
                                 commentLoaded = true;
@@ -1538,6 +1554,27 @@ public class BiliPlayerActivity extends Activity implements
                 item.message = content != null ? content.optString("message", "") : "";
                 item.likeCount = reply.optInt("like", 0);
                 item.time = reply.optLong("ctime", 0);
+                item.replyCount = reply.optInt("rcount", 0);
+                org.json.JSONObject replyCtrl = reply.optJSONObject("reply_control");
+                item.isTop = replyCtrl != null && replyCtrl.optBoolean("is_up_top", false);
+                if (content != null) {
+                    org.json.JSONArray pictures = content.optJSONArray("pictures");
+                    if (pictures != null && pictures.length() > 0) {
+                        item.pictureList = new java.util.ArrayList<String>();
+                        for (int p = 0; p < pictures.length(); p++) {
+                            try {
+                                org.json.JSONObject pic = pictures.getJSONObject(p);
+                                String imgSrc = pic.optString("img_src", "");
+                                if (imgSrc != null && imgSrc.length() > 0) {
+                                    if (imgSrc.startsWith("https://")) {
+                                        imgSrc = "http://" + imgSrc.substring(8);
+                                    }
+                                    item.pictureList.add(imgSrc);
+                                }
+                            } catch (Exception e) { }
+                        }
+                    }
+                }
 
                 org.json.JSONArray replyReplies = reply.optJSONArray("replies");
                 if (replyReplies != null && replyReplies.length() > 0) {
@@ -1575,7 +1612,14 @@ public class BiliPlayerActivity extends Activity implements
                     commentIsLoadingMore = false;
 
                     if (commentIsEnd) {
-                        Toast.makeText(BiliPlayerActivity.this, getString(R.string.emoticon__no_more_data), Toast.LENGTH_SHORT).show();
+                        commentFooterView.setVisibility(View.VISIBLE);
+                        if (commentFooterProgress != null) {
+                            commentFooterProgress.setVisibility(View.GONE);
+                        }
+                        TextView ft = (TextView) commentFooterView.findViewById(R.id.footer_text);
+                        if (ft != null) {
+                            ft.setText(getString(R.string.emoticon__no_more_data));
+                        }
                     }
                 } else {
                     commentItems.clear();
@@ -1623,12 +1667,19 @@ public class BiliPlayerActivity extends Activity implements
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                commentFooterView.setVisibility(View.GONE);
                 if (commentFooterProgress != null) {
                     commentFooterProgress.setVisibility(View.GONE);
                 }
                 commentIsLoadingMore = false;
-                Toast.makeText(BiliPlayerActivity.this, msg, Toast.LENGTH_SHORT).show();
+                commentFooterView.setVisibility(View.VISIBLE);
+                TextView ft = (TextView) commentFooterView.findViewById(R.id.footer_text);
+                if (ft != null) {
+                    if ("没有更多评论".equals(msg)) {
+                        ft.setText(getString(R.string.emoticon__no_more_data));
+                    } else {
+                        ft.setText(msg);
+                    }
+                }
             }
         });
     }
@@ -2239,6 +2290,7 @@ public class BiliPlayerActivity extends Activity implements
 
         if (mSeekWhenPrepared > 0 && mDuration > 0) {
             mp.seekTo(mSeekWhenPrepared);
+            if (mDanmakuManager != null) mDanmakuManager.seekTo(mSeekWhenPrepared);
         }
         mp.start();
         isPlaying = true;
@@ -3281,9 +3333,26 @@ public class BiliPlayerActivity extends Activity implements
     protected void onRestart() {
         super.onRestart();
         if (keepBackground) {
-            Intent intent = getIntent();
-            finish();
-            startActivity(intent);
+            int maxMemoryMB = (int)(Runtime.getRuntime().maxMemory() / (1024 * 1024));
+            if (maxMemoryMB >= 48) {
+                if (mDanmakuManager != null) {
+                    mDanmakuManager.pause();
+                    mDanmakuManager.release();
+                    mDanmakuManager = null;
+                }
+                mSeekWhenPrepared = sPendingSeekPosition;
+                sPendingSeekPosition = 0;
+                initPlayer();
+                if (mDanmakuContainer != null) {
+                    mDanmakuManager = new DanmakuManager(BiliPlayerActivity.this,
+                            mDanmakuContainer, mAid, mCid, danmakuInputStub);
+                    mDanmakuManager.init();
+                }
+            } else {
+                Intent intent = getIntent();
+                finish();
+                startActivity(intent);
+            }
         }
     }
 

@@ -102,7 +102,7 @@ public class ReplyApi {
                 .put("mode", sort);
 
         JSONObject paginationJson = new JSONObject();
-        paginationJson.put("offset", TextUtils.isEmpty(pagination) ? "" : pagination);
+        paginationJson.put("offset", (pagination == null || pagination.length() == 0) ? "" : pagination);
         reqData.put("pagination_str", paginationJson.toString());
 
         String baseUrl = "https://api.bilibili.com/x/v2/reply/wbi/main";
@@ -127,7 +127,7 @@ public class ReplyApi {
                 JSONObject paginationReply = cursor.optJSONObject("pagination_reply");
                 String nextOffset = paginationReply == null ? null : paginationReply.optString("next_offset");
 
-                if (cursor.optBoolean("is_end", false) || TextUtils.isEmpty(nextOffset)) {
+                if (cursor.optBoolean("is_end", false) || nextOffset == null || nextOffset.length() == 0) {
                     return new ReplyListResult(1, "");
                 } else {
                     return new ReplyListResult(0, nextOffset);

@@ -75,6 +75,7 @@ public class StringUtil {
      * 时间格式化
      */
     public static String toTime(int progress) {
+        if (progress < 0) progress = 0;
         int hour = progress / 3600;
         int minute = (progress % 3600) / 60;
         int second = progress % 60;

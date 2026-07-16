@@ -2,7 +2,6 @@ package tv.biliclassic.player;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -146,6 +145,33 @@ public class PlayerAnimActivity extends Activity {
     }
 
     /**
+     * 获取屏幕旋转角度（兼容 Android 2.3+）
+     */
+    private int getDisplayRotation() {
+        Display display = getWindowManager().getDefaultDisplay();
+        try {
+            java.lang.reflect.Method method = Display.class.getMethod("getRotation");
+            return ((Integer) method.invoke(display)).intValue();
+        } catch (Exception e) {
+            // Android 2.1 及以下用 getOrientation
+            try {
+                java.lang.reflect.Method method = Display.class.getMethod("getOrientation");
+                return ((Integer) method.invoke(display)).intValue();
+            } catch (Exception ex) {
+                return 0;
+            }
+        }
+    }
+
+    /**
+     * 判断是否竖屏（兼容 Android 2.3+）
+     */
+    private boolean isPortrait() {
+        int rotation = getDisplayRotation();
+        return (rotation == Surface.ROTATION_0 || rotation == Surface.ROTATION_180);
+    }
+
+    /**
      * 使用内置播放器直接播放视频（在线模式）
      */
     private void playWithBuiltinPlayer(String url) {
@@ -168,15 +194,7 @@ public class PlayerAnimActivity extends Activity {
         }
         // 用 extra 标记在线模式
         intent.putExtra("online_mode", true);
-        Display display = getWindowManager().getDefaultDisplay();
-        boolean portrait = false;
-        if (android.os.Build.VERSION.SDK_INT >= 8) {
-            int rotation = display.getRotation();
-            portrait = (rotation == Surface.ROTATION_0 || rotation == Surface.ROTATION_180);
-        } else {
-            portrait = (display.getOrientation() == 0);
-        }
-        if (portrait) {
+        if (isPortrait()) {
             intent.putExtra("is_portrait_loading", true);
         }
         putQualityExtras(intent);
@@ -452,15 +470,7 @@ public class PlayerAnimActivity extends Activity {
             intent.putExtra("cids", getIntent().getLongArrayExtra("cids"));
             intent.putExtra("pagenames", getIntent().getStringArrayExtra("pagenames"));
         }
-        Display display = getWindowManager().getDefaultDisplay();
-        boolean portrait = false;
-        if (android.os.Build.VERSION.SDK_INT >= 8) {
-            int rotation = display.getRotation();
-            portrait = (rotation == Surface.ROTATION_0 || rotation == Surface.ROTATION_180);
-        } else {
-            portrait = (display.getOrientation() == 0);
-        }
-        if (portrait) {
+        if (isPortrait()) {
             intent.putExtra("is_portrait_loading", true);
         }
         putQualityExtras(intent);

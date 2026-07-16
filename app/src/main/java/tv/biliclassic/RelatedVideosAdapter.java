@@ -235,10 +235,12 @@ public class RelatedVideosAdapter extends BaseAdapter {
 
             int targetWidth = (int) (160 * context.getResources().getDisplayMetrics().density);
             int scale = 1;
-            if (options.outWidth > targetWidth) {
+            if (options.outWidth > targetWidth && options.outWidth > 0) {
                 scale = options.outWidth / targetWidth;
                 if (scale < 1) scale = 1;
-                if (scale > 4) scale = 4;
+                int pow2 = 1;
+                while (pow2 * 2 <= scale) pow2 *= 2;
+                scale = pow2;
             }
 
             options = new BitmapFactory.Options();

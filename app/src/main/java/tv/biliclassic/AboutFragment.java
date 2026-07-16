@@ -65,7 +65,7 @@ public class AboutFragment extends Fragment {
             PackageInfo packageInfo = getActivity().getPackageManager().getPackageInfo(getActivity().getPackageName(), 0);
             return packageInfo.versionName;
         } catch (PackageManager.NameNotFoundException e) {
-            return "0.4.5";
+            return "0.4.6";
         }
     }
 }

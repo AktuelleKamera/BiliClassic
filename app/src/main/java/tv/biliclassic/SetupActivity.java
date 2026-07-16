@@ -231,7 +231,7 @@ public class SetupActivity extends BaseActivity {
 
     private View createCheckmarkOverlay() {
         ImageView checkIcon = new ImageView(this);
-        checkIcon.setImageResource(R.drawable.ic_player_options_radio_on);
+        checkIcon.setImageResource(R.drawable.abs__ic_cab_done_holo_dark);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
                 dpToPx(28), dpToPx(28)
         );
@@ -246,6 +246,9 @@ public class SetupActivity extends BaseActivity {
         mAnimating = true;
         final int width = mPageWelcome.getWidth();
         if (width <= 0) { mAnimating = false; return; }
+
+        final ScrollView tileScroll = (ScrollView) findViewById(R.id.tile_scroll);
+        if (tileScroll != null) tileScroll.scrollTo(0, 0);
 
         mPageTiles.setVisibility(View.VISIBLE);
         findViewById(R.id.btn_next).setEnabled(false);

@@ -618,7 +618,15 @@ public class DanmakuManager {
                     if (mReleased || mDanmakuView == null) return;
                     android.util.Log.e("DanmakuManager", "弹幕引擎准备完毕");
                     mLoaded = true;
-                    if (mEnabled) mDanmakuView.start();
+                    if (mEnabled) {
+                        if (mVideoPrepared && mMediaPlayer != null) {
+                            try {
+                                long pos = mMediaPlayer.getCurrentPosition();
+                                if (pos > 0) mDanmakuView.seekTo(pos);
+                            } catch (Exception ignored) {}
+                        }
+                        mDanmakuView.start();
+                    }
                 }
 
                 @Override

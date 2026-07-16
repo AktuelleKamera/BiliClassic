@@ -100,7 +100,9 @@ public class HistoryApi {
                     if (aid == 0 && bvid.length() == 0) continue;
 
                     String viewStr;
-                    if (progress == 0) {
+                    if (progress < 0) {
+                        viewStr = "已看完";
+                    } else if (progress == 0) {
                         viewStr = "还没看过";
                     } else {
                         viewStr = "看到" + StringUtil.toTime(progress);

@@ -253,10 +253,10 @@ public class BangumiDetailFragment extends Fragment {
         episodeList.clear();
         int totalEpisodes = 0;
 
-        if (bangumi.sectionList != null && !bangumi.sectionList.isEmpty()) {
+        if (bangumi.sectionList != null && bangumi.sectionList.size() > 0) {
             for (int i = 0; i < bangumi.sectionList.size(); i++) {
                 Bangumi.Section section = bangumi.sectionList.get(i);
-                if (section.episodeList != null && !section.episodeList.isEmpty()) {
+                if (section.episodeList != null && section.episodeList.size() > 0) {
                     boolean showDivider = bangumi.sectionList.size() > 1
                             || (section.title != null && !"正片".equals(section.title));
                     if (showDivider) {

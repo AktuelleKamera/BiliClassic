@@ -4,18 +4,25 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.util.Log;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.RectF;
+import android.text.TextUtils;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Vibrator;
 import android.text.ClipboardManager;
+import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
+import android.text.style.ReplacementSpan;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -53,6 +60,7 @@ public class CommentAdapter extends BaseAdapter {
     private Context context;
     private List<CommentFragment.CommentItem> list;
     private long mAid;
+    private String mBvid;
     private CommentFragment mFragment;
     private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -65,9 +73,11 @@ public class CommentAdapter extends BaseAdapter {
 
     public void setMid(long mid) { mMid = mid; }
     public void setReplyType(int type) { mReplyType = type; }
+    public void setBvid(String bvid) { mBvid = bvid; }
 
     private boolean isScrolling = false;
     private static final int MAX_CACHE_SIZE = 80;
+    private float mDensity;
 
     public interface OnUserClickListener {
         void onUserClick(long mid, String userName);
@@ -119,6 +129,7 @@ public class CommentAdapter extends BaseAdapter {
         this.list = list;
         this.mAid = aid;
         this.mFragment = fragment;
+        mDensity = context.getResources().getDisplayMetrics().density;
         initExecutor();
     }
 
@@ -149,13 +160,13 @@ public class CommentAdapter extends BaseAdapter {
     }
 
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
+    public View getView(final int position, View convertView, final ViewGroup parent) {
         ViewHolder holder;
         if (convertView == null) {
             convertView = LayoutInflater.from(context).inflate(R.layout.item_comment, parent, false);
             holder = new ViewHolder();
             holder.avatar = (ImageView) convertView.findViewById(R.id.avatar);
-            holder.userName = (TextView) convertView.findViewById(R.id.user_name);
+            holder.userNameView = (TextView) convertView.findViewById(R.id.user_name);
             holder.message = (TextView) convertView.findViewById(R.id.message);
             holder.likeIcon = (ImageView) convertView.findViewById(R.id.like_icon);
             holder.likeCount = (TextView) convertView.findViewById(R.id.like_count);
@@ -174,9 +185,13 @@ public class CommentAdapter extends BaseAdapter {
                         case MotionEvent.ACTION_DOWN:
                             v.setBackgroundColor(0x40D86DA5);
                             h.copyText = ((TextView) h.message).getText().toString();
+                            h.downRpid = h.rpid;
+                            Log.e("CommentClick", "DOWN rpid=" + h.rpid + " downRpid=" + h.downRpid);
+                            h.longPressFired = false;
                             h.longPressRunnable = new Runnable() {
                                 @Override
                                 public void run() {
+                                    h.longPressFired = true;
                                     final long itemMid = h.mid;
                                     final String text = h.copyText;
                                     if (itemMid == mMid && mMid != 0) {
@@ -219,11 +234,55 @@ public class CommentAdapter extends BaseAdapter {
 
         final CommentFragment.CommentItem item = list.get(position);
         holder.copyText = item.message;
-        holder.userName.setText(item.userName);
-        holder.message.setText(item.message != null ? item.message : "");
+        holder.userNameView.setText(item.userName);
+        String msgText = item.message != null ? item.message : "";
+        if (item.isTop && msgText.startsWith("[置顶]")) {
+            msgText = msgText.substring(4);
+        }
+        if (item.isTop) {
+            SpannableString ss = new SpannableString("\u200B" + msgText);
+            ss.setSpan(new BadgeSpan(mDensity), 0, 1,
+                    android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            holder.message.setText(ss);
+            holder.message.setMovementMethod(null);
+        } else {
+            holder.message.setText(msgText);
+        }
         holder.mid = item.mid;
         holder.oid = mAid;
         holder.rpid = item.rpid;
+        Log.e("CommentClick", "bind pos=" + position + " rpid=" + item.rpid + " msg=" + (item.message != null ? item.message.substring(0, Math.min(20, item.message.length())) : "null"));
+
+        convertView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ViewHolder h = (ViewHolder) v.getTag();
+                long clickedRpid = h.downRpid;
+                Log.e("CommentClick", "click downRpid=" + clickedRpid);
+                for (int i = 0; i < list.size(); i++) {
+                    if (list.get(i).rpid == clickedRpid) {
+                        CommentFragment.CommentItem ci = list.get(i);
+                        Intent intent = new Intent(v.getContext(), ReplyListActivity.class);
+                        intent.putExtra("aid", mAid);
+                        if (mBvid != null) intent.putExtra("bvid", mBvid);
+                        intent.putExtra("rpid", ci.rpid);
+                        if (ci.userName != null) intent.putExtra("root_user_name", ci.userName);
+                        if (ci.message != null) intent.putExtra("root_comment_message", ci.message);
+                        intent.putExtra("root_mid", ci.mid);
+                        intent.putExtra("root_time", ci.time);
+                        if (ci.userAvatar != null) intent.putExtra("root_avatar", ci.userAvatar);
+                        if (ci.pictureList != null && ci.pictureList.size() > 0) {
+                            intent.putExtra("root_pictures", new ArrayList<String>(ci.pictureList));
+                        }
+                        intent.putExtra("total_count", ci.replyCount);
+                        intent.putExtra("root_like_count", ci.likeCount);
+                        intent.putExtra("root_liked", ci.liked);
+                        v.getContext().startActivity(intent);
+                        break;
+                    }
+                }
+            }
+        });
 
         holder.likeCount.setText(String.valueOf(item.likeCount));
         final ViewHolder h2 = holder;
@@ -322,6 +381,7 @@ public class CommentAdapter extends BaseAdapter {
                 int maxShow = Math.min(item.pictureList.size(), 3);
                 for (int i = 0; i < maxShow; i++) {
                     final String imgUrl = item.pictureList.get(i);
+                    final int clickIndex = i;
                     ImageView imgView = new ImageView(context);
                     int size = dpToPx(80);
                     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
@@ -331,6 +391,15 @@ public class CommentAdapter extends BaseAdapter {
                     imgView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
                     holder.pictureContainer.addView(imgView);
                     loadCommentImage(imgView, imgUrl);
+                    imgView.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            Intent intent = new Intent(context, ImageViewerActivity.class);
+                            intent.putStringArrayListExtra("imageList", new ArrayList<String>(item.pictureList));
+                            intent.putExtra("index", clickIndex);
+                            context.startActivity(intent);
+                        }
+                    });
                 }
 
                 if (item.pictureList.size() > 3) {
@@ -345,6 +414,15 @@ public class CommentAdapter extends BaseAdapter {
                     lp.rightMargin = dpToPx(4);
                     moreTv.setLayoutParams(lp);
                     holder.pictureContainer.addView(moreTv);
+                    moreTv.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            Intent intent = new Intent(context, ImageViewerActivity.class);
+                            intent.putStringArrayListExtra("imageList", new ArrayList<String>(item.pictureList));
+                            intent.putExtra("index", 3);
+                            context.startActivity(intent);
+                        }
+                    });
                 }
             } else {
                 holder.pictureContainer.setVisibility(View.GONE);
@@ -415,7 +493,7 @@ public class CommentAdapter extends BaseAdapter {
                         if (mFragment != null) {
                             mFragment.showAllReplies(finalItem);
                         } else {
-                            Toast.makeText(context, "共" + finalTotalReplyCount + "条回复", Toast.LENGTH_SHORT).show();
+                            openReplyList(finalItem, finalTotalReplyCount);
                         }
                     }
                 });
@@ -435,7 +513,7 @@ public class CommentAdapter extends BaseAdapter {
                     if (mFragment != null) {
                         mFragment.showAllReplies(finalItem);
                     } else {
-                        Toast.makeText(context, "共" + finalTotalReplyCount + "条回复", Toast.LENGTH_SHORT).show();
+                        openReplyList(finalItem, finalTotalReplyCount);
                     }
                 }
             });
@@ -473,7 +551,7 @@ public class CommentAdapter extends BaseAdapter {
         };
 
         holder.avatar.setOnClickListener(userClickListener);
-        holder.userName.setOnClickListener(userClickListener);
+        holder.userNameView.setOnClickListener(userClickListener);
 
         if (item.userAvatar != null && item.userAvatar.length() > 0) {
             String avatarUrl = item.userAvatar;
@@ -765,9 +843,29 @@ public class CommentAdapter extends BaseAdapter {
         }).start();
     }
 
+    private void openReplyList(CommentFragment.CommentItem item, int totalCount) {
+        Intent intent = new Intent(context, ReplyListActivity.class);
+        intent.putExtra("aid", mAid);
+        if (mBvid != null) intent.putExtra("bvid", mBvid);
+        intent.putExtra("rpid", item.rpid);
+        if (item.userName != null) intent.putExtra("root_user_name", item.userName);
+        if (item.message != null) intent.putExtra("root_comment_message", item.message);
+        intent.putExtra("root_mid", item.mid);
+        intent.putExtra("root_time", item.time);
+        if (item.userAvatar != null) intent.putExtra("root_avatar", item.userAvatar);
+        if (item.pictureList != null && item.pictureList.size() > 0) {
+            intent.putExtra("root_pictures", new ArrayList<String>(item.pictureList));
+        }
+        intent.putExtra("total_count", totalCount);
+        intent.putExtra("root_like_count", item.likeCount);
+        intent.putExtra("root_liked", item.liked);
+        intent.putExtra("root_is_top", item.isTop);
+        context.startActivity(intent);
+    }
+
     static class ViewHolder {
         ImageView avatar;
-        TextView userName;
+        TextView userNameView;
         TextView message;
         ImageView likeIcon;
         TextView likeCount;
@@ -779,8 +877,86 @@ public class CommentAdapter extends BaseAdapter {
         LinearLayout pictureContainer;
         String copyText;
         Runnable longPressRunnable;
+        boolean longPressFired;
         long mid;
         long oid;
         long rpid;
+        long downRpid;
+    }
+
+    private static class BadgeSpan extends android.text.style.ReplacementSpan {
+        private int mWidth;
+        private int mPaddingPx;
+        private int mGapPx;
+        private int mCornerPx;
+        private float mStrokePx;
+        private int mTextMarginPx;  // 标签和文字之间的间距
+        private static final String TEXT = "置顶";
+
+        BadgeSpan(float density) {
+            mPaddingPx = (int)(4 * density + 0.5f);
+            mGapPx = (int)(1 * density + 0.5f);
+            mCornerPx = (int)(2 * density + 0.5f);
+            mStrokePx = 1 * density + 0.5f;
+            mTextMarginPx = (int)(1 * density + 0.5f);  // 标签右边和评论文字的间距
+        }
+
+        @Override
+        public int getSize(Paint paint, CharSequence text, int start, int end, Paint.FontMetricsInt fm) {
+            float textWidth = paint.measureText(TEXT);
+            // 总宽度 = 标签宽度 + 左边距 + 标签和文字间距
+            mWidth = (int)(textWidth + mPaddingPx * 2 + mStrokePx * 2 + mGapPx + mTextMarginPx);
+            if (fm != null) {
+                android.graphics.Paint.FontMetricsInt pfm = paint.getFontMetricsInt();
+                fm.ascent = pfm.ascent - mPaddingPx;
+                fm.descent = pfm.descent + mPaddingPx;
+                fm.top = fm.ascent;
+                fm.bottom = fm.descent;
+            }
+            return mWidth;
+        }
+
+        @Override
+        public void draw(Canvas canvas, CharSequence text, int start, int end,
+                         float x, int top, int y, int bottom, Paint paint) {
+            int origColor = paint.getColor();
+            android.graphics.Paint.Style origStyle = paint.getStyle();
+            float origStrokeWidth = paint.getStrokeWidth();
+            boolean origAntiAlias = paint.isAntiAlias();
+
+            android.graphics.Paint.FontMetricsInt fm = paint.getFontMetricsInt();
+            float half = mStrokePx / 2f;
+            float rectTop = y + fm.ascent - mPaddingPx + half;
+            float rectBottom = y + fm.descent + mPaddingPx - half;
+
+            float textWidth = paint.measureText(TEXT);
+            float rectWidth = textWidth + mPaddingPx * 2;
+
+            // mGapPx 作为左边距偏移（只在 draw 里用）
+            float offsetX = mGapPx;
+
+            android.graphics.RectF rect = new android.graphics.RectF(
+                    x + offsetX,
+                    rectTop,
+                    x + offsetX + rectWidth,
+                    rectBottom
+            );
+
+            paint.setStyle(android.graphics.Paint.Style.STROKE);
+            paint.setStrokeWidth(mStrokePx);
+            paint.setColor(0xFFD86DA5);
+            paint.setAntiAlias(true);
+            canvas.drawRoundRect(rect, mCornerPx, mCornerPx, paint);
+
+            paint.setColor(0xFFD86DA5);
+            paint.setStyle(android.graphics.Paint.Style.FILL);
+            float centerY = (rectTop + rectBottom) / 2 - (fm.ascent + fm.descent) / 2;
+            canvas.drawText(TEXT, x + offsetX + mPaddingPx, centerY, paint);
+
+            paint.setColor(origColor);
+            paint.setStyle(origStyle);
+            paint.setStrokeWidth(origStrokeWidth);
+            paint.setAntiAlias(origAntiAlias);
+        }
     }
 }
