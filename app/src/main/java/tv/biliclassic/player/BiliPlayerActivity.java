@@ -3003,6 +3003,9 @@ public class BiliPlayerActivity extends Activity implements
             msg.append("帧数: ").append(fps).append("\n");
         }
         msg.append("解码器: ").append(decoder).append("\n");
+        msg.append("弹幕引擎: ")
+                .append(DanmakuManager.isSimpleEngineEnabled() ? "BT-5" : "烈焰弹幕使")
+                .append("\n");
         if (duration.length() > 0) {
             msg.append("时长: ").append(duration);
         }
