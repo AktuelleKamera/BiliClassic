@@ -188,6 +188,7 @@ public class BiliPlayerActivity extends Activity implements
     private int completionAction = COMPLETION_ACTION_PAUSE;
     private boolean enableGesture = true;
     private boolean keepBackground;
+    private boolean autoRotation;
 
     private View optionsMenuBtn;
     private ViewStub optionsMenuStub;
@@ -389,6 +390,9 @@ public class BiliPlayerActivity extends Activity implements
         sPendingSeekPosition = 0;
         keepBackground = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.KEEP_BACKGROUND, true);
         completionAction = SharedPreferencesUtil.getInt(SharedPreferencesUtil.COMPLETION_ACTION, COMPLETION_ACTION_PAUSE);
+        autoRotation = SharedPreferencesUtil.getBoolean(
+                SharedPreferencesUtil.PLAYER_AUTO_ROTATION, false);
+        applyAutoRotation();
 
         if (DeviceInfoUtil.isUnsupportedCpu()) {
             new AlertDialog.Builder(this)
@@ -2737,7 +2741,7 @@ public class BiliPlayerActivity extends Activity implements
                 });
             }
             if (optionsMenuItemOrientation != null) {
-                optionsMenuItemOrientation.setVisibility(View.VISIBLE);
+                optionsMenuItemOrientation.setVisibility(autoRotation ? View.GONE : View.VISIBLE);
                 optionsMenuItemOrientation.setOnClickListener(new View.OnClickListener() {
                     public void onClick(View v) {
                         toggleScreenOrientation();
@@ -2770,7 +2774,7 @@ public class BiliPlayerActivity extends Activity implements
         dismissAllPanels();
 
         LayoutInflater inflater = LayoutInflater.from(this);
-        View panel = inflater.inflate(R.layout.bili_app_player_options_pannel, null);
+        final View panel = inflater.inflate(R.layout.bili_app_player_options_pannel, null);
 
         TextView titleView = (TextView) panel.findViewById(R.id.title);
         if (titleView != null) {
@@ -2790,7 +2794,13 @@ public class BiliPlayerActivity extends Activity implements
                 R.id.player_options_enable_gesture);
         final CheckBox keepBackgroundCb = (CheckBox) panel.findViewById(
                 R.id.player_options_keep_background);
+        final CheckBox autoRotationCb = (CheckBox) panel.findViewById(
+                R.id.player_options_auto_rotation);
         View screenOrientation = panel.findViewById(R.id.player_options_screen_orientation);
+
+        if (screenOrientation != null) {
+            screenOrientation.setVisibility(autoRotation ? View.GONE : View.VISIBLE);
+        }
 
         RadioGridGroup completionGroup = (RadioGridGroup) panel.findViewById(
                 R.id.player_options_completion_actions);
@@ -2844,6 +2854,27 @@ public class BiliPlayerActivity extends Activity implements
             });
         }
 
+        if (autoRotationCb != null) {
+            autoRotationCb.setChecked(autoRotation);
+            autoRotationCb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    autoRotation = isChecked;
+                    SharedPreferencesUtil.putBoolean(
+                            SharedPreferencesUtil.PLAYER_AUTO_ROTATION, isChecked);
+                    applyAutoRotation();
+                    if (optionsMenuItemOrientation != null) {
+                        optionsMenuItemOrientation.setVisibility(
+                                isChecked ? View.GONE : View.VISIBLE);
+                    }
+                    View orientationItem = panel.findViewById(
+                            R.id.player_options_screen_orientation);
+                    if (orientationItem != null) {
+                        orientationItem.setVisibility(isChecked ? View.GONE : View.VISIBLE);
+                    }
+                }
+            });
+        }
+
         if (screenOrientation != null) {
             screenOrientation.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
@@ -2886,6 +2917,23 @@ public class BiliPlayerActivity extends Activity implements
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
         } else {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        }
+    }
+
+    private void applyAutoRotation() {
+        if (autoRotation) {
+            if (isPrepared && VideoAspectRatioHelper.isPortraitVideo(videoWidth, videoHeight)) {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            } else {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
+            }
+        } else {
+            int orientation = getResources().getConfiguration().orientation;
+            if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            } else {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            }
         }
     }
 
