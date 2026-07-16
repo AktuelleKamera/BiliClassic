@@ -53,7 +53,7 @@
 
 ## 技术路线
 
-- 最低支持 API 4 (Android 1.6)，目标 API 17
+- 最低支持 API 4 (Android 1.6)，目标 API 22
 - 纯 Java 6 实现，兼容古早 Dalvik 虚拟机
 - 参考 Bilibili 官方 API 文档实现数据获取
 - WBI 签名算法已迫真适配
