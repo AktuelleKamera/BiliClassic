@@ -9,7 +9,7 @@
     android:minHeight="40dp">
     <SeekBar
         android:id="@+id/seekbar"
-        style="@style/Widget.App.Seekbar.Pink"
+        style="@style/Widget.App.Seekbar.Holo"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"/>
