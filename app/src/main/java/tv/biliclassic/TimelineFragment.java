@@ -1,5 +1,6 @@
 package tv.biliclassic;
 
+import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -10,7 +11,6 @@ import android.view.ViewGroup;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -143,6 +143,7 @@ public class TimelineFragment extends Fragment {
 
                     final List<timelineDay> items = parsetimeline(jsonStr);
 
+                    // 检查 Activity 是否存在
                     if (getActivity() == null) return;
 
                     getActivity().runOnUiThread(new Runnable() {
@@ -171,13 +172,16 @@ public class TimelineFragment extends Fragment {
                         showNoNetwork();
                     } else if (retryCount < MAX_RETRY) {
                         retryCount++;
-                        // 静默重试
-                        getActivity().runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                doLoadtimeline();
-                            }
-                        });
+                        // 检查 getActivity() 是否为 null
+                        final Activity activity = getActivity();
+                        if (activity != null) {
+                            activity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    doLoadtimeline();
+                                }
+                            });
+                        }
                     } else {
                         showError("加载失败: " + e.getMessage());
                     }

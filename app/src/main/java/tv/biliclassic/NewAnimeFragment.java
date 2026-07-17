@@ -20,12 +20,12 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.ref.SoftReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -37,6 +37,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
@@ -46,7 +47,6 @@ public class NewAnimeFragment extends Fragment {
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Handler delayHandler = new Handler();
 
-    private Map<String, SoftReference<Bitmap>> imageCache = new HashMap<String, SoftReference<Bitmap>>();
     private Map<String, Boolean> loadingMap = new HashMap<String, Boolean>();
 
     private View headerContainer;
@@ -190,7 +190,6 @@ public class NewAnimeFragment extends Fragment {
                 }
             }
         }
-        imageCache.clear();
         loadingMap.clear();
         super.onDestroyView();
     }
@@ -204,7 +203,6 @@ public class NewAnimeFragment extends Fragment {
             executor = null;
         }
         delayHandler.removeCallbacksAndMessages(null);
-        imageCache.clear();
         loadingMap.clear();
     }
 
@@ -575,7 +573,6 @@ public class NewAnimeFragment extends Fragment {
                     }
                 }
             }
-            imageCache.clear();
             loadingMap.clear();
         } catch (Exception e) {
             e.printStackTrace();
@@ -780,20 +777,15 @@ public class NewAnimeFragment extends Fragment {
     private void loadImageLazy(final ImageView imageView, final String urlStr, final boolean isLarge) {
         if (isDestroyed || imageView == null || getActivity() == null) return;
 
-        if (imageCache.containsKey(urlStr)) {
-            SoftReference<Bitmap> ref = imageCache.get(urlStr);
-            Bitmap cached = ref.get();
-            if (cached != null && !cached.isRecycled()) {
-                imageView.setImageBitmap(cached);
-                return;
-            } else {
-                imageCache.remove(urlStr);
-            }
+        Bitmap cached = GlobalImageCache.getInstance().get(urlStr);
+        if (cached != null && !cached.isRecycled()) {
+            imageView.setImageBitmap(cached);
+            return;
         }
 
         Bitmap localCached = getBitmapFromCache(urlStr);
         if (localCached != null && !localCached.isRecycled()) {
-            imageCache.put(urlStr, new SoftReference<Bitmap>(localCached));
+            GlobalImageCache.getInstance().put(urlStr, localCached);
             imageView.setImageBitmap(localCached);
             return;
         }
@@ -821,7 +813,7 @@ public class NewAnimeFragment extends Fragment {
 
                 if (bitmap != null && !bitmap.isRecycled()) {
                     saveCoverToCache(urlStr, bitmap);
-                    imageCache.put(urlStr, new SoftReference<Bitmap>(bitmap));
+                    GlobalImageCache.getInstance().put(urlStr, bitmap);
 
                     mainHandler.post(new Runnable() {
                         @Override
@@ -855,8 +847,6 @@ public class NewAnimeFragment extends Fragment {
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-            conn.setRequestProperty("Accept-Encoding", "identity");
-            conn.setRequestProperty("Connection", "Keep-Alive");
             conn.connect();
 
             int responseCode = conn.getResponseCode();
@@ -865,11 +855,18 @@ public class NewAnimeFragment extends Fragment {
             }
 
             InputStream is = conn.getInputStream();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                baos.write(buffer, 0, len);
+            }
+            is.close();
+            byte[] imageData = baos.toByteArray();
 
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
-            BitmapFactory.decodeStream(is, null, options);
-            is.close();
+            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
 
             int targetWidth = isLarge ? 320 : 160;
             int targetHeight = isLarge ? 160 : 80;
@@ -885,30 +882,11 @@ public class NewAnimeFragment extends Fragment {
                 }
             }
 
-            conn.disconnect();
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(10000);
-            conn.setReadTimeout(10000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-            conn.setRequestProperty("Accept-Encoding", "identity");
-            conn.setRequestProperty("Connection", "Keep-Alive");
-            conn.connect();
-
-            if (conn.getResponseCode() != 200) {
-                return null;
-            }
-
-            is = conn.getInputStream();
-
             options = new BitmapFactory.Options();
             options.inSampleSize = scale;
             options.inPreferredConfig = Bitmap.Config.RGB_565;
-            options.inPurgeable = true;
-            options.inInputShareable = true;
 
-            Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
-            is.close();
-            return bitmap;
+            return BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
         } catch (Exception e) {
             return null;
         } finally {
