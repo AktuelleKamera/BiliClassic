@@ -70,7 +70,13 @@ public class SearchActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_search);
+        try {
+            setContentView(R.layout.activity_search);
+        } catch (Exception e) {
+            android.util.Log.w("SearchActivity", "Could not inflate search layout", e);
+            setContentView(new TextView(this));
+            return;
+        }
 
         searchEdit = (EditText) findViewById(R.id.search_edit);
         backBtn = (ImageView) findViewById(R.id.back);
@@ -477,6 +483,29 @@ public class SearchActivity extends BaseActivity {
             }, 800);
             return true;
         }
+
+        // GETTHEREQUICKLY → Metro 主题主页
+        if (lowerKeyword.equals("gettherequickly")) {
+            try {
+                Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+                if (vibrator != null) {
+                    vibrator.vibrate(200);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            Toast.makeText(this, "作弊码已启用！", Toast.LENGTH_LONG).show();
+
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    startActivity(new Intent(SearchActivity.this, MetroHomeActivity.class));
+                }
+            }, 800);
+            return true;
+        }
+
         return false;
     }
 

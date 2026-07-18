@@ -11,12 +11,14 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
         android:name=".BiliApplication"
         android:hardwareAccelerated="true"
         android:allowBackup="true"
         android:largeHeap="true"
+        android:resizeableActivity="true"
         android:icon="@drawable/ic_launcher"
         android:label="哔哩经典"
         android:supportsRtl="true"
@@ -130,7 +132,7 @@
             android:hardwareAccelerated="false"
             android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize"
-            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+            android:theme="@style/PlayerTheme" />
 
         <!-- 注册 LoginActivity -->
         <activity
@@ -142,15 +144,35 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".MetroHomeActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".player.BiliPlayerActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="sensorLandscape"
-            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+            android:theme="@style/PlayerTheme" />
 
         <!-- 视频下载后台服务 -->
         <service
             android:name=".download.VideoDownloadService"
             android:exported="false" />
+
+        <!-- 更新检查后台服务 -->
+        <service
+            android:name=".util.UpdateCheckService"
+            android:exported="false" />
+
+        <!-- FileProvider（兼容 minSdkVersion 4 的自实现） -->
+        <provider
+            android:name=".util.FileProviderCompat"
+            android:authorities="tv.biliclassic.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
     </application>
 

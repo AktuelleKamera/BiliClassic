@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="80dp"
+    android:orientation="vertical"
+    android:background="@drawable/item_click_effect_white"
+    android:padding="4dp">
+
+    <TextView
+        android:id="@+id/simple_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="视频标题"
+        android:textSize="12sp"
+        android:textColor="#333333"
+        android:maxLines="2"
+        android:ellipsize="end" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="4dp">
+
+        <TextView
+            android:id="@+id/simple_views"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="▶ 0"
+            android:textSize="10sp"
+            android:textColor="#999999" />
+
+        <TextView
+            android:id="@+id/simple_danmaku"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="✦ 0"
+            android:textSize="10sp"
+            android:textColor="#999999" />
+
+    </LinearLayout>
+
+</LinearLayout>

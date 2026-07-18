@@ -40,6 +40,9 @@ public class RecommendFragment extends Fragment {
     private int currentPage = 1;
     private boolean isLoading = false;
     private boolean isEnd = false;
+    private int savedScrollY = -1;
+
+    private static final String STATE_SCROLL_Y = "scroll_y";
 
     private void showToast(String msg) {
         if (getActivity() != null) {
@@ -76,6 +79,7 @@ public class RecommendFragment extends Fragment {
         gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                if (position < 0 || position >= videoList.size()) return;
                 VideoCard item = videoList.get(position);
                 if (item == null || getActivity() == null) return;
                 Intent intent = new Intent(getActivity(), VideoDetailActivity.class);
@@ -92,6 +96,7 @@ public class RecommendFragment extends Fragment {
         });
 
         gridView.setFocusable(false);
+        scrollView.setFocusable(true);
         scrollView.setFocusable(true);
         scrollView.setFocusableInTouchMode(true);
         scrollView.requestFocus();
@@ -124,9 +129,22 @@ public class RecommendFragment extends Fragment {
             }
         });
 
+        // Restore scroll position from saved instance
+        if (savedInstanceState != null) {
+            savedScrollY = savedInstanceState.getInt(STATE_SCROLL_Y, -1);
+        }
+
         loadRecommend();
 
         return view;
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (scrollView != null) {
+            outState.putInt(STATE_SCROLL_Y, scrollView.getScrollY());
+        }
     }
 
     private void checkScrollToBottom() {
@@ -220,8 +238,19 @@ public class RecommendFragment extends Fragment {
                                 isEnd = true;
                             }
 
-                            scrollView.smoothScrollTo(0, 0);
-                            scrollView.requestFocus();
+                            if (savedScrollY >= 0) {
+                                final int restoreY = savedScrollY;
+                                savedScrollY = -1;
+                                scrollView.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        scrollView.scrollTo(0, restoreY);
+                                    }
+                                });
+                            } else {
+                                scrollView.smoothScrollTo(0, 0);
+                                scrollView.requestFocus();
+                            }
                         }
                     });
                 } catch (final Exception e) {

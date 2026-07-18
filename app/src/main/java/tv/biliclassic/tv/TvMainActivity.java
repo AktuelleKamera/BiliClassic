@@ -14,6 +14,7 @@ import tv.biliclassic.FavoriteFolderListActivity;
 import tv.biliclassic.HistoryActivity;
 import tv.biliclassic.LoginActivity;
 import tv.biliclassic.MainActivity;
+import tv.biliclassic.MetroHomeActivity;
 import tv.biliclassic.R;
 import tv.biliclassic.SearchActivity;
 import tv.biliclassic.tv.adapter.TvGridAdapter;
@@ -119,7 +120,7 @@ public class TvMainActivity extends FragmentActivity {
         if (label.equals("登录")) {
             startActivity(new Intent(this, LoginActivity.class));
         } else if (label.equals("推荐")) {
-            startActivity(new Intent(this, MainActivity.class));
+            startActivity(new Intent(this, MetroHomeActivity.class));
         } else if (label.equals("时间线")) {
             startActivity(new Intent(this, MainActivity.class));
         } else if (label.equals("收藏")) {

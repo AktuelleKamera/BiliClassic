@@ -124,9 +124,14 @@ public class AndroidDisplayer extends AbsDisplayer<Canvas> {
         BORDER_PAINT.setStrokeWidth(BORDER_WIDTH);
     }
 
+    private static int getSdkInt() {
+        try { return Build.VERSION.class.getField("SDK_INT").getInt(null); }
+        catch (Exception e) { return Integer.parseInt(Build.VERSION.SDK); }
+    }
+
     @SuppressLint("NewApi")
     private static final int getMaximumBitmapWidth(Canvas c) {
-        if (Build.VERSION.SDK_INT >= 14) {
+        if (getSdkInt() >= 14) {
             return c.getMaximumBitmapWidth();
         } else {
             return c.getWidth();
@@ -135,7 +140,7 @@ public class AndroidDisplayer extends AbsDisplayer<Canvas> {
 
     @SuppressLint("NewApi")
     private static final int getMaximumBitmapHeight(Canvas c) {
-        if (Build.VERSION.SDK_INT >= 14) {
+        if (getSdkInt() >= 14) {
             return c.getMaximumBitmapHeight();
         } else {
             return c.getHeight();

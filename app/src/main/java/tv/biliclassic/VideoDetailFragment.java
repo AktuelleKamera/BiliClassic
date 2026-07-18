@@ -20,6 +20,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Paint;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.Fragment;
@@ -51,8 +52,11 @@ import tv.biliclassic.model.VideoInfo;
 import tv.biliclassic.model.VideoPart;
 import tv.biliclassic.model.UserInfo;
 import tv.biliclassic.player.PlayerAnimActivity;
+import tv.biliclassic.util.FileProviderCompat;
+import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.player.BiliPlayerActivity;
 
+import tv.biliclassic.util.SdkHelper;
 public class VideoDetailFragment extends Fragment {
 
     public static class VideoPage {
@@ -403,9 +407,17 @@ public class VideoDetailFragment extends Fragment {
             @Override
             public void run() {
                 try {
-                    java.io.File downloadDir = new java.io.File(
-                            android.os.Environment.getExternalStorageDirectory(), "BiliClassic/Download");
-                    if (!downloadDir.isDirectory()) {
+                    java.io.File downloadDir;
+                    if (PermissionUtil.hasWriteStorage(getActivity())) {
+                        downloadDir = new java.io.File(
+                                android.os.Environment.getExternalStorageDirectory(), "BiliClassic/Download");
+                        if (!downloadDir.isDirectory()) {
+                            downloadDir = null;
+                        }
+                    } else {
+                        downloadDir = null;
+                    }
+                    if (downloadDir == null) {
                         downloadDir = new java.io.File(getActivity().getFilesDir(), "Download");
                     }
 
@@ -716,26 +728,61 @@ public class VideoDetailFragment extends Fragment {
             @Override
             public void run() {
                 HttpURLConnection conn = null;
+                java.io.File tempFile = null;
                 try {
                     URL urlObj = new URL(finalUrl);
                     conn = (HttpURLConnection) urlObj.openConnection();
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
+                    conn.setConnectTimeout(12000);
+                    conn.setReadTimeout(12000);
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0");
                     conn.connect();
+
+                    // 下载到临时文件（避免 decodeStream mark/reset 问题）
+                    tempFile = new java.io.File(getActivity().getCacheDir(), "vd_" + finalUrl.hashCode() + ".tmp");
                     InputStream is = conn.getInputStream();
-                    BitmapFactory.Options options = new BitmapFactory.Options();
-                    options.inSampleSize = 2;
-                    options.inPreferredConfig = Bitmap.Config.RGB_565;
-                    final Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
+                    java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
+                    byte[] buf = new byte[8192];
+                    int readLen;
+                    while ((readLen = is.read(buf)) != -1) {
+                        fos.write(buf, 0, readLen);
+                    }
                     is.close();
-                    if (bitmap != null && getActivity() != null) {
+                    fos.close();
+                    conn.disconnect();
+                    conn = null;
+
+                    if (!tempFile.exists() || tempFile.length() == 0) return;
+
+                    BitmapFactory.Options opts = new BitmapFactory.Options();
+                    opts.inJustDecodeBounds = true;
+                    BitmapFactory.decodeFile(tempFile.getAbsolutePath(), opts);
+
+                    int scale = 1;
+                    if (opts.outWidth > 200 || opts.outHeight > 150) {
+                        scale = Math.max(opts.outWidth / 200, opts.outHeight / 150);
+                        if (scale < 1) scale = 1;
+                        if (scale > 4) scale = 4;
+                    }
+
+                    Bitmap bitmap = null;
+                    while (scale <= 16 && bitmap == null) {
+                        try {
+                            opts = new BitmapFactory.Options();
+                            opts.inSampleSize = scale;
+                            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                            bitmap = BitmapFactory.decodeFile(tempFile.getAbsolutePath(), opts);
+                        } catch (OutOfMemoryError e) {
+                            scale *= 2;
+                        }
+                    }
+                    final Bitmap resultBitmap = bitmap;
+                    if (resultBitmap != null && getActivity() != null) {
                         getActivity().runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
-                                if (bitmap != null && !bitmap.isRecycled()) {
-                                    ivCover.setImageBitmap(bitmap);
+                                if (resultBitmap != null && !resultBitmap.isRecycled()) {
+                                    ivCover.setImageBitmap(resultBitmap);
                                 } else {
                                     ivCover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
                                 }
@@ -746,6 +793,7 @@ public class VideoDetailFragment extends Fragment {
                     e.printStackTrace();
                 } finally {
                     if (conn != null) conn.disconnect();
+                    if (tempFile != null && tempFile.exists()) tempFile.delete();
                 }
             }
         }).start();
@@ -881,6 +929,9 @@ public class VideoDetailFragment extends Fragment {
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
                                 if (videoUrl != null && videoUrl.length() > 0) {
+                                    if (getActivity() instanceof VideoDetailActivity) {
+                                        ((VideoDetailActivity) getActivity()).setPausingForTransient(true);
+                                    }
                                     Intent intent = new Intent(getActivity(), PlayerAnimActivity.class);
                                     intent.putExtra("video_url", videoUrl);
                                     intent.putExtra("video_title", tempPartTitle);
@@ -926,9 +977,17 @@ public class VideoDetailFragment extends Fragment {
             actualPage = videoInfo.pages.get(pageIndex);
         }
 
-        java.io.File downloadDir = new java.io.File(
-                android.os.Environment.getExternalStorageDirectory(), "BiliClassic/Download");
-        if (!downloadDir.isDirectory()) {
+        java.io.File downloadDir;
+        if (PermissionUtil.hasWriteStorage(getActivity())) {
+            downloadDir = new java.io.File(
+                    android.os.Environment.getExternalStorageDirectory(), "BiliClassic/Download");
+            if (!downloadDir.isDirectory()) {
+                downloadDir = null;
+            }
+        } else {
+            downloadDir = null;
+        }
+        if (downloadDir == null) {
             downloadDir = new java.io.File(getActivity().getFilesDir(), "Download");
         }
 
@@ -980,6 +1039,45 @@ public class VideoDetailFragment extends Fragment {
             intent.putExtra("qn_str_array", new String[]{shortName});
         }
         isPlayButtonClicked = false;
+
+        // 非隐私模式：离线播放前上传播放记录（00：00）
+        long reportCid = (videoInfo.cids != null && pageIndex < videoInfo.cids.size())
+                ? videoInfo.cids.get(pageIndex) : 0;
+        if (reportCid > 0) {
+            tv.biliclassic.player.BiliPlayerActivity.reportHistoryStatic(
+                    getActivity(), aid, reportCid, 0);
+        }
+
+        // 检查播放器偏好：非内置/自动 → 用外部播放器
+        int pref = SettingsActivity.getPlayerPreference();
+        if (pref != 8) {
+            android.net.Uri uri = SdkHelper.getSdkInt() >= 24
+                    ? FileProviderCompat.getUriForFile(getActivity(), videoFile)
+                    : android.net.Uri.fromFile(videoFile);
+            Intent extIntent = new Intent(Intent.ACTION_VIEW);
+            extIntent.setDataAndType(uri, "video/mp4");
+            if (SdkHelper.getSdkInt() >= 24) {
+                extIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            }
+            String pkg = SettingsActivity.getPlayerPackageName();
+            if (pkg != null) {
+                try {
+                    Intent.class.getMethod("setPackage", String.class).invoke(extIntent, pkg);
+                } catch (Exception ignored) {
+                }
+            }
+            try {
+                if (getActivity() instanceof VideoDetailActivity) {
+                    ((VideoDetailActivity) getActivity()).setPausingForTransient(true);
+                }
+                startActivity(extIntent);
+                return;
+            } catch (Exception e) {
+                Toast.makeText(getActivity(), "未找到可用的外部播放器", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+
         startActivity(intent);
     }
 

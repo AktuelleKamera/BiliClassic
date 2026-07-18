@@ -195,6 +195,11 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     }
 
     private static volatile boolean mIsNativeInitialized = false;
+    private static int getSdkInt() {
+        try { return Build.VERSION.class.getField("SDK_INT").getInt(null); }
+        catch (Exception e) { return Integer.parseInt(Build.VERSION.SDK); }
+    }
+
     private static void initNativeOnce() {
         synchronized (IjkMediaPlayer.class) {
             if (!mIsNativeInitialized) {
@@ -444,7 +449,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     @Override
     public void setDataSource(FileDescriptor fd)
             throws IOException, IllegalArgumentException, IllegalStateException {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB_MR1) {
+        if (getSdkInt() < Build.VERSION_CODES.HONEYCOMB_MR1) {
             int native_fd = -1;
             try {
                 Field f = fd.getClass().getDeclaredField("descriptor"); //NoSuchFieldException
@@ -1221,7 +1226,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
         @SuppressWarnings("deprecation")
         @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
         public String onMediaCodecSelect(IMediaPlayer mp, String mimeType, int profile, int level) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN)
+            if (getSdkInt() < Build.VERSION_CODES.JELLY_BEAN)
                 return null;
 
             if (mimeType == null || mimeType.length() == 0)

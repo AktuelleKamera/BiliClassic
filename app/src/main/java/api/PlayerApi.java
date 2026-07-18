@@ -55,11 +55,11 @@ public class PlayerApi {
         android.util.Log.e("PlayerApi", "html5模式=" + html5);
 
         String url = "https://api.bilibili.com/x/player/wbi/playurl?"
-                + "avid=" + playerData.aid
+                + "&avid=" + playerData.aid
                 + "&cid=" + playerData.cid
                 + (html5 ? "&high_quality=1" : "")
                 + "&qn=" + playerData.qn
-                + "&fnval=1" // MP4格式，B站已不提供FLV
+                + "&fnval=1" // 强制 MP4 格式
                 + "&fnver=0"
                 + "&platform=" + (html5 ? "html5" : "pc")
                 + "&voice_balance=1"
@@ -97,8 +97,8 @@ public class PlayerApi {
             }
         }
 
-        // ========== 如果没有 durl，尝试解析 dash（DASH 格式） ==========
-        if (videoUrl == null && data.has("dash")) {
+        // ========== 如果没有 durl，尝试解析 dash（仅非下载模式） ==========
+        if (videoUrl == null && data.has("dash") && !download) {
             JSONObject dash = data.getJSONObject("dash");
             android.util.Log.e("PlayerApi", "使用 dash 格式");
             JSONArray video = dash.getJSONArray("video");
@@ -116,6 +116,9 @@ public class PlayerApi {
 
         if (videoUrl == null || videoUrl.length() == 0) {
             android.util.Log.e("PlayerApi", "无法获取视频地址");
+            if (download) {
+                throw new JSONException("该视频仅提供 DASH 格式，不支持下载为 MP4");
+            }
             throw new JSONException("无法获取视频地址");
         }
 

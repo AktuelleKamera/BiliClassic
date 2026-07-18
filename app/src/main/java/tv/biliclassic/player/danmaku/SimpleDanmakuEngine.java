@@ -22,6 +22,7 @@ import java.util.Map;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
+import tv.biliclassic.util.SdkHelper;
 
 public class SimpleDanmakuEngine extends View {
 
@@ -88,7 +89,7 @@ public class SimpleDanmakuEngine extends View {
         super(context);
         float density = context.getResources().getDisplayMetrics().density;
         mTextSize = 14f * density;
-        if (android.os.Build.VERSION.SDK_INT >= 11) {
+        if (SdkHelper.getSdkInt() >= 11) {
             setLayerType(LAYER_TYPE_SOFTWARE, null);
         }
         mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);

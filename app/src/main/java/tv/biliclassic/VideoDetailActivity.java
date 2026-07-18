@@ -4,6 +4,8 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -33,16 +35,22 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import tv.biliclassic.api.BangumiApi;
 import tv.biliclassic.api.FavoriteApi;
 import tv.biliclassic.api.InteractionApi;
+import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.ReplyHelper;
+import tv.biliclassic.api.ReplyApi;
 import tv.biliclassic.api.VideoInfoApi;
 import tv.biliclassic.download.VideoDownloadService;
 import tv.biliclassic.download.VideoDownloadEnvironment;
 import tv.biliclassic.util.BroadcastConstants;
 import tv.biliclassic.model.FavoriteFolder;
 import tv.biliclassic.model.VideoInfo;
+import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class VideoDetailActivity extends BaseActivity {
@@ -77,9 +85,18 @@ public class VideoDetailActivity extends BaseActivity {
     private boolean mIsFavoriteLoading = false;
     private boolean mIsFavoriteUpdating = false;
     private boolean mIsDeleteDialogShowing = false;
+    private boolean mIsPausingForTransient = false;
+
+    public void setPausingForTransient(boolean pausing) {
+        mIsPausingForTransient = pausing;
+    }
 
     // 评论相关
     private ImageView btnComment;
+    private ArrayList<String> pendingImageDataList = new ArrayList<String>();
+    private static final int MAX_COMMENT_IMAGES = 9;
+    private TextView dialogImageBtn = null;
+    private static final int REQUEST_PICK_COMMENT_IMAGE = 2001;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -476,6 +493,10 @@ public class VideoDetailActivity extends BaseActivity {
         if (viewPager != null) {
             currentPagePosition = viewPager.getCurrentItem();
         }
+        if (mIsPausingForTransient) {
+            mIsPausingForTransient = false;
+            return;
+        }
         isCleaned = false;
         cleanupHandler.removeCallbacksAndMessages(null);
         cleanupHandler.postDelayed(new Runnable() {
@@ -492,6 +513,7 @@ public class VideoDetailActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        mIsPausingForTransient = false;
         cleanupHandler.removeCallbacksAndMessages(null);
         isCleaned = false;
         if (viewPager != null && viewPager.getAdapter() == null) {
@@ -609,6 +631,58 @@ public class VideoDetailActivity extends BaseActivity {
         final EditText input = new EditText(this);
         input.setHint("输入评论内容...");
         input.setLines(3);
+        input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(1000)});
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 14) {
+            android.graphics.drawable.GradientDrawable inputBg = new android.graphics.drawable.GradientDrawable();
+            inputBg.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+            inputBg.setStroke(dpToPx(2), 0xFFD0D0D0);
+            inputBg.setColor(0xFFFFFFFF);
+            input.setBackgroundDrawable(inputBg);
+        }
+
+        // 顶部按钮行：图片 + 表情
+        final LinearLayout btnRow = new LinearLayout(this);
+        btnRow.setOrientation(LinearLayout.HORIZONTAL);
+        btnRow.setPadding(0, 0, 0, dpToPx(6));
+
+        final TextView imageBtn = new TextView(this);
+        imageBtn.setText("添加图片");
+        imageBtn.setTextSize(13);
+        imageBtn.setTextColor(0xFFD86DA5);
+        imageBtn.setPadding(0, 0, dpToPx(12), 0);
+        imageBtn.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
+        imageBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (pendingImageDataList.size() >= MAX_COMMENT_IMAGES) {
+                    Toast.makeText(VideoDetailActivity.this, "最多上传" + MAX_COMMENT_IMAGES + "张图片", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Intent pickIntent = new Intent(Intent.ACTION_GET_CONTENT);
+                pickIntent.setType("image/*");
+                startActivityForResult(pickIntent, REQUEST_PICK_COMMENT_IMAGE);
+            }
+        });
+        btnRow.addView(imageBtn);
+        dialogImageBtn = imageBtn;
+        if (pendingImageDataList.size() > 0) {
+            imageBtn.setText("图片(" + pendingImageDataList.size() + ")");
+        }
+
+        final TextView emojiBtn = new TextView(this);
+        emojiBtn.setText("表情");
+        emojiBtn.setTextSize(13);
+        emojiBtn.setTextColor(0xFFD86DA5);
+        emojiBtn.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
+        emojiBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showEmojiPicker(input);
+            }
+        });
+        btnRow.addView(emojiBtn);
+
+        layout.addView(btnRow);
         layout.addView(input);
 
         final TextView clearText = new TextView(this);
@@ -617,6 +691,7 @@ public class VideoDetailActivity extends BaseActivity {
         clearText.setPadding(0, 8, 0, 0);
         clearText.setTextSize(14);
         clearText.setTextColor(0xFF666666);
+        clearText.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
         clearText.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -631,22 +706,49 @@ public class VideoDetailActivity extends BaseActivity {
         });
         layout.addView(clearText);
 
-        new AlertDialog.Builder(this)
+        final AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("发送评论")
                 .setView(layout)
                 .setPositiveButton("发送", new DialogInterface.OnClickListener() {
                     @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        String text = input.getText().toString().trim();
-                        if (text == null || text.length() == 0) {
-                            Toast.makeText(VideoDetailActivity.this, "评论内容不能为空", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-                        sendComment(text);
+                    public void onClick(DialogInterface d, int which) {
                     }
                 })
-                .setNegativeButton("取消", null)
-                .show();
+                .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        pendingImageDataList.clear();
+                        d.dismiss();
+                    }
+                })
+                .create();
+
+        dialog.show();
+        System.gc();
+        android.view.Window dialogWindow = dialog.getWindow();
+        if (dialogWindow != null) {
+            dialogWindow.setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.9),
+                    android.view.WindowManager.LayoutParams.WRAP_CONTENT);
+        }
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String text = input.getText().toString().trim();
+                if (text == null || text.length() == 0) {
+                    Toast.makeText(VideoDetailActivity.this, "评论内容不能为空", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                dialog.dismiss();
+                if (pendingImageDataList.size() > 0) {
+                    String picturesJson = buildPicturesJson();
+                    pendingImageDataList.clear();
+                    sendCommentWithPicture(text, picturesJson);
+                } else {
+                    sendComment(text);
+                }
+            }
+        });
     }
 
     private void sendComment(final String text) {
@@ -656,15 +758,44 @@ public class VideoDetailActivity extends BaseActivity {
 
         ReplyHelper.sendReply(this, finalAid, 0, 0, text, new ReplyHelper.ReplyCallback() {
             @Override
-            public void onSuccess() {
+            public void onSuccess(String responseJson) {
                 Toast.makeText(VideoDetailActivity.this, "评论发送成功", Toast.LENGTH_SHORT).show();
-                refreshComments();
+                CommentFragment.CommentItem newItem = CommentFragment.parseCommentFromResponse(responseJson);
+                Fragment fragment = getSupportFragmentManager().findFragmentByTag(
+                        "android:switcher:" + R.id.viewpager + ":" + (isBangumi ? 1 : 2));
+                if (fragment instanceof CommentFragment) {
+                    ((CommentFragment) fragment).insertNewComment(newItem);
+                } else {
+                    refreshComments();
+                }
             }
 
             @Override
             public void onFailed(String error) {
                 // 错误已在 ReplyHelper 中 Toast 显示
             }
+        });
+    }
+
+    private void sendCommentWithPicture(final String text, final String picturesJson) {
+        Toast.makeText(this, "正在发送评论...", Toast.LENGTH_SHORT).show();
+        final long finalAid = getCorrectAid();
+        ReplyHelper.sendReplyWithPictures(this, finalAid, 0, 0, text, picturesJson,
+                new ReplyHelper.ReplyCallback() {
+            @Override
+            public void onSuccess(String responseJson) {
+                Toast.makeText(VideoDetailActivity.this, "评论发送成功", Toast.LENGTH_SHORT).show();
+                CommentFragment.CommentItem newItem = CommentFragment.parseCommentFromResponse(responseJson);
+                Fragment fragment = getSupportFragmentManager().findFragmentByTag(
+                        "android:switcher:" + R.id.viewpager + ":" + (isBangumi ? 1 : 2));
+                if (fragment instanceof CommentFragment) {
+                    ((CommentFragment) fragment).insertNewComment(newItem);
+                } else {
+                    refreshComments();
+                }
+            }
+            @Override
+            public void onFailed(String error) {}
         });
     }
 
@@ -685,16 +816,166 @@ public class VideoDetailActivity extends BaseActivity {
         return 0L;
     }
 
-    private void refreshComments() {
-        if (viewPager != null) {
-            int commentPosition = isBangumi ? 1 : 2;
-            viewPager.setCurrentItem(commentPosition);
+    private static final String[] EMOJIS = {
+        "( ゜- ゜)つロ", "_(:з」∠)_", "（⌒▽⌒）", "（￣▽￣）", "⌓‿⌓",
+        "(=・ω・=)", "(*°▽°*)", "八(*°▽°*)♪", "✿ヽ(°▽°)ノ✿", "(¦3【▓▓】",
+        "눈_눈", "(ಡωಡ)", "_(≧∇≦」∠)_", "━━━∑(ﾟ□ﾟ*川", "━(｀・ω・´)",
+        "(￣3￣)", "✧(≖ ◡ ≖✿)", "(･∀･)", "(〜￣△￣)〜", "→_→",
+        "(°∀°)ﾉ", "╮(￣▽￣)╭", "( ´_ゝ｀)", "←_←", "(;¬_¬)",
+        "(ﾟДﾟ≡ﾟдﾟ)!?", "( ´･･)ﾉ", "(._.`)", "Σ(ﾟдﾟ;)", "Σ( ￣□￣||)",
+        "<(´；ω；`)", "（/TДT)/", "(^・ω・^)", "(｡･ω･｡)", "(●￣(ｴ)￣●)",
+        "ε=ε=(ノ≧∇≦)ノ", "(´･_･`)", "(-_-#)", "（￣へ￣）", "(￣ε(#￣)",
+        "Σ(╯°口°)╯(┴—┴", "ヽ(`Д´)ﾉ", "(\"▔□▔)/", "(º﹃º )", "(๑>؂<๑）",
+        "｡ﾟ(ﾟ´Д｀)ﾟ｡", "(∂ω∂)", "(┯_┯)", "(・ω< )★", "( ๑ˊ•̥▵•)੭₎₎",
+        "¥ㄟ(´･ᴗ･`)ノ¥", "Σ_(꒪ཀ꒪」∠)_", "٩(๛ ˘ ³˘)۶❤", "(๑‾᷅^‾᷅๑)"
+    };
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+        if (requestCode == REQUEST_PICK_COMMENT_IMAGE && resultCode == RESULT_OK && data != null) {
+            final android.net.Uri imageUri = data.getData();
+            if (imageUri != null) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            java.io.InputStream is = getContentResolver().openInputStream(imageUri);
+                            if (is == null) return;
+                            byte[] imageBytes = NetWorkUtil.readStream(is);
+                            is.close();
+
+                            BitmapFactory.Options opts = new BitmapFactory.Options();
+                            opts.inJustDecodeBounds = true;
+                            BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, opts);
+
+                            int scale = 1;
+                            if (opts.outWidth > 1920 || opts.outHeight > 1080) {
+                                scale = Math.max(opts.outWidth / 1920, opts.outHeight / 1080);
+                            }
+
+                            opts = new BitmapFactory.Options();
+                            opts.inSampleSize = scale;
+                            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                            Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, opts);
+
+                            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, baos);
+                            byte[] compressed = baos.toByteArray();
+                            if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
+
+                            final long finalAid = getCorrectAid();
+                            final String fileName = "comment_" + System.currentTimeMillis() + ".jpg";
+                            final String resultJson = ReplyApi.uploadReplyImage(finalAid, compressed, fileName);
+
+                            if (resultJson != null && pendingImageDataList.size() < MAX_COMMENT_IMAGES) {
+                                pendingImageDataList.add(resultJson);
+                                final int imgCount = pendingImageDataList.size();
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (dialogImageBtn != null) {
+                                            dialogImageBtn.setText("图片(" + imgCount + ")");
+                                        }
+                                        Toast.makeText(VideoDetailActivity.this, "图片已上传 (" + imgCount + ")", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            } else {
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        Toast.makeText(VideoDetailActivity.this, "图片上传失败", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            }
+                        } catch (final Exception e) {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Toast.makeText(VideoDetailActivity.this, "图片上传失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
+                    }
+                }).start();
+            }
         }
-        Fragment fragment = getSupportFragmentManager().findFragmentByTag(
-                "android:switcher:" + R.id.viewpager + ":" + (isBangumi ? 1 : 2));
-        if (fragment instanceof CommentFragment) {
-            ((CommentFragment) fragment).refreshComments();
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    private void showEmojiPicker(final EditText input) {
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("选择表情");
+
+        final android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        final LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
+
+        for (int i = 0; i < EMOJIS.length; i++) {
+            final String emoji = EMOJIS[i];
+            final TextView tv = new TextView(this);
+            tv.setText(emoji);
+            tv.setTextSize(16);
+            tv.setTextColor(0xFF333333);
+            tv.setPadding(dpToPx(10), dpToPx(8), dpToPx(10), dpToPx(8));
+            tv.setClickable(true);
+            android.graphics.drawable.GradientDrawable emojiNormal = new android.graphics.drawable.GradientDrawable();
+            emojiNormal.setColor(0xFFF0F0F0);
+            android.graphics.drawable.GradientDrawable emojiPressed = new android.graphics.drawable.GradientDrawable();
+            emojiPressed.setColor(0x40D86DA5);
+            android.graphics.drawable.StateListDrawable emojiBg = new android.graphics.drawable.StateListDrawable();
+            emojiBg.addState(new int[]{android.R.attr.state_pressed}, emojiPressed);
+            emojiBg.addState(new int[]{}, emojiNormal);
+            tv.setBackgroundDrawable(emojiBg);
+            tv.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    int remaining = 1000 - input.length();
+                    if (remaining <= 0) return;
+                    String toInsert = emoji.length() <= remaining ? emoji : emoji.substring(0, remaining);
+                    int pos = input.getSelectionStart();
+                    if (pos < 0) pos = input.length();
+                    input.getText().insert(pos, toInsert);
+                }
+            });
+            list.addView(tv);
+
+            if (i < EMOJIS.length - 1) {
+                View divider = new View(this);
+                divider.setLayoutParams(new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, 1));
+                divider.setBackgroundColor(0xFFDDDDDD);
+                list.addView(divider);
+            }
         }
+
+        scroll.addView(list);
+        builder.setView(scroll);
+        builder.setPositiveButton("关闭", null);
+        builder.show();
+    }
+
+    private String buildPicturesJson() {
+        try {
+            JSONArray pics = new JSONArray();
+            for (int i = 0; i < pendingImageDataList.size(); i++) {
+                JSONObject imgData = new JSONObject(pendingImageDataList.get(i));
+                JSONObject pic = new JSONObject();
+                pic.put("img_src", imgData.optString("image_url", ""));
+                pic.put("img_width", imgData.optInt("image_width", 0));
+                pic.put("img_height", imgData.optInt("image_height", 0));
+                pic.put("img_size", imgData.optDouble("img_size", 0));
+                pics.put(pic);
+            }
+            return pics.toString();
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
+    private int dpToPx(int dp) {
+        float density = getResources().getDisplayMetrics().density;
+        return (int) (dp * density + 0.5f);
     }
 
     private String extractCsrfFromCookie(String cookie) {
@@ -707,6 +988,18 @@ public class VideoDetailActivity extends BaseActivity {
             return m.group(1);
         }
         return null;
+    }
+
+    private void refreshComments() {
+        if (viewPager != null) {
+            int commentPosition = isBangumi ? 1 : 2;
+            viewPager.setCurrentItem(commentPosition);
+        }
+        Fragment fragment = getSupportFragmentManager().findFragmentByTag(
+                "android:switcher:" + R.id.viewpager + ":" + (isBangumi ? 1 : 2));
+        if (fragment instanceof CommentFragment) {
+            ((CommentFragment) fragment).refreshComments();
+        }
     }
 
     private void checkFavoriteState() {
@@ -1294,11 +1587,53 @@ public class VideoDetailActivity extends BaseActivity {
         TextView title;
     }
 
+    // 下载权限待参数（权限请求成功后重试用）
+    private String mPendingVideoUrl;
+    private String mPendingTitle;
+    private String mPendingPageTitle;
+    private long mPendingAid;
+    private long mPendingCid;
+    private int mPendingPage;
+    private int mPendingQuality;
+    private String mPendingQualityName;
+    private String mPendingCoverUrl;
+    private String mPendingUpName;
+    private String mPendingBvid;
+    private String mPendingDescription;
+    private String mPendingTags;
+
     public void startDownloadDirect(String videoUrl, String title, String pageTitle,
                                     long aid, long cid, int page,
                                     int quality, String qualityName,
                                     String coverUrl, String upName, String bvid,
                                     String description, String tags) {
+        if (!PermissionUtil.hasWriteStorage(this)) {
+            mPendingVideoUrl = videoUrl;
+            mPendingTitle = title;
+            mPendingPageTitle = pageTitle;
+            mPendingAid = aid;
+            mPendingCid = cid;
+            mPendingPage = page;
+            mPendingQuality = quality;
+            mPendingQualityName = qualityName;
+            mPendingCoverUrl = coverUrl;
+            mPendingUpName = upName;
+            mPendingBvid = bvid;
+            mPendingDescription = description;
+            mPendingTags = tags;
+            setPausingForTransient(true);
+            runWithStoragePermission(new Runnable() {
+                @Override
+                public void run() {
+                    startDownloadDirect(mPendingVideoUrl, mPendingTitle, mPendingPageTitle,
+                            mPendingAid, mPendingCid, mPendingPage,
+                            mPendingQuality, mPendingQualityName,
+                            mPendingCoverUrl, mPendingUpName, mPendingBvid,
+                            mPendingDescription, mPendingTags);
+                }
+            });
+            return;
+        }
         VideoDownloadEnvironment env = new VideoDownloadEnvironment(
                 getDownloadDir(), aid, page);
         if (env.getVideoFile().exists()) {
@@ -1314,7 +1649,7 @@ public class VideoDetailActivity extends BaseActivity {
     }
 
     private File getDownloadDir() {
-        if (isSDCardAvailable()) {
+        if (isSDCardAvailable() && PermissionUtil.hasWriteStorage(this)) {
             File sdDownload = new File(Environment.getExternalStorageDirectory(), "BiliClassic/Download");
             if (!sdDownload.exists()) sdDownload.mkdirs();
             return sdDownload;

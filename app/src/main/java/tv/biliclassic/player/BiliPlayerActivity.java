@@ -2,6 +2,7 @@ package tv.biliclassic.player;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
@@ -70,8 +71,10 @@ import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import tv.biliclassic.widget.BatteryView2;
 import tv.biliclassic.util.DeviceInfoUtil;
+import tv.biliclassic.util.FileProviderCompat;
 import util.LocalStreamProxy;
 
+import tv.biliclassic.util.SdkHelper;
 public class BiliPlayerActivity extends Activity implements
         SurfaceHolder.Callback,
         IMediaPlayer.OnPreparedListener,
@@ -173,7 +176,7 @@ public class BiliPlayerActivity extends Activity implements
             if (mediaPlayer != null) { mediaPlayer.pause(); isPlaying = false; updatePlayPauseButton(); }
         }
         public void resumePlayer() {
-            if (mediaPlayer != null && isPrepared) { mediaPlayer.start(); isPlaying = true; updatePlayPauseButton(); }
+            if (mediaPlayer != null && isPrepared) { mediaPlayer.start(); isPlaying = true; updatePlayPauseButton(); if (!isLiveStream) handler.sendEmptyMessage(MSG_UPDATE_PROGRESS); }
         }
     };
 
@@ -340,12 +343,42 @@ public class BiliPlayerActivity extends Activity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // 全面屏挖孔适配：API 28+ 延伸到挖孔区域
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        if (SdkHelper.getSdkInt() >= 28) {
+            try {
+                android.view.WindowManager.LayoutParams attrs = getWindow().getAttributes();
+                java.lang.reflect.Field f = android.view.WindowManager.LayoutParams.class.getField("layoutInDisplayCutoutMode");
+                f.setInt(attrs, 1);
+                getWindow().setAttributes(attrs);
+            } catch (Exception e) {
+            }
+        }
+        if (SdkHelper.getSdkInt() >= 19) {
+            getWindow().getDecorView().setSystemUiVisibility(
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    | android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    | android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFFFFFFFF));
+        getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF000000));
+        // API 21+ 消费所有系统窗口插入，防止旋转后安全区/挖孔推回布局
+        if (SdkHelper.getSdkInt() >= 21) {
+            getWindow().getDecorView().setOnApplyWindowInsetsListener(
+                new android.view.View.OnApplyWindowInsetsListener() {
+                    public android.view.WindowInsets onApplyWindowInsets(
+                            android.view.View v, android.view.WindowInsets insets) {
+                        return insets.consumeSystemWindowInsets();
+                    }
+                });
+        }
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         setContentView(R.layout.bili_app_player_view_new);
+
         if (!getIntent().getBooleanExtra("offline_mode", false)) {
             initLoadingOverlay();
         }
@@ -357,7 +390,7 @@ public class BiliPlayerActivity extends Activity implements
         boolean onlineMode = getIntent().getBooleanExtra("online_mode", false);
         decoderType = SettingsActivity.getDecoderType();
         mRendererType = SettingsActivity.getRendererType();
-        if (mRendererType == RENDERER_TEXTUREVIEW && android.os.Build.VERSION.SDK_INT < 14) {
+        if (mRendererType == RENDERER_TEXTUREVIEW && SdkHelper.getSdkInt() < 14) {
             mRendererType = RENDERER_SURFACEVIEW;
         }
 
@@ -372,6 +405,30 @@ public class BiliPlayerActivity extends Activity implements
         mQualityValues = getIntent().getIntArrayExtra("qn_value_array");
         mCurrentQn = getIntent().getIntExtra("current_qn", 0);
         mOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
+
+        // 非内置播放器且在线模式 → 自动关闭在线播放，交给外部播放器
+        if (!mOfflineMode && !getIntent().getBooleanExtra("_from_external_redirect", false)) {
+            int pref = SettingsActivity.getPlayerPreference();
+            if (pref != 8) {
+                String playerPkg = SettingsActivity.getPlayerPackageName();
+                if (videoUrl != null && videoUrl.length() > 0) {
+                    Intent extIntent = new Intent(Intent.ACTION_VIEW);
+                    extIntent.setDataAndType(Uri.parse(videoUrl), "video/mp4");
+                    if (playerPkg != null) {
+                        try { Intent.class.getMethod("setPackage", String.class).invoke(extIntent, playerPkg); } catch (Exception ignored) {}
+                    }
+                    extIntent.putExtra("_from_external_redirect", true);
+                    try {
+                        startActivity(extIntent);
+                        finish();
+                        return;
+                    } catch (Exception e) {
+                        finish();
+                        return;
+                    }
+                }
+            }
+        }
 
         if (onlineMode) {
             if (videoUrl == null || videoUrl.length() == 0) {
@@ -390,6 +447,7 @@ public class BiliPlayerActivity extends Activity implements
 
         mSeekWhenPrepared = sPendingSeekPosition;
         sPendingSeekPosition = 0;
+        enableGesture = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.ENABLE_GESTURE, true);
         keepBackground = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.KEEP_BACKGROUND, true);
         completionAction = SharedPreferencesUtil.getInt(SharedPreferencesUtil.COMPLETION_ACTION, COMPLETION_ACTION_PAUSE);
         autoRotation = SharedPreferencesUtil.getBoolean(
@@ -399,21 +457,27 @@ public class BiliPlayerActivity extends Activity implements
         applyAutoRotation();
 
         if (DeviceInfoUtil.isUnsupportedCpu()) {
-            new AlertDialog.Builder(this)
-                    .setTitle("设备不支持")
-                    .setMessage("ARMv5TE 或无 VFP 的 ARMv6 设备无法使用内置播放器，请关闭\"在线播放\"后下载视频，使用第三方播放器播放。")
-                    .setPositiveButton("确定", new android.content.DialogInterface.OnClickListener() {
-                        public void onClick(android.content.DialogInterface dialog, int which) {
-                            finish();
-                        }
-                    })
-                    .show();
-            return;
+            if (!DeviceInfoUtil.isLegacy) {
+                new AlertDialog.Builder(this)
+                        .setTitle("设备不支持")
+                        .setMessage("ARMv5TE 或无 VFP 的 ARMv6 设备无法使用内置播放器，请关闭\"在线播放\"后下载视频，使用第三方播放器播放。")
+                        .setPositiveButton("继续尝试", null)
+                        .setNegativeButton("确定", new android.content.DialogInterface.OnClickListener() {
+                            public void onClick(android.content.DialogInterface dialog, int which) {
+                                finish();
+                            }
+                        })
+                        .show();
+                return;
+            }
         }
 
         initViews();
         initPlayer();
         initGestureController();
+        if (mGestureController != null) {
+            mGestureController.setEnableGesture(enableGesture);
+        }
     }
 
     private void initLoadingOverlay() {
@@ -581,23 +645,14 @@ public class BiliPlayerActivity extends Activity implements
                     if (containerWidth == 0 || containerHeight == 0) return;
                     if (videoWidth == 0 || videoHeight == 0) return;
 
-                    boolean portrait = isPortraitLayout();
-
-                    // 竖屏 setRotation
-                    if (portrait) {
-                        tv.setPivotX(containerWidth / 2f);
-                        tv.setPivotY(containerHeight / 2f);
-                        tv.setScaleX(1f);
-                        tv.setScaleY(1f);
-                        tv.setTranslationX(0);
-                        tv.setTranslationY(0);
-                        return;
-                    }
-
-                    // 横屏：重置旋转
+                    // 重置变换（不论竖屏横屏，视频都不应旋转）
                     tv.setRotation(0);
                     tv.setPivotX(0);
                     tv.setPivotY(0);
+                    tv.setScaleX(1f);
+                    tv.setScaleY(1f);
+                    tv.setTranslationX(0);
+                    tv.setTranslationY(0);
 
                     float containerRatio = (float) containerWidth / containerHeight;
                     float videoRatio = (float) videoWidth / videoHeight;
@@ -821,7 +876,7 @@ public class BiliPlayerActivity extends Activity implements
 
         container.removeAllViews();
 
-        if (mRendererType == RENDERER_TEXTUREVIEW && android.os.Build.VERSION.SDK_INT >= 14) {
+        if (mRendererType == RENDERER_TEXTUREVIEW && SdkHelper.getSdkInt() >= 14) {
             TextureView tv = new TextureView(this);
             tv.setSurfaceTextureListener(
                     (TextureView.SurfaceTextureListener) createSurfaceTextureListener());
@@ -835,7 +890,7 @@ public class BiliPlayerActivity extends Activity implements
             mVideoSurface = null;
             surfaceHolder = sv.getHolder();
             if (decoderType == DECODER_SYSTEM) {
-                if (android.os.Build.VERSION.SDK_INT >= 5) {
+                if (SdkHelper.getSdkInt() >= 5) {
                     sv.setZOrderMediaOverlay(true);
                 }
                 surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
@@ -1967,7 +2022,7 @@ public class BiliPlayerActivity extends Activity implements
             container.removeView(videoView);
         }
 
-        if (mRendererType == RENDERER_TEXTUREVIEW && android.os.Build.VERSION.SDK_INT >= 14) {
+        if (mRendererType == RENDERER_TEXTUREVIEW && SdkHelper.getSdkInt() >= 14) {
             TextureView tv = new TextureView(this);
             tv.setSurfaceTextureListener(
                     (TextureView.SurfaceTextureListener) createSurfaceTextureListener());
@@ -1981,7 +2036,7 @@ public class BiliPlayerActivity extends Activity implements
             mVideoSurface = null;
             surfaceHolder = sv.getHolder();
             if (decoderType == DECODER_SYSTEM) {
-                if (android.os.Build.VERSION.SDK_INT >= 5) {
+                if (SdkHelper.getSdkInt() >= 5) {
                     sv.setZOrderMediaOverlay(true);
                 }
                 surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
@@ -2085,8 +2140,12 @@ public class BiliPlayerActivity extends Activity implements
                             androidPlayer.setDataSource(mFileInputStream.getFD());
                         } catch (Exception e) {
                             try {
-                                Uri localUri = Uri.fromFile(new File(localPath));
-                                androidPlayer.setDataSource(this, localUri);
+                                if (SdkHelper.getSdkInt() >= 24) {
+                                    Uri localUri = FileProviderCompat.getUriForFile(BiliPlayerActivity.this, new File(localPath));
+                                    androidPlayer.setDataSource(this, localUri);
+                                } else {
+                                    androidPlayer.setDataSource(localPath);
+                                }
                             } catch (Exception e2) {
                                 androidPlayer.setDataSource(localPath);
                             }
@@ -2224,7 +2283,7 @@ public class BiliPlayerActivity extends Activity implements
     public void surfaceCreated(SurfaceHolder holder) {
         if (mRendererType == RENDERER_TEXTUREVIEW) return;
         surfaceReady = true;
-        if (decoderType == DECODER_SYSTEM && android.os.Build.VERSION.SDK_INT < 14) {
+        if (decoderType == DECODER_SYSTEM && SdkHelper.getSdkInt() < 14) {
             holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
         }
         if (pendingPrepare) {
@@ -2251,7 +2310,7 @@ public class BiliPlayerActivity extends Activity implements
     public void surfaceDestroyed(SurfaceHolder holder) {
         if (mRendererType == RENDERER_TEXTUREVIEW) return;
         surfaceReady = false;
-        if (mediaPlayer != null && !(decoderType == DECODER_SYSTEM && android.os.Build.VERSION.SDK_INT < 14)) {
+        if (mediaPlayer != null && !(decoderType == DECODER_SYSTEM && SdkHelper.getSdkInt() < 14)) {
             if (isPrepared) {
                 try {
                     mSeekWhenPrepared = (int) mediaPlayer.getCurrentPosition();
@@ -2421,7 +2480,7 @@ public class BiliPlayerActivity extends Activity implements
     public boolean onError(IMediaPlayer mp, int what, int extra) {
         showBuffering(false);
 
-        int sdkInt = android.os.Build.VERSION.SDK_INT;
+        int sdkInt = SdkHelper.getSdkInt();
 
         if (decoderType == DECODER_SYSTEM && mAllowDecoderFallback) {
             if (!isPrepared) {
@@ -2584,7 +2643,7 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         VideoAspectRatioHelper.autoRotateIfPortrait(this, videoWidth, videoHeight,
-                !aspectRatioFixed, btnAspectRatio, mGestureController);
+                !aspectRatioFixed, btnAspectRatio, mGestureController, enableGesture);
 
         applyAspectRatio(currentAspectRatio);
     }
@@ -2780,6 +2839,14 @@ public class BiliPlayerActivity extends Activity implements
         LayoutInflater inflater = LayoutInflater.from(this);
         final View panel = inflater.inflate(R.layout.bili_app_player_options_pannel, null);
 
+        // 用 FrameLayout 包裹并右对齐，满宽 PopupWindow 时安全区挤压左侧空白区域
+        android.widget.FrameLayout wrapper = new android.widget.FrameLayout(this);
+        wrapper.setBackgroundDrawable(null);
+        wrapper.addView(panel, new android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.Gravity.RIGHT));
+
         TextView titleView = (TextView) panel.findViewById(R.id.title);
         if (titleView != null) {
             titleView.setText(R.string.Player_playback_options_pannel_title);
@@ -2847,6 +2914,7 @@ public class BiliPlayerActivity extends Activity implements
             enableGestureCb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                     enableGesture = isChecked;
+                    SharedPreferencesUtil.putBoolean(SharedPreferencesUtil.ENABLE_GESTURE, isChecked);
                     if (mGestureController != null) {
                         mGestureController.setEnableGesture(isChecked);
                     }
@@ -2912,8 +2980,8 @@ public class BiliPlayerActivity extends Activity implements
             });
         }
 
-        mPlayerOptionsPannel = new PopupWindow(panel,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
+        mPlayerOptionsPannel = new PopupWindow(wrapper,
+                ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT, true);
         mPlayerOptionsPannel.setAnimationStyle(R.style.Animation_SidePannel);
         mPlayerOptionsPannel.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(
@@ -2924,8 +2992,17 @@ public class BiliPlayerActivity extends Activity implements
             }
         });
 
-        View root = findViewById(android.R.id.content);
+        View root = getWindow().getDecorView();
         mPlayerOptionsPannel.showAtLocation(root, Gravity.RIGHT, 0, 0);
+        if (SdkHelper.getSdkInt() >= 28) {
+            wrapper.addOnAttachStateChangeListener(new android.view.View.OnAttachStateChangeListener() {
+                public void onViewAttachedToWindow(android.view.View v) {
+                    applyPopupCutout(mPlayerOptionsPannel);
+                    v.removeOnAttachStateChangeListener(this);
+                }
+                public void onViewDetachedFromWindow(android.view.View v) {}
+            });
+        }
         showControlsWithAutoHide();
     }
 
@@ -2936,6 +3013,32 @@ public class BiliPlayerActivity extends Activity implements
         }
         if (mDanmakuManager != null) mDanmakuManager.dismissAllPanels();
         hideOptionsMenu();
+    }
+
+    // 为 PopupWindow 的独立窗口设置挖孔模式
+    public static void applyPopupCutout(PopupWindow popup) {
+        if (SdkHelper.getSdkInt() < 28 || popup == null || !popup.isShowing()) return;
+        try {
+            // 直接修改 PopupWindow 内部的 mWindowLayoutParams（原始 LayoutParams，非副本）
+            java.lang.reflect.Field lpField = PopupWindow.class.getDeclaredField("mWindowLayoutParams");
+            lpField.setAccessible(true);
+            android.view.WindowManager.LayoutParams wlp = (android.view.WindowManager.LayoutParams) lpField.get(popup);
+            if (wlp == null) return;
+            java.lang.reflect.Field cutoutField = android.view.WindowManager.LayoutParams.class.getField("layoutInDisplayCutoutMode");
+            if (cutoutField.getInt(wlp) == 1) return;
+            cutoutField.setInt(wlp, 1);
+            // 用修改后的原始 LayoutParams 更新窗口
+            java.lang.reflect.Field decorField = PopupWindow.class.getDeclaredField("mDecorView");
+            decorField.setAccessible(true);
+            android.view.View decor = (android.view.View) decorField.get(popup);
+            if (decor != null && decor.isAttachedToWindow()) {
+                android.view.WindowManager wm = (android.view.WindowManager) decor.getContext()
+                        .getSystemService(android.content.Context.WINDOW_SERVICE);
+                wm.updateViewLayout(decor, wlp);
+            }
+        } catch (Exception e) {
+            android.util.Log.e("BiliPlayer", "applyPopupCutout failed", e);
+        }
     }
 
     private void toggleScreenOrientation() {
@@ -2953,7 +3056,7 @@ public class BiliPlayerActivity extends Activity implements
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
             } else if (portraitRotation) {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD) {
+            } else if (SdkHelper.getSdkInt() >= Build.VERSION_CODES.GINGERBREAD) {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
             } else {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
@@ -3125,11 +3228,17 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     private void reportHistory(final int progress) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.PRIVACY_MODE, false)) return;
         if (mAid == 0 || mCid == 0) return;
         if (mLastReportProgress == progress) return;
         mLastReportProgress = progress;
+        reportHistoryStatic(this, mAid, mCid, progress);
+    }
 
-        final int progressSec = progress / 1000;
+    public static void reportHistoryStatic(final Context context, final long aid, final long cid, final int progressMs) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.PRIVACY_MODE, false)) return;
+        if (aid == 0 || cid == 0) return;
+        final int progressSec = progressMs / 1000;
 
         new Thread(new Runnable() {
             public void run() {
@@ -3160,7 +3269,7 @@ public class BiliPlayerActivity extends Activity implements
                     headers.add("Content-Type");
                     headers.add("application/x-www-form-urlencoded");
 
-                    String arg = "aid=" + mAid + "&cid=" + mCid + "&progress=" + progressSec + "&csrf=" + csrf;
+                    String arg = "aid=" + aid + "&cid=" + cid + "&progress=" + progressSec + "&csrf=" + csrf;
                     String result = NetWorkUtil.post(url, arg, headers);
                 } catch (Exception e) {}
             }
@@ -3374,8 +3483,8 @@ public class BiliPlayerActivity extends Activity implements
 
         // 单指手势交给 GestureController（只在非评论滑动时）
         if (mGestureController != null && ev.getPointerCount() == 1 && touchStartX == 0) {
-            // 确保手势已启用，但不要重复启用
-            if (!mGestureController.isGestureEnabled()) {
+            // 如果用户启用手势，恢复因边缘滑动暂时禁用的状态
+            if (enableGesture && !mGestureController.isGestureEnabled()) {
                 mGestureController.setEnableGesture(true);
             }
             mGestureController.onTouchEvent(ev);
@@ -3599,6 +3708,20 @@ public class BiliPlayerActivity extends Activity implements
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        // 旋转后延迟重新应用挖孔模式（等系统完成旋转再设置）
+        if (SdkHelper.getSdkInt() >= 28) {
+            new android.os.Handler().post(new Runnable() {
+                public void run() {
+                    try {
+                        android.view.WindowManager.LayoutParams attrs = getWindow().getAttributes();
+                        java.lang.reflect.Field f = android.view.WindowManager.LayoutParams.class.getField("layoutInDisplayCutoutMode");
+                        f.setInt(attrs, 1);
+                        getWindow().setAttributes(attrs);
+                    } catch (Exception e) {
+                    }
+                }
+            });
+        }
         if (isPrepared) {
             if (mGestureController != null) {
                 mGestureController.onOrientationChanged();

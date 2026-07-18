@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="ModernAlertDialog" parent="android:Theme.DeviceDefault.Light.Dialog">
+        <item name="android:windowMinWidthMajor">85%</item>
+        <item name="android:windowMinWidthMinor">85%</item>
+    </style>
+
+    <style name="PlayerAlertDialog" parent="android:Theme.DeviceDefault.Dialog">
+        <item name="android:windowMinWidthMajor">65%</item>
+        <item name="android:windowMinWidthMinor">65%</item>
+    </style>
+</resources>

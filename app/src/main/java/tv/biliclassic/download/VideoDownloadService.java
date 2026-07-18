@@ -1,14 +1,19 @@
 package tv.biliclassic.download;
 
+import android.app.Notification;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Environment;
 import android.os.IBinder;
 
 import java.io.File;
 import java.util.ArrayList;
 
+import tv.biliclassic.util.PermissionUtil;
+
+import tv.biliclassic.util.SdkHelper;
 /**
  * 视频下载服务（Android Service）
  * 在后台执行视频下载，支持通知栏进度显示
@@ -25,18 +30,73 @@ public class VideoDownloadService extends Service {
 
     private static final String EXTRA_ENTRY = "entry";
     private static final String EXTRA_VIDEO_URL = "video_url";
+    private static final String CHANNEL_ID = "download_progress";
+    private static final int NOTIFY_FG = 1;
 
     private VideoDownloadManager mDownloadManager;
     private VideoDownloadNotificationHelper mNotifHelper;
     private File mDownloadDir;
+    private boolean mStopping;
 
     @Override
     public void onCreate() {
         super.onCreate();
+        createChannel();
+        if (SdkHelper.getSdkInt() >= 26) {
+            try {
+                Notification n = buildFgNotification();
+                Service.class.getMethod("startForeground", int.class, Notification.class)
+                        .invoke(this, NOTIFY_FG, n);
+            } catch (Exception e) {
+            }
+        }
+        mStopping = false;
         mDownloadDir = resolveDownloadDir();
-        mNotifHelper = new VideoDownloadNotificationHelper(this);
+        mNotifHelper = new VideoDownloadNotificationHelper(this, CHANNEL_ID);
         mDownloadManager = new VideoDownloadManager(mNotifHelper, mDownloadDir);
+        mDownloadManager.setQueueListener(new VideoDownloadManager.QueueListener() {
+            public void onQueueEmpty() {
+                if (mStopping) return;
+                mStopping = true;
+                if (SdkHelper.getSdkInt() >= 26) {
+                    try {
+                        Service.class.getMethod("stopForeground", boolean.class).invoke(VideoDownloadService.this, true);
+                    } catch (Exception e) {
+                    }
+                }
+                stopSelf();
+            }
+        });
         mDownloadManager.start();
+    }
+
+    private void createChannel() {
+        if (SdkHelper.getSdkInt() < 26) return;
+        try {
+            Object nm = getSystemService("notification");
+            Class<?> channelClass = Class.forName("android.app.NotificationChannel");
+            Object channel = channelClass.getConstructor(String.class, CharSequence.class, int.class)
+                    .newInstance(CHANNEL_ID, "下载进度", 1);
+            channelClass.getMethod("setShowBadge", boolean.class).invoke(channel, false);
+            nm.getClass().getMethod("createNotificationChannel", channelClass).invoke(nm, channel);
+        } catch (Exception e) {
+        }
+    }
+
+    private Notification buildFgNotification() {
+        try {
+            Class<?> builderClass = Class.forName("android.app.Notification$Builder");
+            Object builder = builderClass.getConstructor(Context.class, String.class)
+                    .newInstance(this, CHANNEL_ID);
+            builderClass.getMethod("setContentTitle", CharSequence.class).invoke(builder, "下载中");
+            builderClass.getMethod("setContentText", CharSequence.class).invoke(builder, "正在下载视频...");
+            builderClass.getMethod("setSmallIcon", int.class).invoke(builder, android.R.drawable.ic_menu_rotate);
+            builderClass.getMethod("setOngoing", boolean.class).invoke(builder, true);
+            builderClass.getMethod("setPriority", int.class).invoke(builder, -2);
+            return (Notification) builderClass.getMethod("build").invoke(builder);
+        } catch (Exception e) {
+            return new Notification();
+        }
     }
 
     @Override
@@ -66,8 +126,15 @@ public class VideoDownloadService extends Service {
             return START_NOT_STICKY;
         }
         if (ACTION_CANCEL.equals(action)) {
+            mStopping = true;
             if (mDownloadManager != null) mDownloadManager.cancelAll();
             if (mNotifHelper != null) mNotifHelper.cancelNotification();
+            if (SdkHelper.getSdkInt() >= 26) {
+                try {
+                    Service.class.getMethod("stopForeground", boolean.class).invoke(this, true);
+                } catch (Exception e) {
+                }
+            }
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -127,6 +194,13 @@ public class VideoDownloadService extends Service {
 
     @Override
     public void onDestroy() {
+        mStopping = true;
+        if (SdkHelper.getSdkInt() >= 26) {
+            try {
+                Service.class.getMethod("stopForeground", boolean.class).invoke(this, true);
+            } catch (Exception e) {
+            }
+        }
         super.onDestroy();
         if (mDownloadManager != null) {
             mDownloadManager.stop();
@@ -162,7 +236,15 @@ public class VideoDownloadService extends Service {
         intent.putExtra("description", description);
         intent.putExtra("tags", tags);
         intent.putExtra("video_url", videoUrl);
-        context.startService(intent);
+        if (SdkHelper.getSdkInt() >= 26) {
+            try {
+                Context.class.getMethod("startForegroundService", Intent.class).invoke(context, intent);
+            } catch (Exception e) {
+                context.startService(intent);
+            }
+        } else {
+            context.startService(intent);
+        }
     }
 
     private void resumeFromDisk(long key) {
@@ -183,7 +265,7 @@ public class VideoDownloadService extends Service {
 
     private File resolveDownloadDir() {
         String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state)) {
+        if (Environment.MEDIA_MOUNTED.equals(state) && PermissionUtil.hasWriteStorage(this)) {
             File extDir = new File(Environment.getExternalStorageDirectory(), "BiliClassic/Download");
             if (!extDir.exists()) {
                 extDir.mkdirs();

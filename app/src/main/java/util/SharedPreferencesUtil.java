@@ -59,6 +59,21 @@ public class SharedPreferencesUtil {
     public static final String DANMAKU_ENGINE_MODE = "danmaku_engine_mode"; // 0=完整, 1=简易
     public static final String RENDERER_TYPE = "renderer_type"; // 0=SurfaceView, 1=TextureView
     public static final String COMPLETION_ACTION = "completion_action"; // 0=loop,1=next,2=next_loop,3=pause,4=exit
+    public static final String NO_IMAGE_MODE = "no_image_mode";
+    public static final String PRIVACY_MODE = "privacy_mode";
+    public static final String INCOGNITO_MODE = "incognito_mode";
+    public static final String ENABLE_GESTURE = "player_enable_gesture";
+    public static final String DOWNLOAD_FORMAT = "download_format"; // "mp4" 或 "original"
+
+    // CookieGenerator 需要的 key
+    public static final String BUVid3 = "buvid3";
+    public static final String BUVid4 = "buvid4";
+    public static final String BILI_TICKET = "bili_ticket";
+    public static final String BILI_TICKET_EXPIRES = "bili_ticket_expires";
+    public static final String UUID = "_uuid";
+    public static final String B_LSID = "b_lsid";
+    public static final String BUVid_FP = "buvid_fp";
+    public static final String B_NUT = "b_nut";
 
     private static SharedPreferences sharedPreferences;
     private static Context sAppContext;

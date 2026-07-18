@@ -64,8 +64,6 @@ public class PartitionApi {
             return;
         }
 
-        android.util.Log.d(TAG, "响应: " + result.toString());
-
         int code = result.optInt("code", -1);
         if (code != 0) {
             String message = result.optString("message", "未知错误");

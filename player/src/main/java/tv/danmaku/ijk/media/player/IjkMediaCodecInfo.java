@@ -23,6 +23,11 @@ public class IjkMediaCodecInfo {
     public static final int RANK_NON_STANDARD = 100;
     public static final int RANK_NO_SENSE = 0;
 
+    private static int getSdkInt() {
+        try { return Build.VERSION.class.getField("SDK_INT").getInt(null); }
+        catch (Exception e) { return Integer.parseInt(Build.VERSION.SDK); }
+    }
+
     public MediaCodecInfo mCodecInfo;
     public int mRank = 0;
     public String mMimeType;
@@ -137,7 +142,7 @@ public class IjkMediaCodecInfo {
     public static IjkMediaCodecInfo setupCandidate(MediaCodecInfo codecInfo,
             String mimeType) {
         if (codecInfo == null
-                || Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN)
+                || getSdkInt() < Build.VERSION_CODES.JELLY_BEAN)
             return null;
 
         String name = codecInfo.getName();
@@ -164,7 +169,7 @@ public class IjkMediaCodecInfo {
         } else if (name.startsWith("omx.mtk.")) {
             // 1. MTK only works on 4.3 and above
             // 2. MTK works on MIUI 6 (4.2.1)
-            if (Build.VERSION.SDK_INT < 18)
+            if (getSdkInt() < 18)
                 rank = RANK_NO_SENSE;
             else
                 rank = RANK_TESTED;
@@ -195,7 +200,7 @@ public class IjkMediaCodecInfo {
 
     @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
     public void dumpProfileLevels(String mimeType) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN)
+        if (getSdkInt() < Build.VERSION_CODES.JELLY_BEAN)
             return;
 
         try {

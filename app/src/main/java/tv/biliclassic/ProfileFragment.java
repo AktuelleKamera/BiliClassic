@@ -33,6 +33,7 @@ import java.util.concurrent.Executors;
 import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.UpdateUtil;
 
@@ -341,6 +342,7 @@ public class ProfileFragment extends Fragment {
     }
 
     private void loadAvatarUrl(final String urlStr) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return;
         if (ivAvatar == null || getActivity() == null) return;
         final String key = urlStr;
         ivAvatar.setTag(key);
@@ -485,7 +487,8 @@ public class ProfileFragment extends Fragment {
     }
 
     private File getAvatarFile() {
-        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
+        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())
+                && PermissionUtil.hasWriteStorage(getActivity())) {
             try {
                 File externalCache = new File(Environment.getExternalStorageDirectory(), "BiliClassic/avatar_cache");
                 if (!externalCache.exists()) {
@@ -500,6 +503,7 @@ public class ProfileFragment extends Fragment {
     }
 
     private void loadAvatarFromFileOrNetwork(final long mid) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return;
         if (ivAvatar == null) return;
         final File avatarFile = getAvatarFile();
         final long savedMid = SharedPreferencesUtil.getLong("avatar_mid", 0);
@@ -570,6 +574,7 @@ public class ProfileFragment extends Fragment {
     }
 
     private Bitmap downloadBitmap(String urlStr) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
         HttpURLConnection conn = null;
         try {
             URL url = new URL(urlStr);

@@ -7,6 +7,35 @@
         <item name="android:adjustViewBounds">true</item>
     </style>
 
+    <style name="AppTheme" parent="android:Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">@drawable/bili_texture_background</item>
+        <item name="android:tabStripEnabled">true</item>
+        <item name="android:alertDialogTheme">@style/ModernAlertDialog</item>
+    </style>
+
+    <style name="ModernAlertDialog" parent="android:Theme.Dialog">
+    </style>
+
+    <style name="PlayerTheme" parent="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+        <item name="android:alertDialogTheme">@style/PlayerAlertDialog</item>
+    </style>
+
+    <style name="PlayerAlertDialog" parent="android:Theme.Dialog">
+    </style>
+
+    <!-- 自定义 Tab 文字样式 -->
+    <style name="TabTextStyle">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:ellipsize">marquee</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingTop">0dp</item>
+        <item name="android:paddingBottom">0dp</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:singleLine">true</item>
+    </style>
+
     <style name="PlayerControlBarSpinner" parent="">
         <item name="android:background">@drawable/bili_player_control_item_background</item>
         <item name="android:focusable">true</item>
@@ -30,7 +59,7 @@
     <style name="Widget.App.Seekbar.Holo" parent="@android:attr/progressBarStyleHorizontal">
         <item name="android:progressDrawable">@drawable/media_player_progress_pink</item>
         <item name="android:thumb">@drawable/abcp_pink__scrubber_control_holo</item>
-        <item name="android:thumbOffset">1dp</item>
+        <item name="android:thumbOffset">12dp</item>
         <item name="android:maxHeight">2dp</item>
         <item name="android:minHeight">2dp</item>
     </style>

@@ -561,8 +561,8 @@ public class FavoriteApi {
         HttpURLConnection conn = (HttpURLConnection) urlObj.openConnection();
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
-        conn.setConnectTimeout(10000);
-        conn.setReadTimeout(10000);
+        conn.setConnectTimeout(12000);
+        conn.setReadTimeout(12000);
 
         conn.setRequestProperty("User-Agent", "Mozilla/5.0 (iPad; CPU OS 18_5 like Mac OS X) AppleWebKit/605.1.15");
         conn.setRequestProperty("Referer", "https://space.bilibili.com/");

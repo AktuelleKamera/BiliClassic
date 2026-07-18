@@ -14,8 +14,8 @@ import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.lang.ref.SoftReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -29,6 +29,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import tv.biliclassic.model.VideoCard;
+import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class FavoriteVideoAdapter extends BaseAdapter {
@@ -37,7 +38,6 @@ public class FavoriteVideoAdapter extends BaseAdapter {
     private List<VideoCard> list;
     private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
-    private Map<String, SoftReference<Bitmap>> imageCache = new HashMap<String, SoftReference<Bitmap>>();
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
     private boolean isLowMemory = false;
 
@@ -159,20 +159,10 @@ public class FavoriteVideoAdapter extends BaseAdapter {
             final int currentPos = position;
             coverView.setTag(finalCoverUrl);
 
-            Bitmap cachedBitmap = null;
-            synchronized (imageCache) {
-                SoftReference<Bitmap> softBitmap = imageCache.get(finalCoverUrl);
-                if (softBitmap != null) {
-                    cachedBitmap = softBitmap.get();
-                    if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
-                        coverView.setImageBitmap(cachedBitmap);
-                    } else {
-                        imageCache.remove(finalCoverUrl);
-                    }
-                }
-            }
-
-            if (cachedBitmap == null || cachedBitmap.isRecycled()) {
+            Bitmap cachedBitmap = GlobalImageCache.getInstance().get(finalCoverUrl);
+            if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
+                coverView.setImageBitmap(cachedBitmap);
+            } else {
                 Boolean isLoading = loadingMap.get(currentPos);
                 if (isLoading == null || !isLoading) {
                     loadingMap.put(currentPos, true);
@@ -183,9 +173,7 @@ public class FavoriteVideoAdapter extends BaseAdapter {
                             loadingMap.remove(currentPos);
 
                             if (bitmap != null && !bitmap.isRecycled()) {
-                                synchronized (imageCache) {
-                                    imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
-                                }
+                                GlobalImageCache.getInstance().put(finalCoverUrl, bitmap);
                                 mainHandler.post(new Runnable() {
                                     @Override
                                     public void run() {
@@ -230,29 +218,30 @@ public class FavoriteVideoAdapter extends BaseAdapter {
     }
 
     private Bitmap downloadImage(String urlStr) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
         HttpURLConnection conn = null;
         try {
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(12000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("Accept-Encoding", "identity");
             conn.connect();
 
             InputStream is = conn.getInputStream();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                baos.write(buffer, 0, len);
+            }
+            is.close();
+            byte[] imageData = baos.toByteArray();
 
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
-            BitmapFactory.decodeStream(is, null, options);
-            is.close();
-
-            conn.disconnect();
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.connect();
-            is = conn.getInputStream();
+            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
 
             int targetWidth = (int) (120 * context.getResources().getDisplayMetrics().density);
             int scale = 1;
@@ -262,14 +251,18 @@ public class FavoriteVideoAdapter extends BaseAdapter {
                 if (scale > 4) scale = 4;
             }
 
-            options = new BitmapFactory.Options();
-            options.inSampleSize = scale;
-            options.inPreferredConfig = Bitmap.Config.RGB_565;
-            options.inPurgeable = true;
-            options.inInputShareable = true;
-
-            Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
-            is.close();
+            Bitmap bitmap = null;
+            while (scale <= 16 && bitmap == null) {
+                try {
+                    options = new BitmapFactory.Options();
+                    options.inSampleSize = scale;
+                    options.inPreferredConfig = Bitmap.Config.RGB_565;
+                    bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
+                } catch (OutOfMemoryError e) {
+                    scale *= 2;
+                }
+            }
+            imageData = null;
             return bitmap;
         } catch (OutOfMemoryError e) {
             System.gc();
@@ -278,7 +271,7 @@ public class FavoriteVideoAdapter extends BaseAdapter {
             return null;
         } finally {
             if (conn != null) {
-                conn.disconnect();
+                try { conn.disconnect(); } catch (Exception e) {}
             }
         }
     }
@@ -297,15 +290,6 @@ public class FavoriteVideoAdapter extends BaseAdapter {
     }
 
     public void clearCache() {
-        synchronized (imageCache) {
-            for (SoftReference<Bitmap> ref : imageCache.values()) {
-                Bitmap bmp = ref.get();
-                if (bmp != null && !bmp.isRecycled()) {
-                    bmp.recycle();
-                }
-            }
-            imageCache.clear();
-        }
         loadingMap.clear();
     }
 

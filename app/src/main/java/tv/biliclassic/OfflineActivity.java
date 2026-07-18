@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -42,9 +43,12 @@ import java.util.regex.Matcher;
 import tv.biliclassic.download.VideoDownloadEntry;
 import tv.biliclassic.download.VideoDownloadEnvironment;
 import tv.biliclassic.download.VideoDownloadService;
+import tv.biliclassic.util.FileProviderCompat;
+import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.player.BiliPlayerActivity;
 
+import tv.biliclassic.util.SdkHelper;
 public class OfflineActivity extends BaseActivity {
 
     private ListView listView;
@@ -137,6 +141,7 @@ public class OfflineActivity extends BaseActivity {
         listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                if (position < 0 || position >= videoList.size()) return false;
                 final OfflineItem item = videoList.get(position);
                 if (item != null) {
                     showDeleteDialog(item);
@@ -233,20 +238,39 @@ public class OfflineActivity extends BaseActivity {
         }
 
         Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setDataAndType(Uri.fromFile(item.videoFile), "video/mp4");
+        Uri videoUri = SdkHelper.getSdkInt() >= 24
+                ? FileProviderCompat.getUriForFile(this, item.videoFile)
+                : Uri.fromFile(item.videoFile);
+        intent.setDataAndType(videoUri, "video/mp4");
+        if (SdkHelper.getSdkInt() >= 24) {
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        }
         String preferredPlayer = SettingsActivity.getPlayerPackageName();
         if (preferredPlayer != null) {
-            intent.setPackage(preferredPlayer);
+            try { Intent.class.getMethod("setPackage", String.class).invoke(intent, preferredPlayer); } catch (Exception ignored) {}
         }
         try {
             startActivity(intent);
         } catch (Exception e) {
-            intent.setPackage(null);
-            try {
-                startActivity(intent);
-            } catch (Exception ex) {
-                Toast.makeText(this, "无法播放视频，请安装播放器", Toast.LENGTH_LONG).show();
+            // 首选播放器失败，尝试不带 package 重新解析（弹出系统选择器）
+            if (preferredPlayer != null) {
+                try { Intent.class.getMethod("setPackage", String.class).invoke(intent, new Object[]{null}); } catch (Exception ignored) {}
+                try {
+                    startActivity(intent);
+                    return;
+                } catch (Exception e2) {
+                }
             }
+            // 全部失败 → 用内置播放器
+            Intent builtin = new Intent(this, BiliPlayerActivity.class);
+            builtin.putExtra("video_title", item.title);
+            builtin.putExtra("video_url", "");
+            builtin.putExtra("cache_path", item.videoFile.getAbsolutePath());
+            builtin.putExtra("aid", item.avid);
+            builtin.putExtra("cid", item.cid);
+            builtin.putExtra("offline_mode", true);
+            builtin.putExtra("online_mode", false);
+            startActivity(builtin);
         }
     }
 
@@ -370,8 +394,14 @@ public class OfflineActivity extends BaseActivity {
             long availBytes;
 
             try {
-                String path = downloadDir.exists() ? downloadDir.getAbsolutePath()
-                        : Environment.getExternalStorageDirectory().getPath();
+                String path;
+                if (downloadDir.exists()) {
+                    path = downloadDir.getAbsolutePath();
+                } else if (PermissionUtil.hasWriteStorage(this)) {
+                    path = Environment.getExternalStorageDirectory().getPath();
+                } else {
+                    path = getFilesDir().getPath();
+                }
                 StatFs stat = new StatFs(path);
                 totalBytes = ((long) stat.getBlockCount()) * ((long) stat.getBlockSize());
                 availBytes = ((long) stat.getAvailableBlocks()) * ((long) stat.getBlockSize());
@@ -708,7 +738,7 @@ public class OfflineActivity extends BaseActivity {
     }
 
     private File getDownloadDir() {
-        if (isSDCardAvailable()) {
+        if (isSDCardAvailable() && PermissionUtil.hasWriteStorage(this)) {
             File sdDownload = new File(Environment.getExternalStorageDirectory(), "BiliClassic/Download");
             if (sdDownload.exists()) {
                 return sdDownload;

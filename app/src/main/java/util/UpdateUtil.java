@@ -88,8 +88,8 @@ public class UpdateUtil {
         try {
             URL url = new URL(urlString);
             conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(12000);
             conn.setRequestMethod("GET");
             conn.setRequestProperty("User-Agent", "BiliClassic");
 
@@ -119,7 +119,7 @@ public class UpdateUtil {
             JSONObject versions = json.optJSONObject("versions");
             int minSdk = json.optInt("min_sdk", 0);
 
-            if (minSdk > 0 && android.os.Build.VERSION.SDK_INT < minSdk) {
+            if (minSdk > 0 && SdkHelper.getSdkInt() < minSdk) {
                 String msg = "新版本需要更高系统版本";
                 if (callback != null) {
                     callback.onCheckComplete(false, msg);

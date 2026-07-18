@@ -13,12 +13,17 @@ import java.lang.reflect.Field;
 
 public class NativeBitmapFactory {
 
+    private static int getSdkInt() {
+        try { return android.os.Build.VERSION.class.getField("SDK_INT").getInt(null); }
+        catch (Exception e) { return Integer.parseInt(android.os.Build.VERSION.SDK); }
+    }
+
     static Field nativeIntField = null;
 
     static boolean nativeLibLoaded = false;
     
     public static boolean isInNativeAlloc() {
-        return android.os.Build.VERSION.SDK_INT < 11 || (nativeLibLoaded && nativeIntField != null);
+        return getSdkInt() < 11 || (nativeLibLoaded && nativeIntField != null);
     }
 
     public static void loadLibs() {
@@ -30,7 +35,7 @@ public class NativeBitmapFactory {
             return;
         }
         try {
-            if (android.os.Build.VERSION.SDK_INT >= 11) {
+            if (getSdkInt() >= 11) {
                 System.loadLibrary("ndkbitmap");
                 nativeLibLoaded = true;
             } else {
@@ -92,7 +97,7 @@ public class NativeBitmapFactory {
             bitmap = createNativeBitmap(2, 2, Bitmap.Config.ARGB_8888, true);
             boolean result = (bitmap != null && bitmap.getWidth() == 2 && bitmap.getHeight() == 2);
             if (result) {
-                if (android.os.Build.VERSION.SDK_INT >= 17 && !bitmap.isPremultiplied()) {
+                if (getSdkInt() >= 17 && !bitmap.isPremultiplied()) {
                     try {
                         java.lang.reflect.Method method = Bitmap.class.getMethod("setPremultiplied", boolean.class);
                         method.invoke(bitmap, true);
@@ -106,7 +111,7 @@ public class NativeBitmapFactory {
                 canvas.drawRect(0f, 0f, (float) bitmap.getWidth(), (float) bitmap.getHeight(),
                         paint);
                 canvas.drawText("TestLib", 0, 0, paint);
-                if (android.os.Build.VERSION.SDK_INT >= 17) {
+                if (getSdkInt() >= 17) {
                     result = bitmap.isPremultiplied();
                 }
             }
@@ -158,7 +163,7 @@ public class NativeBitmapFactory {
         int nativeConfig = getNativeConfig(config);
         // Log.e("NativeBitmapFactory", "nativeConfig:" + nativeConfig);
         // Log.e("NativeBitmapFactory", "create bitmap:" + bitmap);
-        return android.os.Build.VERSION.SDK_INT == 19 ? createBitmap19(width, height,
+        return getSdkInt() == 19 ? createBitmap19(width, height,
                 nativeConfig, hasAlpha) : createBitmap(width, height, nativeConfig, hasAlpha);
     }
 

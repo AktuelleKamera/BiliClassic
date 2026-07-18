@@ -4,6 +4,8 @@ import android.os.Environment;
 
 import java.io.File;
 
+import tv.biliclassic.util.PermissionUtil;
+
 /**
  * 管理下载存储目录的位置
  */
@@ -17,21 +19,28 @@ public class VideoDownloadEnvironmentManager {
     public static File getDownloadDir(Object contextOrHandler) {
         if (sDownloadDir != null) return sDownloadDir;
 
-        // 尝试使用外部存储
+        // 尝试使用外部存储（需要存储权限）
         String state = Environment.getExternalStorageState();
         if (Environment.MEDIA_MOUNTED.equals(state)) {
-            File extDir = new File(Environment.getExternalStorageDirectory(), "BiliClassic/Download");
-            if (!extDir.exists()) {
-                extDir.mkdirs();
+            android.content.Context ctx = null;
+            if (contextOrHandler instanceof android.content.Context) {
+                ctx = (android.content.Context) contextOrHandler;
+            } else {
+                ctx = tv.biliclassic.BaseActivity.getAppContext();
             }
-            if (extDir.isDirectory()) {
-                sDownloadDir = extDir;
-                return sDownloadDir;
+            if (ctx != null && PermissionUtil.hasWriteStorage(ctx)) {
+                File extDir = new File(Environment.getExternalStorageDirectory(), "BiliClassic/Download");
+                if (!extDir.exists()) {
+                    extDir.mkdirs();
+                }
+                if (extDir.isDirectory()) {
+                    sDownloadDir = extDir;
+                    return sDownloadDir;
+                }
             }
         }
 
         // 回退到内部存储（通过 context 路径推断）
-        // 这是一个简化的fallback
         File dataDir = Environment.getDataDirectory();
         sDownloadDir = new File(dataDir, "data/tv.biliclassic/files/Download");
         if (!sDownloadDir.exists()) {

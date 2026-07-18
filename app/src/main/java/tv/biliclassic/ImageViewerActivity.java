@@ -4,9 +4,11 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.View;
+import android.net.Uri;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -19,10 +21,13 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
+import tv.biliclassic.util.FileProviderCompat;
 import tv.biliclassic.util.GlobalImageCache;
+import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.widget.PhotoView;
 import tv.biliclassic.widget.PhotoViewPager;
 
+import tv.biliclassic.util.SdkHelper;
 public class ImageViewerActivity extends BaseActivity {
 
     // 判断是否现代设备（内存充足，Android 4.0+ 且内存大于 48MB）
@@ -31,7 +36,7 @@ public class ImageViewerActivity extends BaseActivity {
     static {
         boolean isModern = false;
         try {
-            if (android.os.Build.VERSION.SDK_INT >= 14) {
+            if (SdkHelper.getSdkInt() >= 14) {
                 long maxMemory = Runtime.getRuntime().maxMemory();
                 if (maxMemory > 48 * 1024 * 1024) {
                     isModern = true;
@@ -162,6 +167,15 @@ public class ImageViewerActivity extends BaseActivity {
     // 保存图片（重新下载原图）
 
     private void saveImageToGallery(final String url) {
+        if (!PermissionUtil.hasWriteStorage(this)) {
+            runWithStoragePermission(new Runnable() {
+                @Override
+                public void run() {
+                    saveImageToGallery(url);
+                }
+            });
+            return;
+        }
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -280,13 +294,19 @@ public class ImageViewerActivity extends BaseActivity {
         // 优先尝试保存到 SD 卡 Pictures 目录
         try {
             String state = Environment.getExternalStorageState();
-            if (Environment.MEDIA_MOUNTED.equals(state)) {
-                File externalDir = new File("/sdcard/Pictures/BiliClassic");
-                if (!externalDir.exists()) {
-                    externalDir.mkdirs();
+            if (Environment.MEDIA_MOUNTED.equals(state) && PermissionUtil.hasWriteStorage(this)) {
+                File picturesDir;
+                File extPubDir = getExternalStoragePublicDirectoryPictures();
+                if (extPubDir != null) {
+                    picturesDir = new File(extPubDir, "BiliClassic");
+                } else {
+                    picturesDir = new File(Environment.getExternalStorageDirectory(), "Pictures/BiliClassic");
                 }
-                if (externalDir.exists() && externalDir.canWrite()) {
-                    File externalFile = new File(externalDir, fileName);
+                if (!picturesDir.exists()) {
+                    picturesDir.mkdirs();
+                }
+                if (picturesDir.exists() && picturesDir.canWrite()) {
+                    File externalFile = new File(picturesDir, fileName);
                     FileOutputStream fos = new FileOutputStream(externalFile);
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 90, fos);
                     fos.close();
@@ -317,7 +337,10 @@ public class ImageViewerActivity extends BaseActivity {
     private void notifyGallery(File file) {
         try {
             Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-            mediaScanIntent.setData(android.net.Uri.fromFile(file));
+            Uri uri = SdkHelper.getSdkInt() >= 24
+                    ? FileProviderCompat.getUriForFile(this, file)
+                    : android.net.Uri.fromFile(file);
+            mediaScanIntent.setData(uri);
             sendBroadcast(mediaScanIntent);
         } catch (Exception e) {
             // 忽略
@@ -413,6 +436,15 @@ public class ImageViewerActivity extends BaseActivity {
             if (conn != null) {
                 conn.disconnect();
             }
+        }
+    }
+    
+    private static File getExternalStoragePublicDirectoryPictures() {
+        try {
+            String type = (String) Environment.class.getField("DIRECTORY_PICTURES").get(null);
+            return (File) Environment.class.getMethod("getExternalStoragePublicDirectory", String.class).invoke(null, type);
+        } catch (Exception e) {
+            return null;
         }
     }
 }

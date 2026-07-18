@@ -13,6 +13,8 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.support.v4.app.Fragment;
 
+import tv.biliclassic.util.SdkHelper;
+
 public class AboutFragment extends Fragment {
 
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -21,7 +23,7 @@ public class AboutFragment extends Fragment {
 
         TextView appBrief = (TextView) view.findViewById(R.id.app_brief);
         String versionName = getVersionName();
-        appBrief.setText("哔哩经典 " + versionName + "\n安卓2也要看B站！");
+        appBrief.setText("哔哩经典 " + versionName + "\n安卓" + (SdkHelper.getSdkInt() < 5 ? "1" : "2") + "也要看B站！");
 
         TextView officialWebsite = (TextView) view.findViewById(R.id.official_website);
         if (officialWebsite != null) {

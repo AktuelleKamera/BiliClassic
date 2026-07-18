@@ -12,8 +12,8 @@ import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.lang.ref.SoftReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
@@ -26,6 +26,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import tv.biliclassic.model.VideoCard;
+import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class HistoryAdapter extends BaseAdapter {
@@ -34,7 +35,6 @@ public class HistoryAdapter extends BaseAdapter {
     private List<VideoCard> list;
     private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
-    private Map<String, SoftReference<Bitmap>> imageCache = new HashMap<String, SoftReference<Bitmap>>();
 
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
     private boolean isScrolling = false;
@@ -130,40 +130,34 @@ public class HistoryAdapter extends BaseAdapter {
             coverView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
             coverView.setTag(finalCoverUrl);
 
-            SoftReference<Bitmap> softBitmap = imageCache.get(finalCoverUrl);
-            if (softBitmap != null) {
-                Bitmap cachedBitmap = softBitmap.get();
-                if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
-                    coverView.setImageBitmap(cachedBitmap);
-                    // 继续执行点击监听
-                } else {
-                    imageCache.remove(finalCoverUrl);
-                }
-            }
+            Bitmap cachedBitmap = GlobalImageCache.getInstance().get(finalCoverUrl);
+            if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
+                coverView.setImageBitmap(cachedBitmap);
+            } else {
+                Boolean isLoading = loadingMap.get(currentPos);
+                if (isLoading == null || !isLoading) {
+                    loadingMap.put(currentPos, true);
+                    executor.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            final Bitmap bitmap = downloadImage(finalCoverUrl);
+                            loadingMap.remove(currentPos);
 
-            Boolean isLoading = loadingMap.get(currentPos);
-            if (isLoading == null || !isLoading) {
-                loadingMap.put(currentPos, true);
-                executor.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        final Bitmap bitmap = downloadImage(finalCoverUrl);
-                        loadingMap.remove(currentPos);
-
-                        if (bitmap != null && !bitmap.isRecycled()) {
-                            imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
-                            mainHandler.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    Object currentTag = coverView.getTag();
-                                    if (currentTag != null && currentTag.equals(finalCoverUrl)) {
-                                        coverView.setImageBitmap(bitmap);
+                            if (bitmap != null && !bitmap.isRecycled()) {
+                                GlobalImageCache.getInstance().put(finalCoverUrl, bitmap);
+                                mainHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        Object currentTag = coverView.getTag();
+                                        if (currentTag != null && currentTag.equals(finalCoverUrl)) {
+                                            coverView.setImageBitmap(bitmap);
+                                        }
                                     }
-                                }
-                            });
+                                });
+                            }
                         }
-                    }
-                });
+                    });
+                }
             }
         } else {
             holder.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
@@ -184,10 +178,9 @@ public class HistoryAdapter extends BaseAdapter {
     }
 
     private Bitmap downloadImage(String urlStr) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
         HttpURLConnection conn = null;
-        InputStream is = null;
         try {
-            // Android 2.3 兼容：https 转 http
             if (urlStr != null && urlStr.startsWith("https://")) {
                 urlStr = "http://" + urlStr.substring(8);
             }
@@ -197,68 +190,55 @@ public class HistoryAdapter extends BaseAdapter {
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("Accept-Encoding", "identity");
             conn.connect();
 
-            is = conn.getInputStream();
+            InputStream is = conn.getInputStream();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                baos.write(buffer, 0, len);
+            }
+            is.close();
+            byte[] imageData = baos.toByteArray();
 
-            // 第一步：只读取图片尺寸，不加载像素
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inJustDecodeBounds = true;
-            BitmapFactory.decodeStream(is, null, opts);
-            is.close();
+            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, opts);
 
-            // 第二步：根据图片尺寸计算采样率
             int sampleSize = 1;
-            int targetSize = 200;  // 历史记录缩略图目标尺寸
+            int targetSize = 200;
 
             while (opts.outWidth / sampleSize > targetSize
                     || opts.outHeight / sampleSize > targetSize) {
                 sampleSize *= 2;
-                if (sampleSize > 16) break;  // 限制最大采样
+                if (sampleSize > 16) break;
             }
 
-            // 重新连接，获取输入流
-            conn.disconnect();
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(10000);
-            conn.setReadTimeout(10000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.connect();
-            is = conn.getInputStream();
-
-            // 第三步：用采样率解码
-            opts.inJustDecodeBounds = false;
-            opts.inSampleSize = sampleSize;
-            opts.inPreferredConfig = Bitmap.Config.RGB_565;  // 节省内存
-            return BitmapFactory.decodeStream(is, null, opts);
+            Bitmap bitmap = null;
+            while (sampleSize <= 16 && bitmap == null) {
+                try {
+                    opts = new BitmapFactory.Options();
+                    opts.inSampleSize = sampleSize;
+                    opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                    bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, opts);
+                } catch (OutOfMemoryError e) {
+                    sampleSize *= 2;
+                }
+            }
+            imageData = null;
+            return bitmap;
 
         } catch (OutOfMemoryError e) {
             System.gc();
-            // OOM 时固定用 8 倍采样重试
-            try {
-                if (conn != null) conn.disconnect();
-                conn = (HttpURLConnection) new URL(urlStr).openConnection();
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
-                conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-                conn.connect();
-                is = conn.getInputStream();
-                BitmapFactory.Options optsRetry = new BitmapFactory.Options();
-                optsRetry.inSampleSize = 8;
-                optsRetry.inPreferredConfig = Bitmap.Config.RGB_565;
-                return BitmapFactory.decodeStream(is, null, optsRetry);
-            } catch (Exception ex) {
-                return null;
-            }
+            return null;
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         } finally {
-            try {
-                if (is != null) is.close();
-            } catch (Exception e) {}
             if (conn != null) {
-                conn.disconnect();
+                try { conn.disconnect(); } catch (Exception e) {}
             }
         }
     }
@@ -270,13 +250,6 @@ public class HistoryAdapter extends BaseAdapter {
     }
 
     public void clearCache() {
-        for (SoftReference<Bitmap> ref : imageCache.values()) {
-            Bitmap bmp = ref.get();
-            if (bmp != null && !bmp.isRecycled()) {
-                bmp.recycle();
-            }
-        }
-        imageCache.clear();
         loadingMap.clear();
     }
 

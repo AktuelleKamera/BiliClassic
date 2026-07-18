@@ -30,9 +30,11 @@ import java.util.ArrayList;
 
 import tv.biliclassic.subsettings.DecoderSettingsActivity;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.UpdateUtil;
 
+import tv.biliclassic.util.SdkHelper;
 public class SettingsActivity extends BaseActivity {
 
     // 播放器偏好
@@ -303,7 +305,7 @@ public class SettingsActivity extends BaseActivity {
         forceTvModeWarning = findViewById(R.id.force_tv_mode_warning);
 
         if (forceTvModeItem != null) {
-            if (Build.VERSION.SDK_INT < 14) {
+            if (SdkHelper.getSdkInt() < 14) {
                 forceTvModeItem.setVisibility(View.GONE);
                 if (forceTvModeWarning != null) {
                     forceTvModeWarning.setVisibility(View.GONE);
@@ -432,7 +434,7 @@ public class SettingsActivity extends BaseActivity {
         LinearLayout rendererTypeItem = (LinearLayout) findViewById(R.id.renderer_type_item);
         final TextView rendererTypeText = (TextView) findViewById(R.id.renderer_type_text);
         if (rendererTypeItem != null && rendererTypeText != null) {
-            if (Build.VERSION.SDK_INT < 14) {
+            if (SdkHelper.getSdkInt() < 14) {
                 rendererTypeItem.setVisibility(View.GONE);
             } else {
                 updateRendererTypeDisplay(rendererTypeText);
@@ -547,11 +549,95 @@ public class SettingsActivity extends BaseActivity {
                 }
             });
         }
+
+        // 无图模式开关
+        final CheckBox checkboxNoImage = (CheckBox) findViewById(R.id.checkbox_no_image_mode);
+        LinearLayout noImageItem = (LinearLayout) findViewById(R.id.no_image_mode_item);
+
+        if (checkboxNoImage != null) {
+            boolean noImageEnabled = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false);
+            checkboxNoImage.setChecked(noImageEnabled);
+
+            checkboxNoImage.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    SharedPreferencesUtil.putBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, isChecked);
+                    Toast.makeText(SettingsActivity.this,
+                            isChecked ? "已开启无图模式，将不加载任何图片" : "已关闭无图模式",
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            if (noImageItem != null) {
+                noImageItem.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        checkboxNoImage.toggle();
+                    }
+                });
+            }
+        }
+
+        // 隐私模式开关（不记录播放历史）
+        final CheckBox checkboxPrivacy = (CheckBox) findViewById(R.id.checkbox_privacy_mode);
+        LinearLayout privacyItem = (LinearLayout) findViewById(R.id.privacy_mode_item);
+
+        if (checkboxPrivacy != null) {
+            boolean privacyEnabled = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.PRIVACY_MODE, false);
+            checkboxPrivacy.setChecked(privacyEnabled);
+
+            checkboxPrivacy.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    SharedPreferencesUtil.putBoolean(SharedPreferencesUtil.PRIVACY_MODE, isChecked);
+                    Toast.makeText(SettingsActivity.this,
+                            isChecked ? "已开启隐私模式，不记录播放历史" : "已关闭隐私模式",
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            if (privacyItem != null) {
+                privacyItem.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        checkboxPrivacy.toggle();
+                    }
+                });
+            }
+        }
+
+        // 无痕模式开关（不携带登录 Cookie）
+        final CheckBox checkboxIncognito = (CheckBox) findViewById(R.id.checkbox_incognito_mode);
+        LinearLayout incognitoItem = (LinearLayout) findViewById(R.id.incognito_mode_item);
+
+        if (checkboxIncognito != null) {
+            boolean incognitoEnabled = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.INCOGNITO_MODE, false);
+            checkboxIncognito.setChecked(incognitoEnabled);
+
+            checkboxIncognito.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    SharedPreferencesUtil.putBoolean(SharedPreferencesUtil.INCOGNITO_MODE, isChecked);
+                    Toast.makeText(SettingsActivity.this,
+                            isChecked ? "已开启无痕模式，不携带登录 Cookie" : "已关闭无痕模式",
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            if (incognitoItem != null) {
+                incognitoItem.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        checkboxIncognito.toggle();
+                    }
+                });
+            }
+        }
     }
 
     // 判断是否支持 IJK 硬解 (Android 4.1+)
     private static boolean isIjkHardwareSupported() {
-        return Build.VERSION.SDK_INT >= MIN_SDK_FOR_IJK_HARDWARE;
+        return SdkHelper.getSdkInt() >= MIN_SDK_FOR_IJK_HARDWARE;
     }
 
     // 获取在线播放状态
@@ -586,7 +672,7 @@ public class SettingsActivity extends BaseActivity {
 
     // 判断设备是否支持内置播放器（IJK V3 需要 Android 2.3+）
     private static boolean isBuiltinPlayerSupported() {
-        return Build.VERSION.SDK_INT >= MIN_SDK_FOR_BUILTIN;
+        return SdkHelper.getSdkInt() >= MIN_SDK_FOR_BUILTIN;
     }
 
     // 获取默认播放器偏好（低版本强制非内置）
@@ -676,7 +762,7 @@ public class SettingsActivity extends BaseActivity {
     }
 
     public static boolean useBuiltinPlayer() {
-        return SharedPreferencesUtil.getBoolean(KEY_BUILTIN_PLAYER, Build.VERSION.SDK_INT >= 9);
+        return SharedPreferencesUtil.getBoolean(KEY_BUILTIN_PLAYER, SdkHelper.getSdkInt() >= 9);
     }
 
     // 视频画质选择
@@ -730,7 +816,7 @@ public class SettingsActivity extends BaseActivity {
 
     // 获取渲染方式
     public static int getRendererType() {
-        if (Build.VERSION.SDK_INT < 14) {
+        if (SdkHelper.getSdkInt() < 14) {
             return 0; // TextureView 需要 API 14+
         }
         return SharedPreferencesUtil.getInt(SharedPreferencesUtil.RENDERER_TYPE, 1);
@@ -1054,7 +1140,8 @@ public class SettingsActivity extends BaseActivity {
 
     // 缓存管理
     private File getAvatarCacheFile() {
-        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
+        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())
+                && PermissionUtil.hasWriteStorage(this)) {
             try {
                 File externalCache = new File(Environment.getExternalStorageDirectory(), "BiliClassic/avatar_cache");
                 if (!externalCache.exists()) {
@@ -1181,7 +1268,7 @@ public class SettingsActivity extends BaseActivity {
     }
 
     private File getPlayCacheDir() {
-        if (isSDCardAvailable()) {
+        if (isSDCardAvailable() && PermissionUtil.hasWriteStorage(this)) {
             File sdCacheDir = new File(Environment.getExternalStorageDirectory(), "BiliClassic/cache");
             if (!sdCacheDir.exists()) {
                 sdCacheDir.mkdirs();
@@ -1357,7 +1444,8 @@ public class SettingsActivity extends BaseActivity {
 
     private File getCookieSaveFile() {
         File dir;
-        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
+        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())
+                && PermissionUtil.hasWriteStorage(this)) {
             dir = new File(Environment.getExternalStorageDirectory(), "BiliClassic");
         } else {
             dir = getFilesDir();
@@ -1369,6 +1457,15 @@ public class SettingsActivity extends BaseActivity {
     }
 
     private void exportCookieToFile() {
+        if (!PermissionUtil.hasWriteStorage(this)) {
+            runWithStoragePermission(new Runnable() {
+                @Override
+                public void run() {
+                    exportCookieToFile();
+                }
+            });
+            return;
+        }
         try {
             File file = getCookieSaveFile();
             java.io.FileWriter fw = new java.io.FileWriter(file);

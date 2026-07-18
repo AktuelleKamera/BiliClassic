@@ -32,6 +32,7 @@ import java.util.List;
 import tv.biliclassic.util.AnnouncementUtil;
 import tv.biliclassic.util.DeviceInfoUtil;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class MainActivity extends BaseActivity {
@@ -273,8 +274,8 @@ public class MainActivity extends BaseActivity {
                 try {
                     java.net.URL url = new java.net.URL("http://www.biliclassic.cn/api/version.json");
                     java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
+                    conn.setConnectTimeout(12000);
+                    conn.setReadTimeout(12000);
                     conn.setRequestMethod("GET");
                     conn.setRequestProperty("User-Agent", "BiliClassic");
 
@@ -301,8 +302,8 @@ public class MainActivity extends BaseActivity {
                         java.net.URL url = new java.net.URL(
                                 "http://7891vip.top/biliclassic/update.php");
                         java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
-                        conn.setConnectTimeout(8000);
-                        conn.setReadTimeout(8000);
+                        conn.setConnectTimeout(12000);
+                        conn.setReadTimeout(12000);
                         conn.setRequestMethod("GET");
                         conn.setRequestProperty("User-Agent", "BiliClassic");
 
@@ -375,7 +376,7 @@ public class MainActivity extends BaseActivity {
                 hasUpdate = compareVersions(currentVersionName, latestVersionName);
             }
 
-            int sdkVersion = android.os.Build.VERSION.SDK_INT;
+            int sdkVersion = getSdkInt();
             if (minSdk > 0 && sdkVersion < minSdk) {
                 return;
             }
@@ -651,7 +652,7 @@ public class MainActivity extends BaseActivity {
                         }
                     }
 
-                    if (isSDCardAvailable()) {
+                    if (isSDCardAvailable() && PermissionUtil.hasWriteStorage(MainActivity.this)) {
                         File sdCache = new File(Environment.getExternalStorageDirectory(), "BiliClassic/cache");
                         if (sdCache != null && sdCache.exists()) {
                             File[] files = sdCache.listFiles();

@@ -21,8 +21,12 @@ public class ExpandableGridView extends GridView {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        int expandSpec = MeasureSpec.makeMeasureSpec(
-                Integer.MAX_VALUE >> 2, MeasureSpec.AT_MOST);
-        super.onMeasure(widthMeasureSpec, expandSpec);
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 4) {
+            int expandSpec = MeasureSpec.makeMeasureSpec(
+                    Integer.MAX_VALUE >> 2, MeasureSpec.AT_MOST);
+            super.onMeasure(widthMeasureSpec, expandSpec);
+        } else {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        }
     }
 }

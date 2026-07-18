@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 22
+    compileSdkVersion 26
     buildToolsVersion '25.0.0'
 
     compileOptions {
@@ -11,10 +11,10 @@ android {
 
     defaultConfig {
         applicationId "tv.biliclassic"
-        minSdkVersion 4
-        targetSdkVersion 22
-        versionCode 4060
-        versionName "0.4.6"
+        minSdkVersion 3
+        targetSdkVersion 26
+        versionCode 4070
+        versionName "0.4.7"
     }
 
     buildTypes {

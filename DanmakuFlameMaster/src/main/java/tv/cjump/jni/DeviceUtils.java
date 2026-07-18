@@ -75,7 +75,14 @@ public class DeviceUtils {
     }
 
     public static String get_CPU_ABI() {
-        return Build.CPU_ABI;
+        try {
+            Field field = Build.class.getDeclaredField("CPU_ABI");
+            if (field == null) return null;
+            Object fieldValue = field.get(null);
+            return fieldValue instanceof String ? (String) fieldValue : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public static String get_CPU_ABI2() {
@@ -119,18 +126,29 @@ public class DeviceUtils {
         return !supportX86() && ARCH.X86.equals(arch);
     }
 
+    private static String getBuildField(String name) {
+        try {
+            Field field = Build.class.getDeclaredField(name);
+            if (field == null) return null;
+            Object fieldValue = field.get(null);
+            return fieldValue instanceof String ? (String) fieldValue : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public static boolean isMiBox2Device() {
-        String manufacturer = Build.MANUFACTURER;
-        String productName = Build.PRODUCT;
-        return manufacturer.equalsIgnoreCase("Xiaomi")
-            && productName.equalsIgnoreCase("dredd");
+        String manufacturer = getBuildField("MANUFACTURER");
+        String productName = getBuildField("PRODUCT");
+        return manufacturer != null && manufacturer.equalsIgnoreCase("Xiaomi")
+            && productName != null && productName.equalsIgnoreCase("dredd");
     }
 
     public static boolean isMagicBoxDevice() {
-        String manufacturer = Build.MANUFACTURER;
-        String productName = Build.PRODUCT;
-        return manufacturer.equalsIgnoreCase("MagicBox")
-            && productName.equalsIgnoreCase("MagicBox");
+        String manufacturer = getBuildField("MANUFACTURER");
+        String productName = getBuildField("PRODUCT");
+        return manufacturer != null && manufacturer.equalsIgnoreCase("MagicBox")
+            && productName != null && productName.equalsIgnoreCase("MagicBox");
     }
 
     public static boolean isProblemBoxDevice() {

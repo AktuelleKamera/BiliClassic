@@ -13,6 +13,7 @@ import android.webkit.WebViewClient;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import tv.biliclassic.util.SdkHelper;
 
 public class WebViewActivity extends Activity {
 
@@ -67,7 +68,7 @@ public class WebViewActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 if (url.endsWith(".apk") || url.endsWith(".zip") || url.endsWith(".rar") ||
                         url.endsWith(".pdf") || url.contains("download")) {
-                    if (Build.VERSION.SDK_INT >= 9) {
+                    if (SdkHelper.getSdkInt() >= 9) {
                         startDownload(url);
                     } else {
                         Intent intent = new Intent(Intent.ACTION_VIEW);

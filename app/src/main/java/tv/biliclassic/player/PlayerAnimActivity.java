@@ -1,9 +1,14 @@
 package tv.biliclassic.player;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -22,7 +27,10 @@ import java.net.URL;
 
 import tv.biliclassic.R;
 import tv.biliclassic.SettingsActivity;
+import tv.biliclassic.util.FileProviderCompat;
+import tv.biliclassic.util.PermissionUtil;
 
+import tv.biliclassic.util.SdkHelper;
 public class PlayerAnimActivity extends Activity {
 
     private ImageView ivTvAnim;
@@ -107,7 +115,7 @@ public class PlayerAnimActivity extends Activity {
         } else {
             File cacheDir = getCacheDir();
 
-            if (isSDCardAvailable()) {
+            if (isSDCardAvailable() && PermissionUtil.hasWriteStorage(PlayerAnimActivity.this)) {
                 try {
                     File baseDir = Environment.getExternalStorageDirectory();
                     File sdCacheDir = new File(baseDir, "BiliClassic/cache");
@@ -413,44 +421,51 @@ public class PlayerAnimActivity extends Activity {
         autoSelectPlayer();
     }
 
+    private Uri getExposedUri(File file) {
+        if (SdkHelper.getSdkInt() >= 24) {
+            return FileProviderCompat.getUriForFile(this, file);
+        }
+        return Uri.fromFile(file);
+    }
+
     private boolean tryPlayWithPackage(String packageName, String playerName) {
         try {
             Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(Uri.fromFile(cacheFile), "video/mp4");
-            intent.setPackage(packageName);
-
-            PackageManager pm = getPackageManager();
-            if (pm.queryIntentActivities(intent, 0).size() > 0) {
-                startActivity(intent);
-                finish();
-                return true;
-            } else {
-                if (!hasShownPreferenceToast) {
-                    hasShownPreferenceToast = true;
-                    Toast.makeText(this, playerName + " 未安装，正在尝试其他播放器...", Toast.LENGTH_SHORT).show();
-                }
+            intent.setDataAndType(getExposedUri(cacheFile), "video/mp4");
+            if (SdkHelper.getSdkInt() >= 24) {
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             }
+            try {
+                Intent.class.getMethod("setPackage", String.class).invoke(intent, packageName);
+            } catch (Exception ignored) {
+            }
+            startActivity(intent);
+            finish();
+            return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            if (!hasShownPreferenceToast) {
+                hasShownPreferenceToast = true;
+                Toast.makeText(this, playerName + " 未安装，正在尝试其他播放器...", Toast.LENGTH_SHORT).show();
+            }
         }
         return false;
     }
 
     private boolean trySystemPlayer() {
-        try {
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(Uri.fromFile(cacheFile), "video/mp4");
-
-            PackageManager pm = getPackageManager();
-            if (pm.queryIntentActivities(intent, 0).size() > 0) {
-                startActivity(intent);
-                finish();
-                return true;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        Uri contentUri = getExposedUri(cacheFile);
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setDataAndType(contentUri, "video/mp4");
+        if (SdkHelper.getSdkInt() >= 24) {
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         }
-        return false;
+        try {
+            startActivity(intent);
+            finish();
+            return true;
+        } catch (Exception e) {
+            tryBuiltinPlayerWithCache();
+            return true;
+        }
     }
 
     /**
@@ -512,17 +527,18 @@ public class PlayerAnimActivity extends Activity {
     private boolean tryPlayWithPackageSilent(String packageName) {
         try {
             Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(Uri.fromFile(cacheFile), "video/mp4");
-            intent.setPackage(packageName);
-
-            PackageManager pm = getPackageManager();
-            if (pm.queryIntentActivities(intent, 0).size() > 0) {
-                startActivity(intent);
-                finish();
-                return true;
+            intent.setDataAndType(getExposedUri(cacheFile), "video/mp4");
+            if (SdkHelper.getSdkInt() >= 24) {
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             }
+            try {
+                Intent.class.getMethod("setPackage", String.class).invoke(intent, packageName);
+            } catch (Exception ignored) {
+            }
+            startActivity(intent);
+            finish();
+            return true;
         } catch (Exception e) {
-            e.printStackTrace();
         }
         return false;
     }

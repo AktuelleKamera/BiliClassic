@@ -69,10 +69,15 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
         }
     }
 
+    private static int getSdkInt() {
+        try { return Build.VERSION.class.getField("SDK_INT").getInt(null); }
+        catch (Exception e) { return Integer.parseInt(Build.VERSION.SDK); }
+    }
+
     @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
     @Override
     public void setSurface(Surface surface) {
-        if (Build.VERSION.SDK_INT >= 14) {
+        if (getSdkInt() >= 14) {
             mInternalMediaPlayer.setSurface(surface);
         }
     }
@@ -184,7 +189,7 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
 
     @Override
     public void seekTo(long msec) throws IllegalStateException {
-        if (Build.VERSION.SDK_INT >= 26) {
+        if (getSdkInt() >= 26) {
             try {
                 MediaPlayer.class.getMethod("seekTo", long.class, int.class)
                         .invoke(mInternalMediaPlayer, msec, 3);

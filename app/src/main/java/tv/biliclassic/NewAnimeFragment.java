@@ -28,10 +28,14 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -411,8 +415,29 @@ public class NewAnimeFragment extends Fragment {
             File cacheFile = new File(coverDir, fileName);
             if (cacheFile.exists()) {
                 BitmapFactory.Options options = new BitmapFactory.Options();
-                options.inPreferredConfig = Bitmap.Config.RGB_565;
-                return BitmapFactory.decodeFile(cacheFile.getAbsolutePath(), options);
+                options.inJustDecodeBounds = true;
+                BitmapFactory.decodeFile(cacheFile.getAbsolutePath(), options);
+
+                int scale = 1;
+                int targetSize = 200;
+                if (options.outWidth > targetSize || options.outHeight > targetSize) {
+                    scale = Math.max(options.outWidth / targetSize, options.outHeight / targetSize);
+                    if (scale < 1) scale = 1;
+                    if (scale > 4) scale = 4;
+                }
+
+                Bitmap bitmap = null;
+                while (scale <= 16 && bitmap == null) {
+                    try {
+                        options = new BitmapFactory.Options();
+                        options.inSampleSize = scale;
+                        options.inPreferredConfig = Bitmap.Config.RGB_565;
+                        bitmap = BitmapFactory.decodeFile(cacheFile.getAbsolutePath(), options);
+                    } catch (OutOfMemoryError e) {
+                        scale *= 2;
+                    }
+                }
+                return bitmap;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -435,23 +460,18 @@ public class NewAnimeFragment extends Fragment {
         // 先尝试加载缓存
         List<AnimeItem> cachedItems = loadLocalCache();
         if (cachedItems != null && cachedItems.size() > 0) {
-            // 有缓存，先显示
             hideAllLoading();
             displayAnimeList(cachedItems);
 
-            // 检查网络，如果无网络则显示提示
-            if (!isNetworkAvailable()) {
-                showNoNetworkButCache();
-                return;
+            if (isNetworkAvailable()) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isDestroyed) return;
+                        fetchAnimeDataFromNetwork();
+                    }
+                }).start();
             }
-
-            // 有网络则后台更新
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    fetchAnimeDataFromNetwork();
-                }
-            }).start();
             return;
         }
 
@@ -476,13 +496,36 @@ public class NewAnimeFragment extends Fragment {
             String url = SettingsActivity.getNewAnimeApiUrl();
 
             HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(12000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+
+            File jsonFile = cacheDir != null ? new File(cacheDir, "data.json") : null;
+            long ifModifiedSince = 0;
+            if (jsonFile != null && jsonFile.exists()) {
+                ifModifiedSince = jsonFile.lastModified();
+                conn.setRequestProperty("If-Modified-Since", formatHttpDate(ifModifiedSince));
+            }
+
             conn.connect();
 
+            int responseCode = conn.getResponseCode();
+
+            if (ifModifiedSince > 0 && responseCode == 304) {
+                if (jsonFile != null && jsonFile.exists()) {
+                    jsonFile.setLastModified(System.currentTimeMillis());
+                }
+                conn.disconnect();
+                return;
+            }
+
+            if (responseCode != 200) {
+                conn.disconnect();
+                throw new Exception("HTTP " + responseCode);
+            }
+
             InputStream is = conn.getInputStream();
-            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
             byte[] buffer = new byte[1024];
             int len;
             while ((len = is.read(buffer)) != -1) {
@@ -527,7 +570,6 @@ public class NewAnimeFragment extends Fragment {
                 getActivity().runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        // 如果有缓存，显示缓存提示
                         List<AnimeItem> cached = loadLocalCache();
                         if (cached != null && cached.size() > 0) {
                             showNoNetworkButCache();
@@ -553,6 +595,12 @@ public class NewAnimeFragment extends Fragment {
                 });
             }
         }
+    }
+
+    private String formatHttpDate(long millis) {
+        SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+        sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
+        return sdf.format(new Date(millis));
     }
 
     private void clearCache() {
@@ -775,6 +823,7 @@ public class NewAnimeFragment extends Fragment {
     }
 
     private void loadImageLazy(final ImageView imageView, final String urlStr, final boolean isLarge) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return;
         if (isDestroyed || imageView == null || getActivity() == null) return;
 
         Bitmap cached = GlobalImageCache.getInstance().get(urlStr);
@@ -847,6 +896,7 @@ public class NewAnimeFragment extends Fragment {
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            conn.setRequestProperty("Accept-Encoding", "identity");
             conn.connect();
 
             int responseCode = conn.getResponseCode();
@@ -878,15 +928,23 @@ public class NewAnimeFragment extends Fragment {
                     int heightRatio = options.outHeight / targetHeight;
                     scale = Math.max(widthRatio, heightRatio);
                     if (scale < 1) scale = 1;
-                    if (scale > 8) scale = 8;
+                    if (scale > 4) scale = 4;
                 }
             }
 
-            options = new BitmapFactory.Options();
-            options.inSampleSize = scale;
-            options.inPreferredConfig = Bitmap.Config.RGB_565;
-
-            return BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
+            Bitmap bitmap = null;
+            while (scale <= 16 && bitmap == null) {
+                try {
+                    options = new BitmapFactory.Options();
+                    options.inSampleSize = scale;
+                    options.inPreferredConfig = Bitmap.Config.RGB_565;
+                    bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
+                } catch (OutOfMemoryError e) {
+                    scale *= 2;
+                }
+            }
+            imageData = null;
+            return bitmap;
         } catch (Exception e) {
             return null;
         } finally {

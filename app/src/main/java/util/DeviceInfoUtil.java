@@ -6,21 +6,31 @@ import java.io.FileReader;
 
 public class DeviceInfoUtil {
 
+    private static String getBuildField(String name) {
+        try { return (String) Build.class.getField(name).get(null); }
+        catch (Exception e) { return null; }
+    }
+
     public static String getDeviceInfo() {
+        if (SdkHelper.getSdkInt() < 4) {
+            return "Android 1.5\n诶？这是什么上古设备喵？\n旧到无法获取详细设备信息的说……";
+        }
         // 调试日志：打印设备信息
+        String manufacturer = getBuildField("MANUFACTURER");
+        String device = getBuildField("DEVICE");
+        String product = getBuildField("PRODUCT");
+        String cpu_abi = getBuildField("CPU_ABI");
         android.util.Log.e("DeviceInfoUtil", "=== 开始检测设备 ===");
-        android.util.Log.e("DeviceInfoUtil", "manufacturer = [" + Build.MANUFACTURER + "]");
+        android.util.Log.e("DeviceInfoUtil", "manufacturer = [" + manufacturer + "]");
         android.util.Log.e("DeviceInfoUtil", "model = [" + Build.MODEL + "]");
-        android.util.Log.e("DeviceInfoUtil", "device = [" + Build.DEVICE + "]");
-        android.util.Log.e("DeviceInfoUtil", "product = [" + Build.PRODUCT + "]");
-        android.util.Log.e("DeviceInfoUtil", "cpu_abi = [" + Build.CPU_ABI + "]");
+        android.util.Log.e("DeviceInfoUtil", "device = [" + device + "]");
+        android.util.Log.e("DeviceInfoUtil", "product = [" + product + "]");
+        android.util.Log.e("DeviceInfoUtil", "cpu_abi = [" + cpu_abi + "]");
 
         StringBuilder sb = new StringBuilder();
 
-        String abi = Build.CPU_ABI;
+        String abi = cpu_abi;
         String model = Build.MODEL;
-        String device = Build.DEVICE;
-        String manufacturer = Build.MANUFACTURER;
 
         // 横屏设备彩蛋
 
@@ -323,7 +333,7 @@ public class DeviceInfoUtil {
     }
 
     private static boolean isArmeabiLegacy() {
-        String abi = Build.CPU_ABI;
+        String abi = getBuildField("CPU_ABI");
         return abi != null && abi.startsWith("armeabi") && !abi.contains("v7");
     }
 
@@ -356,7 +366,7 @@ public class DeviceInfoUtil {
         }
 
         // 检测 SDK 版本（Android 2.2 及以下视为 Legacy）
-        if (android.os.Build.VERSION.SDK_INT < 9) {
+        if (SdkHelper.getSdkInt() < 9) {
             return true;
         }
 

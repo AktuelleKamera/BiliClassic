@@ -191,7 +191,33 @@ public class DeviceInfoActivity extends BaseActivity {
 
     private String getEasterEggComment() {
         try {
-            return tv.biliclassic.util.DeviceInfoUtil.getDeviceInfo();
+            String version = null;
+            try {
+                Class versionClass = Class.forName("android.os.Build$VERSION");
+                Object release = versionClass.getField("RELEASE").get(null);
+                version = release != null ? release.toString() : null;
+            } catch (Exception ignored) {}
+            if (version == null) version = "未知";
+
+            String abi = null;
+            try {
+                abi = (String) android.os.Build.class.getField("CPU_ABI").get(null);
+            } catch (Exception ignored) {}
+
+            String deviceInfo = tv.biliclassic.util.DeviceInfoUtil.getDeviceInfo();
+
+            if (tv.biliclassic.util.SdkHelper.getSdkInt() < 4) {
+                return deviceInfo;
+            }
+
+            StringBuilder info = new StringBuilder();
+            info.append("Android ").append(version).append("\n");
+            if (abi != null) {
+                info.append(abi).append("\n");
+            }
+            info.append("\n");
+            info.append(deviceInfo);
+            return info.toString();
         } catch (Exception e) {
             return "设备信息已显示在上方哦\n\n如果觉得BiliClassic好用，欢迎分享给更多人~";
         }

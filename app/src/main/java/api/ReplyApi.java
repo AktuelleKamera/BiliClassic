@@ -174,6 +174,105 @@ public class ReplyApi {
         return replyResult;
     }
 
+    /**
+     * 上传评论图片
+     * @return JSON string: {"image_url":"http://...","image_width":...,"image_height":...,"img_size":...} or null on failure
+     */
+    public static String uploadReplyImage(long oid, byte[] imageData, String fileName) throws IOException, JSONException {
+        String url = "https://api.bilibili.com/x/dynamic/feed/draw/upload_bfs";
+        String csrf = SharedPreferencesUtil.getString("csrf", "");
+        String cookies = SharedPreferencesUtil.getString("cookies", "");
+
+        String boundary = "----WebKitFormBoundary" + Long.toHexString(System.currentTimeMillis());
+        String lineEnd = "\r\n";
+
+        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        try {
+            // file_up
+            baos.write(("--" + boundary + lineEnd).getBytes("UTF-8"));
+            baos.write(("Content-Disposition: form-data; name=\"file_up\"; filename=\"" + fileName + "\"" + lineEnd).getBytes("UTF-8"));
+            baos.write(("Content-Type: image/jpeg" + lineEnd + lineEnd).getBytes("UTF-8"));
+            baos.write(imageData);
+            baos.write(lineEnd.getBytes("UTF-8"));
+
+            // category
+            baos.write(("--" + boundary + lineEnd).getBytes("UTF-8"));
+            baos.write(("Content-Disposition: form-data; name=\"category\"" + lineEnd + lineEnd).getBytes("UTF-8"));
+            baos.write(("daily" + lineEnd).getBytes("UTF-8"));
+
+            // biz
+            baos.write(("--" + boundary + lineEnd).getBytes("UTF-8"));
+            baos.write(("Content-Disposition: form-data; name=\"biz\"" + lineEnd + lineEnd).getBytes("UTF-8"));
+            baos.write(("new_dyn" + lineEnd).getBytes("UTF-8"));
+
+            // csrf
+            baos.write(("--" + boundary + lineEnd).getBytes("UTF-8"));
+            baos.write(("Content-Disposition: form-data; name=\"csrf\"" + lineEnd + lineEnd).getBytes("UTF-8"));
+            baos.write((csrf + lineEnd).getBytes("UTF-8"));
+
+            // end
+            baos.write(("--" + boundary + "--" + lineEnd).getBytes("UTF-8"));
+        } catch (java.io.UnsupportedEncodingException e) { return null; }
+
+        byte[] postData = baos.toByteArray();
+        java.io.ByteArrayOutputStream baos2 = new java.io.ByteArrayOutputStream();
+        java.io.InputStream is = null;
+
+        try {
+            java.net.URL uploadUrl = new java.net.URL(url);
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) uploadUrl.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setDoInput(true);
+            conn.setUseCaches(false);
+            conn.setConnectTimeout(30000);
+            conn.setReadTimeout(30000);
+            conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+            conn.setRequestProperty("Content-Length", String.valueOf(postData.length));
+            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
+            conn.setRequestProperty("Accept", "application/json, text/plain, */*");
+            conn.setRequestProperty("Referer", "https://www.bilibili.com/");
+            conn.setRequestProperty("Origin", "https://www.bilibili.com");
+            if (cookies != null && cookies.length() > 0) {
+                conn.setRequestProperty("Cookie", cookies);
+            }
+
+            java.io.OutputStream os = conn.getOutputStream();
+            os.write(postData);
+            os.flush();
+            os.close();
+
+            int responseCode = conn.getResponseCode();
+            if (responseCode >= 400) {
+                is = conn.getErrorStream();
+            } else {
+                is = conn.getInputStream();
+            }
+            if (is != null) {
+                byte[] buf = new byte[4096];
+                int len;
+                while ((len = is.read(buf)) != -1) {
+                    baos2.write(buf, 0, len);
+                }
+            }
+            conn.disconnect();
+
+            String responseText = baos2.toString("UTF-8");
+            JSONObject json = new JSONObject(responseText);
+            if (json.getInt("code") == 0) {
+                JSONObject data = json.getJSONObject("data");
+                return data.toString();
+            }
+            return null;
+        } catch (Exception e) {
+            Log.e("ReplyApi", "上传图片失败: " + e.getMessage());
+            return null;
+        } finally {
+            try { if (is != null) is.close(); } catch (Exception e) {}
+            try { baos2.close(); } catch (Exception e) {}
+        }
+    }
+
     public static int likeComment(long oid, long rpid, int type) throws IOException, JSONException {
         String url = "https://api.bilibili.com/x/v2/reply/action";
         String csrf = SharedPreferencesUtil.getString("csrf", "");

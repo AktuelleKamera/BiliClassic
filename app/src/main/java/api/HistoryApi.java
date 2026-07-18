@@ -27,7 +27,6 @@ import java.util.List;
 import tv.biliclassic.model.ApiResult;
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.NetWorkUtil;
-import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.StringUtil;
 
 public class HistoryApi {
@@ -53,14 +52,8 @@ public class HistoryApi {
                 + "&business=" + lastResult.business
                 + "&max=" + lastResult.offset;
 
-        // 构建请求头
+        // 构建请求头（不设置 Cookie，由 NetWorkUtil 统一处理）
         ArrayList<String> headers = new ArrayList<String>();
-        String cookies = SharedPreferencesUtil.getString("cookies", "");
-        if (cookies == null) {
-            cookies = "";
-        }
-        headers.add("Cookie");
-        headers.add(cookies);
         headers.add("User-Agent");
         headers.add(NetWorkUtil.USER_AGENT_WEB);
         headers.add("Referer");
@@ -68,7 +61,14 @@ public class HistoryApi {
         headers.add("Accept");
         headers.add("application/json, text/plain, */*");
 
-        JSONObject result = NetWorkUtil.getJson(url, headers);
+        // 强制携带登录 Cookie（播放历史需要登录），即使在无痕模式下
+        NetWorkUtil.setForceLogin(true);
+        JSONObject result;
+        try {
+            result = NetWorkUtil.getJson(url, headers);
+        } finally {
+            NetWorkUtil.setForceLogin(false);
+        }
         ApiResult apiResult = new ApiResult(result);
 
         List<VideoCard> newItems = new ArrayList<VideoCard>();

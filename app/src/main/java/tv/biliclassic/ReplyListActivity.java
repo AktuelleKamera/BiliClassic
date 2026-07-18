@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
@@ -85,6 +86,11 @@ public class ReplyListActivity extends BaseActivity {
     private View footerView;
     private ProgressBar footerProgress;
     private TextView footerText;
+
+    private String pendingImageDataJson = null;
+    private static final int REQUEST_PICK_COMMENT_IMAGE = 2001;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -194,7 +200,7 @@ public class ReplyListActivity extends BaseActivity {
                     rootMsg = rootMsg.substring(4);
                 }
                 SpannableString ss = new SpannableString("\u200B" + rootMsg);
-                ss.setSpan(new BadgeSpan(this), 0, 1,
+                ss.setSpan(new BadgeSpan(getResources().getDisplayMetrics().density), 0, 1,
                         android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                 rootMsgView.setText(ss);
             } else {
@@ -382,6 +388,13 @@ public class ReplyListActivity extends BaseActivity {
                                             Toast.makeText(ReplyListActivity.this, "操作失败", Toast.LENGTH_SHORT).show();
                                         }
                                     });
+                                } else {
+                                    runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            CommentFragment.notifyRootLikeChanged(rpid, rootLiked, mRootLikeCount);
+                                        }
+                                    });
                                 }
                             } catch (Exception e) {
                                 e.printStackTrace();
@@ -463,6 +476,7 @@ public class ReplyListActivity extends BaseActivity {
         lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                if (position < 0 || position >= allReplies.size()) return;
                 ReplyData rd = allReplies.get(position);
                 if (rd.mid != 0) {
                     Intent intent = new Intent(ReplyListActivity.this, UserProfileActivity.class);
@@ -475,6 +489,7 @@ public class ReplyListActivity extends BaseActivity {
         lv.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                if (position < 0 || position >= allReplies.size()) return false;
                 ReplyData rd = allReplies.get(position);
                 showReplyDialog(rd);
                 return true;
@@ -793,8 +808,8 @@ public class ReplyListActivity extends BaseActivity {
                 try {
                     URL url = new URL(finalUrl);
                     conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
+                    conn.setConnectTimeout(12000);
+                    conn.setReadTimeout(12000);
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0");
                     conn.connect();
 
@@ -817,8 +832,8 @@ public class ReplyListActivity extends BaseActivity {
 
                     conn.disconnect();
                     conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
+                    conn.setConnectTimeout(12000);
+                    conn.setReadTimeout(12000);
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0");
                     conn.connect();
                     is = conn.getInputStream();
@@ -854,6 +869,7 @@ public class ReplyListActivity extends BaseActivity {
     }
 
     private void loadImage(final ImageView imageView, String urlStr) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return;
         if (urlStr == null || urlStr.length() == 0) return;
         if (urlStr.startsWith("https://")) {
             urlStr = "http://" + urlStr.substring(8);
@@ -867,8 +883,8 @@ public class ReplyListActivity extends BaseActivity {
                 try {
                     URL url = new URL(finalUrl);
                     conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
+                    conn.setConnectTimeout(12000);
+                    conn.setReadTimeout(12000);
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0");
                     conn.connect();
 
@@ -891,8 +907,8 @@ public class ReplyListActivity extends BaseActivity {
 
                     conn.disconnect();
                     conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
+                    conn.setConnectTimeout(12000);
+                    conn.setReadTimeout(12000);
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0");
                     conn.connect();
                     is = conn.getInputStream();
@@ -941,6 +957,20 @@ public class ReplyListActivity extends BaseActivity {
         return (int) (dp * density + 0.5f);
     }
 
+    private static final String[] EMOJIS = {
+        "( ゜- ゜)つロ", "_(:з」∠)_", "（⌒▽⌒）", "（￣▽￣）", "⌓‿⌓",
+        "(=・ω・=)", "(*°▽°*)", "八(*°▽°*)♪", "✿ヽ(°▽°)ノ✿", "(¦3【▓▓】",
+        "눈_눈", "(ಡωಡ)", "_(≧∇≦」∠)_", "━━━∑(ﾟ□ﾟ*川", "━(｀・ω・´)",
+        "(￣3￣)", "✧(≖ ◡ ≖✿)", "(･∀･)", "(〜￣△￣)〜", "→_→",
+        "(°∀°)ﾉ", "╮(￣▽￣)╭", "( ´_ゝ｀)", "←_←", "(;¬_¬)",
+        "(ﾟДﾟ≡ﾟдﾟ)!?", "( ´･･)ﾉ", "(._.`)", "Σ(ﾟдﾟ;)", "Σ( ￣□￣||)",
+        "<(´；ω；`)", "（/TДT)/", "(^・ω・^)", "(｡･ω･｡)", "(●￣(ｴ)￣●)",
+        "ε=ε=(ノ≧∇≦)ノ", "(´･_･`)", "(-_-#)", "（￣へ￣）", "(￣ε(#￣)",
+        "Σ(╯°口°)╯(┴—┴", "ヽ(`Д´)ﾉ", "(\"▔□▔)/", "(º﹃º )", "(๑>؂<๑）",
+        "｡ﾟ(ﾟ´Д｀)ﾟ｡", "(∂ω∂)", "(┯_┯)", "(・ω< )★", "( ๑ˊ•̥▵•)੭₎₎",
+        "¥ㄟ(´･ᴗ･`)ノ¥", "Σ_(꒪ཀ꒪」∠)_", "٩(๛ ˘ ³˘)۶❤", "(๑‾᷅^‾᷅๑)"
+    };
+
     private void deleteRootComment() {
         new Thread(new Runnable() {
             @Override
@@ -988,6 +1018,32 @@ public class ReplyListActivity extends BaseActivity {
         input.setHint(hint);
         input.setLines(3);
         input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(1000)});
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 14) {
+            android.graphics.drawable.GradientDrawable inputBg = new android.graphics.drawable.GradientDrawable();
+            inputBg.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+            inputBg.setStroke(dpToPx(2), 0xFFD0D0D0);
+            inputBg.setColor(0xFFFFFFFF);
+            input.setBackgroundDrawable(inputBg);
+        }
+
+        // 表情按钮
+        final LinearLayout btnRow = new LinearLayout(this);
+        btnRow.setOrientation(LinearLayout.HORIZONTAL);
+        btnRow.setPadding(0, 0, 0, dpToPx(6));
+
+        final TextView emojiBtn = new TextView(this);
+        emojiBtn.setText("表情");
+        emojiBtn.setTextSize(13);
+        emojiBtn.setTextColor(0xFFD86DA5);
+        emojiBtn.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
+        emojiBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showEmojiPicker(input);
+            }
+        });
+        btnRow.addView(emojiBtn);
+        layout.addView(btnRow);
         layout.addView(input);
 
         final TextView clearText = new TextView(this);
@@ -996,6 +1052,7 @@ public class ReplyListActivity extends BaseActivity {
         clearText.setPadding(0, 8, 0, 0);
         clearText.setTextSize(14);
         clearText.setTextColor(0xFF666666);
+        clearText.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
         clearText.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1010,6 +1067,8 @@ public class ReplyListActivity extends BaseActivity {
         });
         layout.addView(clearText);
 
+        final long parentRpid = reply != null ? reply.rpid : 0;
+
         new AlertDialog.Builder(this)
                 .setTitle("发送回复")
                 .setView(layout)
@@ -1021,7 +1080,7 @@ public class ReplyListActivity extends BaseActivity {
                             Toast.makeText(ReplyListActivity.this, "回复内容不能为空", Toast.LENGTH_SHORT).show();
                             return;
                         }
-                        sendReply(rpid, reply.rpid, text);
+                        sendReply(rpid, parentRpid, text);
                         d.dismiss();
                     }
                 })
@@ -1034,10 +1093,63 @@ public class ReplyListActivity extends BaseActivity {
                 .show();
     }
 
+    private void showEmojiPicker(final EditText input) {
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("选择表情");
+
+        final android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        final LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
+
+        for (int i = 0; i < EMOJIS.length; i++) {
+            final String emoji = EMOJIS[i];
+            final TextView tv = new TextView(this);
+            tv.setText(emoji);
+            tv.setTextSize(16);
+            tv.setTextColor(0xFF333333);
+            tv.setPadding(dpToPx(10), dpToPx(8), dpToPx(10), dpToPx(8));
+            tv.setClickable(true);
+            android.graphics.drawable.GradientDrawable emojiNormal = new android.graphics.drawable.GradientDrawable();
+            emojiNormal.setColor(0xFFF0F0F0);
+            android.graphics.drawable.GradientDrawable emojiPressed = new android.graphics.drawable.GradientDrawable();
+            emojiPressed.setColor(0x40D86DA5);
+            android.graphics.drawable.StateListDrawable emojiBg = new android.graphics.drawable.StateListDrawable();
+            emojiBg.addState(new int[]{android.R.attr.state_pressed}, emojiPressed);
+            emojiBg.addState(new int[]{}, emojiNormal);
+            tv.setBackgroundDrawable(emojiBg);
+            tv.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    int remaining = 1000 - input.length();
+                    if (remaining <= 0) return;
+                    String toInsert = emoji.length() <= remaining ? emoji : emoji.substring(0, remaining);
+                    int pos = input.getSelectionStart();
+                    if (pos < 0) pos = input.length();
+                    input.getText().insert(pos, toInsert);
+                }
+            });
+            list.addView(tv);
+
+            if (i < EMOJIS.length - 1) {
+                View divider = new View(this);
+                divider.setLayoutParams(new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, 1));
+                divider.setBackgroundColor(0xFFDDDDDD);
+                list.addView(divider);
+            }
+        }
+
+        scroll.addView(list);
+        builder.setView(scroll);
+        builder.setPositiveButton("关闭", null);
+        builder.show();
+    }
+
     private void sendReply(final long root, final long parent, final String text) {
         ReplyHelper.sendReply(this, aid, root, parent, text, new ReplyHelper.ReplyCallback() {
             @Override
-            public void onSuccess() {
+            public void onSuccess(String responseJson) {
                 allReplies.clear();
                 adapter.notifyDataSetChanged();
                 pagination = "";
@@ -1046,9 +1158,7 @@ public class ReplyListActivity extends BaseActivity {
             }
 
             @Override
-            public void onFailed(String error) {
-                // 错误已在 Toast 中显示
-            }
+            public void onFailed(String error) {}
         });
     }
 
@@ -1073,19 +1183,21 @@ public class ReplyListActivity extends BaseActivity {
         private int mGapPx;
         private int mCornerPx;
         private float mStrokePx;
+        private int mTextMarginPx;
         private static final String TEXT = "置顶";
 
-        BadgeSpan(android.content.Context context) {
-            float density = context.getResources().getDisplayMetrics().density;
+        BadgeSpan(float density) {
             mPaddingPx = (int)(4 * density + 0.5f);
-            mGapPx = (int)(4 * density + 0.5f);
+            mGapPx = (int)(1 * density + 0.5f);
             mCornerPx = (int)(2 * density + 0.5f);
             mStrokePx = 1 * density + 0.5f;
+            mTextMarginPx = (int)(1 * density + 0.5f);
         }
 
         @Override
         public int getSize(Paint paint, CharSequence text, int start, int end, Paint.FontMetricsInt fm) {
-            mWidth = (int)(paint.measureText(TEXT) + mPaddingPx * 2 + mStrokePx * 2 + mGapPx);
+            float textWidth = paint.measureText(TEXT);
+            mWidth = (int)(textWidth + mPaddingPx * 2 + mStrokePx * 2 + mGapPx + mTextMarginPx);
             if (fm != null) {
                 android.graphics.Paint.FontMetricsInt pfm = paint.getFontMetricsInt();
                 fm.ascent = pfm.ascent - mPaddingPx;
@@ -1097,20 +1209,28 @@ public class ReplyListActivity extends BaseActivity {
         }
 
         @Override
-        public void draw(Canvas canvas, CharSequence text, int start, int end, float x, int top, int y, int bottom, Paint paint) {
+        public void draw(Canvas canvas, CharSequence text, int start, int end,
+                         float x, int top, int y, int bottom, Paint paint) {
             int origColor = paint.getColor();
             android.graphics.Paint.Style origStyle = paint.getStyle();
             float origStrokeWidth = paint.getStrokeWidth();
             boolean origAntiAlias = paint.isAntiAlias();
 
-            android.graphics.Paint.FontMetricsInt pfm = paint.getFontMetricsInt();
+            android.graphics.Paint.FontMetricsInt fm = paint.getFontMetricsInt();
             float half = mStrokePx / 2f;
-            float rectTop = y + pfm.ascent - mPaddingPx + half;
-            float rectBottom = y + pfm.descent + mPaddingPx - half;
+            float rectTop = y + fm.ascent - mPaddingPx + half;
+            float rectBottom = y + fm.descent + mPaddingPx - half;
+
+            float textWidth = paint.measureText(TEXT);
+            float rectWidth = textWidth + mPaddingPx * 2;
+
+            float offsetX = mGapPx;
 
             android.graphics.RectF rect = new android.graphics.RectF(
-                x + half, rectTop,
-                x + mWidth - mGapPx - half, rectBottom
+                    x + offsetX,
+                    rectTop,
+                    x + offsetX + rectWidth,
+                    rectBottom
             );
 
             paint.setStyle(android.graphics.Paint.Style.STROKE);
@@ -1121,7 +1241,8 @@ public class ReplyListActivity extends BaseActivity {
 
             paint.setColor(0xFFD86DA5);
             paint.setStyle(android.graphics.Paint.Style.FILL);
-            canvas.drawText(TEXT, x + mPaddingPx, y, paint);
+            float centerY = (rectTop + rectBottom) / 2 - (fm.ascent + fm.descent) / 2;
+            canvas.drawText(TEXT, x + offsetX + mPaddingPx, centerY, paint);
 
             paint.setColor(origColor);
             paint.setStyle(origStyle);

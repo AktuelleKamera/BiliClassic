@@ -49,7 +49,7 @@ public class SSLSocketFactoryCompat extends SSLSocketFactory {
                 }
                 protocols = protocolList.toArray(new String[0]);
 
-                if (Build.VERSION.SDK_INT < 21) {  // LOLLIPOP = 21
+                if (SdkHelper.getSdkInt() < 21) {  // LOLLIPOP = 21
                     List<String> allowedCiphers = Arrays.asList(
                             "TLS_RSA_WITH_AES_256_GCM_SHA384",
                             "TLS_RSA_WITH_AES_128_GCM_SHA256",
@@ -92,7 +92,7 @@ public class SSLSocketFactoryCompat extends SSLSocketFactory {
         if (protocols != null) {
             ssl.setEnabledProtocols(protocols);
         }
-        if (Build.VERSION.SDK_INT < 21 && cipherSuites != null) {
+        if (SdkHelper.getSdkInt() < 21 && cipherSuites != null) {
             ssl.setEnabledCipherSuites(cipherSuites);
         }
     }

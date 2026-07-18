@@ -3,6 +3,8 @@ package tv.biliclassic;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.util.Log;
@@ -22,8 +24,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,6 +41,9 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 public class CommentFragment extends Fragment {
 
     private static final String TAG = "CommentFragment";
+
+    private static final Map<String, CachedComments> commentCache = new HashMap<String, CachedComments>();
+    private static final long CACHE_TTL_MS = 5 * 60 * 1000;
 
     private ListView listView;
     private ProgressBar progressBar;
@@ -54,14 +61,90 @@ public class CommentFragment extends Fragment {
     private String nextCursor = "";
     private boolean isLoading = false;
     private boolean isEnd = false;
+    private boolean isRestoring = false;
 
-    // 保存滚动位置
+    private static class CachedComments {
+        List<CommentItem> items;
+        Set<Long> idSet;
+        String nextCursor;
+        boolean isEnd;
+        long timestamp;
+        int sortMode;
+    }
+
+    private String getCacheKey() {
+        if (aid != 0) return "aid_" + aid;
+        if (bvid != null) return "bvid_" + bvid;
+        return null;
+    }
+
+    // 保存滚动位置（静态字段，跨 Fragment 销毁保持）
+    private static int sExitScrollPosition = -1;
     private int savedScrollPosition = -1;
-    private int savedScrollOffset = 0;
 
     // 排序控制
     private int currentSortMode = 0; // 0=时间,1=热度
+    private boolean sortExplicitlySet = false;
     private TextView sortTimeBtn, sortHotBtn;
+
+    // 评论图片上传
+    private static final int MAX_COMMENT_IMAGES = 9;
+    private ArrayList<String> pendingImageDataList = new ArrayList<String>();
+    private TextView dialogImageBtn = null;
+    private CommentItem pendingNewComment = null;
+    private static final int REQUEST_PICK_COMMENT_IMAGE = 1001;
+
+    private static class PendingLikeUpdate {
+        long rpid;
+        boolean liked;
+        int likeCount;
+        PendingLikeUpdate(long rpid, boolean liked, int likeCount) {
+            this.rpid = rpid;
+            this.liked = liked;
+            this.likeCount = likeCount;
+        }
+    }
+    private static PendingLikeUpdate pendingLikeUpdate = null;
+    private static CommentFragment activeInstance = null;
+
+    public static void notifyRootLikeChanged(long rpid, boolean liked, int likeCount) {
+        CommentFragment instance = activeInstance;
+        if (instance != null) {
+            instance.applyPendingLike(rpid, liked, likeCount);
+        } else {
+            pendingLikeUpdate = new PendingLikeUpdate(rpid, liked, likeCount);
+        }
+    }
+
+    private void applyPendingLike(long rpid, boolean liked, int likeCount) {
+        for (CommentItem item : commentList) {
+            if (item.rpid == rpid) {
+                item.liked = liked;
+                item.likeCount = likeCount;
+                break;
+            }
+        }
+        commentCache.clear();
+        if (adapter != null) {
+            adapter.notifyDataSetChanged();
+        }
+    }
+
+    private static final String[] EMOJIS = {
+        "( ゜- ゜)つロ", "_(:з」∠)_", "（⌒▽⌒）", "（￣▽￣）", "⌓‿⌓",
+        "(=・ω・=)", "(*°▽°*)", "八(*°▽°*)♪", "✿ヽ(°▽°)ノ✿", "(¦3【▓▓】",
+        "눈_눈", "(ಡωಡ)", "_(≧∇≦」∠)_", "━━━∑(ﾟ□ﾟ*川", "━(｀・ω・´)",
+        "(￣3￣)", "✧(≖ ◡ ≖✿)", "(･∀･)", "(〜￣△￣)〜", "→_→",
+        "(°∀°)ﾉ", "╮(￣▽￣)╭", "( ´_ゝ｀)", "←_←", "(;¬_¬)",
+        "(ﾟДﾟ≡ﾟдﾟ)!?", "( ´･･)ﾉ", "(._.`)", "Σ(ﾟдﾟ;)", "Σ( ￣□￣||)",
+        "<(´；ω；`)", "（/TДT)/", "(^・ω・^)", "(｡･ω･｡)", "(●￣(ｴ)￣●)",
+        "ε=ε=(ノ≧∇≦)ノ", "(´･_･`)", "(-_-#)", "（￣へ￣）", "(￣ε(#￣)",
+        "Σ(╯°口°)╯(┴—┴", "ヽ(`Д´)ﾉ", "(\"▔□▔)/", "(º﹃º )", "(๑>؂<๑）",
+        "｡ﾟ(ﾟ´Д｀)ﾟ｡", "(∂ω∂)", "(┯_┯)", "(・ω< )★", "( ๑ˊ•̥▵•)੭₎₎",
+        "¥ㄟ(´･ᴗ･`)ノ¥", "Σ_(꒪ཀ꒪」∠)_", "٩(๛ ˘ ³˘)۶❤", "(๑‾᷅^‾᷅๑)"
+    };
+
+    // 上下文
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -104,6 +187,7 @@ public class CommentFragment extends Fragment {
                 @Override
                 public void onClick(View v) {
                     currentSortMode = 0;
+                    sortExplicitlySet = true;
                     sortTimeBtn.setTextColor(0xFFD86DA5);
                     sortHotBtn.setTextColor(0xFF999999);
                     sortAndRefreshComments();
@@ -113,6 +197,7 @@ public class CommentFragment extends Fragment {
                 @Override
                 public void onClick(View v) {
                     currentSortMode = 1;
+                    sortExplicitlySet = true;
                     sortTimeBtn.setTextColor(0xFF999999);
                     sortHotBtn.setTextColor(0xFFD86DA5);
                     sortAndRefreshComments();
@@ -140,6 +225,13 @@ public class CommentFragment extends Fragment {
             }
         });
 
+        adapter.setOnLikeListener(new CommentAdapter.OnLikeListener() {
+            @Override
+            public void onLikeSuccess() {
+                commentCache.clear();
+            }
+        });
+
         // 滚动监听 - 保存滚动位置
         listView.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
@@ -147,15 +239,12 @@ public class CommentFragment extends Fragment {
                 if (scrollState == SCROLL_STATE_IDLE) {
                     // 保存滚动位置
                     int firstVisible = view.getFirstVisiblePosition();
-                    View firstChild = view.getChildAt(0);
-                    int offset = (firstChild == null) ? 0 : firstChild.getTop();
                     savedScrollPosition = firstVisible;
-                    savedScrollOffset = offset;
 
                     adapter.setScrolling(false);
                     int lastVisible = view.getLastVisiblePosition();
                     int totalCount = adapter.getCount();
-                    if (lastVisible >= totalCount - 1 && !isLoading && !isEnd && totalCount > 0) {
+                    if (lastVisible >= totalCount - 1 && !isLoading && !isEnd && !isRestoring && totalCount > 0) {
                         loadMoreComments();
                     }
                 } else {
@@ -165,7 +254,7 @@ public class CommentFragment extends Fragment {
 
             @Override
             public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
-                if (!isLoading && !isEnd && totalItemCount > 0) {
+                if (!isLoading && !isEnd && !isRestoring && totalItemCount > 0) {
                     if (firstVisibleItem + visibleItemCount >= totalItemCount - 3) {
                         loadMoreComments();
                     }
@@ -176,7 +265,6 @@ public class CommentFragment extends Fragment {
         // 检查是否有保存的滚动位置
         if (savedInstanceState != null) {
             savedScrollPosition = savedInstanceState.getInt("savedScrollPosition", -1);
-            savedScrollOffset = savedInstanceState.getInt("savedScrollOffset", 0);
         }
 
         loadComments();
@@ -188,21 +276,109 @@ public class CommentFragment extends Fragment {
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putInt("savedScrollPosition", savedScrollPosition);
-        outState.putInt("savedScrollOffset", savedScrollOffset);
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        // 从回复列表返回时恢复滚动位置
-        restoreScrollPosition();
+        activeInstance = this;
+        if (pendingLikeUpdate != null) {
+            applyPendingLike(pendingLikeUpdate.rpid, pendingLikeUpdate.liked, pendingLikeUpdate.likeCount);
+            pendingLikeUpdate = null;
+        }
+        if (!isRestoring) {
+            restoreScrollPosition();
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        saveCurrentScrollPosition();
+        sExitScrollPosition = savedScrollPosition;
+        if (activeInstance == this) {
+            activeInstance = null;
+        }
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+        if (requestCode == REQUEST_PICK_COMMENT_IMAGE && resultCode == android.app.Activity.RESULT_OK && data != null) {
+            final android.net.Uri imageUri = data.getData();
+            if (imageUri != null) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        final android.app.Activity activity = getActivity();
+                        if (activity == null) return;
+                        try {
+                            java.io.InputStream is = activity.getContentResolver().openInputStream(imageUri);
+                            if (is == null) return;
+                            byte[] imageBytes = NetWorkUtil.readStream(is);
+                            is.close();
+
+                            BitmapFactory.Options opts = new BitmapFactory.Options();
+                            opts.inJustDecodeBounds = true;
+                            BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, opts);
+
+                            int scale = 1;
+                            if (opts.outWidth > 1920 || opts.outHeight > 1080) {
+                                scale = Math.max(opts.outWidth / 1920, opts.outHeight / 1080);
+                            }
+
+                            opts = new BitmapFactory.Options();
+                            opts.inSampleSize = scale;
+                            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                            Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, opts);
+
+                            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, baos);
+                            byte[] compressed = baos.toByteArray();
+                            if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
+
+                            final String fileName = "comment_" + System.currentTimeMillis() + ".jpg";
+                            final String resultJson = ReplyApi.uploadReplyImage(aid != 0 ? aid : 0, compressed, fileName);
+
+                            if (resultJson != null && pendingImageDataList.size() < MAX_COMMENT_IMAGES) {
+                                pendingImageDataList.add(resultJson);
+                                final int imgCount = pendingImageDataList.size();
+                                activity.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (dialogImageBtn != null) {
+                                            dialogImageBtn.setText("图片(" + imgCount + ")");
+                                        }
+                                        Toast.makeText(activity, "图片已上传 (" + imgCount + ")", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            } else {
+                                activity.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        Toast.makeText(activity, "图片上传失败", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            }
+                        } catch (final Exception e) {
+                            activity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Toast.makeText(activity, "图片上传失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                        }
+                    }
+                }).start();
+            }
+        }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        // 在停止前保存滚动位置
         saveCurrentScrollPosition();
+        sExitScrollPosition = savedScrollPosition;
     }
 
     @Override
@@ -216,29 +392,26 @@ public class CommentFragment extends Fragment {
 
     // 恢复滚动位置
     private void restoreScrollPosition() {
-        if (savedScrollPosition >= 0 && listView != null && adapter != null && savedScrollPosition < adapter.getCount()) {
-            listView.post(new Runnable() {
-                @Override
-                public void run() {
-                    listView.setSelectionFromTop(savedScrollPosition, savedScrollOffset);
-                }
-            });
+        if (savedScrollPosition < 0 || listView == null || adapter == null) return;
+        if (savedScrollPosition >= adapter.getCount()) {
+            savedScrollPosition = Math.max(0, adapter.getCount() - 1);
         }
+        listView.setSelectionFromTop(savedScrollPosition, 0);
     }
 
     // 保存当前滚动位置
     private void saveCurrentScrollPosition() {
         if (listView == null) return;
-        int firstVisible = listView.getFirstVisiblePosition();
-        View firstChild = listView.getChildAt(0);
-        int offset = (firstChild == null) ? 0 : firstChild.getTop();
-        savedScrollPosition = firstVisible;
-        savedScrollOffset = offset;
+        savedScrollPosition = listView.getFirstVisiblePosition();
     }
 
     // 刷新评论（供外部调用）
     public void refreshComments() {
         if (isLoading) return;
+        String cacheKey = getCacheKey();
+        if (cacheKey != null) {
+            commentCache.remove(cacheKey);
+        }
         nextCursor = "";
         isEnd = false;
         commentList.clear();
@@ -247,16 +420,22 @@ public class CommentFragment extends Fragment {
             adapter.notifyDataSetChanged();
         }
         savedScrollPosition = 0;
-        savedScrollOffset = 0;
         loadComments();
     }
 
-    private void sortAndRefreshComments() {
-        if (commentList == null || commentList.size() == 0) {
-            refreshComments();
-            return;
+    private void applyCurrentSort() {
+        if (commentList == null || commentList.size() < 2) return;
+        // Separate pinned comments from the rest
+        final List<CommentItem> pinned = new ArrayList<CommentItem>();
+        final List<CommentItem> others = new ArrayList<CommentItem>();
+        for (CommentItem item : commentList) {
+            if (item.isTop) {
+                pinned.add(item);
+            } else {
+                others.add(item);
+            }
         }
-        java.util.Collections.sort(commentList, new java.util.Comparator<CommentItem>() {
+        java.util.Collections.sort(others, new java.util.Comparator<CommentItem>() {
             @Override
             public int compare(CommentItem a, CommentItem b) {
                 if (currentSortMode == 1) {
@@ -266,6 +445,17 @@ public class CommentFragment extends Fragment {
                 }
             }
         });
+        commentList.clear();
+        commentList.addAll(pinned);
+        commentList.addAll(others);
+    }
+
+    private void sortAndRefreshComments() {
+        if (commentList == null || commentList.size() == 0) {
+            refreshComments();
+            return;
+        }
+        applyCurrentSort();
         if (adapter != null) {
             adapter.updateData(commentList);
         }
@@ -293,6 +483,58 @@ public class CommentFragment extends Fragment {
 
         if (isLoading) return;
 
+        String cacheKey = getCacheKey();
+        CachedComments cached = cacheKey != null ? commentCache.get(cacheKey) : null;
+
+        // 用跨 Fragment 销毁的静态退出位置恢复滚动（bundle 可能因 setAdapter(null) 丢失）
+        if (savedScrollPosition < 0 && sExitScrollPosition >= 0) {
+            savedScrollPosition = sExitScrollPosition;
+        }
+
+        if (cached != null && System.currentTimeMillis() - cached.timestamp < CACHE_TTL_MS) {
+            commentList.clear();
+            commentIdSet.clear();
+            commentList.addAll(cached.items);
+            commentIdSet.addAll(cached.idSet);
+            nextCursor = cached.nextCursor;
+            isEnd = cached.isEnd;
+            // 恢复排序状态但不重新排序（缓存数据已排好序）
+            if (cached.sortMode == 1) {
+                currentSortMode = 1;
+                sortExplicitlySet = true;
+            } else {
+                currentSortMode = 0;
+            }
+            // 更新排序按钮颜色
+            if (sortTimeBtn != null && sortHotBtn != null) {
+                if (currentSortMode == 1) {
+                    sortTimeBtn.setTextColor(0xFF999999);
+                    sortHotBtn.setTextColor(0xFFD86DA5);
+                } else {
+                    sortTimeBtn.setTextColor(0xFFD86DA5);
+                    sortHotBtn.setTextColor(0xFF999999);
+                }
+            }
+
+            progressBar.setVisibility(View.GONE);
+            adapter.updateData(commentList);
+            if (commentList.size() == 0) {
+                emptyView.setText("暂无评论");
+                emptyView.setVisibility(View.VISIBLE);
+            } else {
+                emptyView.setVisibility(View.GONE);
+            }
+            isRestoring = true;
+            restoreScrollPosition();
+            listView.post(new Runnable() {
+                @Override
+                public void run() {
+                    isRestoring = false;
+                }
+            });
+            return;
+        }
+
         isLoading = true;
         nextCursor = "";
         isEnd = false;
@@ -304,6 +546,15 @@ public class CommentFragment extends Fragment {
         emptyView.setVisibility(View.GONE);
         footerView.setVisibility(View.GONE);
 
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                fetchCommentsFromNetwork();
+            }
+        }).start();
+    }
+
+    private void fetchCommentsFromNetwork() {
         final String oidParam;
         if (aid != 0) {
             oidParam = String.valueOf(aid);
@@ -313,100 +564,172 @@ public class CommentFragment extends Fragment {
             Log.e(TAG, "直接使用 bvid 请求评论: " + oidParam);
         }
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    String url = "https://api.bilibili.com/x/v2/reply/main?type=1&oid=" + oidParam;
-                    Log.e(TAG, "评论 API URL: " + url);
+        try {
+            String url = "https://api.bilibili.com/x/v2/reply/main?type=1&oid=" + oidParam;
+            Log.e(TAG, "评论 API URL: " + url);
 
-                    ArrayList<String> headers = new ArrayList<String>();
-                    headers.add("User-Agent");
-                    headers.add(NetWorkUtil.USER_AGENT_WEB);
-                    headers.add("Referer");
-                    headers.add("https://www.bilibili.com/");
+            ArrayList<String> headers = new ArrayList<String>();
+            headers.add("User-Agent");
+            headers.add(NetWorkUtil.USER_AGENT_WEB);
+            headers.add("Referer");
+            headers.add("https://www.bilibili.com/");
 
-                    String cookies = SharedPreferencesUtil.getString("cookies", "");
-                    if (cookies != null && cookies.length() > 0) {
-                        headers.add("Cookie");
-                        headers.add(cookies);
+            String cookies = SharedPreferencesUtil.getString("cookies", "");
+            if (cookies != null && cookies.length() > 0) {
+                headers.add("Cookie");
+                headers.add(cookies);
+            }
+
+            String response = NetWorkUtil.get(url, headers);
+            Log.e(TAG, "评论 API 响应长度: " + (response == null ? "null" : String.valueOf(response.length())));
+
+            if (response == null || response.length() == 0) {
+                showError("网络返回为空");
+                return;
+            }
+
+            JSONObject json = new JSONObject(response);
+            int code = json.optInt("code", -1);
+            String message = json.optString("message", "");
+            Log.e(TAG, "评论 API code: " + code + ", message: " + message);
+
+            if (code == 0) {
+                JSONObject data = json.optJSONObject("data");
+                if (data != null) {
+                    JSONObject cursor = data.optJSONObject("cursor");
+                    if (cursor != null) {
+                        nextCursor = cursor.optString("next", "");
+                        isEnd = cursor.optBoolean("is_end", true);
+                        Log.e(TAG, "nextCursor: " + nextCursor + ", isEnd: " + isEnd);
                     }
 
-                    String response = NetWorkUtil.get(url, headers);
-                    Log.e(TAG, "评论 API 响应长度: " + (response == null ? "null" : String.valueOf(response.length())));
-
-                    if (response == null || response.length() == 0) {
-                        showError("网络返回为空");
-                        return;
-                    }
-
-                    JSONObject json = new JSONObject(response);
-                    int code = json.optInt("code", -1);
-                    String message = json.optString("message", "");
-                    Log.e(TAG, "评论 API code: " + code + ", message: " + message);
-
-                    if (code == 0) {
-                        JSONObject data = json.optJSONObject("data");
-                        if (data != null) {
-                            JSONObject cursor = data.optJSONObject("cursor");
-                            if (cursor != null) {
-                                nextCursor = cursor.optString("next", "");
-                                isEnd = cursor.optBoolean("is_end", true);
-                                Log.e(TAG, "nextCursor: " + nextCursor + ", isEnd: " + isEnd);
+                    JSONArray replies = data.optJSONArray("replies");
+                    JSONArray topReplies = data.optJSONArray("top_replies");
+                    boolean isBegin = cursor != null && cursor.optBoolean("is_begin", false);
+                    if (topReplies != null && topReplies.length() > 0 && isBegin) {
+                        if (replies != null && replies.length() > 0) {
+                            JSONArray merged = new JSONArray();
+                            for (int t = 0; t < topReplies.length(); t++) {
+                                merged.put(topReplies.get(t));
                             }
-
-                            JSONArray replies = data.optJSONArray("replies");
-                            JSONArray topReplies = data.optJSONArray("top_replies");
-                            boolean isBegin = cursor != null && cursor.optBoolean("is_begin", false);
-                            if (topReplies != null && topReplies.length() > 0 && isBegin) {
-                                if (replies != null && replies.length() > 0) {
-                                    JSONArray merged = new JSONArray();
-                                    for (int t = 0; t < topReplies.length(); t++) {
-                                        merged.put(topReplies.get(t));
-                                    }
-                                    for (int r = 0; r < replies.length(); r++) {
-                                        merged.put(replies.get(r));
-                                    }
-                                    replies = merged;
-                                } else {
-                                    replies = topReplies;
-                                }
+                            for (int r = 0; r < replies.length(); r++) {
+                                merged.put(replies.get(r));
                             }
-                            if (replies != null && replies.length() > 0) {
-                                Log.e(TAG, "获取到 " + replies.length() + " 条评论");
-                                parseFirstComments(replies);
-                            } else {
-                                Log.e(TAG, "没有评论");
-                                showEmpty("暂无评论");
-                            }
+                            replies = merged;
                         } else {
-                            Log.e(TAG, "data 为 null");
-                            showEmpty("暂无评论");
+                            replies = topReplies;
+                        }
+                    }
+                    if (replies != null && replies.length() > 0) {
+                        Log.e(TAG, "获取到 " + replies.length() + " 条评论");
+                        commentIdSet.clear();
+                        List<CommentItem> items = parseFirstComments(replies);
+                        if (items != null) {
+                            saveCommentCache(items);
+                            applyCommentList(items);
                         }
                     } else {
-                        Log.e(TAG, "API 返回错误: " + message);
-                        showError("加载失败: " + message);
+                        Log.e(TAG, "没有评论");
+                        showEmpty("暂无评论");
                     }
-                } catch (final Exception e) {
-                    Log.e(TAG, "加载评论异常: " + e.getMessage(), e);
-                    showError("加载失败: " + e.getMessage());
-                } finally {
-                    isLoading = false;
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                progressBar.setVisibility(View.GONE);
-                            }
-                        });
-                    }
+                } else {
+                    Log.e(TAG, "data 为 null");
+                    showEmpty("暂无评论");
                 }
+            } else {
+                Log.e(TAG, "API 返回错误: " + message);
+                showError("加载失败: " + message);
             }
-        }).start();
+        } catch (final Exception e) {
+            Log.e(TAG, "加载评论异常: " + e.getMessage(), e);
+            showError("加载失败: " + e.getMessage());
+        } finally {
+            isLoading = false;
+            if (getActivity() != null) {
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        progressBar.setVisibility(View.GONE);
+                    }
+                });
+            }
+        }
     }
 
-    private void parseFirstComments(JSONArray replies) throws Exception {
-        final List<CommentItem> items = new ArrayList<CommentItem>();
+    private void applyCommentList(final List<CommentItem> items) {
+        if (getActivity() == null) return;
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                commentList.clear();
+                commentList.addAll(items);
+                if (sortExplicitlySet) {
+                    applyCurrentSort();
+                }
+                // Re-pin the user's newly created comment to the top
+                if (pendingNewComment != null) {
+                    long targetRpid = pendingNewComment.rpid;
+                    CommentItem existing = null;
+                    for (CommentItem item : commentList) {
+                        if (item.rpid == targetRpid) {
+                            existing = item;
+                            break;
+                        }
+                    }
+                    if (existing != null) {
+                        commentList.remove(existing);
+                    }
+                    int insertPos = 0;
+                    // Find how many pinned comments are at the start
+                    while (insertPos < commentList.size() && commentList.get(insertPos).isTop) {
+                        insertPos++;
+                    }
+                    if (existing != null) {
+                        commentList.add(insertPos, existing);
+                    } else {
+                        commentList.add(insertPos, pendingNewComment);
+                    }
+                    pendingNewComment = null;
+                }
+                isRestoring = true;
+                adapter.updateData(commentList);
+
+                if (commentList.size() == 0) {
+                    emptyView.setText("暂无评论");
+                    emptyView.setVisibility(View.VISIBLE);
+                } else {
+                    emptyView.setVisibility(View.GONE);
+                    if (!isEnd && nextCursor != null && nextCursor.length() > 0) {
+                        footerView.setVisibility(View.VISIBLE);
+                    }
+                }
+                restoreScrollPosition();
+                listView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        isRestoring = false;
+                    }
+                });
+            }
+        });
+    }
+
+    private void saveCommentCache(List<CommentItem> items) {
+        String cacheKey = getCacheKey();
+        if (cacheKey == null) return;
+        saveCurrentScrollPosition();
+        CachedComments cached = new CachedComments();
+        cached.items = new ArrayList<CommentItem>(items);
+        cached.idSet = new HashSet<Long>(commentIdSet);
+        cached.nextCursor = nextCursor;
+        cached.isEnd = isEnd;
+        cached.timestamp = System.currentTimeMillis();
+        cached.sortMode = currentSortMode;
+        commentCache.put(cacheKey, cached);
+    }
+
+    private List<CommentItem> parseFirstComments(JSONArray replies) throws Exception {
+        List<CommentItem> items = new ArrayList<CommentItem>();
 
         for (int i = 0; i < replies.length(); i++) {
             try {
@@ -501,28 +824,7 @@ public class CommentFragment extends Fragment {
             }
         }
 
-        if (getActivity() == null) return;
-
-        getActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                commentList.clear();
-                commentList.addAll(items);
-                adapter.updateData(commentList);
-
-                if (commentList.size() == 0) {
-                    emptyView.setText("暂无评论");
-                    emptyView.setVisibility(View.VISIBLE);
-                } else {
-                    emptyView.setVisibility(View.GONE);
-                    if (!isEnd && nextCursor != null && nextCursor.length() > 0) {
-                        footerView.setVisibility(View.VISIBLE);
-                    }
-                }
-                // 恢复滚动位置
-                restoreScrollPosition();
-            }
-        });
+        return items;
     }
 
     private void loadMoreComments() {
@@ -705,7 +1007,11 @@ public class CommentFragment extends Fragment {
             @Override
             public void run() {
                 commentList.addAll(items);
+                if (sortExplicitlySet) {
+                    applyCurrentSort();
+                }
                 adapter.updateData(commentList);
+                saveCommentCache(commentList);
 
                 footerProgressBar.setVisibility(View.GONE);
                 isLoading = false;
@@ -728,6 +1034,8 @@ public class CommentFragment extends Fragment {
 
     private void showReplyDialog(final CommentItem comment, final ReplyItem reply) {
         if (getActivity() == null) return;
+        final boolean isNewComment = (comment == null);
+
         String hint = "输入回复内容...";
         if (reply != null && reply.userName != null && reply.userName.length() > 0) {
             hint = "回复 " + reply.userName + " 的评论...";
@@ -741,6 +1049,60 @@ public class CommentFragment extends Fragment {
         final EditText input = new EditText(getActivity());
         input.setHint(hint);
         input.setLines(3);
+        input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(1000)});
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 14) {
+            android.graphics.drawable.GradientDrawable inputBg = new android.graphics.drawable.GradientDrawable();
+            inputBg.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+            inputBg.setStroke(dpToPx(2), 0xFFD0D0D0);
+            inputBg.setColor(0xFFFFFFFF);
+            input.setBackgroundDrawable(inputBg);
+        }
+
+        // 顶部按钮行：图片（仅根评论）+ 表情
+        final LinearLayout btnRow = new LinearLayout(getActivity());
+        btnRow.setOrientation(LinearLayout.HORIZONTAL);
+        btnRow.setPadding(0, 0, 0, dpToPx(6));
+
+        if (isNewComment) {
+            final TextView imageBtn = new TextView(getActivity());
+            imageBtn.setText("添加图片");
+            imageBtn.setTextSize(13);
+            imageBtn.setTextColor(0xFFD86DA5);
+            imageBtn.setPadding(0, 0, dpToPx(12), 0);
+            imageBtn.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
+            imageBtn.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (pendingImageDataList.size() >= MAX_COMMENT_IMAGES) {
+                        Toast.makeText(getActivity(), "最多上传" + MAX_COMMENT_IMAGES + "张图片", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    Intent pickIntent = new Intent(Intent.ACTION_GET_CONTENT);
+                    pickIntent.setType("image/*");
+                    startActivityForResult(pickIntent, REQUEST_PICK_COMMENT_IMAGE);
+                }
+            });
+            btnRow.addView(imageBtn);
+            dialogImageBtn = imageBtn;
+            if (pendingImageDataList.size() > 0) {
+                imageBtn.setText("图片(" + pendingImageDataList.size() + ")");
+            }
+        }
+
+        final TextView emojiBtn = new TextView(getActivity());
+        emojiBtn.setText("表情");
+        emojiBtn.setTextSize(13);
+        emojiBtn.setTextColor(0xFFD86DA5);
+        emojiBtn.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
+        emojiBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showEmojiPicker(input);
+            }
+        });
+        btnRow.addView(emojiBtn);
+
+        layout.addView(btnRow);
         layout.addView(input);
 
         final TextView clearText = new TextView(getActivity());
@@ -749,6 +1111,7 @@ public class CommentFragment extends Fragment {
         clearText.setPadding(0, 8, 0, 0);
         clearText.setTextSize(14);
         clearText.setTextColor(0xFF666666);
+        clearText.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
         clearText.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -757,42 +1120,155 @@ public class CommentFragment extends Fragment {
         });
         layout.addView(clearText);
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-        builder.setTitle("发送回复");
-        builder.setView(layout);
-        builder.setPositiveButton("发送", new DialogInterface.OnClickListener() {
+        final AlertDialog dialog = new AlertDialog.Builder(getActivity())
+                .setTitle(isNewComment ? "发评论" : "发送回复")
+                .setView(layout)
+                .setPositiveButton("发送", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                    }
+                })
+                .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        pendingImageDataList.clear();
+                        d.dismiss();
+                    }
+                })
+                .create();
+
+        dialog.show();
+        System.gc();
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(DialogInterface dialog, int which) {
+            public void onClick(View v) {
                 String text = input.getText().toString().trim();
                 if (text == null || text.length() == 0) {
-                    Toast.makeText(getActivity(), "回复内容不能为空", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), "内容不能为空", Toast.LENGTH_SHORT).show();
                     return;
                 }
                 saveCurrentScrollPosition();
-                long root = comment != null ? comment.rpid : 0;
-                long parent = reply != null ? reply.rpid : (comment != null ? comment.rpid : 0);
-                sendReply(root, parent, text);
+                dialog.dismiss();
+
+                if (isNewComment) {
+                    if (pendingImageDataList.size() > 0) {
+                        String picturesJson = buildPicturesJson();
+                        pendingImageDataList.clear();
+                        ReplyHelper.sendReplyWithPictures(getActivity(), aid, 0, 0, text, picturesJson,
+                                new ReplyHelper.ReplyCallback() {
+                            @Override
+                            public void onSuccess(String responseJson) {
+                                Toast.makeText(getActivity(), "评论发送成功", Toast.LENGTH_SHORT).show();
+                                pendingNewComment = parseCommentFromResponse(responseJson);
+                                refreshComments();
+                            }
+                            @Override
+                            public void onFailed(String error) {}
+                        });
+                    } else {
+                        ReplyHelper.sendReply(getActivity(), aid, 0, 0, text, new ReplyHelper.ReplyCallback() {
+                            @Override
+                            public void onSuccess(String responseJson) {
+                                Toast.makeText(getActivity(), "评论发送成功", Toast.LENGTH_SHORT).show();
+                                pendingNewComment = parseCommentFromResponse(responseJson);
+                                refreshComments();
+                            }
+                            @Override
+                            public void onFailed(String error) {}
+                        });
+                    }
+                } else {
+                    long root = comment.rpid;
+                    long parent = reply != null ? reply.rpid : comment.rpid;
+                    ReplyHelper.sendReply(getActivity(), aid, root, parent, text, new ReplyHelper.ReplyCallback() {
+                        @Override
+                        public void onSuccess(String responseJson) {
+                            Toast.makeText(getActivity(), "回复发送成功", Toast.LENGTH_SHORT).show();
+                            refreshComments();
+                        }
+                        @Override
+                        public void onFailed(String error) {}
+                    });
+                }
             }
         });
-        builder.setNegativeButton("取消", null);
+    }
+
+    private String buildPicturesJson() {
+        try {
+            JSONArray pics = new JSONArray();
+            for (int i = 0; i < pendingImageDataList.size(); i++) {
+                JSONObject imgData = new JSONObject(pendingImageDataList.get(i));
+                JSONObject pic = new JSONObject();
+                pic.put("img_src", imgData.optString("image_url", ""));
+                pic.put("img_width", imgData.optInt("image_width", 0));
+                pic.put("img_height", imgData.optInt("image_height", 0));
+                pic.put("img_size", imgData.optDouble("img_size", 0));
+                pics.put(pic);
+            }
+            return pics.toString();
+        } catch (Exception e) {
+            return "[]";
+        }
+    }
+
+    private void showEmojiPicker(final EditText input) {
+        final android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(getActivity());
+        builder.setTitle("选择表情");
+
+        final android.widget.ScrollView scroll = new android.widget.ScrollView(getActivity());
+        final android.widget.LinearLayout list = new android.widget.LinearLayout(getActivity());
+        list.setOrientation(android.widget.LinearLayout.VERTICAL);
+        list.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
+
+        for (int i = 0; i < EMOJIS.length; i++) {
+            final String emoji = EMOJIS[i];
+            final android.widget.TextView tv = new android.widget.TextView(getActivity());
+            tv.setText(emoji);
+            tv.setTextSize(16);
+            tv.setTextColor(0xFF333333);
+            tv.setPadding(dpToPx(10), dpToPx(8), dpToPx(10), dpToPx(8));
+            tv.setClickable(true);
+            android.graphics.drawable.GradientDrawable emojiNormal = new android.graphics.drawable.GradientDrawable();
+            emojiNormal.setColor(0xFFF0F0F0);
+            android.graphics.drawable.GradientDrawable emojiPressed = new android.graphics.drawable.GradientDrawable();
+            emojiPressed.setColor(0x40D86DA5);
+            android.graphics.drawable.StateListDrawable emojiBg = new android.graphics.drawable.StateListDrawable();
+            emojiBg.addState(new int[]{android.R.attr.state_pressed}, emojiPressed);
+            emojiBg.addState(new int[]{}, emojiNormal);
+            tv.setBackgroundDrawable(emojiBg);
+            tv.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    int remaining = 1000 - input.length();
+                    if (remaining <= 0) return;
+                    String toInsert = emoji.length() <= remaining ? emoji : emoji.substring(0, remaining);
+                    int pos = input.getSelectionStart();
+                    if (pos < 0) pos = input.length();
+                    input.getText().insert(pos, toInsert);
+                }
+            });
+            list.addView(tv);
+
+            if (i < EMOJIS.length - 1) {
+                android.view.View divider = new android.view.View(getActivity());
+                divider.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+                        android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 1));
+                divider.setBackgroundColor(0xFFDDDDDD);
+                list.addView(divider);
+            }
+        }
+
+        scroll.addView(list);
+        builder.setView(scroll);
+        builder.setPositiveButton("关闭", null);
         builder.show();
     }
 
-    private void sendReply(final long root, final long parent, final String text) {
-        if (getActivity() == null) return;
-
-        ReplyHelper.sendReply(getActivity(), aid, root, parent, text, new ReplyHelper.ReplyCallback() {
-            @Override
-            public void onSuccess() {
-                Toast.makeText(getActivity(), "回复发送成功", Toast.LENGTH_SHORT).show();
-                refreshComments();
-            }
-
-            @Override
-            public void onFailed(String error) {
-                // 错误已在 ReplyHelper 中 Toast 显示
-            }
-        });
+    private int dpToPx(int dp) {
+        if (getActivity() == null) return dp;
+        float density = getActivity().getResources().getDisplayMetrics().density;
+        return (int) (dp * density + 0.5f);
     }
 
     private String extractCsrfFromCookie(String cookie) {
@@ -868,6 +1344,78 @@ public class CommentFragment extends Fragment {
                 footerText.setVisibility(View.VISIBLE);
             }
         });
+    }
+
+    public void insertNewComment(CommentItem item) {
+        pendingNewComment = item;
+        refreshComments();
+    }
+
+    public static CommentItem parseCommentFromResponse(String responseJson) {
+        try {
+            JSONObject result = new JSONObject(responseJson);
+            if (result.optInt("code", -1) != 0) return null;
+            JSONObject data = result.optJSONObject("data");
+            if (data == null) return null;
+            JSONObject reply = data.optJSONObject("reply");
+            if (reply == null) return null;
+
+            long replyId = reply.optLong("rpid", 0);
+            if (replyId == 0) return null;
+
+            CommentItem item = new CommentItem();
+            item.rpid = replyId;
+            item.replyCount = reply.optInt("rcount", 0);
+
+            JSONObject member = reply.optJSONObject("member");
+            if (member != null) {
+                item.userName = member.optString("uname", "匿名用户");
+                item.mid = member.optLong("mid", 0);
+                String avatar = member.optString("avatar", "");
+                if (avatar != null && avatar.length() > 0) {
+                    avatar = avatar.replace("/64", "/48");
+                    if (avatar.startsWith("https://")) {
+                        avatar = "http://" + avatar.substring(8);
+                    }
+                }
+                item.userAvatar = avatar;
+            } else {
+                item.userName = "匿名用户";
+                item.userAvatar = null;
+                item.mid = 0;
+            }
+
+            JSONObject content = reply.optJSONObject("content");
+            if (content != null) {
+                item.message = content.optString("message", "");
+                JSONArray pictures = content.optJSONArray("pictures");
+                if (pictures != null && pictures.length() > 0) {
+                    item.pictureList = new ArrayList<String>();
+                    for (int p = 0; p < pictures.length(); p++) {
+                        JSONObject pic = pictures.getJSONObject(p);
+                        String imgSrc = pic.optString("img_src", "");
+                        if (imgSrc != null && imgSrc.length() > 0) {
+                            if (imgSrc.startsWith("https://")) {
+                                imgSrc = "http://" + imgSrc.substring(8);
+                            }
+                            item.pictureList.add(imgSrc);
+                        }
+                    }
+                }
+            } else {
+                item.message = "";
+            }
+
+            item.likeCount = reply.optInt("like", 0);
+            item.liked = reply.optInt("action", 0) == 1;
+            item.time = reply.optLong("ctime", 0);
+            JSONObject replyCtrl = reply.optJSONObject("reply_control");
+            item.isTop = replyCtrl != null && replyCtrl.optBoolean("is_up_top", false);
+            item.replies = null;
+            return item;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // 显示全部回复

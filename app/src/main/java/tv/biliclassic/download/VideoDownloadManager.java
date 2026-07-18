@@ -24,6 +24,10 @@ import java.util.ArrayList;
  */
 public class VideoDownloadManager {
 
+    public interface QueueListener {
+        void onQueueEmpty();
+    }
+
     private static final int MSG_SUBMIT_TASK = 1;
     private static final int MSG_CANCEL_TASK = 2;
     private static final int MSG_START_NEXT = 3;
@@ -37,6 +41,7 @@ public class VideoDownloadManager {
     private Handler mWorkHandler;
     private Handler mMainHandler;
     private boolean mStarted;
+    private QueueListener mQueueListener;
 
     public VideoDownloadManager(VideoDownloadNotificationHelper notifHelper, File downloadDir) {
         mNotifHelper = notifHelper;
@@ -44,6 +49,10 @@ public class VideoDownloadManager {
         mPendingTasks = new LinkedList<VideoDownloadTask>();
         mPausedTasks = new ArrayList<VideoDownloadTask>();
         mMainHandler = new Handler(Looper.getMainLooper());
+    }
+
+    public void setQueueListener(QueueListener listener) {
+        mQueueListener = listener;
     }
 
     public void start() {
@@ -236,7 +245,16 @@ public class VideoDownloadManager {
     private void startNextTask() {
         if (mCurrentTask != null) return;
         mCurrentTask = mPendingTasks.poll();
-        if (mCurrentTask == null) return;
+        if (mCurrentTask == null) {
+            if (mQueueListener != null) {
+                mMainHandler.post(new Runnable() {
+                    public void run() {
+                        mQueueListener.onQueueEmpty();
+                    }
+                });
+            }
+            return;
+        }
         mCurrentTask.entry.state = VideoDownloadEntry.STATE_DOWNLOADING;
         showProgressNotification(mCurrentTask.entry);
         executeDownload(mCurrentTask);
@@ -349,8 +367,8 @@ public class VideoDownloadManager {
             }
 
             conn = (HttpURLConnection) new URL(coverUrl).openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(12000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
             conn.connect();
 
@@ -387,8 +405,8 @@ public class VideoDownloadManager {
 
             String danmakuUrl = "https://comment.bilibili.com/" + entry.cid + ".xml";
             conn = (HttpURLConnection) new URL(danmakuUrl).openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(12000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
             conn.connect();
 

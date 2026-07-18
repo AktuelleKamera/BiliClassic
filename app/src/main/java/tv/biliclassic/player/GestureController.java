@@ -22,6 +22,7 @@ import util.AudioManagerHelper;
 import util.BrightnessHelper;
 import util.PlayerToastMessageViewHolder;
 import android.view.ScaleGestureDetector;
+import tv.biliclassic.util.SdkHelper;
 
 public class GestureController {
 
@@ -103,13 +104,13 @@ public class GestureController {
     private Runnable mLongPressRunnable = new Runnable() {
         @Override
         public void run() {
-            if (mIsScaling || mIsPinching || mIsSeeking ||
+            if (!enableGesture || mIsScaling || mIsPinching || mIsSeeking ||
                     mIsAdjustingBrightness || mIsAdjustingVolume ||
                     mInHorizontalMoving || mInVerticalMoving) {
                 return;
             }
             if (!mIsLongPressed) {
-                if (mDecoderType == 0 && Build.VERSION.SDK_INT < 23) return;
+                if (mDecoderType == 0 && SdkHelper.getSdkInt() < 23) return;
                 mIsLongPressed = true;
                 mIsLongPressing = true;
                 Log.d(TAG, "长按触发，设置 2.0x 加速");
@@ -464,7 +465,7 @@ public class GestureController {
             }
         }
 
-        if (Build.VERSION.SDK_INT >= 23) {
+        if (SdkHelper.getSdkInt() >= 23) {
             try {
                 Class<?> cls = mMediaPlayer.getClass();
                 java.lang.reflect.Field[] fields = cls.getDeclaredFields();
@@ -614,6 +615,9 @@ public class GestureController {
         public boolean onDown(MotionEvent e) {
             Log.d(TAG, "onDown");
             mIsPinching = false;
+            if (!enableGesture) {
+                return true;
+            }
             updateCurrentPositionForGesture();
             hideBarControllers(0);
             startBrightnessChange();

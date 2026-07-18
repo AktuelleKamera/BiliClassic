@@ -3,6 +3,7 @@ package tv.biliclassic.tv;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -29,10 +30,14 @@ import tv.biliclassic.DeviceInfoActivity;
 import tv.biliclassic.R;
 import tv.biliclassic.subsettings.DecoderSettingsActivity;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.UpdateUtil;
 
+import tv.biliclassic.util.SdkHelper;
 public class TvSettingsActivity extends FragmentActivity {
+
+    private Runnable mPendingStorageAction;
 
     private Button btnThreads, btnPlayer, btnDecoder, btnDecoderSettings, btnRendererType, btnDanmakuEngine;
     private Button btnQuality, btnHomeTab, btnCookie, btnClearCache, btnClearPlayCache, btnCrashLog;
@@ -100,7 +105,7 @@ public class TvSettingsActivity extends FragmentActivity {
         });
 
         // 渲染方式 - API < 14 隐藏
-        if (Build.VERSION.SDK_INT < 14) {
+        if (SdkHelper.getSdkInt() < 14) {
             btnRendererType.setVisibility(View.GONE);
         }
 
@@ -288,7 +293,7 @@ public class TvSettingsActivity extends FragmentActivity {
     // ---- 解码方式 ----
 
     private void showDecoderDialog() {
-        final boolean hwSupported = Build.VERSION.SDK_INT >= MIN_SDK_FOR_IJK_HARDWARE;
+        final boolean hwSupported = SdkHelper.getSdkInt() >= MIN_SDK_FOR_IJK_HARDWARE;
         final String[] decoders;
         final int[] decoderValues;
         if (hwSupported) {
@@ -398,7 +403,7 @@ public class TvSettingsActivity extends FragmentActivity {
         int current = SharedPreferencesUtil.getInt("player_preference", 8);
         java.util.ArrayList<String> filteredPlayers = new java.util.ArrayList<String>();
         java.util.ArrayList<Integer> filteredValues = new java.util.ArrayList<Integer>();
-        boolean builtinSupported = Build.VERSION.SDK_INT >= 9;
+        boolean builtinSupported = SdkHelper.getSdkInt() >= 9;
         for (int i = 0; i < allPlayers.length; i++) {
             if (allValues[i] == 8 && !builtinSupported) continue;
             filteredPlayers.add(allPlayers[i]);
@@ -516,7 +521,8 @@ public class TvSettingsActivity extends FragmentActivity {
 
     private File getCookieSaveFile() {
         File dir;
-        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
+        if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())
+                && PermissionUtil.hasWriteStorage(this)) {
             dir = new File(Environment.getExternalStorageDirectory(), "BiliClassic");
         } else {
             dir = getFilesDir();
@@ -526,6 +532,15 @@ public class TvSettingsActivity extends FragmentActivity {
     }
 
     private void exportCookieToFile() {
+        if (!PermissionUtil.hasWriteStorage(this)) {
+            mPendingStorageAction = new Runnable() {
+                public void run() {
+                    exportCookieToFile();
+                }
+            };
+            PermissionUtil.requestWriteStorage(this);
+            return;
+        }
         if (!isLoggedIn()) { Toast.makeText(this, "请先登录的说~", Toast.LENGTH_SHORT).show(); return; }
         try {
             File file = getCookieSaveFile();
@@ -535,6 +550,20 @@ public class TvSettingsActivity extends FragmentActivity {
             Toast.makeText(this, "已保存到: " + file.getAbsolutePath(), Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             Toast.makeText(this, "保存失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == PermissionUtil.REQUEST_WRITE_STORAGE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (mPendingStorageAction != null) {
+                    mPendingStorageAction.run();
+                    mPendingStorageAction = null;
+                }
+            } else {
+                Toast.makeText(this, "需要存储权限才能使用此功能", Toast.LENGTH_SHORT).show();
+                mPendingStorageAction = null;
+            }
         }
     }
 
@@ -644,7 +673,8 @@ public class TvSettingsActivity extends FragmentActivity {
         int deleted = 0;
         try {
             File avatarFile;
-            if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
+            if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())
+                    && PermissionUtil.hasWriteStorage(this)) {
                 avatarFile = new File(Environment.getExternalStorageDirectory(), "BiliClassic/avatar_cache/avatar_cache.jpg");
             } else {
                 avatarFile = new File(getCacheDir(), "avatar_cache.jpg");
@@ -679,7 +709,8 @@ public class TvSettingsActivity extends FragmentActivity {
     private void clearPlayCache() {
         try {
             File cacheDir;
-            if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
+            if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())
+                    && PermissionUtil.hasWriteStorage(this)) {
                 cacheDir = new File(Environment.getExternalStorageDirectory(), "BiliClassic/cache");
             } else {
                 cacheDir = getCacheDir();

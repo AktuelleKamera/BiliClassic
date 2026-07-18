@@ -16,7 +16,8 @@ public class VideoAspectRatioHelper {
      */
     public static void autoRotateIfPortrait(Activity activity, int videoWidth, int videoHeight,
                                             boolean firstTime, View btnAspectRatio,
-                                            GestureController gestureController) {
+                                            GestureController gestureController,
+                                            boolean enableGesture) {
         if (firstTime && isPortraitVideo(videoWidth, videoHeight)) {
             if (activity.getRequestedOrientation() != ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
                 activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
@@ -24,7 +25,7 @@ public class VideoAspectRatioHelper {
             if (btnAspectRatio != null) {
                 btnAspectRatio.setVisibility(View.GONE);
             }
-            if (gestureController != null) {
+            if (gestureController != null && enableGesture) {
                 gestureController.setEnableGesture(true);
                 gestureController.onOrientationChanged();
             }

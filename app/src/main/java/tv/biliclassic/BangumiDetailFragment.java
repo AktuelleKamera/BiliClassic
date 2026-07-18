@@ -292,6 +292,7 @@ public class BangumiDetailFragment extends Fragment {
     }
 
     private void loadCover(String url) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return;
         if (getActivity() == null) return;
         if (url == null || url.length() == 0) return;
 
@@ -315,8 +316,8 @@ public class BangumiDetailFragment extends Fragment {
                 try {
                     java.net.URL urlObj = new java.net.URL(finalUrl);
                     conn = (java.net.HttpURLConnection) urlObj.openConnection();
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
+                    conn.setConnectTimeout(12000);
+                    conn.setReadTimeout(12000);
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0");
                     conn.connect();
                     java.io.InputStream is = conn.getInputStream();

@@ -24,8 +24,13 @@ import android.os.Build;
 public class AndroidTrackInfo implements ITrackInfo {
     private final MediaPlayer.TrackInfo mTrackInfo;
 
+    private static int getSdkInt() {
+        try { return Build.VERSION.class.getField("SDK_INT").getInt(null); }
+        catch (Exception e) { return Integer.parseInt(Build.VERSION.SDK); }
+    }
+
     public static AndroidTrackInfo[] fromMediaPlayer(MediaPlayer mp) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN)
+        if (getSdkInt() >= Build.VERSION_CODES.JELLY_BEAN)
             return fromTrackInfo(mp.getTrackInfo());
 
         return null;
@@ -53,7 +58,7 @@ public class AndroidTrackInfo implements ITrackInfo {
         if (mTrackInfo == null)
             return null;
 
-        if (Build.VERSION.SDK_INT < 19)
+        if (getSdkInt() < 19)
             return null;
 
         try {

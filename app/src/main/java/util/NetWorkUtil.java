@@ -60,6 +60,13 @@ public class NetWorkUtil {
     // 线程安全的 Cookie 存储
     private static String sCookieString = "";
 
+    // 强制携带登录 Cookie 标志（用于 无痕模式 下仍需登录才能使用的功能，如播放历史）
+    private static boolean sForceLogin = false;
+
+    public static void setForceLogin(boolean force) {
+        sForceLogin = force;
+    }
+
     public static synchronized String getCookieString() {
         return sCookieString;
     }
@@ -417,12 +424,25 @@ public class NetWorkUtil {
             }
         }
 
-        // Cookie 处理
-        String cookie = getCookieString();
-        if (cookie == null || cookie.length() == 0) {
-            cookie = SharedPreferencesUtil.getString("cookies", "");
-            if (cookie != null && cookie.length() > 0) {
-                setCookieString(cookie);
+        // Cookie 处理 - 确保匿名 Cookie 并合并登录 Cookie
+        CookieGenerator.ensureCookies();
+        boolean incognitoMode = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.INCOGNITO_MODE, false);
+        boolean forceLogin = sForceLogin;
+        sForceLogin = false;
+        if (forceLogin) {
+            incognitoMode = false;
+        }
+        String cookie = CookieGenerator.getCookieString(!incognitoMode);
+        if (!incognitoMode) {
+            String loggedCookie = getCookieString();
+            if (loggedCookie == null || loggedCookie.length() == 0) {
+                loggedCookie = SharedPreferencesUtil.getString("cookies", "");
+                if (loggedCookie != null && loggedCookie.length() > 0) {
+                    setCookieString(loggedCookie);
+                }
+            }
+            if (loggedCookie != null && loggedCookie.length() > 0) {
+                cookie = mergeCookies(cookie, loggedCookie);
             }
         }
         if (cookie != null && cookie.length() > 0) {
@@ -504,11 +524,21 @@ public class NetWorkUtil {
             return "";
         }
 
-        java.io.CharArrayWriter caw = new java.io.CharArrayWriter();
+        // 初始 128KB，上限 2MB（防止超大响应撑爆低端设备堆内存）
+        java.io.CharArrayWriter caw = new java.io.CharArrayWriter(128 * 1024);
         BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
         char[] buffer = new char[4096];
+        int total = 0;
+        int maxChars = 2 * 1024 * 1024;
         int len;
         while ((len = reader.read(buffer, 0, buffer.length)) != -1) {
+            total += len;
+            if (total > maxChars) {
+                reader.close();
+                is.close();
+                caw.close();
+                throw new java.io.IOException("响应数据过大 (" + total + " 字节)");
+            }
             caw.write(buffer, 0, len);
         }
         reader.close();
@@ -612,8 +642,8 @@ public class NetWorkUtil {
             conn.setRequestMethod("GET");
             conn.setRequestProperty("User-Agent", USER_AGENT_WEB);
             conn.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8");
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(12000);
             conn.setInstanceFollowRedirects(false);
             conn.connect();
 

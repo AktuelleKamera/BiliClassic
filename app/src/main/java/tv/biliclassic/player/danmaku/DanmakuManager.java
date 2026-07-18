@@ -41,7 +41,13 @@ import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.danmaku.ijk.media.player.IMediaPlayer;
 
+import tv.biliclassic.util.SdkHelper;
 public class DanmakuManager {
+
+    private static String getCpuAbi() {
+        try { return (String) android.os.Build.class.getField("CPU_ABI").get(null); }
+        catch (Exception e) { return ""; }
+    }
 
     private static final String KEY_TEXT_SIZE = "danmaku_text_size";
     private static final String KEY_TRANSPARENCY = "danmaku_transparency";
@@ -99,7 +105,7 @@ public class DanmakuManager {
     public static boolean isSimpleEngineEnabled() {
         int mode = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, -1);
         if (mode < 0) {
-            String abi = android.os.Build.CPU_ABI;
+            String abi = getCpuAbi();
             boolean isLegacyCpu = abi != null && abi.startsWith("armeabi") && !abi.contains("v7");
             mode = isLegacyCpu ? 1 : 0;
             SharedPreferencesUtil.putInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, mode);
@@ -151,7 +157,7 @@ public class DanmakuManager {
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT));
 
-        float textSize = SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, 0.8f);
+        float textSize = SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, 0.9f);
         float transparency = SharedPreferencesUtil.getFloat(KEY_TRANSPARENCY, 0.4f);
         float speed = SharedPreferencesUtil.getFloat(KEY_SPEED, 1.0f);
         int maxScreen = SharedPreferencesUtil.getInt(KEY_MAX_SCREEN, -1);
@@ -272,6 +278,17 @@ public class DanmakuManager {
         }
     }
 
+    // 用 FrameLayout 包裹视图并右对齐，MATCH_PARENT PopupWindow 时安全区挤压左侧空白区域
+    private android.view.View wrapRight(android.view.View content) {
+        android.widget.FrameLayout wrapper = new android.widget.FrameLayout(mActivity);
+        wrapper.setBackgroundDrawable(null);
+        wrapper.addView(content, new android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.Gravity.RIGHT));
+        return wrapper;
+    }
+
     public void showOptionsPanel() {
         if (mOptionsPanel != null && mOptionsPanel.isShowing()) {
             mOptionsPanel.dismiss();
@@ -377,8 +394,8 @@ public class DanmakuManager {
                     applyStrokeScale();
                 }});
 
-        mOptionsPanel = new PopupWindow(panel,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
+        mOptionsPanel = new PopupWindow(wrapRight(panel),
+                ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT, true);
         mOptionsPanel.setAnimationStyle(R.style.Animation_SidePannel);
         mOptionsPanel.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
@@ -386,8 +403,17 @@ public class DanmakuManager {
             public void onDismiss() { mOptionsPanel = null; }
         });
 
-        View root = mActivity.findViewById(android.R.id.content);
+        View root = mActivity.getWindow().getDecorView();
         mOptionsPanel.showAtLocation(root, Gravity.RIGHT, 0, 0);
+        if (SdkHelper.getSdkInt() >= 28) {
+            panel.addOnAttachStateChangeListener(new android.view.View.OnAttachStateChangeListener() {
+                public void onViewAttachedToWindow(android.view.View v) {
+                    tv.biliclassic.player.BiliPlayerActivity.applyPopupCutout(mOptionsPanel);
+                    v.removeOnAttachStateChangeListener(this);
+                }
+                public void onViewDetachedFromWindow(android.view.View v) {}
+            });
+        }
     }
 
     public void showInputPanel(final PlayControl playControl) {
@@ -396,7 +422,17 @@ public class DanmakuManager {
             return;
         }
         if (mInputOverlay == null && mInputStub != null) {
-            mInputOverlay = mInputStub.inflate();
+            if (!(mInputStub.getParent() instanceof android.view.ViewGroup)) {
+                mInputStub = null;
+                return;
+            }
+            try {
+                mInputOverlay = mInputStub.inflate();
+                mInputStub = null;
+            } catch (Exception e) {
+                mInputStub = null;
+                return;
+            }
             if (mInputOverlay != null) {
                 final EditText inputEdit = (EditText) mInputOverlay.findViewById(R.id.input);
                 View clearBtn = mInputOverlay.findViewById(R.id.clear);
@@ -742,7 +778,7 @@ public class DanmakuManager {
 
         hideSectionHeaders(panel);
 
-        float textScale = SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, 0.8f);
+        float textScale = SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, 0.9f);
         float speed = SharedPreferencesUtil.getFloat(KEY_SPEED, 1.0f);
         float alpha = 1.0f - SharedPreferencesUtil.getFloat(KEY_TRANSPARENCY, 0.4f);
         int maxScreen = SharedPreferencesUtil.getInt(KEY_MAX_SCREEN, 50);
@@ -775,8 +811,8 @@ public class DanmakuManager {
                     SharedPreferencesUtil.putInt(KEY_MAX_SCREEN, (int) v);
                 }});
 
-        mOptionsPanel = new PopupWindow(panel,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
+        mOptionsPanel = new PopupWindow(wrapRight(panel),
+                ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT, true);
         mOptionsPanel.setAnimationStyle(R.style.Animation_SidePannel);
         mOptionsPanel.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
@@ -784,8 +820,17 @@ public class DanmakuManager {
             public void onDismiss() { mOptionsPanel = null; }
         });
 
-        View root = mActivity.findViewById(android.R.id.content);
+        View root = mActivity.getWindow().getDecorView();
         mOptionsPanel.showAtLocation(root, Gravity.RIGHT, 0, 0);
+        if (SdkHelper.getSdkInt() >= 28) {
+            panel.addOnAttachStateChangeListener(new android.view.View.OnAttachStateChangeListener() {
+                public void onViewAttachedToWindow(android.view.View v) {
+                    tv.biliclassic.player.BiliPlayerActivity.applyPopupCutout(mOptionsPanel);
+                    v.removeOnAttachStateChangeListener(this);
+                }
+                public void onViewDetachedFromWindow(android.view.View v) {}
+            });
+        }
     }
 
     private void hideIfNotNull(View panel, int id) {

@@ -82,6 +82,7 @@ public class PartitionPageFragment extends Fragment {
         gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                if (position < 0 || position >= videoList.size()) return;
                 VideoCard item = videoList.get(position);
                 if (item == null || getActivity() == null) return;
                 Intent intent = new Intent(getActivity(), VideoDetailActivity.class);

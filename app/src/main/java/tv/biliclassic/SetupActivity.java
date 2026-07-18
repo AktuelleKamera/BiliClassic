@@ -407,8 +407,8 @@ public class SetupActivity extends BaseActivity {
             try {
                 URL url = new URL(urlStr);
                 conn = (HttpURLConnection) url.openConnection();
-                conn.setConnectTimeout(5000);
-                conn.setReadTimeout(5000);
+                conn.setConnectTimeout(12000);
+                conn.setReadTimeout(12000);
                 conn.setRequestMethod("GET");
                 conn.setRequestProperty("User-Agent", "BiliClassic");
                 if (conn.getResponseCode() != 200) continue;

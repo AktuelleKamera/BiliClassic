@@ -35,8 +35,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.lang.ref.SoftReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
@@ -53,6 +53,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import tv.biliclassic.api.ReplyApi;
+import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class CommentAdapter extends BaseAdapter {
@@ -64,8 +65,6 @@ public class CommentAdapter extends BaseAdapter {
     private CommentFragment mFragment;
     private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
-    private Map<String, SoftReference<Bitmap>> imageCache = new HashMap<String, SoftReference<Bitmap>>();
-    private List<String> cacheKeys = new ArrayList<String>();
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
 
     private long mMid;
@@ -76,7 +75,6 @@ public class CommentAdapter extends BaseAdapter {
     public void setBvid(String bvid) { mBvid = bvid; }
 
     private boolean isScrolling = false;
-    private static final int MAX_CACHE_SIZE = 80;
     private float mDensity;
 
     public interface OnUserClickListener {
@@ -96,6 +94,15 @@ public class CommentAdapter extends BaseAdapter {
 
     public void setOnReplyClickListener(OnReplyClickListener listener) {
         this.replyClickListener = listener;
+    }
+
+    public interface OnLikeListener {
+        void onLikeSuccess();
+    }
+    private OnLikeListener likeListener;
+
+    public void setOnLikeListener(OnLikeListener listener) {
+        this.likeListener = listener;
     }
 
     private boolean isLowMemoryDevice() {
@@ -277,6 +284,7 @@ public class CommentAdapter extends BaseAdapter {
                         intent.putExtra("total_count", ci.replyCount);
                         intent.putExtra("root_like_count", ci.likeCount);
                         intent.putExtra("root_liked", ci.liked);
+                        intent.putExtra("root_is_top", ci.isTop);
                         v.getContext().startActivity(intent);
                         break;
                     }
@@ -339,6 +347,10 @@ public class CommentAdapter extends BaseAdapter {
                                             Toast.makeText(context, "操作失败", Toast.LENGTH_SHORT).show();
                                         }
                                     });
+                                } else {
+                                    if (likeListener != null) {
+                                        likeListener.onLikeSuccess();
+                                    }
                                 }
                             } catch (Exception e) {
                                 e.printStackTrace();
@@ -563,17 +575,11 @@ public class CommentAdapter extends BaseAdapter {
             final int currentPos = position;
             avatarView.setTag(finalAvatarUrl);
 
-            SoftReference<Bitmap> softRef = imageCache.get(finalAvatarUrl);
-            if (softRef != null) {
-                Bitmap cachedBitmap = softRef.get();
-                if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
-                    avatarView.setImageBitmap(cachedBitmap);
-                    addAvatarBorder(avatarView);
-                    return convertView;
-                } else {
-                    imageCache.remove(finalAvatarUrl);
-                    cacheKeys.remove(finalAvatarUrl);
-                }
+            Bitmap cachedBitmap = GlobalImageCache.getInstance().get(finalAvatarUrl);
+            if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
+                avatarView.setImageBitmap(cachedBitmap);
+                addAvatarBorder(avatarView);
+                return convertView;
             }
 
             if (isScrolling) {
@@ -593,7 +599,7 @@ public class CommentAdapter extends BaseAdapter {
                     loadingMap.remove(currentPos);
 
                     if (bitmap != null && !bitmap.isRecycled()) {
-                        addToCache(finalAvatarUrl, bitmap);
+                        GlobalImageCache.getInstance().put(finalAvatarUrl, bitmap);
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
@@ -613,6 +619,7 @@ public class CommentAdapter extends BaseAdapter {
     }
 
     private void loadCommentImage(final ImageView imageView, String urlStr) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return;
         if (urlStr == null || urlStr.length() == 0) return;
         final String finalUrl = urlStr;
 
@@ -623,19 +630,26 @@ public class CommentAdapter extends BaseAdapter {
                 try {
                     URL url = new URL(finalUrl);
                     conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
+                    conn.setConnectTimeout(12000);
+                    conn.setReadTimeout(12000);
                     conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+                    conn.setRequestProperty("Accept-Encoding", "identity");
                     conn.connect();
 
                     InputStream is = conn.getInputStream();
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    byte[] buffer = new byte[8192];
+                    int len;
+                    while ((len = is.read(buffer)) != -1) {
+                        baos.write(buffer, 0, len);
+                    }
+                    is.close();
+                    byte[] imageData = baos.toByteArray();
 
                     BitmapFactory.Options opts = new BitmapFactory.Options();
                     opts.inJustDecodeBounds = true;
-                    BitmapFactory.decodeStream(is, null, opts);
-                    is.close();
+                    BitmapFactory.decodeByteArray(imageData, 0, imageData.length, opts);
 
-                    //计算采样率
                     int targetSize = dpToPx(80);
                     int scale = 1;
                     if (opts.outWidth > targetSize || opts.outHeight > targetSize) {
@@ -643,31 +657,28 @@ public class CommentAdapter extends BaseAdapter {
                         int heightRatio = opts.outHeight / targetSize;
                         scale = Math.max(widthRatio, heightRatio);
                         if (scale < 1) scale = 1;
-                        if (scale > 8) scale = 8;
+                        if (scale > 4) scale = 4;
                     }
 
-                    // 重新连接并解码
-                    conn.disconnect();
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(8000);
-                    conn.setReadTimeout(8000);
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-                    conn.connect();
-                    is = conn.getInputStream();
+                    Bitmap bitmap = null;
+                    while (scale <= 16 && bitmap == null) {
+                        try {
+                            opts = new BitmapFactory.Options();
+                            opts.inSampleSize = scale;
+                            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                            bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, opts);
+                        } catch (OutOfMemoryError e) {
+                            scale *= 2;
+                        }
+                    }
+                    imageData = null;
 
-                    opts = new BitmapFactory.Options();
-                    opts.inSampleSize = scale;
-                    opts.inPreferredConfig = Bitmap.Config.RGB_565;
-
-                    final Bitmap bitmap = BitmapFactory.decodeStream(is, null, opts);
-                    is.close();
-                    conn.disconnect();
-
-                    if (bitmap != null && !bitmap.isRecycled()) {
+                    final Bitmap resultBitmap = bitmap;
+                    if (resultBitmap != null && !resultBitmap.isRecycled()) {
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
-                                imageView.setImageBitmap(bitmap);
+                                imageView.setImageBitmap(resultBitmap);
                             }
                         });
                     }
@@ -682,21 +693,6 @@ public class CommentAdapter extends BaseAdapter {
                 }
             }
         }).start();
-    }
-
-    private void addToCache(String key, Bitmap bitmap) {
-        if (cacheKeys.size() >= MAX_CACHE_SIZE) {
-            String oldestKey = cacheKeys.remove(0);
-            SoftReference<Bitmap> oldRef = imageCache.remove(oldestKey);
-            if (oldRef != null) {
-                Bitmap old = oldRef.get();
-                if (old != null && !old.isRecycled()) {
-                    old.recycle();
-                }
-            }
-        }
-        imageCache.put(key, new SoftReference<Bitmap>(bitmap));
-        cacheKeys.add(key);
     }
 
     private void addAvatarBorder(ImageView imageView) {
@@ -715,21 +711,30 @@ public class CommentAdapter extends BaseAdapter {
     }
 
     private Bitmap downloadImage(String urlStr) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
         HttpURLConnection conn = null;
         try {
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(12000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("Accept-Encoding", "identity");
             conn.connect();
 
             InputStream is = conn.getInputStream();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                baos.write(buffer, 0, len);
+            }
+            is.close();
+            byte[] imageData = baos.toByteArray();
 
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
-            BitmapFactory.decodeStream(is, null, options);
-            is.close();
+            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
 
             int targetSize = dpToPx(48);
             int scale = 1;
@@ -738,23 +743,21 @@ public class CommentAdapter extends BaseAdapter {
                 int heightRatio = options.outHeight / targetSize;
                 scale = Math.max(widthRatio, heightRatio);
                 if (scale < 1) scale = 1;
-                if (scale > 8) scale = 8;
+                if (scale > 4) scale = 4;
             }
 
-            conn.disconnect();
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.connect();
-            is = conn.getInputStream();
-
-            options = new BitmapFactory.Options();
-            options.inSampleSize = scale;
-            options.inPreferredConfig = Bitmap.Config.RGB_565;
-
-            Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
-            is.close();
+            Bitmap bitmap = null;
+            while (scale <= 16 && bitmap == null) {
+                try {
+                    options = new BitmapFactory.Options();
+                    options.inSampleSize = scale;
+                    options.inPreferredConfig = Bitmap.Config.RGB_565;
+                    bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
+                } catch (OutOfMemoryError e) {
+                    scale *= 2;
+                }
+            }
+            imageData = null;
             return bitmap;
         } catch (OutOfMemoryError e) {
             System.gc();
@@ -763,7 +766,7 @@ public class CommentAdapter extends BaseAdapter {
             return null;
         } finally {
             if (conn != null) {
-                conn.disconnect();
+                try { conn.disconnect(); } catch (Exception e) {}
             }
         }
     }
@@ -775,14 +778,6 @@ public class CommentAdapter extends BaseAdapter {
     }
 
     public void clearCache() {
-        for (SoftReference<Bitmap> ref : imageCache.values()) {
-            Bitmap bmp = ref.get();
-            if (bmp != null && !bmp.isRecycled()) {
-                bmp.recycle();
-            }
-        }
-        imageCache.clear();
-        cacheKeys.clear();
         loadingMap.clear();
     }
 

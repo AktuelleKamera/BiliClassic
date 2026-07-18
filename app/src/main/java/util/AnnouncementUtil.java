@@ -69,7 +69,7 @@ public class AnnouncementUtil {
         }
 
         public boolean isSdkSupported() {
-            return android.os.Build.VERSION.SDK_INT >= minSdk;
+            return SdkHelper.getSdkInt() >= minSdk;
         }
 
         public String getDisplayContent() {
@@ -253,7 +253,7 @@ public class AnnouncementUtil {
             HttpURLConnection.setFollowRedirects(true);
             conn = (HttpURLConnection) new URL(url).openConnection();
             conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setReadTimeout(12000);
             conn.setRequestMethod("GET");
             conn.setRequestProperty("User-Agent", "BiliClassic/" + getVersionName(context));
 

@@ -162,8 +162,8 @@ public class ConfInfoApi {
     private static String httpGet(String urlStr) throws IOException {
         HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
         conn.setRequestMethod("GET");
-        conn.setConnectTimeout(10000);
-        conn.setReadTimeout(10000);
+        conn.setConnectTimeout(12000);
+        conn.setReadTimeout(12000);
         conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
         conn.setRequestProperty("Accept-Encoding", "identity");
         conn.connect();

@@ -209,55 +209,62 @@ public class RelatedVideosAdapter extends BaseAdapter {
     }
 
     private Bitmap downloadImage(String urlStr) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
         HttpURLConnection conn = null;
+        java.io.File tempFile = null;
         try {
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(12000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
             conn.connect();
 
+            // 下载到临时文件
+            tempFile = new java.io.File(context.getCacheDir(), "rel_" + urlStr.hashCode() + ".tmp");
             InputStream is = conn.getInputStream();
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
+            byte[] buf = new byte[8192];
+            int len;
+            while ((len = is.read(buf)) != -1) {
+                fos.write(buf, 0, len);
+            }
+            is.close();
+            fos.close();
+            conn.disconnect();
+            conn = null;
+
+            if (!tempFile.exists() || tempFile.length() == 0) return null;
 
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
-            BitmapFactory.decodeStream(is, null, options);
-            is.close();
-
-            conn.disconnect();
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.connect();
-            is = conn.getInputStream();
+            BitmapFactory.decodeFile(tempFile.getAbsolutePath(), options);
 
             int targetWidth = (int) (160 * context.getResources().getDisplayMetrics().density);
             int scale = 1;
             if (options.outWidth > targetWidth && options.outWidth > 0) {
                 scale = options.outWidth / targetWidth;
                 if (scale < 1) scale = 1;
-                int pow2 = 1;
-                while (pow2 * 2 <= scale) pow2 *= 2;
-                scale = pow2;
+                if (scale > 4) scale = 4;
             }
 
-            options = new BitmapFactory.Options();
-            options.inSampleSize = scale;
-            options.inPreferredConfig = Bitmap.Config.RGB_565;
-            options.inPurgeable = true;
-            options.inInputShareable = true;
-
-            Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
-            is.close();
+            Bitmap bitmap = null;
+            while (scale <= 16 && bitmap == null) {
+                try {
+                    options = new BitmapFactory.Options();
+                    options.inSampleSize = scale;
+                    options.inPreferredConfig = Bitmap.Config.RGB_565;
+                    bitmap = BitmapFactory.decodeFile(tempFile.getAbsolutePath(), options);
+                } catch (OutOfMemoryError e) {
+                    scale *= 2;
+                }
+            }
             return bitmap;
         } catch (Exception e) {
             return null;
         } finally {
-            if (conn != null) {
-                conn.disconnect();
-            }
+            if (conn != null) conn.disconnect();
+            if (tempFile != null && tempFile.exists()) tempFile.delete();
         }
     }
 

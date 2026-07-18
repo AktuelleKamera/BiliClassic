@@ -4,7 +4,7 @@
         android:padding="8dp"
         android:focusable="false"
         android:focusableInTouchMode="false"
-        android:fitsSystemWindows="true"
+        android:fitsSystemWindows="false"
         android:clickable="false"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -53,7 +53,7 @@
             android:focusable="false"
             android:focusableInTouchMode="false"
             android:visibility="gone"
-            android:fitsSystemWindows="true"
+            android:fitsSystemWindows="false"
             android:clickable="false"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

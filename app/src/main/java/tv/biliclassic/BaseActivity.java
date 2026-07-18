@@ -1,15 +1,22 @@
 package tv.biliclassic;
 
+import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.view.WindowManager;
 import android.widget.Toast;
 
+import java.lang.ref.WeakReference;
+import java.lang.reflect.Method;
+
 import tv.biliclassic.tv.util.TvUtil;
+import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public abstract class BaseActivity extends FragmentActivity {
@@ -18,6 +25,9 @@ public abstract class BaseActivity extends FragmentActivity {
 
     // 全局 Context，供 Qrcode 等工具类使用
     private static Context appContext;
+
+    // 运行时权限：存储权限回调
+    private Runnable mPendingStorageAction;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,6 +64,19 @@ public abstract class BaseActivity extends FragmentActivity {
             }
         }
 
+        // 透明状态栏：API 21+ 状态栏透明，API 23+ 深色图标
+        if (getSdkInt() >= 21) {
+            try {
+                android.view.Window window = getWindow();
+                java.lang.reflect.Method addFlags = android.view.Window.class.getMethod("addFlags", int.class);
+                java.lang.reflect.Field drawsBarBg = android.view.WindowManager.LayoutParams.class.getField("FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS");
+                addFlags.invoke(window, drawsBarBg.getInt(null));
+                java.lang.reflect.Method setColor = android.view.Window.class.getMethod("setStatusBarColor", int.class);
+                setColor.invoke(window, 0x33000000);
+            } catch (Exception e) {
+            }
+        }
+
         super.onCreate(savedInstanceState);
     }
 
@@ -62,6 +85,36 @@ public abstract class BaseActivity extends FragmentActivity {
      */
     public static Context getAppContext() {
         return appContext;
+    }
+
+    /**
+     * 检查并请求 WRITE_EXTERNAL_STORAGE 权限
+     * 如果已有权限则立即执行 action，否则请求权限后执行
+     */
+    protected void runWithStoragePermission(Runnable action) {
+        if (PermissionUtil.hasWriteStorage(this)) {
+            action.run();
+        } else {
+            mPendingStorageAction = action;
+            PermissionUtil.requestWriteStorage(this);
+        }
+    }
+
+    /**
+     * 运行时权限结果回调（Android 6.0+）
+     */
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (requestCode == PermissionUtil.REQUEST_WRITE_STORAGE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (mPendingStorageAction != null) {
+                    mPendingStorageAction.run();
+                    mPendingStorageAction = null;
+                }
+            } else {
+                Toast.makeText(this, "需要存储权限才能使用此功能", Toast.LENGTH_SHORT).show();
+                mPendingStorageAction = null;
+            }
+        }
     }
 
     /**
@@ -80,9 +133,9 @@ public abstract class BaseActivity extends FragmentActivity {
      */
     protected boolean isLandscapeDevice() {
         String model = Build.MODEL;
-        String device = Build.DEVICE;
-        String manufacturer = Build.MANUFACTURER;
-        String product = Build.PRODUCT;
+        String device = getBuildField("DEVICE");
+        String manufacturer = getManufacturer();
+        String product = getBuildField("PRODUCT");
 
         // HTC ChaCha 系列
         if ("HTC".equalsIgnoreCase(manufacturer)) {
@@ -140,5 +193,30 @@ public abstract class BaseActivity extends FragmentActivity {
         }
         startActivity(new Intent(this, SearchActivity.class));
         return true;
+    }
+
+    private static String getManufacturer() {
+        try {
+            return (String) Build.class.getField("MANUFACTURER").get(null);
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private static String getBuildField(String name) {
+        try { return (String) Build.class.getField(name).get(null); }
+        catch (Exception e) { return ""; }
+    }
+
+    private static int getSdkInt() {
+        try {
+            return Build.VERSION.class.getField("SDK_INT").getInt(null);
+        } catch (Exception e) {
+            try {
+                return Integer.parseInt(Build.VERSION.SDK);
+            } catch (Exception ex) {
+                return 0;
+            }
+        }
     }
 }

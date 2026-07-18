@@ -44,6 +44,11 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
 
     public static final String TAG = "DanmakuView";
 
+    private static int getSdkInt() {
+        try { return Build.VERSION.class.getField("SDK_INT").getInt(null); }
+        catch (Exception e) { return Integer.parseInt(Build.VERSION.SDK); }
+    }
+
     private Callback mCallback;
 
     private HandlerThread mHandlerThread;
@@ -236,7 +241,7 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
     @SuppressLint("NewApi")
     private void postInvalidateCompat() {
         mRequestRender = true;
-        if(Build.VERSION.SDK_INT >= 16) {
+        if(getSdkInt() >= 16) {
             this.postInvalidateOnAnimation();
         } else {
             this.postInvalidate();
@@ -468,7 +473,7 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
     @SuppressLint("NewApi")
     public boolean isHardwareAccelerated() {
         // >= 3.0
-        if (Build.VERSION.SDK_INT >= 11) {
+        if (getSdkInt() >= 11) {
             return super.isHardwareAccelerated();
         } else {
             return false;

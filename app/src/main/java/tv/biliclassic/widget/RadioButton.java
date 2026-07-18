@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.util.AttributeSet;
+import tv.biliclassic.util.SdkHelper;
 
 public class RadioButton extends android.widget.RadioButton {
     private Drawable mButtonDrawable;
@@ -28,7 +29,7 @@ public class RadioButton extends android.widget.RadioButton {
 
     @Override
     public int getCompoundPaddingLeft() {
-        if (Build.VERSION.SDK_INT < 17) {
+        if (SdkHelper.getSdkInt() < 17) {
             return getPaddingLeft();
         }
         if (this.mButtonDrawable != null) {

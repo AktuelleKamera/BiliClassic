@@ -14,6 +14,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.support.v4.app.Fragment;
 
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -22,6 +23,8 @@ import java.util.List;
 
 import tv.biliclassic.api.PartitionApi;
 import tv.biliclassic.model.VideoCard;
+import tv.biliclassic.util.GlobalImageCache;
+import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class HomeFragment extends Fragment {
 
@@ -126,21 +129,17 @@ public class HomeFragment extends Fragment {
         final String url = coverUrl;
         imageView.setTag(url);
 
-        // 固定尺寸：宽度用屏幕宽度的 2/7（左右各占 weight=2），高度按 4:3 计算
+        // 固定尺寸：宽度随父容器（weight=2），高度按 4:3 计算 — 必须在任何图片设置之前执行
         imageView.post(new Runnable() {
             @Override
             public void run() {
                 ViewGroup.LayoutParams params = imageView.getLayoutParams();
                 if (params != null) {
-                    // 获取父容器宽度
                     View parent = (View) imageView.getParent();
                     if (parent != null) {
                         int parentWidth = parent.getWidth();
                         if (parentWidth > 0) {
-                            // 宽度 = 父容器宽度（weight=2，但实际宽度由 LinearLayout 分配）
-                            // 这里用 parentWidth 作为实际宽度
                             params.width = parentWidth;
-                            // 4:3 比例，高度 = 宽度 * 3 / 4
                             params.height = parentWidth * 3 / 4;
                             imageView.setLayoutParams(params);
                         }
@@ -149,11 +148,25 @@ public class HomeFragment extends Fragment {
             }
         });
 
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) {
+            return;
+        }
+
+        Bitmap cached = GlobalImageCache.getInstance().get(url);
+        if (cached != null && !cached.isRecycled()) {
+            imageView.setImageBitmap(cached);
+            setupClickListener(imageView, card);
+            return;
+        }
+
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
                     final Bitmap bitmap = downloadImage(url);
+                    if (bitmap != null && !bitmap.isRecycled()) {
+                        GlobalImageCache.getInstance().put(url, bitmap);
+                    }
                     if (bitmap != null && getActivity() != null) {
                         mainHandler.post(new Runnable() {
                             @Override
@@ -162,21 +175,7 @@ public class HomeFragment extends Fragment {
                                         && imageView.getTag() != null
                                         && imageView.getTag().equals(url)) {
                                     imageView.setImageBitmap(bitmap);
-                                    final long aid = card.aid;
-                                    final String bvid = card.bvid;
-                                    imageView.setOnClickListener(new View.OnClickListener() {
-                                        @Override
-                                        public void onClick(View v) {
-                                            if (getActivity() == null) return;
-                                            Intent intent = new Intent(getActivity(), VideoDetailActivity.class);
-                                            if (aid != 0) {
-                                                intent.putExtra("aid", aid);
-                                            } else if (bvid != null && bvid.length() > 0) {
-                                                intent.putExtra("bvid", bvid);
-                                            }
-                                            startActivity(intent);
-                                        }
-                                    });
+                                    setupClickListener(imageView, card);
                                 }
                             }
                         });
@@ -188,43 +187,82 @@ public class HomeFragment extends Fragment {
         }).start();
     }
 
+    private void setupClickListener(ImageView imageView, final VideoCard card) {
+        final long aid = card.aid;
+        final String bvid = card.bvid;
+        imageView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (getActivity() == null) return;
+                Intent intent = new Intent(getActivity(), VideoDetailActivity.class);
+                if (aid != 0) {
+                    intent.putExtra("aid", aid);
+                } else if (bvid != null && bvid.length() > 0) {
+                    intent.putExtra("bvid", bvid);
+                }
+                startActivity(intent);
+            }
+        });
+    }
+
     private Bitmap downloadImage(String urlStr) throws Exception {
-        URL url = new URL(urlStr);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setConnectTimeout(8000);
-        conn.setReadTimeout(8000);
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-        conn.connect();
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
 
-        InputStream is = conn.getInputStream();
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        BitmapFactory.decodeStream(is, null, options);
-        is.close();
-        conn.disconnect();
+        android.content.Context ctx = tv.biliclassic.BaseActivity.getAppContext();
+        if (ctx == null) return null;
 
-        int targetWidth = 160;
-        int targetHeight = 90;
-        int scale = 1;
-        if (options.outWidth > targetWidth || options.outHeight > targetHeight) {
-            scale = Math.max(options.outWidth / targetWidth, options.outHeight / targetHeight);
-            if (scale < 1) scale = 1;
-            if (scale > 8) scale = 8;
+        java.io.File cacheDir = ctx.getCacheDir();
+        java.io.File tempFile = new java.io.File(cacheDir, "img_" + urlStr.hashCode() + ".tmp");
+
+        try {
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(12000);
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("Accept-Encoding", "identity");
+            conn.connect();
+
+            InputStream is = conn.getInputStream();
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
+            byte[] buffer = new byte[8192];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                fos.write(buffer, 0, len);
+            }
+            is.close();
+            fos.close();
+            conn.disconnect();
+
+            if (!tempFile.exists() || tempFile.length() == 0) return null;
+
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(tempFile.getAbsolutePath(), options);
+
+            int targetWidth = 160;
+            int targetHeight = 90;
+            int scale = 1;
+            if (options.outWidth > targetWidth || options.outHeight > targetHeight) {
+                scale = Math.max(options.outWidth / targetWidth, options.outHeight / targetHeight);
+                if (scale < 1) scale = 1;
+                if (scale > 4) scale = 4;
+            }
+
+            Bitmap bitmap = null;
+            while (scale <= 16 && bitmap == null) {
+                try {
+                    options = new BitmapFactory.Options();
+                    options.inSampleSize = scale;
+                    options.inPreferredConfig = Bitmap.Config.RGB_565;
+                    bitmap = BitmapFactory.decodeFile(tempFile.getAbsolutePath(), options);
+                } catch (OutOfMemoryError e) {
+                    scale *= 2;
+                }
+            }
+            return bitmap;
+        } finally {
+            if (tempFile.exists()) tempFile.delete();
         }
-
-        conn = (HttpURLConnection) url.openConnection();
-        conn.setConnectTimeout(8000);
-        conn.setReadTimeout(8000);
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-        conn.connect();
-        is = conn.getInputStream();
-
-        options = new BitmapFactory.Options();
-        options.inSampleSize = scale;
-        options.inPreferredConfig = Bitmap.Config.RGB_565;
-        Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
-        is.close();
-        conn.disconnect();
-        return bitmap;
     }
 }

@@ -15,16 +15,16 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.lang.ref.SoftReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import tv.biliclassic.model.VideoCard;
+import tv.biliclassic.util.GlobalImageCache;
+import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class RecommendGridAdapter extends BaseAdapter {
 
@@ -33,7 +33,6 @@ public class RecommendGridAdapter extends BaseAdapter {
     private List<VideoCard> list;
     private ExecutorService executor = Executors.newFixedThreadPool(4);
     private Handler mainHandler = new Handler(Looper.getMainLooper());
-    private Map<String, SoftReference<Bitmap>> imageCache = new HashMap<String, SoftReference<Bitmap>>();
 
     public RecommendGridAdapter(Context context, List<VideoCard> list) {
         this.context = context;
@@ -58,12 +57,36 @@ public class RecommendGridAdapter extends BaseAdapter {
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         ViewHolder holder;
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() < 4) {
+            if (convertView == null) {
+                convertView = LayoutInflater.from(context).inflate(
+                    R.layout.item_recommend_simple, parent, false);
+                holder = new ViewHolder();
+                holder.title = (TextView) convertView.findViewById(R.id.simple_title);
+                holder.view = (TextView) convertView.findViewById(R.id.simple_views);
+                holder.danmaku = (TextView) convertView.findViewById(R.id.simple_danmaku);
+                convertView.setTag(holder);
+            } else {
+                holder = (ViewHolder) convertView.getTag();
+            }
+            VideoCard item = list.get(position);
+            if (item != null) {
+                holder.title.setText(item.title);
+                holder.view.setText("\u25B6 " + (item.view != null ? item.view : "0"));
+                holder.danmaku.setText("\u2726 " + (item.danmaku > 0 ? String.valueOf(item.danmaku) : "0"));
+            }
+            return convertView;
+        }
         if (convertView == null) {
             convertView = LayoutInflater.from(context).inflate(R.layout.item_recommend, parent, false);
             holder = new ViewHolder();
             holder.coverContainer = (FrameLayout) convertView.findViewById(R.id.cover_container);
             holder.cover = (ImageView) convertView.findViewById(R.id.cover);
             holder.title = (TextView) convertView.findViewById(R.id.title);
+            if (tv.biliclassic.util.SdkHelper.getSdkInt() < 4) {
+                holder.title.setMaxLines(Integer.MAX_VALUE);
+                holder.title.setEllipsize(null);
+            }
             holder.view = (TextView) convertView.findViewById(R.id.view);
             holder.danmaku = (TextView) convertView.findViewById(R.id.danmaku);
             convertView.setTag(holder);
@@ -71,7 +94,13 @@ public class RecommendGridAdapter extends BaseAdapter {
             holder = (ViewHolder) convertView.getTag();
         }
 
-        int containerWidth = parent.getWidth() / 2 - dpToPx(6);
+        int parentWidth = parent.getWidth();
+        int containerWidth;
+        if (parentWidth > 0) {
+            containerWidth = parentWidth / 2 - dpToPx(6);
+        } else {
+            containerWidth = context.getResources().getDisplayMetrics().widthPixels / 2 - dpToPx(6);
+        }
         if (containerWidth > 0) {
             int containerHeight = containerWidth * 9 / 16;
             ViewGroup.LayoutParams params = holder.coverContainer.getLayoutParams();
@@ -88,7 +117,8 @@ public class RecommendGridAdapter extends BaseAdapter {
 
         holder.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
 
-        if (item != null && item.cover != null && item.cover.length() > 0) {
+        if (item != null && item.cover != null && item.cover.length() > 0
+                && !SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) {
             String coverUrl = item.cover;
             if (coverUrl.startsWith("https://")) {
                 coverUrl = "http://" + coverUrl.substring(8);
@@ -97,19 +127,12 @@ public class RecommendGridAdapter extends BaseAdapter {
             final ImageView coverView = holder.cover;
             final int pos = position;
 
-            // 用 position 作为 tag，用于校验
             coverView.setTag(pos);
 
-            // 检查缓存
-            SoftReference<Bitmap> softBitmap = imageCache.get(finalUrl);
-            if (softBitmap != null) {
-                Bitmap cached = softBitmap.get();
-                if (cached != null && !cached.isRecycled()) {
-                    coverView.setImageBitmap(cached);
-                    return convertView;
-                } else {
-                    imageCache.remove(finalUrl);
-                }
+            Bitmap cached = GlobalImageCache.getInstance().get(finalUrl);
+            if (cached != null && !cached.isRecycled()) {
+                coverView.setImageBitmap(cached);
+                return convertView;
             }
 
             executor.execute(new Runnable() {
@@ -117,16 +140,13 @@ public class RecommendGridAdapter extends BaseAdapter {
                 public void run() {
                     final Bitmap bitmap = downloadImage(finalUrl);
                     if (bitmap != null && !bitmap.isRecycled()) {
-                        imageCache.put(finalUrl, new SoftReference<Bitmap>(bitmap));
+                        GlobalImageCache.getInstance().put(finalUrl, bitmap);
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
                                 Object tag = coverView.getTag();
                                 if (tag != null && tag instanceof Integer && ((Integer) tag) == pos) {
                                     coverView.setImageBitmap(bitmap);
-                                    Log.d(TAG, "设置图片 position=" + pos);
-                                } else {
-                                    Log.d(TAG, "跳过 position=" + pos + ", 当前tag=" + tag);
                                 }
                             }
                         });
@@ -139,21 +159,37 @@ public class RecommendGridAdapter extends BaseAdapter {
     }
 
     private Bitmap downloadImage(String urlStr) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
+        java.io.File tempFile = null;
         HttpURLConnection conn = null;
         try {
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(12000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("Accept-Encoding", "identity");
             conn.connect();
 
+            // 下载到临时文件（避免 ByteArrayOutputStream OOM）
+            tempFile = new java.io.File(context.getCacheDir(), "img_" + urlStr.hashCode() + ".tmp");
             InputStream is = conn.getInputStream();
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
+            byte[] buffer = new byte[8192];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                fos.write(buffer, 0, len);
+            }
+            is.close();
+            fos.close();
+            conn.disconnect();
+            conn = null;
+
+            if (!tempFile.exists() || tempFile.length() == 0) return null;
 
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
-            BitmapFactory.decodeStream(is, null, options);
-            is.close();
+            BitmapFactory.decodeFile(tempFile.getAbsolutePath(), options);
 
             int targetWidth = 160;
             int targetHeight = 90;
@@ -163,23 +199,20 @@ public class RecommendGridAdapter extends BaseAdapter {
                 int heightRatio = options.outHeight / targetHeight;
                 scale = Math.max(widthRatio, heightRatio);
                 if (scale < 1) scale = 1;
-                if (scale > 8) scale = 8;
+                if (scale > 4) scale = 4;
             }
 
-            conn.disconnect();
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.connect();
-            is = conn.getInputStream();
-
-            options = new BitmapFactory.Options();
-            options.inSampleSize = scale;
-            options.inPreferredConfig = Bitmap.Config.RGB_565;
-
-            Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
-            is.close();
+            Bitmap bitmap = null;
+            while (scale <= 16 && bitmap == null) {
+                try {
+                    options = new BitmapFactory.Options();
+                    options.inSampleSize = scale;
+                    options.inPreferredConfig = Bitmap.Config.RGB_565;
+                    bitmap = BitmapFactory.decodeFile(tempFile.getAbsolutePath(), options);
+                } catch (OutOfMemoryError e) {
+                    scale *= 2;
+                }
+            }
             return bitmap;
         } catch (Exception e) {
             Log.e(TAG, "下载失败: " + urlStr, e);
@@ -187,6 +220,9 @@ public class RecommendGridAdapter extends BaseAdapter {
         } finally {
             if (conn != null) {
                 conn.disconnect();
+            }
+            if (tempFile != null && tempFile.exists()) {
+                tempFile.delete();
             }
         }
     }
@@ -202,13 +238,6 @@ public class RecommendGridAdapter extends BaseAdapter {
     }
 
     public void clearCache() {
-        for (SoftReference<Bitmap> ref : imageCache.values()) {
-            Bitmap bmp = ref.get();
-            if (bmp != null && !bmp.isRecycled()) {
-                bmp.recycle();
-            }
-        }
-        imageCache.clear();
     }
 
     static class ViewHolder {

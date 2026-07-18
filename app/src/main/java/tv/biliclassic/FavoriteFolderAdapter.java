@@ -222,12 +222,13 @@ public class FavoriteFolderAdapter extends BaseAdapter {
     }
 
     private Bitmap downloadImage(String urlStr) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
         HttpURLConnection conn = null;
         try {
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(12000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
             conn.connect();
 
@@ -240,8 +241,8 @@ public class FavoriteFolderAdapter extends BaseAdapter {
 
             conn.disconnect();
             conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(12000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
             conn.connect();
             is = conn.getInputStream();
@@ -257,8 +258,11 @@ public class FavoriteFolderAdapter extends BaseAdapter {
             options = new BitmapFactory.Options();
             options.inSampleSize = scale;
             options.inPreferredConfig = Bitmap.Config.RGB_565;
-            options.inPurgeable = true;
-            options.inInputShareable = true;
+            try {
+                BitmapFactory.Options.class.getField("inPurgeable").setBoolean(options, true);
+                BitmapFactory.Options.class.getField("inInputShareable").setBoolean(options, true);
+            } catch (Exception ignored) {
+            }
 
             Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
             is.close();

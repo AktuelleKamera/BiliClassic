@@ -3,7 +3,7 @@
     android:id="@+id/vertically_bars_group"
     android:focusable="false"
     android:focusableInTouchMode="false"
-    android:fitsSystemWindows="true"
+    android:fitsSystemWindows="false"
     android:clickable="false"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
