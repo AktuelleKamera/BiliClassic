@@ -1,0 +1,76 @@
+.enyo-inline, .enyo-tool-decorator {
+	display: inline-block;
+}
+
+.enyo-children-inline > *, .enyo-tool-decorator > * {
+	display: inline-block;
+}
+
+.enyo-children-middle > *, .enyo-tool-decorator > * {
+	vertical-align: middle;
+}
+
+.enyo-positioned {
+	position: relative;
+}
+
+.enyo-fill {
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
+.enyo-popup {
+	position: absolute;
+	z-index: 10;
+}
+
+.enyo-image.sized {
+	display: inline-block;
+	background-position: center;
+	background-repeat: no-repeat;
+}
+.enyo-image.contain {
+	background-size: contain;
+}
+.enyo-image.cover {
+	background-size: cover;
+}
+
+.enyo-sprite-animation {
+	overflow: hidden;
+}
+.enyo-sprite-animation .enyo-sprite-animation-image {
+	background-size: initial;
+	-webkit-animation-play-state: running;
+	animation-play-state: running;
+}
+.enyo-sprite-animation.paused .enyo-sprite-animation-image {
+	-webkit-animation-play-state: paused;
+	animation-play-state: paused;
+}
+
+.enyo-scrim {
+	z-index: 1;
+	/*
+		note: by using pointer-events we allow tapping on scrim
+		while it is fading out; however, this requires any showing classes
+		to set pointer events to auto or scrim will not function as expected.
+	*/
+	pointer-events: none;
+}
+.enyo-scrim.enyo-scrim-translucent {
+	pointer-events: auto;
+	background-color: #000000;
+	opacity: 0.65;
+	filter: alpha(opacity=65);
+}
+.enyo-scrim.enyo-scrim-transparent {
+	pointer-events: auto;
+	background: transparent;
+}
+
+.enyo-richtext {
+	overflow: hidden;
+	word-wrap: break-word;
+}

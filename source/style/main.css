@@ -1,0 +1,41 @@
+.theme-pink,
+.theme-pink .enyo-fittable-rows-layout {
+    background-color: #f0f0f0;
+    color: #333;
+}
+.theme-pink .onyx-toolbar {
+    background: #fb7299;
+    color: white;
+}
+.theme-pink .onyx-toolbar .onyx-button {
+    background: #ff8ba7;
+    border-color: #fb5885;
+    color: white;
+}
+.theme-pink .onyx-toolbar .onyx-button.active {
+    background: #fb5885;
+}
+.theme-pink .nice-padding {
+    color: #333;
+}
+
+.theme-black,
+.theme-black .enyo-fittable-rows-layout {
+    background-color: #1a1a1a;
+    color: #ccc;
+}
+.theme-black .onyx-toolbar {
+    background: #333;
+    color: #ccc;
+}
+.theme-black .onyx-toolbar .onyx-button {
+    background: #444;
+    border-color: #222;
+    color: #ccc;
+}
+.theme-black .onyx-toolbar .onyx-button.active {
+    background: #555;
+}
+.theme-black .nice-padding {
+    color: #ccc;
+}

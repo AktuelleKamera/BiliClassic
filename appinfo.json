@@ -1,0 +1,10 @@
+{
+    "id": "tv.biliclassic.webos",
+    "version": "0.1.0",
+    "vendor": "哔哩经典",
+    "type": "web",
+    "main": "index.html",
+    "title": "哔哩经典",
+    "icon": "icon.png",
+    "uiRevision": "2"
+}
