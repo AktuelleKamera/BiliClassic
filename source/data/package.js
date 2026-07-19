@@ -2,5 +2,8 @@ enyo.depends(
 	"data.js",
 	"network.js",
 	"cookie-gen.js",
-	"video-api.js"
+	"video-api.js",
+	"search-api.js",
+	"recommend-api.js",
+	"history-api.js"
 );

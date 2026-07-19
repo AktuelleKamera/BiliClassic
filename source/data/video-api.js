@@ -187,7 +187,7 @@ var VideoApi = {
     },
 
     getPlayUrl: function(aid, cid, qn, callback) {
-        var path = "/x/player/wbi/playurl?avid=" + aid + "&cid=" + cid + "&qn=" + (qn || 16) + "&fnval=0&fnver=0&platform=html5&gaia_source=pre-load&isGaiaAvoided=true";
+        var path = "/x/player/wbi/playurl?avid=" + aid + "&cid=" + cid + "&qn=" + (qn || 16) + "&fnval=1&fnver=0&platform=html5&high_quality=1&voice_balance=1&gaia_source=pre-load&isGaiaAvoided=true";
         var self = this;
         WbiSign.sign(path, function(signedPath) {
             BiliNet.getJson(signedPath, function(err, data) {

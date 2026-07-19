@@ -70,22 +70,28 @@ var CookieStore = {
     clear: function() { this._cookies = {}; this._save(); }
 };
 
-var BILI_PROXY = "http://127.0.0.1:18081";
+var BILI_PROXY = (window.location.protocol === 'http:' || window.location.protocol === 'https:') ? '' : "http://127.0.0.1:18081";
 
 var BiliNet = {
     _xhr: function(method, path, callback, data) {
         var xhr = new XMLHttpRequest();
-        xhr.open(method, BILI_PROXY + path, true);
+        var url = path.indexOf('http://') === 0 || path.indexOf('https://') === 0 ? path : BILI_PROXY + path;
+        xhr.open(method, url, true);
         if (data) xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded; charset=utf-8");
+        var cookies = CookieStore.getAll();
+        if (cookies) xhr.setRequestHeader("X-Bili-Cookie", cookies);
         xhr.onreadystatechange = function() {
             if (xhr.readyState === 4) {
                 if (xhr.status === 0) {
                     if (callback) callback(new Error("网络错误: 无法连接到代理 (status=0)"), null);
                     return;
                 }
-                var sc = xhr.getResponseHeader("Set-Cookie");
-                if (sc) CookieStore.setFromHeader(sc);
-                if (callback) callback(null, { status: xhr.status, text: xhr.responseText });
+                // 从响应体提取 Set-Cookie（代理返回 JSON 时附带 cookie 字段）
+                var txt = xhr.responseText;
+                if (txt && txt.charAt(0) === '{') {
+                    try { var j = JSON.parse(txt); if (j && j._cookie) { CookieStore.setFromHeader(j._cookie); } } catch(e) {}
+                }
+                if (callback) callback(null, { status: xhr.status, text: txt });
             }
         };
         xhr.onerror = function() { if (callback) callback(new Error("网络错误: XHR onerror"), null); };

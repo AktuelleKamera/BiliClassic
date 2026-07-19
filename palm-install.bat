@@ -7,7 +7,7 @@ SET PWD=webos20090606
 
 REM 默认 IPK 路径
 IF "%1"=="" (
-    SET IPK=bin\tv.biliclassic.webos_0.1.0_all.ipk
+    SET IPK=bin\tv.biliclassic.webos_0.2.0_all.ipk
 ) ELSE (
     SET IPK=%1
 )

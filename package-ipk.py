@@ -10,7 +10,7 @@ import shutil
 PROJECT = os.path.dirname(os.path.abspath(__file__))
 DEPLOY = os.path.join(PROJECT, "deploy")
 OUTPUT = os.path.join(PROJECT, "bin")
-APP_VER = "0.1.0"
+APP_VER = "0.2.0"
 IPK_NAME = f"tv.biliclassic.webos_{APP_VER}_all.ipk"
 
 
@@ -62,6 +62,8 @@ def make_control_tgz():
     )
     postinst = (
         "#!/bin/sh\n"
+        "rm -rf /media/cryptofs/apps/usr/palm/applications/tv.biliclassic.webos\n"
+        "cp -r /usr/palm/applications/tv.biliclassic.webos /media/cryptofs/apps/usr/palm/applications/\n"
         "initctl stop BiliProxy 2>/dev/null\n"
         "initctl start BiliProxy 2>/dev/null\n"
         "exit 0\n"
@@ -70,6 +72,7 @@ def make_control_tgz():
         "#!/bin/sh\n"
         "initctl stop BiliProxy 2>/dev/null\n"
         "rm -f /etc/event.d/BiliProxy\n"
+        "rm -rf /media/cryptofs/apps/usr/palm/applications/tv.biliclassic.webos\n"
         "exit 0\n"
     )
     buf = io.BytesIO()
@@ -99,17 +102,13 @@ def main():
     # Ensure static assets are in deploy/assets/
     assets_dir = os.path.join(DEPLOY, "assets")
     os.makedirs(assets_dir, exist_ok=True)
-    ic_src = r"I:\Other\BiliClassic\app\src\main\res\drawable\ic_home.png"
-    ic_dst = os.path.join(assets_dir, "ic_home.png")
-    if os.path.exists(ic_src) and not os.path.exists(ic_dst):
-        shutil.copy2(ic_src, ic_dst)
-        print(f"  Copied ic_home.png to deploy/assets/")
-    # Copy QR code library (always overwrite with latest)
-    qrlib_src = os.path.join(PROJECT, "source", "data", "qrcode-lib.js")
-    qrlib_dst = os.path.join(assets_dir, "qrcode-lib.js")
-    if os.path.exists(qrlib_src):
-        shutil.copy2(qrlib_src, qrlib_dst)
-        print(f"  Copied qrcode-lib.js to deploy/assets/")
+    bili_src = r"I:\Other\BiliClassic\app\src\main\res\drawable"
+    assets_map = {"ic_home.png": os.path.join(bili_src, "ic_home.png"), "ic_info_views.png": os.path.join(bili_src, "ic_info_views.png"), "ic_info_danmakus.png": os.path.join(bili_src, "ic_info_danmakus.png")}
+    for name, src in assets_map.items():
+        dst = os.path.join(assets_dir, name)
+        if os.path.exists(src) and not os.path.exists(dst):
+            shutil.copy2(src, dst)
+            print(f"  Copied {name} to deploy/assets/")
 
     # Create data.tar.gz - paths relative to / (/usr/palm/applications/APP_ID/)
     APP_DIR_PREFIX = "usr/palm/applications/tv.biliclassic.webos"
