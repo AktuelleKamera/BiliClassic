@@ -1013,6 +1013,7 @@ public class ReplyListActivity extends BaseActivity {
 
         final LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(dpToPx(16), 0, dpToPx(16), 0);
 
         final EditText input = new EditText(this);
         input.setHint(hint);
@@ -1043,8 +1044,12 @@ public class ReplyListActivity extends BaseActivity {
             }
         });
         btnRow.addView(emojiBtn);
-        layout.addView(btnRow);
-        layout.addView(input);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        layout.addView(btnRow, lp);
+        layout.addView(input, lp);
 
         final TextView clearText = new TextView(this);
         clearText.setText("清空");
@@ -1065,7 +1070,7 @@ public class ReplyListActivity extends BaseActivity {
                 }
             }
         });
-        layout.addView(clearText);
+        layout.addView(clearText, lp);
 
         final long parentRpid = reply != null ? reply.rpid : 0;
 
@@ -1100,7 +1105,7 @@ public class ReplyListActivity extends BaseActivity {
         final android.widget.ScrollView scroll = new android.widget.ScrollView(this);
         final LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
+        list.setPadding(0, dpToPx(8), 0, dpToPx(8));
 
         for (int i = 0; i < EMOJIS.length; i++) {
             final String emoji = EMOJIS[i];
@@ -1108,7 +1113,7 @@ public class ReplyListActivity extends BaseActivity {
             tv.setText(emoji);
             tv.setTextSize(16);
             tv.setTextColor(0xFF333333);
-            tv.setPadding(dpToPx(10), dpToPx(8), dpToPx(10), dpToPx(8));
+            tv.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8));
             tv.setClickable(true);
             android.graphics.drawable.GradientDrawable emojiNormal = new android.graphics.drawable.GradientDrawable();
             emojiNormal.setColor(0xFFF0F0F0);
@@ -1118,6 +1123,9 @@ public class ReplyListActivity extends BaseActivity {
             emojiBg.addState(new int[]{android.R.attr.state_pressed}, emojiPressed);
             emojiBg.addState(new int[]{}, emojiNormal);
             tv.setBackgroundDrawable(emojiBg);
+            tv.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT));
             tv.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -1140,7 +1148,9 @@ public class ReplyListActivity extends BaseActivity {
             }
         }
 
-        scroll.addView(list);
+        scroll.addView(list, new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT));
         builder.setView(scroll);
         builder.setPositiveButton("关闭", null);
         builder.show();
