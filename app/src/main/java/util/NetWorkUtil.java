@@ -413,6 +413,7 @@ public class NetWorkUtil {
         conn.setRequestProperty("Origin", "https://www.bilibili.com");
 
         // 应用传入的 headers
+        boolean hasCookieInHeaders = false;
         if (headers != null) {
             Map headerMap = listToMap(headers);
             for (Iterator it = headerMap.keySet().iterator(); it.hasNext(); ) {
@@ -420,33 +421,38 @@ public class NetWorkUtil {
                 String value = (String) headerMap.get(key);
                 if (key != null && value != null) {
                     conn.setRequestProperty(key, value);
+                    if ("Cookie".equalsIgnoreCase(key)) {
+                        hasCookieInHeaders = true;
+                    }
                 }
             }
         }
 
-        // Cookie 处理 - 确保匿名 Cookie 并合并登录 Cookie
-        CookieGenerator.ensureCookies();
-        boolean incognitoMode = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.INCOGNITO_MODE, false);
-        boolean forceLogin = sForceLogin;
-        sForceLogin = false;
-        if (forceLogin) {
-            incognitoMode = false;
-        }
-        String cookie = CookieGenerator.getCookieString(!incognitoMode);
-        if (!incognitoMode) {
-            String loggedCookie = getCookieString();
-            if (loggedCookie == null || loggedCookie.length() == 0) {
-                loggedCookie = SharedPreferencesUtil.getString("cookies", "");
+        // Cookie 处理 - 如果调用方没有自带 Cookie，再自动合并
+        if (!hasCookieInHeaders) {
+            CookieGenerator.ensureCookies();
+            boolean incognitoMode = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.INCOGNITO_MODE, false);
+            boolean forceLogin = sForceLogin;
+            sForceLogin = false;
+            if (forceLogin) {
+                incognitoMode = false;
+            }
+            String cookie = CookieGenerator.getCookieString(!incognitoMode);
+            if (!incognitoMode) {
+                String loggedCookie = getCookieString();
+                if (loggedCookie == null || loggedCookie.length() == 0) {
+                    loggedCookie = SharedPreferencesUtil.getString("cookies", "");
+                    if (loggedCookie != null && loggedCookie.length() > 0) {
+                        setCookieString(loggedCookie);
+                    }
+                }
                 if (loggedCookie != null && loggedCookie.length() > 0) {
-                    setCookieString(loggedCookie);
+                    cookie = mergeCookies(cookie, loggedCookie);
                 }
             }
-            if (loggedCookie != null && loggedCookie.length() > 0) {
-                cookie = mergeCookies(cookie, loggedCookie);
+            if (cookie != null && cookie.length() > 0) {
+                conn.setRequestProperty("Cookie", cookie);
             }
-        }
-        if (cookie != null && cookie.length() > 0) {
-            conn.setRequestProperty("Cookie", cookie);
         }
 
         return conn;

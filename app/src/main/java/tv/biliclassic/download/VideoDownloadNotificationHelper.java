@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 
+import tv.biliclassic.R;
 import tv.biliclassic.OfflineActivity;
 import tv.biliclassic.util.SdkHelper;
 
@@ -73,19 +74,28 @@ public class VideoDownloadNotificationHelper {
         try {
             Object builder = newBuilder();
             if (builder == null) {
-                Notification n = new Notification(android.R.drawable.ic_menu_rotate,
+                Notification n = new Notification(R.drawable.ic_launcher,
                         title, System.currentTimeMillis());
                 try {
+                    Intent intent = new Intent(mContext, OfflineActivity.class);
+                    PendingIntent pi;
+                    if (SdkHelper.getSdkInt() >= 23) {
+                        pi = PendingIntent.getActivity(mContext, 0, intent,
+                                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                    } else {
+                        pi = PendingIntent.getActivity(mContext, 0, intent,
+                                PendingIntent.FLAG_UPDATE_CURRENT);
+                    }
                     n.getClass().getMethod("setLatestEventInfo", Context.class,
                             CharSequence.class, CharSequence.class, PendingIntent.class)
-                            .invoke(n, mContext, title, text, null);
+                            .invoke(n, mContext, title, text, pi);
                 } catch (Exception e) {
                 }
                 return n;
             }
             setStr(builder, "setContentTitle", title);
             setStr(builder, "setContentText", text);
-            setInt(builder, "setSmallIcon", android.R.drawable.ic_menu_rotate);
+            setInt(builder, "setSmallIcon", R.drawable.ic_launcher);
             setBool(builder, "setOngoing", ongoing);
             setBool(builder, "setAutoCancel", !ongoing);
             setLong(builder, "setWhen", System.currentTimeMillis());

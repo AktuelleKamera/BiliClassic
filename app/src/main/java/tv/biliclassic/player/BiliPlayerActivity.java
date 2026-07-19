@@ -62,6 +62,7 @@ import tv.biliclassic.api.PlayerApi;
 import tv.biliclassic.model.PlayerData;
 import tv.biliclassic.player.danmaku.DanmakuManager;
 import tv.biliclassic.subsettings.DecoderSettingsActivity;
+import tv.biliclassic.util.CookieGenerator;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.widget.MarqueeTextView;
@@ -415,7 +416,10 @@ public class BiliPlayerActivity extends Activity implements
                     Intent extIntent = new Intent(Intent.ACTION_VIEW);
                     extIntent.setDataAndType(Uri.parse(videoUrl), "video/mp4");
                     if (playerPkg != null) {
-                        try { Intent.class.getMethod("setPackage", String.class).invoke(extIntent, playerPkg); } catch (Exception ignored) {}
+                        extIntent.setPackage(playerPkg);
+                        if (getPackageManager().queryIntentActivities(extIntent, 0).size() == 0) {
+                            extIntent.setPackage(null);
+                        }
                     }
                     extIntent.putExtra("_from_external_redirect", true);
                     try {
@@ -423,8 +427,6 @@ public class BiliPlayerActivity extends Activity implements
                         finish();
                         return;
                     } catch (Exception e) {
-                        finish();
-                        return;
                     }
                 }
             }
@@ -2235,7 +2237,7 @@ public class BiliPlayerActivity extends Activity implements
             if (isNetworkUrl) {
                 Map<String, String> headers = new HashMap<String, String>();
                 headers.put("Referer", "https://www.bilibili.com/");
-                String cookie = SharedPreferencesUtil.getString(SharedPreferencesUtil.cookies, "");
+                String cookie = CookieGenerator.getCookieString(true);
                 if (cookie != null && cookie.length() > 0) {
                     headers.put("Cookie", cookie);
                 }
@@ -3633,7 +3635,7 @@ public class BiliPlayerActivity extends Activity implements
         Map<String, String> headers = new HashMap<String, String>();
         headers.put("Referer", "https://www.bilibili.com/");
         headers.put("User-Agent", NetWorkUtil.USER_AGENT_WEB);
-        String cookie = SharedPreferencesUtil.getString(SharedPreferencesUtil.cookies, "");
+        String cookie = CookieGenerator.getCookieString(true);
         if (cookie != null && cookie.length() > 0) {
             headers.put("Cookie", cookie);
         }

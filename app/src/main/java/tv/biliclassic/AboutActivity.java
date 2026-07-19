@@ -33,7 +33,7 @@ public class AboutActivity extends BaseActivity {
             PackageInfo packageInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
             return packageInfo.versionName;
         } catch (PackageManager.NameNotFoundException e) {
-            return "0.4.6";
+            return "0.4.8";
         }
     }
 }

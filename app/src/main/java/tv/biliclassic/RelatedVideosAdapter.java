@@ -144,13 +144,18 @@ public class RelatedVideosAdapter extends BaseAdapter {
             final ImageView coverView = holder.cover;
             coverView.setTag(finalCoverUrl);
 
-            SoftReference<Bitmap> softBitmap = imageCache.get(finalCoverUrl);
+            SoftReference<Bitmap> softBitmap;
+            synchronized (imageCache) {
+                softBitmap = imageCache.get(finalCoverUrl);
+            }
             if (softBitmap != null) {
                 Bitmap cachedBitmap = softBitmap.get();
                 if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
                     coverView.setImageBitmap(cachedBitmap);
                 } else {
-                    imageCache.remove(finalCoverUrl);
+                    synchronized (imageCache) {
+                        imageCache.remove(finalCoverUrl);
+                    }
                 }
             }
 
@@ -164,7 +169,9 @@ public class RelatedVideosAdapter extends BaseAdapter {
                         loadingMap.remove(currentPos);
 
                         if (bitmap != null && !bitmap.isRecycled()) {
-                            imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
+                            synchronized (imageCache) {
+                                imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
+                            }
                             mainHandler.post(new Runnable() {
                                 @Override
                                 public void run() {
@@ -276,13 +283,15 @@ public class RelatedVideosAdapter extends BaseAdapter {
 
     public void clearCache() {
         if (imageCache != null) {
-            for (SoftReference<Bitmap> ref : imageCache.values()) {
-                Bitmap bmp = ref.get();
-                if (bmp != null && !bmp.isRecycled()) {
-                    bmp.recycle();
+            synchronized (imageCache) {
+                for (SoftReference<Bitmap> ref : imageCache.values()) {
+                    Bitmap bmp = ref.get();
+                    if (bmp != null && !bmp.isRecycled()) {
+                        bmp.recycle();
+                    }
                 }
+                imageCache.clear();
             }
-            imageCache.clear();
         }
         if (loadingMap != null) {
             loadingMap.clear();

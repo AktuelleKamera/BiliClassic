@@ -107,7 +107,7 @@ public class UpdateCheckService extends Service {
             builderClass.getMethod("setContentText", CharSequence.class)
                     .invoke(builder, "正在检查新版本...");
             builderClass.getMethod("setSmallIcon", int.class)
-                    .invoke(builder, android.R.drawable.ic_menu_rotate);
+                    .invoke(builder, android.R.drawable.stat_sys_download);
             builderClass.getMethod("setOngoing", boolean.class).invoke(builder, true);
             builderClass.getMethod("setPriority", int.class).invoke(builder, -2);
             return (Notification) builderClass.getMethod("build").invoke(builder);

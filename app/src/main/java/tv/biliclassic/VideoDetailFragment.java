@@ -1061,9 +1061,9 @@ public class VideoDetailFragment extends Fragment {
             }
             String pkg = SettingsActivity.getPlayerPackageName();
             if (pkg != null) {
-                try {
-                    Intent.class.getMethod("setPackage", String.class).invoke(extIntent, pkg);
-                } catch (Exception ignored) {
+                extIntent.setPackage(pkg);
+                if (getActivity().getPackageManager().queryIntentActivities(extIntent, 0).size() == 0) {
+                    extIntent.setPackage(null);
                 }
             }
             try {

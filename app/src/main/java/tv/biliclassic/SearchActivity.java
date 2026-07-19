@@ -63,6 +63,7 @@ public class SearchActivity extends BaseActivity {
     private boolean hasSearched = false;
 
     private Handler retryHandler = new Handler();
+    private int searchSeq = 0;
 
     private static final Pattern AV_PATTERN = Pattern.compile("av(\\d+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern BV_PATTERN = Pattern.compile("bv([a-zA-Z0-9]{10})", Pattern.CASE_INSENSITIVE);
@@ -524,7 +525,7 @@ public class SearchActivity extends BaseActivity {
             return;
         }
 
-        if (isLoading) return;
+        ++searchSeq;
 
         saveSearchHistory(keyword);
 
@@ -555,6 +556,7 @@ public class SearchActivity extends BaseActivity {
     }
 
     private void doSearchRequest(final String keyword, final int page, final int retryLeft) {
+        final int curSeq = searchSeq;
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -576,6 +578,7 @@ public class SearchActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            if (searchSeq != curSeq) return;
                             if (code == 0) {
                                 handleSearchResponse(json);
                             } else {
@@ -590,6 +593,7 @@ public class SearchActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            if (searchSeq != curSeq) return;
                             handleNetworkError(errMsg, keyword, retryLeft);
                         }
                     });
@@ -742,6 +746,7 @@ public class SearchActivity extends BaseActivity {
     }
 
     private void doLoadMoreRequest(final String keyword, final int page, final int retryLeft) {
+        final int curSeq = searchSeq;
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -762,6 +767,7 @@ public class SearchActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            if (searchSeq != curSeq) return;
                             handleLoadMoreResponse(json, code, keyword, page, retryLeft);
                         }
                     });
@@ -771,6 +777,7 @@ public class SearchActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
+                            if (searchSeq != curSeq) return;
                             handleLoadMoreError(e.getMessage(), keyword, page, retryLeft);
                         }
                     });

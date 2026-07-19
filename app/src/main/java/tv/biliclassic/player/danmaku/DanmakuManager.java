@@ -362,7 +362,7 @@ public class DanmakuManager {
             });
         }
 
-        wireSeek(panel, R.id.option_danmaku_textsize, 0.5f, 2.0f,
+        wireSeek(panel, R.id.option_danmaku_textsize, 0.5f, 3.0f,
                 DanmakuGlobalConfig.DEFAULT.scaleTextSize, "字号缩放",
                 new SeekCallback() { public void onChanged(float v) {
                     DanmakuGlobalConfig.DEFAULT.setScaleTextSize(v);
@@ -791,7 +791,7 @@ public class DanmakuManager {
                 }});
 
         wireSimpleSeek(panel, R.id.option_danmaku_textsize,
-                0.5f, 2.0f, textScale, "字号",
+                0.5f, 3.0f, textScale, "字号",
                 new SeekCallback() { public void onChanged(float v) {
                     mSimpleEngine.setScaleTextSize(v);
                     SharedPreferencesUtil.putFloat(KEY_TEXT_SIZE, v);

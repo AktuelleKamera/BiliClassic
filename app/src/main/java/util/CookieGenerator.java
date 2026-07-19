@@ -32,7 +32,7 @@ public class CookieGenerator {
     private static final int[] PCK = {8, 4, 4, 4, 12};
     private static final String[] MP = {"1","2","3","4","5","6","7","8","9","A","B","C","D","E","F","10"};
 
-    private static boolean isEnsuringCookies = false;
+    private static volatile boolean isEnsuringCookies = false;
 
     public static void ensureCookies() {
         if (isEnsuringCookies) return;

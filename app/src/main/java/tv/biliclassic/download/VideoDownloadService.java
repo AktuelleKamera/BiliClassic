@@ -11,6 +11,7 @@ import android.os.IBinder;
 import java.io.File;
 import java.util.ArrayList;
 
+import tv.biliclassic.R;
 import tv.biliclassic.util.PermissionUtil;
 
 import tv.biliclassic.util.SdkHelper;
@@ -90,7 +91,7 @@ public class VideoDownloadService extends Service {
                     .newInstance(this, CHANNEL_ID);
             builderClass.getMethod("setContentTitle", CharSequence.class).invoke(builder, "下载中");
             builderClass.getMethod("setContentText", CharSequence.class).invoke(builder, "正在下载视频...");
-            builderClass.getMethod("setSmallIcon", int.class).invoke(builder, android.R.drawable.ic_menu_rotate);
+            builderClass.getMethod("setSmallIcon", int.class).invoke(builder, R.drawable.ic_launcher);
             builderClass.getMethod("setOngoing", boolean.class).invoke(builder, true);
             builderClass.getMethod("setPriority", int.class).invoke(builder, -2);
             return (Notification) builderClass.getMethod("build").invoke(builder);

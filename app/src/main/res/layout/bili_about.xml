@@ -377,6 +377,41 @@
             </TableRow>
         </TableLayout>
 
+        <!-- 赞助 -->
+        <TextView
+            android:id="@+id/thanks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:text="赞助"
+            android:textColor="#CCCCCC"
+            android:textSize="12sp" />
+
+        <TableLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp">
+            <TableRow>
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="wcxawa"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="Skyler1n"
+                    android:textSize="12sp"
+                    android:textColor="#CCCCCC" />
+            </TableRow>
+        </TableLayout>
+
         <!-- 监督区域 -->
         <LinearLayout
             android:orientation="vertical"
@@ -402,24 +437,6 @@
                 android:textColor="#CCCCCC" />
 
         </LinearLayout>
-
-        <!-- 赞助 -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="赞助"
-            android:textSize="12sp"
-            android:textColor="#CCCCCC"
-            android:layout_marginTop="12dp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="Skyler1n"
-            android:textSize="12sp"
-            android:textColor="#CCCCCC" />
 
     </LinearLayout>
 

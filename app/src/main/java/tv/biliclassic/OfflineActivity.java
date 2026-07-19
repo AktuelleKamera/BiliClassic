@@ -247,14 +247,17 @@ public class OfflineActivity extends BaseActivity {
         }
         String preferredPlayer = SettingsActivity.getPlayerPackageName();
         if (preferredPlayer != null) {
-            try { Intent.class.getMethod("setPackage", String.class).invoke(intent, preferredPlayer); } catch (Exception ignored) {}
+            intent.setPackage(preferredPlayer);
+            if (getPackageManager().queryIntentActivities(intent, 0).size() == 0) {
+                intent.setPackage(null);
+            }
         }
         try {
             startActivity(intent);
         } catch (Exception e) {
             // 首选播放器失败，尝试不带 package 重新解析（弹出系统选择器）
             if (preferredPlayer != null) {
-                try { Intent.class.getMethod("setPackage", String.class).invoke(intent, new Object[]{null}); } catch (Exception ignored) {}
+                intent.setPackage(null);
                 try {
                     startActivity(intent);
                     return;

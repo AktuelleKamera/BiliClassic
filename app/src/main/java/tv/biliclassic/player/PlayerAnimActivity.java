@@ -435,18 +435,18 @@ public class PlayerAnimActivity extends Activity {
             if (SdkHelper.getSdkInt() >= 24) {
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             }
-            try {
-                Intent.class.getMethod("setPackage", String.class).invoke(intent, packageName);
-            } catch (Exception ignored) {
+            intent.setPackage(packageName);
+            if (getPackageManager().queryIntentActivities(intent, 0).size() > 0) {
+                startActivity(intent);
+                finish();
+                return true;
+            } else {
+                if (!hasShownPreferenceToast) {
+                    hasShownPreferenceToast = true;
+                    Toast.makeText(this, playerName + " 未安装，正在尝试其他播放器...", Toast.LENGTH_SHORT).show();
+                }
             }
-            startActivity(intent);
-            finish();
-            return true;
         } catch (Exception e) {
-            if (!hasShownPreferenceToast) {
-                hasShownPreferenceToast = true;
-                Toast.makeText(this, playerName + " 未安装，正在尝试其他播放器...", Toast.LENGTH_SHORT).show();
-            }
         }
         return false;
     }
@@ -531,13 +531,12 @@ public class PlayerAnimActivity extends Activity {
             if (SdkHelper.getSdkInt() >= 24) {
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             }
-            try {
-                Intent.class.getMethod("setPackage", String.class).invoke(intent, packageName);
-            } catch (Exception ignored) {
+            intent.setPackage(packageName);
+            if (getPackageManager().queryIntentActivities(intent, 0).size() > 0) {
+                startActivity(intent);
+                finish();
+                return true;
             }
-            startActivity(intent);
-            finish();
-            return true;
         } catch (Exception e) {
         }
         return false;

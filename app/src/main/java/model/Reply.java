@@ -18,6 +18,7 @@ public class Reply implements Serializable {
     public boolean forceDelete;
     public String ofBvid = "";
     public String pubTime;
+    public long ctime;
     public UserInfo sender;
     public String message;
     public ArrayList<String> pictureList = new ArrayList<String>();
@@ -46,13 +47,15 @@ public class Reply implements Serializable {
 
         JSONObject content = replyJson.getJSONObject("content");
         JSONObject replyCtrl = replyJson.optJSONObject("reply_control");
-        long ctime = replyJson.getLong("ctime") * 1000;
+        long rawCtime = replyJson.getLong("ctime");
+        this.ctime = rawCtime;
+        long ctimeMs = rawCtime * 1000;
 
         String time;
-        if (replyCtrl != null && System.currentTimeMillis() - ctime < 3 * 24 * 60 * 60 * 1000 && replyCtrl.has("time_desc")) {
+        if (replyCtrl != null && System.currentTimeMillis() - ctimeMs < 3 * 24 * 60 * 60 * 1000 && replyCtrl.has("time_desc")) {
             time = replyCtrl.getString("time_desc");
         } else {
-            time = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(ctime);
+            time = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(ctimeMs);
         }
 
         if (replyCtrl != null && replyCtrl.has("location")) {

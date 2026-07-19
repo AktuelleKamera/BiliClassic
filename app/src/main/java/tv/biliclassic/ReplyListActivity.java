@@ -648,19 +648,7 @@ public class ReplyListActivity extends BaseActivity {
                         rd.rpid = reply.rpid;
                         rd.root = reply.root;
                         rd.parent = reply.parent;
-                        try {
-                            if (reply.pubTime != null && reply.pubTime.length() > 0) {
-                                try {
-                                    rd.time = Long.parseLong(reply.pubTime);
-                                } catch (NumberFormatException e) {
-                                    rd.time = System.currentTimeMillis() / 1000;
-                                }
-                            } else {
-                                rd.time = System.currentTimeMillis() / 1000;
-                            }
-                        } catch (Exception e) {
-                            rd.time = System.currentTimeMillis() / 1000;
-                        }
+                        rd.time = reply.ctime;
                         rd.likeCount = reply.likeCount;
                         rd.liked = reply.liked;
                         if (reply.sender != null) {
