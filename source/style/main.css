@@ -39,3 +39,53 @@
 .theme-black .nice-padding {
     color: #ccc;
 }
+.theme-black .rec-title,
+.theme-black .rec-up {
+    color: #ccc;
+}
+.theme-black .rec-card {
+    border-color: #333;
+}
+.theme-black .fav-folder-name {
+    color: #ccc;
+}
+.theme-black .fav-folder-count {
+    color: #999;
+}
+.theme-black .fav-folder-divider {
+    border-bottom: 1px solid #333;
+}
+
+.theme-pink .rec-title,
+.theme-pink .rec-up {
+    color: #333;
+}
+.theme-pink .rec-card {
+    border-color: #eee;
+}
+.theme-pink .fav-folder-name {
+    color: #333;
+}
+.theme-pink .fav-folder-count {
+    color: #888;
+}
+.theme-pink .fav-folder-divider {
+    border-bottom: 1px solid #eee;
+}
+.theme-pink .hist-header {
+    background: #D86DA5;
+    color: #fff;
+}
+.theme-pink .hist-row {
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+.theme-black .hist-header {
+    background: #333;
+    color: #ccc;
+}
+.theme-black .hist-row {
+    border-bottom: 1px solid #333;
+    cursor: pointer;
+}

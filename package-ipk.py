@@ -10,7 +10,7 @@ import shutil
 PROJECT = os.path.dirname(os.path.abspath(__file__))
 DEPLOY = os.path.join(PROJECT, "deploy")
 OUTPUT = os.path.join(PROJECT, "bin")
-APP_VER = "0.2.0"
+APP_VER = "0.3.0"
 IPK_NAME = f"tv.biliclassic.webos_{APP_VER}_all.ipk"
 
 

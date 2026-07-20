@@ -5,5 +5,6 @@ enyo.depends(
 	"video-api.js",
 	"search-api.js",
 	"recommend-api.js",
-	"history-api.js"
+	"history-api.js",
+	"favorite-api.js"
 );

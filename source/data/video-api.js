@@ -140,9 +140,12 @@ var VideoApi = {
         }
 
         vi.epid = -1;
+        vi.ssid = -1;
         if (data.redirect_url && data.redirect_url.indexOf("bangumi") >= 0) {
-            var m = data.redirect_url.match(/ep(\d+)/);
-            if (m) vi.epid = parseInt(m[1], 10);
+            var epm = data.redirect_url.match(/ep(\d+)/);
+            if (epm) vi.epid = parseInt(epm[1], 10);
+            var ssm = data.redirect_url.match(/ss(\d+)/);
+            if (ssm) vi.ssid = parseInt(ssm[1], 10);
         }
 
         vi.collection = null;
@@ -210,11 +213,58 @@ var VideoApi = {
         });
     },
 
+    getBangumiSeasonInfo: function(epId, callback) {
+        var path = "/pgc/view/web/season?ep_id=" + epId;
+        BiliNet.getJson(path, function(err, data) {
+            if (err) { if (callback) callback(err, null); return; }
+            if (!data || data.code !== 0 || !data.result) { if (callback) callback(new Error("API错误: " + (data ? data.message : "无响应")), null); return; }
+            var result = data.result;
+            var episodes = result.episodes || [];
+            var info = { seasonId: result.season_id || 0, seasonTitle: result.title || "", seasonCover: result.cover || "", episodes: [] };
+            for (var i = 0; i < episodes.length; i++) {
+                var ep = episodes[i];
+                info.episodes.push({
+                    epId: ep.id || 0,
+                    aid: ep.aid || 0,
+                    cid: ep.cid || 0,
+                    title: ep.title || "",
+                    cover: ep.cover || "",
+                    longTitle: ep.long_title || ""
+                });
+            }
+            if (callback) callback(null, info);
+        });
+    },
+
+    getBangumiBySeasonId: function(seasonId, callback) {
+        var path = "/pgc/view/web/season?season_id=" + seasonId;
+        BiliNet.getJson(path, function(err, data) {
+            if (err) { if (callback) callback(err, null); return; }
+            if (!data || data.code !== 0 || !data.result) { if (callback) callback(new Error("API错误: " + (data ? data.message : "无响应")), null); return; }
+            var result = data.result;
+            var episodes = result.episodes || [];
+            var info = { seasonId: result.season_id || 0, seasonTitle: result.title || "", seasonCover: result.cover || "", episodes: [] };
+            for (var i = 0; i < episodes.length; i++) {
+                var ep = episodes[i];
+                info.episodes.push({
+                    epId: ep.id || 0,
+                    aid: ep.aid || 0,
+                    cid: ep.cid || 0,
+                    title: ep.title || "",
+                    cover: ep.cover || "",
+                    longTitle: ep.long_title || ""
+                });
+            }
+            if (callback) callback(null, info);
+        });
+    },
+
     getBangumiUrl: function(aid, cid, qn, callback) {
         var path = "/pgc/player/web/playurl?aid=" + aid + "&cid=" + cid + "&fnval=4048&fnvar=0&qn=" + (qn || 16) + "&season_type=1&platform=pc";
         BiliNet.getJson(path, function(err, data) {
             if (err) { if (callback) callback(err, null); return; }
-            if (!data || data.code !== 0 || !data.result) { if (callback) callback(new Error("API错误"), null); return; }
+            if (!data) { if (callback) callback(new Error("API无响应"), null); return; }
+            if (data.code !== 0 || !data.result) { if (callback) callback(new Error("API错误: " + (data.message || "未知") + " (code=" + data.code + ")"), null); return; }
             var result = {};
             if (data.result.durl && data.result.durl.length > 0) {
                 result.videoUrl = data.result.durl[0].url;

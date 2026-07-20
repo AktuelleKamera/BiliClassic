@@ -70,7 +70,7 @@ var CookieStore = {
     clear: function() { this._cookies = {}; this._save(); }
 };
 
-var BILI_PROXY = (window.location.protocol === 'http:' || window.location.protocol === 'https:') ? '' : "http://127.0.0.1:18081";
+var BILI_PROXY = (window.location.protocol === 'http:' || window.location.protocol === 'https:') ? '' : "http://localhost:18081";
 
 var BiliNet = {
     _xhr: function(method, path, callback, data) {

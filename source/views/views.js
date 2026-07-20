@@ -17,6 +17,7 @@ enyo.kind({
         {name: "bottomBar", kind: "onyx.Toolbar", components: [
             {kind: "onyx.Button", content: "推荐", ontap: "showTab", style: "margin:2px;", tabId: "recommend"},
             {kind: "onyx.Button", content: "历史", ontap: "showTab", style: "margin:2px;", tabId: "history"},
+            {kind: "onyx.Button", content: "收藏", ontap: "showTab", style: "margin:2px;", tabId: "favorite"},
             {kind: "onyx.Button", content: "登录", ontap: "manualLogin", style: "margin:2px;"},
             {kind: "onyx.Button", content: "主题", ontap: "toggleTheme", style: "margin:2px;"},
             {kind: "onyx.Button", content: "关于", ontap: "showAbout", style: "margin:2px;"}
@@ -54,6 +55,7 @@ enyo.kind({
         this._currentTab = inSender.tabId;
         if (inSender.tabId === "recommend") this.loadRecommend();
         else if (inSender.tabId === "history") this.loadHistory();
+        else if (inSender.tabId === "favorite") this.loadFavoriteFolders();
     },
     toggleTheme: function() {
         this.pinkTheme = !this.pinkTheme;
@@ -75,7 +77,7 @@ enyo.kind({
         RecommendApi.getPopular(page, function(err, list) {
             self._recLoading = false;
             if (err || !list || list.length === 0) {
-                if (page === 1) self.$.main.setContent("获取失败无数据<br/><button onclick='app.view.loadRecommend()'>重试</button>");
+                if (page === 1) self.$.main.setContent("获取失败: " + (err ? err.message : "无数据") + "<br/><button onclick='app.view.loadRecommend()'>重试</button>");
                 return;
             }
             var cards = ""; var added = 0;
@@ -145,10 +147,10 @@ enyo.kind({
             self._histCursor = result.cursor;
             self._histBottom = result.isBottom;
             var h = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
-            h += '<tr style="background:#D86DA5;color:#fff;"><th style="padding:6px;">标题</th><th style="padding:6px;">UP主</th><th style="padding:6px;">进度</th></tr>';
+            h += '<tr class="hist-header"><th style="padding:6px;">标题</th><th style="padding:6px;">UP主</th><th style="padding:6px;">进度</th></tr>';
             for (var i = 0; i < self._histItems.length; i++) {
                 var v = self._histItems[i];
-                h += '<tr style="border-bottom:1px solid #eee;cursor:pointer;" onclick="app.view.showVideoInfo(' + v.aid + ')">';
+                h += '<tr class="hist-row" onclick="app.view.showVideoInfo(' + v.aid + ')">';
                 h += '<td style="padding:6px;">' + v.title + '</td>';
                 h += '<td style="padding:6px;">' + v.upName + '</td>';
                 h += '<td style="padding:6px;">' + v.view + '</td></tr>';
@@ -173,15 +175,43 @@ enyo.kind({
     },
     showVideoInfo: function(aid) {
         var self = this;
-        // 断开滚动监听，防止历史/推荐覆盖
+        this._currentTab = "video";
         var scroller = this.$.main.parent;
         if (scroller) {
             scroller._scrollBound = false;
             scroller._histScrollBound = false;
+            scroller._favScrollBound = false;
         }
         this.$.main.setContent("加载中...");
         VideoApi.getVideoInfoByAid(aid, function(err, vi) {
             if (err) { self.$.main.setContent("获取失败: " + err.message); return; }
+            var bangumiId = vi.epid > 0 ? vi.epid : (vi.ssid > 0 ? vi.ssid : 0);
+            if (bangumiId > 0) {
+                var bangumiFn = vi.epid > 0 ? VideoApi.getBangumiSeasonInfo : VideoApi.getBangumiBySeasonId;
+                bangumiFn(bangumiId, function(err2, info) {
+                    if (err2 || !info || !info.episodes || info.episodes.length === 0) {
+                        self.$.main.setContent("番剧信息获取失败" + (err2 ? ": " + err2.message : "") + "<br/><button onclick='app.view.showVideoInfo(" + aid + ")'>重试</button>");
+                        return;
+                    }
+                    var ep = info.episodes[0];
+                    var epAid = ep.aid || aid;
+                    var epCid = ep.cid || 0;
+                    self._playInfo = { aid: epAid, cids: [epCid], epid: vi.epid, ssid: vi.ssid, title: ep.title || vi.title, cover: ep.cover || vi.cover, staff: [{ name: info.seasonTitle || "番剧" }], stats: vi.stats, description: vi.description, duration: vi.duration, pagenames: vi.pagenames };
+                    self._playAid = epAid;
+                    var h = '';
+                    h += '<div style="background:#000;text-align:center;max-height:220px;overflow:hidden;"><img src="' + (ep.cover || vi.cover || '') + '" style="max-width:100%;max-height:220px;" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'"/></div>';
+                    h += '<div style="padding:8px;"><b style="font-size:16px;">' + (ep.title || vi.title) + '</b></div>';
+                    h += '<div style="padding:0 8px 8px;font-size:13px;color:#888;">';
+                    h += '番剧: ' + (info.seasonTitle || '') + ' | ' + (ep.longTitle ? ep.longTitle : '');
+                    h += '</div>';
+                    if (vi.description) h += '<div style="padding:0 8px 8px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:8px;">' + vi.description.slice(0, 200) + (vi.description.length > 200 ? '...' : '') + '</div>';
+                    h += '<div style="padding:12px;text-align:center;">';
+                    h += '<button onclick="app.view.playVideoByAid(' + epAid + ')" style="padding:10px 40px;background:#D86DA5;color:#fff;font-size:16px;border:none;border-radius:4px;cursor:pointer;">▶ 播放</button>';
+                    h += '</div>';
+                    self.$.main.setContent(h);
+                });
+                return;
+            }
             self._playInfo = vi;
             self._playAid = aid;
             var h = '';
@@ -198,15 +228,132 @@ enyo.kind({
             if (vi.description) h += '<div style="padding:0 8px 8px;font-size:12px;color:#999;border-top:1px solid #eee;padding-top:8px;">' + vi.description.slice(0, 200) + (vi.description.length > 200 ? '...' : '') + '</div>';
             h += '<div style="padding:12px;text-align:center;">';
             h += '<button onclick="app.view.playVideoByAid(' + aid + ')" style="padding:10px 40px;background:#D86DA5;color:#fff;font-size:16px;border:none;border-radius:4px;cursor:pointer;">▶ 播放</button>';
+            h += ' <span id="favBtn' + aid + '"></span>';
+            h += '</div>';
+            self.$.main.setContent(h);
+            FavoriteApi.getFavoriteState(aid, function(err, state) {
+                var btn = document.getElementById('favBtn' + aid);
+                if (!btn) return;
+                if (err || !state || !state.favIds || state.favIds.length === 0) {
+                    btn.innerHTML = '<button onclick="app.view.toggleFavorite(' + aid + ',0)" style="padding:8px 20px;background:#888;color:#fff;font-size:14px;border:none;border-radius:4px;cursor:pointer;">收藏</button>';
+                } else {
+                    self._favFirstFid = state.favIds[0];
+                    btn.innerHTML = '<button onclick="app.view.toggleFavorite(' + aid + ',1)" style="padding:8px 20px;background:#D86DA5;color:#fff;font-size:14px;border:none;border-radius:4px;cursor:pointer;">★ 已收藏</button>';
+                }
+            });
+        });
+    },
+
+    toggleFavorite: function(aid, isFav) {
+        var self = this;
+        if (isFav) {
+            if (!this._favFirstFid) return;
+            FavoriteApi.deleteFavorite(aid, this._favFirstFid, function(err, success) {
+                var btn = document.getElementById('favBtn' + aid);
+                if (success) {
+                    if (btn) btn.innerHTML = '<button onclick="app.view.toggleFavorite(' + aid + ',0)" style="padding:8px 20px;background:#888;color:#fff;font-size:14px;border:none;border-radius:4px;cursor:pointer;">收藏</button>';
+                } else {
+                    if (btn) btn.innerHTML = '<button onclick="app.view.toggleFavorite(' + aid + ',1)" style="padding:8px 20px;background:#D86DA5;color:#fff;font-size:14px;border:none;border-radius:4px;cursor:pointer;">★ 已收藏</button>';
+                }
+            });
+        } else {
+            FavoriteApi.getFavoriteState(aid, function(err, state) {
+                if (err || !state || !state.favIds || state.favIds.length === 0) {
+                    // 未收藏，添加到第一个收藏夹
+                    FavoriteApi.getFavoriteFolders(function(err, folders) {
+                        if (err || !folders || folders.length === 0) return;
+                        FavoriteApi.addFavorite(aid, folders[0].id, function(err, success) {
+                            var btn = document.getElementById('favBtn' + aid);
+                            if (success) {
+                                self._favFirstFid = folders[0].id;
+                                if (btn) btn.innerHTML = '<button onclick="app.view.toggleFavorite(' + aid + ',1)" style="padding:8px 20px;background:#D86DA5;color:#fff;font-size:14px;border:none;border-radius:4px;cursor:pointer;">★ 已收藏</button>';
+                            }
+                        });
+                    });
+                } else {
+                    self._favFirstFid = state.favIds[0];
+                    var btn = document.getElementById('favBtn' + aid);
+                    if (btn) btn.innerHTML = '<button onclick="app.view.toggleFavorite(' + aid + ',1)" style="padding:8px 20px;background:#D86DA5;color:#fff;font-size:14px;border:none;border-radius:4px;cursor:pointer;">★ 已收藏</button>';
+                }
+            });
+        }
+    },
+    showBangumiByEpId: function(epId) {
+        var self = this;
+        this._currentTab = "video";
+        var scroller = this.$.main.parent;
+        if (scroller) { scroller._scrollBound = false; scroller._histScrollBound = false; scroller._favScrollBound = false; }
+        this.$.main.setContent("加载番剧信息...");
+        VideoApi.getBangumiSeasonInfo(epId, function(err, info) {
+            if (err || !info || !info.episodes || info.episodes.length === 0) {
+                self.$.main.setContent("番剧信息获取失败" + (err ? ": " + err.message : ""));
+                return;
+            }
+            var ep = info.episodes[0];
+            var epAid = ep.aid || 0;
+            var epCid = ep.cid || 0;
+            self._playInfo = { aid: epAid, cids: [epCid], epid: epId, title: ep.title || "", cover: ep.cover || "", staff: [{ name: info.seasonTitle || "番剧" }], stats: {}, description: "", duration: 0, pagenames: [] };
+            self._playAid = epAid;
+            var h = '';
+            h += '<div style="background:#000;text-align:center;max-height:220px;overflow:hidden;"><img src="' + (ep.cover || info.seasonCover || '') + '" style="max-width:100%;max-height:220px;" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'"/></div>';
+            h += '<div style="padding:8px;"><b style="font-size:16px;">' + (ep.title || info.seasonTitle || "番剧") + '</b></div>';
+            h += '<div style="padding:0 8px 8px;font-size:13px;color:#888;">';
+            h += '番剧: ' + (info.seasonTitle || '') + ' | ' + (ep.longTitle ? ep.longTitle : '');
+            h += '</div>';
+            h += '<div style="padding:12px;text-align:center;">';
+            if (epAid > 0) {
+                h += '<button onclick="app.view.playVideoByAid(' + epAid + ')" style="padding:10px 40px;background:#D86DA5;color:#fff;font-size:16px;border:none;border-radius:4px;cursor:pointer;">▶ 播放</button>';
+            } else {
+                h += '<span style="color:#888;">该番剧暂无可用播放数据</span>';
+            }
             h += '</div>';
             self.$.main.setContent(h);
         });
     },
+
+    showBangumiBySeasonId: function(seasonId) {
+        var self = this;
+        this._currentTab = "video";
+        var scroller = this.$.main.parent;
+        if (scroller) { scroller._scrollBound = false; scroller._histScrollBound = false; scroller._favScrollBound = false; }
+        this.$.main.setContent("加载番剧信息...");
+        VideoApi.getBangumiBySeasonId(seasonId, function(err, info) {
+            if (err || !info || !info.episodes || info.episodes.length === 0) {
+                self.$.main.setContent("番剧信息获取失败" + (err ? ": " + err.message : ""));
+                return;
+            }
+            var ep = info.episodes[0];
+            var epAid = ep.aid || 0;
+            var epCid = ep.cid || 0;
+            self._playInfo = { aid: epAid, cids: [epCid], epid: 0, ssid: seasonId, title: ep.title || "", cover: ep.cover || "", staff: [{ name: info.seasonTitle || "番剧" }], stats: {}, description: "", duration: 0, pagenames: [] };
+            self._playAid = epAid;
+            var h = '';
+            h += '<div style="background:#000;text-align:center;max-height:220px;overflow:hidden;"><img src="' + (ep.cover || info.seasonCover || '') + '" style="max-width:100%;max-height:220px;" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'"/></div>';
+            h += '<div style="padding:8px;"><b style="font-size:16px;">' + (ep.title || info.seasonTitle || "番剧") + '</b></div>';
+            h += '<div style="padding:0 8px 8px;font-size:13px;color:#888;">';
+            h += '番剧: ' + (info.seasonTitle || '') + ' | ' + (ep.longTitle ? ep.longTitle : '');
+            h += '</div>';
+            h += '<div style="padding:12px;text-align:center;">';
+            if (epAid > 0) {
+                h += '<button onclick="app.view.playVideoByAid(' + epAid + ')" style="padding:10px 40px;background:#D86DA5;color:#fff;font-size:16px;border:none;border-radius:4px;cursor:pointer;">▶ 播放</button>';
+            } else {
+                h += '<span style="color:#888;">该番剧暂无可用播放数据</span>';
+            }
+            h += '</div>';
+            self.$.main.setContent(h);
+        });
+    },
+
     playVideoByAid: function(aid) {
         var self = this;
+        this._currentTab = "video";
         var scroller = this.$.main.parent;
-        if (scroller) { scroller._scrollBound = false; scroller._histScrollBound = false; }
-        VideoApi.getPlayUrl(aid, this._playInfo && this._playInfo.cids && this._playInfo.cids[0] ? this._playInfo.cids[0] : 0, 64, function(err, urlData) {
+        if (scroller) { scroller._scrollBound = false; scroller._histScrollBound = false; scroller._favScrollBound = false; }
+        var pi = this._playInfo;
+        var isBangumi = pi && (pi.epid > 0 || pi.ssid > 0);
+        var cid = pi && pi.cids && pi.cids[0] ? pi.cids[0] : 0;
+        var playFn = isBangumi ? VideoApi.getBangumiUrl : VideoApi.getPlayUrl;
+        playFn(aid, cid, 64, function(err, urlData) {
             if (err || !urlData || !urlData.videoUrl) {
                 self.$.main.setContent("播放地址获取失败" + (err ? ": " + err.message : ""));
                 return;
@@ -218,15 +365,22 @@ enyo.kind({
         var self = this;
         var input = this.$.searchInput.getValue().trim();
         if (!input) return;
-        // 断开滚动监听，防止推荐覆盖
+        // 断开滚动监听，防止与历史记录/推荐/收藏滑动冲突
         var scroller = this.$.main.parent;
-        if (scroller) { scroller._scrollBound = false; scroller._histScrollBound = false; }
+        if (scroller) { scroller._scrollBound = false; scroller._histScrollBound = false; scroller._favScrollBound = false; }
+        this._currentTab = "search";
         var resolved = SearchApi.resolveInput(input);
         if (resolved.type === "av") {
             this.showVideoInfo(resolved.id);
             return;
         }
-        if (resolved.type === "bv") {
+        if (resolved.type === "ep") {
+            this.showBangumiByEpId(resolved.id);
+            return;
+        }
+        if (resolved.type === "ss") {
+            this.showBangumiBySeasonId(resolved.id);
+            return;
         }
         this._searchKeyword = resolved.keyword;
         this._searchPage = 1;
@@ -324,7 +478,7 @@ enyo.kind({
     showAbout: function() {
         var self = this;
         var h = '<div style="text-align:center;margin-bottom:12px;"><b style="font-size:18px;">BiliClassic for webOS</b></div>';
-        h += '<div style="text-align:center;font-size:13px;color:#888;margin-bottom:12px;">版本 0.2.0</div>';
+        h += '<div style="text-align:center;font-size:13px;color:#888;margin-bottom:12px;">版本 0.3.0</div>';
         h += '<div style="text-align:center;margin:8px 0;"><button onclick="app.view.checkUpdate()" style="padding:8px 20px;background:#D86DA5;color:#fff;border:none;border-radius:4px;font-size:14px;cursor:pointer;">检查更新</button></div>';
         h += '<div id="updateResult" style="font-size:13px;color:#666;margin:8px 0;text-align:center;"></div>';
         h += '<hr style="border:none;border-top:1px solid #eee;margin:12px 0;"/>';
@@ -348,7 +502,7 @@ enyo.kind({
             }
             try {
                 var data = JSON.parse(resp.text);
-                var current = 200;
+                var current = 300;
                 var latest = data.version_code || 0;
                 if (latest > current) {
                     txt = '发现新版本 <b>' + data.version + '</b>！<br/>';
@@ -372,7 +526,7 @@ enyo.kind({
         self._checkUpdate(function(hasUpdate, remoteVer, info) {
             var h = '<div style="padding:12px;">';
             h += '<b style="font-size:18px;">哔哩经典 for webOS</b><br/>';
-            h += '<span style="font-size:13px;color:#888;">当前版本: 0.2.0</span><br/>';
+            h += '<span style="font-size:13px;color:#888;">当前版本: 0.3.0</span><br/>';
             h += '<span style="font-size:13px;color:#888;">官网: <a href="http://www.biliclassic.cn" target="_blank" style="color:#D86DA5;">www.biliclassic.cn</a></span><br/><br/>';
             if (hasUpdate) {
                 h += '<span style="color:#D86DA5;font-weight:bold;">发现新版本: ' + remoteVer + '</span><br/>';
@@ -398,7 +552,7 @@ enyo.kind({
     _checkUpdate: function(callback) {
         BiliNet.getJson("http://www.biliclassic.cn/webos/api/version.json", function(err, data) {
             if (err || !data || !data.version) { if (callback) callback(null, null, null); return; }
-            var current = "0.2.0".split('.').map(function(s){return parseInt(s,10);});
+            var current = "0.3.0".split('.').map(function(s){return parseInt(s,10);});
             var remote = (data.version || "0.0.0").split('.').map(function(s){return parseInt(s,10);});
             var hasUpdate = false;
             for (var i = 0; i < 3; i++) {
@@ -412,5 +566,96 @@ enyo.kind({
         this._currentTab = inSender.tabId;
         if (inSender.tabId === "recommend") { this.loadRecommend(); }
         else if (inSender.tabId === "history") { this.loadHistory(); }
+        else if (inSender.tabId === "favorite") { this.loadFavoriteFolders(); }
+    },
+
+    loadFavoriteFolders: function() {
+        var self = this;
+        this._favFolderId = 0;
+        this._favVideos = [];
+        this.$.main.setContent("加载中...");
+        FavoriteApi.getFavoriteFolders(function(err, folders) {
+            if (err) {
+                self.$.main.setContent("加载失败<br/><button onclick='app.view.loadFavoriteFolders()'>重试</button>");
+                return;
+            }
+            if (!folders || folders.length === 0) {
+                self.$.main.setContent("暂无收藏夹<br/>需要先登录才能查看");
+                return;
+            }
+            self._favFolders = folders;
+            var h = '<div style="padding:4px;">';
+            for (var i = 0; i < folders.length; i++) {
+                var f = folders[i];
+                h += '<div class="rec-card fav-folder-divider" onclick="app.view.loadFavoriteFolderVideos(' + f.id + ',\'' + f.name.replace(/'/g, "\\'") + '\')" style="cursor:pointer;padding:12px;">';
+                h += '<div class="fav-folder-name" style="font-size:15px;font-weight:bold;">' + f.name + '</div>';
+                h += '<div class="fav-folder-count" style="font-size:12px;margin-top:4px;">' + f.count + ' 个视频</div>';
+                h += '</div>';
+            }
+            h += '</div>';
+            self.$.main.setContent(h);
+        });
+    },
+
+    loadFavoriteFolderVideos: function(fid, name) {
+        var self = this;
+        this._favFolderId = fid;
+        this._favFolderName = name;
+        this._favVideos = [];
+        this._favPage = 1;
+        this._favLoading = false;
+        this._favEnd = false;
+        this.$.main.setContent("加载中...");
+        this._appendFavoriteVideos();
+    },
+
+    _appendFavoriteVideos: function() {
+        var self = this;
+        if (this._favLoading || this._favEnd) return;
+        this._favLoading = true;
+        if (this._favVideos.length === 0) self.$.main.setContent("加载中...");
+        FavoriteApi.getFolderVideos(this._favFolderId, this._favPage, function(err, items) {
+            self._favLoading = false;
+            if (err) {
+                if (self._favVideos.length === 0) self.$.main.setContent("加载失败<br/><button onclick='app.view.loadFavoriteFolderVideos(" + self._favFolderId + ",\"" + self._favFolderName.replace(/"/g, '\\"') + "\")'>重试</button>");
+                return;
+            }
+            if (!items || items.length === 0) {
+                self._favEnd = true;
+                if (self._favVideos.length === 0) {
+                    self.$.main.setContent("收藏夹为空<br/><button onclick='app.view.loadFavoriteFolders()'>返回收藏夹列表</button>");
+                }
+                return;
+            }
+            for (var i = 0; i < items.length; i++) self._favVideos.push(items[i]);
+            self._favPage++;
+            var h = '<div style="padding:4px;">';
+            h += '<div class="fav-folder-name" style="padding:8px;font-size:14px;font-weight:bold;">' + self._favFolderName + '</div>';
+            h += '<div style="text-align:center;margin:4px;"><button onclick="app.view.loadFavoriteFolders()" style="padding:4px 12px;font-size:12px;">返回收藏夹</button></div>';
+            for (var i = 0; i < self._favVideos.length; i++) {
+                var v = self._favVideos[i];
+                h += '<div class="rec-card" onclick="app.view.showVideoInfo(' + v.aid + ')">';
+                h += '<div class="rec-cover-wrap"><div style="background:#e0e0e0;width:100%;height:0;padding-top:56.25%;position:relative;">';
+                h += '<img src="' + v.cover + '@240w_135h_1c.jpg" referrerpolicy="no-referrer" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'" loading="lazy"/>';
+                h += '</div></div><div class="rec-title">' + v.title + '</div><div class="rec-up">' + v.upName + '</div></div>';
+            }
+            h += '</div>';
+            self.$.main.setContent(h);
+            self._bindFavoriteScroll();
+        });
+    },
+
+    _bindFavoriteScroll: function() {
+        var self = this;
+        var scroller = this.$.main.parent;
+        if (!scroller || scroller._favScrollBound) return;
+        scroller._favScrollBound = true;
+        scroller.hasNode().addEventListener("scroll", function() {
+            if (self._currentTab !== "favorite") return;
+            var scrollEl = scroller.hasNode();
+            if (scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 200) {
+                self._appendFavoriteVideos();
+            }
+        });
     }
 });

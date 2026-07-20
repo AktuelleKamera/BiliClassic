@@ -38,6 +38,8 @@ var SearchApi = {
         var s = input.trim();
         if (/^av\d+$/i.test(s)) return { type: "av", id: parseInt(s.replace(/^av/i, ""), 10) };
         if (/^BV[a-zA-Z0-9]+$/i.test(s)) return { type: "bv", id: s.toUpperCase() };
+        if (/^ep\d+$/i.test(s)) return { type: "ep", id: parseInt(s.replace(/^ep/i, ""), 10) };
+        if (/^ss\d+$/i.test(s)) return { type: "ss", id: parseInt(s.replace(/^ss/i, ""), 10) };
         return { type: "search", keyword: s };
     }
 };

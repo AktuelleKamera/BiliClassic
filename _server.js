@@ -15,34 +15,73 @@ http.createServer(function(req, res) {
     // API 代理：转发到 Bilibili
     if (pathname.indexOf('/x/') === 0 || pathname.indexOf('/bapis/') === 0 || pathname.indexOf('/pgc/') === 0) {
         var host = pathname.indexOf('/x/passport-login/') === 0 ? 'passport.bilibili.com' : 'api.bilibili.com';
-        var opts = { hostname: host, port: 443, path: pathname + (u.search || ''), method: req.method, headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Accept': 'application/json, text/plain, */*',
-            'Referer': 'https://www.bilibili.com/',
-            'Origin': 'https://www.bilibili.com'
-        }};
         var c = req.headers['x-bili-cookie'];
-        if (c) opts.headers['Cookie'] = c;
-        var proxyReq = https.request(opts, function(proxyRes) {
-            var body = '';
-            proxyRes.on('data', function(d) { body += d; });
-            proxyRes.on('end', function() {
-                var setCookie = proxyRes.headers['set-cookie'];
-                var jsonBody = body;
-                if (setCookie && body.charAt(0) === '{') {
-                    var cookieStr = Array.isArray(setCookie) ? setCookie.join(', ') : setCookie;
-                    jsonBody = body.slice(0, -1) + ',"_cookie":"' + cookieStr.replace(/"/g, '\\"') + '"}';
-                }
-                res.writeHead(proxyRes.statusCode || 200, {
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Headers': 'x-bili-cookie, content-type',
-                    'Content-Type': 'application/json; charset=utf-8'
+
+        // POST 请求先收集 body
+        if (req.method === 'POST' || req.method === 'PUT') {
+            var postBody = '';
+            req.on('data', function(d) { postBody += d; });
+            req.on('end', function() {
+                var opts = { hostname: host, port: 443, path: pathname + (u.search || ''), method: req.method, headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Accept': 'application/json, text/plain, */*',
+                    'Referer': 'https://www.bilibili.com/',
+                    'Origin': 'https://www.bilibili.com',
+                    'Content-Type': req.headers['content-type'] || 'application/x-www-form-urlencoded',
+                    'Content-Length': Buffer.byteLength(postBody)
+                }};
+                if (c) opts.headers['Cookie'] = c;
+                var proxyReq = https.request(opts, function(proxyRes) {
+                    var body = '';
+                    proxyRes.on('data', function(d) { body += d; });
+                    proxyRes.on('end', function() {
+                        var setCookie = proxyRes.headers['set-cookie'];
+                        var jsonBody = body;
+                        if (setCookie && body.charAt(0) === '{') {
+                            var cookieStr = Array.isArray(setCookie) ? setCookie.join(', ') : setCookie;
+                            jsonBody = body.slice(0, -1) + ',"_cookie":"' + cookieStr.replace(/"/g, '\\"') + '"}';
+                        }
+                        res.writeHead(proxyRes.statusCode || 200, {
+                            'Access-Control-Allow-Origin': '*',
+                            'Access-Control-Allow-Headers': 'x-bili-cookie, content-type',
+                            'Content-Type': 'application/json; charset=utf-8'
+                        });
+                        res.end(jsonBody);
+                    });
                 });
-                res.end(jsonBody);
+                proxyReq.on('error', function() { res.writeHead(502); res.end('{"code":-1,"message":"proxy error"}'); });
+                proxyReq.write(postBody);
+                proxyReq.end();
             });
-        });
-        proxyReq.on('error', function() { res.writeHead(502); res.end('{"code":-1,"message":"proxy error"}'); });
-        proxyReq.end();
+        } else {
+            var opts = { hostname: host, port: 443, path: pathname + (u.search || ''), method: req.method, headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Referer': 'https://www.bilibili.com/',
+                'Origin': 'https://www.bilibili.com'
+            }};
+            if (c) opts.headers['Cookie'] = c;
+            var proxyReq = https.request(opts, function(proxyRes) {
+                var body = '';
+                proxyRes.on('data', function(d) { body += d; });
+                proxyRes.on('end', function() {
+                    var setCookie = proxyRes.headers['set-cookie'];
+                    var jsonBody = body;
+                    if (setCookie && body.charAt(0) === '{') {
+                        var cookieStr = Array.isArray(setCookie) ? setCookie.join(', ') : setCookie;
+                        jsonBody = body.slice(0, -1) + ',"_cookie":"' + cookieStr.replace(/"/g, '\\"') + '"}';
+                    }
+                    res.writeHead(proxyRes.statusCode || 200, {
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Headers': 'x-bili-cookie, content-type',
+                        'Content-Type': 'application/json; charset=utf-8'
+                    });
+                    res.end(jsonBody);
+                });
+            });
+            proxyReq.on('error', function() { res.writeHead(502); res.end('{"code":-1,"message":"proxy error"}'); });
+            proxyReq.end();
+        }
         return;
     }
 
