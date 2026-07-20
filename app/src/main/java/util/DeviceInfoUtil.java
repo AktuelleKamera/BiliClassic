@@ -226,6 +226,18 @@ public class DeviceInfoUtil {
             return sb.toString();
         }
 
+        // 小米5
+        if (model != null && (model.equalsIgnoreCase("MI 5") ||
+                model.equalsIgnoreCase("Mi5") ||
+                (device != null && device.toLowerCase().contains("gemini")))) {
+            android.util.Log.e("DeviceInfoUtil", "✅ 匹配到小米5！");
+            sb.append("小米5 (gemini)\n");
+            sb.append("看片快，打飞机更快！\n");
+            sb.append("骁龙820，发烧也快！\n");
+            sb.append("架构: ARMv8-A | 请使用v8a解码包~");
+            return sb.toString();
+        }
+
         // 红米1 / 红米1S
         if (model != null && (model.equalsIgnoreCase("2013022") ||
                 model.equalsIgnoreCase("2013023") ||
@@ -249,7 +261,8 @@ public class DeviceInfoUtil {
                 model.equalsIgnoreCase("T8588") ||
                 model.equalsIgnoreCase("T9193") ||
                 model.equalsIgnoreCase("HTC Leo") ||
-                (device != null && device.toLowerCase().contains("leo")))) {
+                (device != null && device.toLowerCase().contains("leo"))) &&
+                !"Xiaomi".equalsIgnoreCase(manufacturer)) { // 注意：小米Note顶配版也叫leo！
             android.util.Log.e("DeviceInfoUtil", "✅ 匹配到HTC HD2！");
             sb.append("HTC HD2\n");
             sb.append("一代神机！从WM6.5刷到各种奇葩系统和Android 7.1！\n");
