@@ -54,6 +54,7 @@ import java.util.concurrent.TimeUnit;
 
 import tv.biliclassic.api.ReplyApi;
 import tv.biliclassic.util.GlobalImageCache;
+import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class CommentAdapter extends BaseAdapter {
@@ -66,6 +67,7 @@ public class CommentAdapter extends BaseAdapter {
     private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
+    private java.util.Set<String> loadingUrls = new java.util.HashSet<String>();
 
     private long mMid;
     private int mReplyType = 1;
@@ -204,7 +206,7 @@ public class CommentAdapter extends BaseAdapter {
                                     if (itemMid == mMid && mMid != 0) {
                                         final long oid = h.oid;
                                         final long rpid = h.rpid;
-                                        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                                        AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(context));
                                         builder.setItems(new String[]{"复制评论", "删除评论"}, new DialogInterface.OnClickListener() {
                                             @Override
                                             public void onClick(DialogInterface dialog, int which) {
@@ -575,7 +577,7 @@ public class CommentAdapter extends BaseAdapter {
             final int currentPos = position;
             avatarView.setTag(finalAvatarUrl);
 
-            Bitmap cachedBitmap = GlobalImageCache.getInstance().get(finalAvatarUrl);
+            Bitmap cachedBitmap = GlobalImageCache.getInstance().getAndAcquire(finalAvatarUrl);
             if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
                 avatarView.setImageBitmap(cachedBitmap);
                 addAvatarBorder(avatarView);
@@ -621,9 +623,20 @@ public class CommentAdapter extends BaseAdapter {
     private void loadCommentImage(final ImageView imageView, String urlStr) {
         if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return;
         if (urlStr == null || urlStr.length() == 0) return;
-        final String finalUrl = urlStr;
 
-        new Thread(new Runnable() {
+        Bitmap cached = GlobalImageCache.getInstance().get(urlStr);
+        if (cached != null && !cached.isRecycled()) {
+            imageView.setImageBitmap(cached);
+            return;
+        }
+
+        synchronized (loadingUrls) {
+            if (loadingUrls.contains(urlStr)) return;
+            loadingUrls.add(urlStr);
+        }
+
+        final String finalUrl = urlStr;
+        executor.execute(new Runnable() {
             @Override
             public void run() {
                 HttpURLConnection conn = null;
@@ -673,8 +686,9 @@ public class CommentAdapter extends BaseAdapter {
                     }
                     imageData = null;
 
-                    final Bitmap resultBitmap = bitmap;
-                    if (resultBitmap != null && !resultBitmap.isRecycled()) {
+                    if (bitmap != null && !bitmap.isRecycled()) {
+                        GlobalImageCache.getInstance().put(finalUrl, bitmap);
+                        final Bitmap resultBitmap = bitmap;
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
@@ -687,12 +701,15 @@ public class CommentAdapter extends BaseAdapter {
                 } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
+                    synchronized (loadingUrls) {
+                        loadingUrls.remove(finalUrl);
+                    }
                     if (conn != null) {
                         try { conn.disconnect(); } catch (Exception e) {}
                     }
                 }
             }
-        }).start();
+        });
     }
 
     private void addAvatarBorder(ImageView imageView) {
@@ -779,6 +796,7 @@ public class CommentAdapter extends BaseAdapter {
 
     public void clearCache() {
         loadingMap.clear();
+        loadingUrls.clear();
     }
 
     private void copyToClipboard(String text) {

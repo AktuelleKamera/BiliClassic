@@ -1,6 +1,7 @@
 package tv.biliclassic;
 
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -68,12 +69,14 @@ public class RecommendFragment extends Fragment {
         }
         footerContainer.setVisibility(View.GONE);
 
-        gridView.setNumColumns(2);
+        int numColumns = isTablet() ? (isLandscape() ? 4 : 3) : 2;
+        gridView.setNumColumns(numColumns);
         gridView.setVerticalSpacing(dpToPx(8));
         gridView.setHorizontalSpacing(dpToPx(8));
         gridView.setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4));
 
         adapter = new RecommendGridAdapter(getActivity(), videoList);
+        adapter.setNumColumns(numColumns);
         gridView.setAdapter(adapter);
 
         gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -140,6 +143,26 @@ public class RecommendFragment extends Fragment {
     }
 
     @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (getActivity() == null) return;
+        int numColumns = isTablet() ? (isLandscape() ? 4 : 3) : 2;
+        gridView.setNumColumns(numColumns);
+        adapter.setNumColumns(numColumns);
+        int remainder = videoList.size() % numColumns;
+        if (remainder > 0) {
+            videoList.subList(videoList.size() - remainder, videoList.size()).clear();
+        }
+        adapter.notifyDataSetChanged();
+        gridView.post(new Runnable() {
+            @Override
+            public void run() {
+                adapter.notifyDataSetChanged();
+            }
+        });
+    }
+
+    @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         if (scrollView != null) {
@@ -163,6 +186,14 @@ public class RecommendFragment extends Fragment {
     private int dpToPx(int dp) {
         float density = getResources().getDisplayMetrics().density;
         return (int) (dp * density + 0.5f);
+    }
+
+    private boolean isTablet() {
+        return getResources().getBoolean(R.bool.is_tablet);
+    }
+
+    private boolean isLandscape() {
+        return getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
     }
 
     private void showLoading() {
@@ -203,6 +234,14 @@ public class RecommendFragment extends Fragment {
     }
 
     private void loadRecommend() {
+        if (!isNetworkAvailable()) {
+            hideAllLoading();
+            emptyView.setText(getString(R.string.emoticon__no_network));
+            emptyView.setVisibility(View.VISIBLE);
+            gridView.setVisibility(View.GONE);
+            return;
+        }
+
         showLoading();
         currentPage = 1;
         isEnd = false;
@@ -230,6 +269,10 @@ public class RecommendFragment extends Fragment {
                             }
                             videoList.clear();
                             videoList.addAll(items);
+                            int cols = adapter.getNumColumns();
+                            while (videoList.size() % cols != 0) {
+                                videoList.remove(videoList.size() - 1);
+                            }
                             adapter.notifyDataSetChanged();
                             gridView.setVisibility(View.VISIBLE);
                             currentPage = 2;
@@ -260,15 +303,31 @@ public class RecommendFragment extends Fragment {
                         public void run() {
                             if (getActivity() == null) return;
                             hideAllLoading();
-                            emptyView.setText("加载失败: " + e.getMessage());
+                            String msg = e.getMessage();
+                            if (msg != null && (msg.contains("Unable to resolve host") || msg.contains("ConnectException") || msg.contains("SocketException") || msg.contains("timeout") || msg.contains("timed out"))) {
+                                emptyView.setText(getString(R.string.emoticon__no_network));
+                            } else {
+                                emptyView.setText("加载失败: " + msg);
+                            }
                             emptyView.setVisibility(View.VISIBLE);
-                            showToast("加载失败: " + e.getMessage());
                         }
                     });
                     e.printStackTrace();
                 }
             }
         }).start();
+    }
+
+    private boolean isNetworkAvailable() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
+                    getActivity().getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return true;
+            android.net.NetworkInfo info = cm.getActiveNetworkInfo();
+            return info != null && info.isAvailable() && info.isConnected();
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     public void loadMoreRecommend() {
@@ -309,6 +368,10 @@ public class RecommendFragment extends Fragment {
                             }
 
                             videoList.addAll(newItems);
+                            int cols = adapter.getNumColumns();
+                            while (videoList.size() % cols != 0) {
+                                videoList.remove(videoList.size() - 1);
+                            }
                             adapter.notifyDataSetChanged();
                             currentPage = page + 1;
 

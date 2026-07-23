@@ -31,12 +31,21 @@ public class RecommendGridAdapter extends BaseAdapter {
     private static final String TAG = "RecommendAdapter";
     private Context context;
     private List<VideoCard> list;
+    private int numColumns = 2;
     private ExecutorService executor = Executors.newFixedThreadPool(4);
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public RecommendGridAdapter(Context context, List<VideoCard> list) {
         this.context = context;
         this.list = list;
+    }
+
+    public void setNumColumns(int numColumns) {
+        this.numColumns = numColumns;
+    }
+
+    public int getNumColumns() {
+        return numColumns;
     }
 
     @Override
@@ -94,12 +103,17 @@ public class RecommendGridAdapter extends BaseAdapter {
             holder = (ViewHolder) convertView.getTag();
         }
 
+        if (holder.currentCoverUrl != null) {
+            GlobalImageCache.getInstance().release(holder.currentCoverUrl);
+            holder.currentCoverUrl = null;
+        }
+
         int parentWidth = parent.getWidth();
         int containerWidth;
         if (parentWidth > 0) {
-            containerWidth = parentWidth / 2 - dpToPx(6);
+            containerWidth = parentWidth / numColumns - dpToPx(6);
         } else {
-            containerWidth = context.getResources().getDisplayMetrics().widthPixels / 2 - dpToPx(6);
+            containerWidth = context.getResources().getDisplayMetrics().widthPixels / numColumns - dpToPx(6);
         }
         if (containerWidth > 0) {
             int containerHeight = containerWidth * 9 / 16;
@@ -115,6 +129,7 @@ public class RecommendGridAdapter extends BaseAdapter {
             holder.danmaku.setText(item.danmaku > 0 ? String.valueOf(item.danmaku) : "0");
         }
 
+        final ViewHolder fHolder = holder;
         holder.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
 
         if (item != null && item.cover != null && item.cover.length() > 0
@@ -129,9 +144,10 @@ public class RecommendGridAdapter extends BaseAdapter {
 
             coverView.setTag(pos);
 
-            Bitmap cached = GlobalImageCache.getInstance().get(finalUrl);
+            Bitmap cached = GlobalImageCache.getInstance().getAndAcquire(finalUrl);
             if (cached != null && !cached.isRecycled()) {
                 coverView.setImageBitmap(cached);
+                fHolder.currentCoverUrl = finalUrl;
                 return convertView;
             }
 
@@ -141,12 +157,16 @@ public class RecommendGridAdapter extends BaseAdapter {
                     final Bitmap bitmap = downloadImage(finalUrl);
                     if (bitmap != null && !bitmap.isRecycled()) {
                         GlobalImageCache.getInstance().put(finalUrl, bitmap);
+                        GlobalImageCache.getInstance().acquire(finalUrl);
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
                                 Object tag = coverView.getTag();
                                 if (tag != null && tag instanceof Integer && ((Integer) tag) == pos) {
                                     coverView.setImageBitmap(bitmap);
+                                    fHolder.currentCoverUrl = finalUrl;
+                                } else {
+                                    GlobalImageCache.getInstance().release(finalUrl);
                                 }
                             }
                         });
@@ -238,6 +258,8 @@ public class RecommendGridAdapter extends BaseAdapter {
     }
 
     public void clearCache() {
+        executor.shutdownNow();
+        GlobalImageCache.getInstance().clear();
     }
 
     static class ViewHolder {
@@ -246,5 +268,6 @@ public class RecommendGridAdapter extends BaseAdapter {
         TextView title;
         TextView view;
         TextView danmaku;
+        String currentCoverUrl;
     }
 }

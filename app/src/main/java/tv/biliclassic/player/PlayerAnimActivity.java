@@ -51,6 +51,7 @@ public class PlayerAnimActivity extends Activity {
 
     private String videoUrl;
     private String videoTitle;
+    private String coverUrl;
     private long aid;
     private long cid;
     private File cacheFile;
@@ -78,6 +79,7 @@ public class PlayerAnimActivity extends Activity {
 
         videoUrl = getIntent().getStringExtra("video_url");
         videoTitle = getIntent().getStringExtra("video_title");
+        coverUrl = getIntent().getStringExtra("cover_url");
         aid = getIntent().getLongExtra("aid", 0);
         cid = getIntent().getLongExtra("cid", 0);
 
@@ -202,6 +204,9 @@ public class PlayerAnimActivity extends Activity {
         }
         // 用 extra 标记在线模式
         intent.putExtra("online_mode", true);
+        if (coverUrl != null) {
+            intent.putExtra("cover_url", coverUrl);
+        }
         if (isPortrait()) {
             intent.putExtra("is_portrait_loading", true);
         }
@@ -484,6 +489,9 @@ public class PlayerAnimActivity extends Activity {
         if (getIntent().hasExtra("cids")) {
             intent.putExtra("cids", getIntent().getLongArrayExtra("cids"));
             intent.putExtra("pagenames", getIntent().getStringArrayExtra("pagenames"));
+        }
+        if (coverUrl != null) {
+            intent.putExtra("cover_url", coverUrl);
         }
         if (isPortrait()) {
             intent.putExtra("is_portrait_loading", true);

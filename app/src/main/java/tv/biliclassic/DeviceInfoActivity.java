@@ -15,6 +15,8 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.lang.reflect.Field;
 
+import tv.biliclassic.util.DialogUtil;
+
 public class DeviceInfoActivity extends BaseActivity {
 
     private TextView deviceInfoText;
@@ -237,7 +239,7 @@ public class DeviceInfoActivity extends BaseActivity {
     private void showEvaluateDialog() {
         final String evaluateText = getEasterEggComment();
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("设备评价")
                 .setMessage(evaluateText + "\n\n觉得这个评价准确吗？")
                 .setPositiveButton("准确", new DialogInterface.OnClickListener() {
@@ -267,7 +269,7 @@ public class DeviceInfoActivity extends BaseActivity {
         shareIntent.setType("text/plain");
         shareIntent.putExtra(Intent.EXTRA_TEXT,
                 "我的设备信息：\n" + info + "\n\n" +
-                        "来自 BiliClassic - 支持安卓1.6+的B站客户端");
+                        "来自 BiliClassic - 支持安卓1.5+的B站客户端");
         startActivity(Intent.createChooser(shareIntent, "分享"));
     }
 }

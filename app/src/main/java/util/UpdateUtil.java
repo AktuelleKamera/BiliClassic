@@ -27,7 +27,7 @@ import java.util.List;
  * 应用更新检查工具类
  * 支持多分支版本管理 (0.3.x, 0.4.x, 0.5.x, 1.x ...)
  * 支持 enabled 字段控制分支是否开放
- * 兼容 Android 1.6 (API 4) 及以上
+ * 兼容 Android 1.5 (API 3) 及以上
  */
 public class UpdateUtil {
 
@@ -302,7 +302,7 @@ public class UpdateUtil {
                                          String message,
                                          final String downloadUrl,
                                          boolean forceUpdate) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(context));
         builder.setTitle("发现新版本: " + versionName);
         builder.setMessage(message);
 
@@ -336,7 +336,7 @@ public class UpdateUtil {
         msg.append("版本 ").append(latest.latest).append(" (最新版)\n");
         msg.append(latest.changelog);
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(context));
         builder.setTitle("发现新版本");
         builder.setMessage(msg.toString());
 

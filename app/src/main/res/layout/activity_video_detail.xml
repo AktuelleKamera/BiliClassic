@@ -15,7 +15,8 @@
         android:background="#D86DA5" />
 
     <!-- ViewPager 区域（包含 PagerTabStrip） -->
-    <android.support.v4.view.ViewPager
+    <!-- 使用 SafeViewPager 避免 notifyDataSetChanged 时触摸导致 IndexOutOfBoundsException -->
+    <tv.biliclassic.widget.SafeViewPager
         android:id="@+id/viewpager"
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -30,7 +31,7 @@
             android:paddingTop="0dp"
             android:paddingBottom="0dp" />
 
-    </android.support.v4.view.ViewPager>
+    </tv.biliclassic.widget.SafeViewPager>
 
     <!-- 底部按钮区域的顶部分割线 -->
     <View

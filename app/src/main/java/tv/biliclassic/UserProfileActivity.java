@@ -365,7 +365,10 @@ public class UserProfileActivity extends BaseActivity {
 
     private Bitmap downloadImage(String urlStr, boolean isAvatar) {
         if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
+        // 每次下载前主动调用 GC，清理上一个 bitmap 的内存
+        System.gc();
         HttpURLConnection conn = null;
+        InputStream is = null;
         try {
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
@@ -375,12 +378,13 @@ public class UserProfileActivity extends BaseActivity {
             conn.setRequestProperty("Referer", "https://www.bilibili.com/");
             conn.connect();
 
-            InputStream is = conn.getInputStream();
+            is = conn.getInputStream();
 
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
             BitmapFactory.decodeStream(is, null, options);
-            is.close();
+            try { is.close(); } catch (Exception ignored) {}
+            is = null;
 
             int outWidth = options.outWidth;
             int outHeight = options.outHeight;
@@ -393,15 +397,13 @@ public class UserProfileActivity extends BaseActivity {
             int targetWidth = isAvatar ? 64 : 160;
             int targetHeight = isAvatar ? 64 : 90;
 
+            // 计算缩放比例，确保为 2 的幂（低版本 Android 要求）
             int scale = 1;
-            if (outWidth > targetWidth || outHeight > targetHeight) {
-                int widthRatio = outWidth / targetWidth;
-                int heightRatio = outHeight / targetHeight;
-                scale = Math.max(widthRatio, heightRatio);
-                if (scale < 1) scale = 1;
-                if (scale > 8) scale = 8;
+            while (outWidth / scale > targetWidth * 2 && outHeight / scale > targetHeight * 2 && scale < 16) {
+                scale *= 2;
             }
 
+            // 只做一次请求，避免重复下载
             conn.disconnect();
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(12000);
@@ -420,8 +422,16 @@ public class UserProfileActivity extends BaseActivity {
             } catch (Exception ignored) {
             }
 
+            // 如果预计 bitmap 太大，主动跳过
+            int estWidth = outWidth / scale;
+            int estHeight = outHeight / scale;
+            int estBytes = estWidth * estHeight * 2;
+            if (estBytes > 2 * 1024 * 1024) {
+                Log.w("UserProfile", "图片过大，跳过: " + estBytes + " bytes");
+                return null;
+            }
+
             Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
-            is.close();
 
             if (bitmap != null) {
                 int bw = bitmap.getWidth();
@@ -436,10 +446,16 @@ public class UserProfileActivity extends BaseActivity {
             }
 
             return bitmap;
+        } catch (OutOfMemoryError e) {
+            Log.e("UserProfile", "图片解码内存不足: " + e.getMessage());
+            return null;
         } catch (Exception e) {
             Log.e("UserProfile", "下载图片失败: " + e.getMessage());
             return null;
         } finally {
+            if (is != null) {
+                try { is.close(); } catch (Exception ignored) {}
+            }
             if (conn != null) {
                 conn.disconnect();
             }

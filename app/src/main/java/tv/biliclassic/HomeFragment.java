@@ -1,6 +1,7 @@
 package tv.biliclassic;
 
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
@@ -64,7 +65,7 @@ public class HomeFragment extends Fragment {
 
     private void addPartitionSection(final String partitionName, final int tid, final int index) {
         LayoutInflater inflater = LayoutInflater.from(getActivity());
-        View section = inflater.inflate(R.layout.item_partition_section, partitionsContainer, false);
+        final View section = inflater.inflate(R.layout.item_partition_section, partitionsContainer, false);
 
         TextView partitionNameView = (TextView) section.findViewById(R.id.partition_name);
         partitionNameView.setText(partitionName);
@@ -75,7 +76,7 @@ public class HomeFragment extends Fragment {
         ImageView cardFg = (ImageView) section.findViewById(R.id.card_foreground);
         cardFg.setImageResource(CARD_FOREGROUNDS[index]);
 
-        View partitionCard = section.findViewById(R.id.partition_card);
+        final View partitionCard = section.findViewById(R.id.partition_card);
         partitionCard.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -87,15 +88,33 @@ public class HomeFragment extends Fragment {
 
         final ImageView video1 = (ImageView) section.findViewById(R.id.video1_cover);
         final ImageView video2 = (ImageView) section.findViewById(R.id.video2_cover);
+        final ImageView video3 = (ImageView) section.findViewById(R.id.video3_cover);
+        final ImageView video4 = (ImageView) section.findViewById(R.id.video4_cover);
         video1.setScaleType(ImageView.ScaleType.CENTER_CROP);
         video2.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        video3.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        video4.setScaleType(ImageView.ScaleType.CENTER_CROP);
 
-        loadThumbnails(tid, video1, video2);
+        final LinearLayout videoArea = (LinearLayout) section.findViewById(R.id.video_area);
+        final LinearLayout root = (LinearLayout) videoArea.getParent();
+        final View v3c = section.findViewById(R.id.video3_container);
+        final View v4c = section.findViewById(R.id.video4_container);
+        final LinearLayout.LayoutParams vp = (LinearLayout.LayoutParams) videoArea.getLayoutParams();
+        final LinearLayout.LayoutParams cp = (LinearLayout.LayoutParams) partitionCard.getLayoutParams();
 
+        loadThumbnails(tid, new ImageView[]{video1, video2, video3, video4});
         partitionsContainer.addView(section);
+
+        section.post(new Runnable() {
+            public void run() {
+                if (!isAdded()) return;
+                applyTabletSection(section, videoArea, root, partitionCard,
+                        video1, video2, video3, video4, v3c, v4c, vp, cp);
+            }
+        });
     }
 
-    private void loadThumbnails(final int tid, final ImageView video1, final ImageView video2) {
+    private void loadThumbnails(final int tid, final ImageView[] previews) {
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -109,8 +128,9 @@ public class HomeFragment extends Fragment {
                         @Override
                         public void run() {
                             if (getActivity() == null) return;
-                            if (cards.size() > 0) loadCover(video1, cards.get(0));
-                            if (cards.size() > 1) loadCover(video2, cards.get(1));
+                            for (int i = 0; i < previews.length && i < cards.size(); i++) {
+                                loadCover(previews[i], cards.get(i));
+                            }
                         }
                     });
                 } catch (Exception e) {
@@ -118,6 +138,80 @@ public class HomeFragment extends Fragment {
                 }
             }
         }).start();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (partitionsContainer == null) return;
+        if (!getResources().getBoolean(R.bool.is_tablet)) return;
+        for (int i = 0; i < partitionsContainer.getChildCount(); i++) {
+            View section = partitionsContainer.getChildAt(i);
+            LinearLayout videoArea = (LinearLayout) section.findViewById(R.id.video_area);
+            if (videoArea == null) continue;
+            LinearLayout root = (LinearLayout) videoArea.getParent();
+            View partitionCard = section.findViewById(R.id.partition_card);
+            View v3c = section.findViewById(R.id.video3_container);
+            View v4c = section.findViewById(R.id.video4_container);
+            ImageView video1 = (ImageView) section.findViewById(R.id.video1_cover);
+            ImageView video2 = (ImageView) section.findViewById(R.id.video2_cover);
+            ImageView video3 = (ImageView) section.findViewById(R.id.video3_cover);
+            ImageView video4 = (ImageView) section.findViewById(R.id.video4_cover);
+            LinearLayout.LayoutParams vp = (LinearLayout.LayoutParams) videoArea.getLayoutParams();
+            LinearLayout.LayoutParams cp = (LinearLayout.LayoutParams) partitionCard.getLayoutParams();
+            applyTabletSection(section, videoArea, root, partitionCard,
+                    video1, video2, video3, video4, v3c, v4c, vp, cp);
+        }
+    }
+
+    private void applyTabletSection(final View section, final LinearLayout videoArea,
+                                    final LinearLayout root, final View partitionCard,
+                                    final ImageView video1, final ImageView video2,
+                                    final ImageView video3, final ImageView video4,
+                                    final View v3c, final View v4c,
+                                    final LinearLayout.LayoutParams vp,
+                                    final LinearLayout.LayoutParams cp) {
+        if (!isAdded()) return;
+        if (!getResources().getBoolean(R.bool.is_tablet)) return;
+        boolean landscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        v3c.setVisibility(View.VISIBLE);
+        if (landscape) {
+            v4c.setVisibility(View.VISIBLE);
+            video4.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            vp.weight = 4;
+            cp.weight = 3;
+            root.setWeightSum(7);
+        } else {
+            v4c.setVisibility(View.GONE);
+            vp.weight = 3;
+            cp.weight = 3;
+            root.setWeightSum(6);
+        }
+        videoArea.requestLayout();
+        // 权重变化后 ImageView 宽改变，重新应用 4:3 高
+        videoArea.post(new Runnable() {
+            @Override
+            public void run() {
+                if (!isAdded()) return;
+                setCoverRatio(video1);
+                setCoverRatio(video2);
+                setCoverRatio(video3);
+                setCoverRatio(video4);
+            }
+        });
+    }
+
+    private void setCoverRatio(ImageView iv) {
+        ViewGroup.LayoutParams p = iv.getLayoutParams();
+        if (p == null) return;
+        View parent = (View) iv.getParent();
+        if (parent == null) return;
+        int pw = parent.getWidth();
+        if (pw > 0) {
+            p.width = pw;
+            p.height = pw * 3 / 4;
+            iv.setLayoutParams(p);
+        }
     }
 
     private void loadCover(final ImageView imageView, final VideoCard card) {
@@ -129,7 +223,6 @@ public class HomeFragment extends Fragment {
         final String url = coverUrl;
         imageView.setTag(url);
 
-        // 固定尺寸：宽度随父容器（weight=2），高度按 4:3 计算 — 必须在任何图片设置之前执行
         imageView.post(new Runnable() {
             @Override
             public void run() {

@@ -35,6 +35,7 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.UpdateUtil;
 
 import tv.biliclassic.util.SdkHelper;
+import tv.biliclassic.util.DialogUtil;
 public class TvSettingsActivity extends FragmentActivity {
 
     private Runnable mPendingStorageAction;
@@ -42,6 +43,7 @@ public class TvSettingsActivity extends FragmentActivity {
     private Button btnThreads, btnPlayer, btnDecoder, btnDecoderSettings, btnRendererType, btnDanmakuEngine;
     private Button btnQuality, btnHomeTab, btnCookie, btnClearCache, btnClearPlayCache, btnCrashLog;
     private Button btnEchoHole, btnDeviceInfo, btnCheckUpdate, btnAbout;
+    private Button btnDialogStyle;
     private CheckBox checkboxOnlinePlay, checkboxLandscape, checkboxModernMode, checkboxForceTvMode;
     private LinearLayout onlinePlayItem, landscapeItem, modernModeItem, forceTvModeItem;
 
@@ -87,6 +89,7 @@ public class TvSettingsActivity extends FragmentActivity {
         btnDeviceInfo = (Button) findViewById(R.id.btn_device_info);
         btnCheckUpdate = (Button) findViewById(R.id.btn_check_update);
         btnAbout = (Button) findViewById(R.id.btn_about);
+        btnDialogStyle = (Button) findViewById(R.id.btn_dialog_style);
         checkboxOnlinePlay = (CheckBox) findViewById(R.id.checkbox_online_play);
         onlinePlayItem = (LinearLayout) findViewById(R.id.online_play_item);
         checkboxLandscape = (CheckBox) findViewById(R.id.checkbox_landscape);
@@ -234,6 +237,10 @@ public class TvSettingsActivity extends FragmentActivity {
                 startActivity(new Intent(TvSettingsActivity.this, DeviceInfoActivity.class));
             }
         });
+        btnDialogStyle.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) { showDialogStyleDialog(); }
+        });
         btnCheckUpdate.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) { checkForUpdate(); }
@@ -310,7 +317,7 @@ public class TvSettingsActivity extends FragmentActivity {
             if (decoderValues[i] == current) checked = i;
         }
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("解码方式")
                 .setSingleChoiceItems(decoders, checked, new DialogInterface.OnClickListener() {
                     @Override
@@ -335,7 +342,7 @@ public class TvSettingsActivity extends FragmentActivity {
             if (values[i] == current) checked = i;
         }
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("视频渲染方式")
                 .setSingleChoiceItems(modes, checked, new DialogInterface.OnClickListener() {
                     @Override
@@ -356,7 +363,7 @@ public class TvSettingsActivity extends FragmentActivity {
         int current = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, 0);
         int checked = Math.min(current, 1);
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("弹幕引擎")
                 .setSingleChoiceItems(modes, checked, new DialogInterface.OnClickListener() {
                     @Override
@@ -381,7 +388,7 @@ public class TvSettingsActivity extends FragmentActivity {
             if (values[i] == current) checked = i;
         }
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("图片加载线程")
                 .setSingleChoiceItems(items, checked, new DialogInterface.OnClickListener() {
                     @Override
@@ -418,7 +425,7 @@ public class TvSettingsActivity extends FragmentActivity {
         for (int i = 0; i < playerValues.length; i++) {
             if (playerValues[i] == current) checked = i;
         }
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("默认播放器")
                 .setSingleChoiceItems(players, checked, new DialogInterface.OnClickListener() {
                     @Override
@@ -443,7 +450,7 @@ public class TvSettingsActivity extends FragmentActivity {
             if (values[i] == current) checked = i;
         }
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("视频画质")
                 .setSingleChoiceItems(qualities, checked, new DialogInterface.OnClickListener() {
                     @Override
@@ -468,7 +475,7 @@ public class TvSettingsActivity extends FragmentActivity {
             if (values[i] == current) checked = i;
         }
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("默认首页")
                 .setSingleChoiceItems(tabs, checked, new DialogInterface.OnClickListener() {
                     @Override
@@ -485,7 +492,7 @@ public class TvSettingsActivity extends FragmentActivity {
     // ---- Cookie 管理 ----
 
     private void showCookieDialog() {
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("Cookie 管理")
                 .setItems(new String[]{"保存到本地", "复制到剪切板", "从本地导入", "从剪切板导入"}, new DialogInterface.OnClickListener() {
                     @Override
@@ -603,7 +610,7 @@ public class TvSettingsActivity extends FragmentActivity {
         input.setText(clipText);
         input.setMinLines(3);
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("粘贴 Cookie 内容")
                 .setView(input)
                 .setPositiveButton("导入", new DialogInterface.OnClickListener() {
@@ -656,7 +663,7 @@ public class TvSettingsActivity extends FragmentActivity {
     // ---- 缓存 ----
 
     private void showClearImageCacheDialog() {
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("清除图片缓存")
                 .setMessage("将清除头像缓存和番剧封面缓存")
                 .setPositiveButton("清除", new DialogInterface.OnClickListener() {
@@ -693,7 +700,7 @@ public class TvSettingsActivity extends FragmentActivity {
     }
 
     private void showClearPlayCacheDialog() {
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("清除播放缓存")
                 .setMessage("确定要清除所有视频缓存吗？")
                 .setPositiveButton("清除", new DialogInterface.OnClickListener() {
@@ -765,7 +772,7 @@ public class TvSettingsActivity extends FragmentActivity {
         for (File f : files) size += f.length();
 
         final int fileCount = count;
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("崩溃日志")
                 .setMessage("共 " + count + " 个文件，总计 " + formatSize(size) + "\n确定要删除吗？")
                 .setPositiveButton("删除", new DialogInterface.OnClickListener() {
@@ -845,7 +852,7 @@ public class TvSettingsActivity extends FragmentActivity {
                                     String msg = text + "\n\n" + author;
                                     if (device != null && device.length() > 0) msg += "\n来自 " + device;
                                     msg += "\n" + time;
-                                    new AlertDialog.Builder(TvSettingsActivity.this)
+                                    new AlertDialog.Builder(DialogUtil.wrap(TvSettingsActivity.this))
                                             .setTitle("回声洞")
                                             .setMessage(msg)
                                             .setPositiveButton("关闭", null)
@@ -903,12 +910,51 @@ public class TvSettingsActivity extends FragmentActivity {
     // ---- 关于 ----
 
     private void showAboutDialog() {
-        String version = "0.4.8";
+        String version = "0.4.9";
         try { version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) {}
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("关于")
                 .setMessage("BiliClassic TV\n版本: " + version + "\n\n专为电视遥控器优化的简洁界面")
                 .setPositiveButton("确定", null)
+                .show();
+    }
+
+    private void showDialogStyleDialog() {
+        int sdkInt = tv.biliclassic.util.SdkHelper.getSdkInt();
+        final String[] items;
+        final int[] values;
+        if (sdkInt >= 21) {
+            items = new String[]{"自动适配", "经典样式", "Holo", "Material"};
+            values = new int[]{1, 2, 3};
+        } else {
+            items = new String[]{"自动适配", "经典样式", "Holo"};
+            values = new int[]{1, 2};
+        }
+        int current = tv.biliclassic.util.SharedPreferencesUtil.getInt(
+                tv.biliclassic.util.SharedPreferencesUtil.DIALOG_STYLE, 0);
+        int checkedIndex = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == current) {
+                checkedIndex = i;
+                break;
+            }
+        }
+        new android.app.AlertDialog.Builder(tv.biliclassic.util.DialogUtil.wrap(this))
+                .setTitle("选择弹窗样式")
+                .setSingleChoiceItems(items, checkedIndex, new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        int val = values[which];
+                        tv.biliclassic.util.SharedPreferencesUtil.putInt(
+                                tv.biliclassic.util.SharedPreferencesUtil.DIALOG_STYLE, val);
+                        btnDialogStyle.setText(
+                                val == 0 ? "自动适配" : val == 1 ? "经典样式" : val == 2 ? "Holo" : "Material");
+                        android.widget.Toast.makeText(TvSettingsActivity.this,
+                                "已切换", android.widget.Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("取消", null)
                 .show();
     }
 }

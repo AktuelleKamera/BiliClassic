@@ -36,6 +36,7 @@ import tv.biliclassic.api.FavoriteApi;
 import tv.biliclassic.api.ReplyApi;
 import tv.biliclassic.util.ReplyHelper;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class CommentFragment extends Fragment {
@@ -62,6 +63,9 @@ public class CommentFragment extends Fragment {
     private boolean isLoading = false;
     private boolean isEnd = false;
     private boolean isRestoring = false;
+    private boolean isViewCreated = false;
+    private boolean isVisibleToUser = false;
+    private boolean hasLoaded = false;
 
     private static class CachedComments {
         List<CommentItem> items;
@@ -267,9 +271,26 @@ public class CommentFragment extends Fragment {
             savedScrollPosition = savedInstanceState.getInt("savedScrollPosition", -1);
         }
 
-        loadComments();
+        isViewCreated = true;
+        lazyLoad();
 
         return view;
+    }
+
+    @Override
+    public void setUserVisibleHint(boolean isVisibleToUser) {
+        super.setUserVisibleHint(isVisibleToUser);
+        this.isVisibleToUser = isVisibleToUser;
+        if (isViewCreated) {
+            lazyLoad();
+        }
+    }
+
+    private void lazyLoad() {
+        if (isVisibleToUser && !hasLoaded) {
+            hasLoaded = true;
+            loadComments();
+        }
     }
 
     @Override
@@ -420,6 +441,7 @@ public class CommentFragment extends Fragment {
             adapter.notifyDataSetChanged();
         }
         savedScrollPosition = 0;
+        hasLoaded = true;
         loadComments();
     }
 
@@ -580,15 +602,7 @@ public class CommentFragment extends Fragment {
                 headers.add(cookies);
             }
 
-            String response = NetWorkUtil.get(url, headers);
-            Log.e(TAG, "评论 API 响应长度: " + (response == null ? "null" : String.valueOf(response.length())));
-
-            if (response == null || response.length() == 0) {
-                showError("网络返回为空");
-                return;
-            }
-
-            JSONObject json = new JSONObject(response);
+            JSONObject json = NetWorkUtil.getJsonStream(url, headers);
             int code = json.optInt("code", -1);
             String message = json.optString("message", "");
             Log.e(TAG, "评论 API code: " + code + ", message: " + message);
@@ -636,10 +650,16 @@ public class CommentFragment extends Fragment {
                     Log.e(TAG, "data 为 null");
                     showEmpty("暂无评论");
                 }
+            } else if (code == 12002 || (message != null && message.contains("关闭"))) {
+                Log.e(TAG, "UP 已关闭评论区");
+                showEmpty("UP已关闭评论区");
             } else {
                 Log.e(TAG, "API 返回错误: " + message);
                 showError("加载失败: " + message);
             }
+        } catch (final OutOfMemoryError e) {
+            Log.e(TAG, "评论数据过大，内存不足");
+            showError("评论数据过大，无法加载");
         } catch (final Exception e) {
             Log.e(TAG, "加载评论异常: " + e.getMessage(), e);
             showError("加载失败: " + e.getMessage());
@@ -862,14 +882,7 @@ public class CommentFragment extends Fragment {
                         headers.add(cookies);
                     }
 
-                    String response = NetWorkUtil.get(url, headers);
-
-                    if (response == null || response.length() == 0) {
-                        showLoadMoreError("网络返回为空");
-                        return;
-                    }
-
-                    JSONObject json = new JSONObject(response);
+                    JSONObject json = NetWorkUtil.getJsonStream(url, headers);
                     int code = json.optInt("code", -1);
                     Log.e(TAG, "加载更多 code: " + code);
 
@@ -897,6 +910,9 @@ public class CommentFragment extends Fragment {
                         String message = json.optString("message", "加载失败");
                         showLoadMoreError(message);
                     }
+                } catch (final OutOfMemoryError e) {
+                    Log.e(TAG, "评论数据过大，内存不足");
+                    showLoadMoreError("评论数据过大");
                 } catch (final Exception e) {
                     Log.e(TAG, "加载更多异常: " + e.getMessage(), e);
                     showLoadMoreError("加载失败: " + e.getMessage());
@@ -1045,8 +1061,6 @@ public class CommentFragment extends Fragment {
 
         final LinearLayout layout = new LinearLayout(getActivity());
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(dpToPx(16), 0, dpToPx(16), 0);
-
         final EditText input = new EditText(getActivity());
         input.setHint(hint);
         input.setLines(3);
@@ -1124,7 +1138,7 @@ public class CommentFragment extends Fragment {
         });
         layout.addView(clearText, lp);
 
-        final AlertDialog dialog = new AlertDialog.Builder(getActivity())
+        final AlertDialog dialog = new AlertDialog.Builder(DialogUtil.wrap(getActivity()))
                 .setTitle(isNewComment ? "发评论" : "发送回复")
                 .setView(layout)
                 .setPositiveButton("发送", new DialogInterface.OnClickListener() {
@@ -1217,7 +1231,7 @@ public class CommentFragment extends Fragment {
     }
 
     private void showEmojiPicker(final EditText input) {
-        final android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(getActivity());
+        final android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(DialogUtil.wrap(getActivity()));
         builder.setTitle("选择表情");
 
         final android.widget.ScrollView scroll = new android.widget.ScrollView(getActivity());

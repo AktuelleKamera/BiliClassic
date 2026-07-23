@@ -1,6 +1,5 @@
 package tv.biliclassic;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
@@ -15,7 +14,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import tv.biliclassic.util.SdkHelper;
 
-public class WebViewActivity extends Activity {
+public class WebViewActivity extends BaseActivity {
 
     private WebView webView;
     private TextView tvTitle;

@@ -73,7 +73,7 @@ public class CrashReportActivity extends BaseActivity {
         shareIntent.putExtra(Intent.EXTRA_TEXT,
                 "BiliClassic 崩溃日志：\n\n" + info + "\n\n" +
                         "——————\n" +
-                        "来自 BiliClassic - 支持安卓1.6+的B站客户端");
+                        "来自 BiliClassic - 支持安卓1.5+的B站客户端");
         startActivity(Intent.createChooser(shareIntent, "分享崩溃日志"));
     }
 }

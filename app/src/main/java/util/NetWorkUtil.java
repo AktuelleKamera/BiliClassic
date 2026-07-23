@@ -20,6 +20,7 @@ import android.util.Log;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -530,28 +531,41 @@ public class NetWorkUtil {
             return "";
         }
 
-        // 初始 128KB，上限 2MB（防止超大响应撑爆低端设备堆内存）
-        java.io.CharArrayWriter caw = new java.io.CharArrayWriter(128 * 1024);
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-        char[] buffer = new char[4096];
+        // 定长块列表，避免 ByteArrayOutputStream 翻倍分配的堆碎片 OOM
+        java.util.ArrayList chunks = new java.util.ArrayList();
+        byte[] buffer = new byte[4096];
         int total = 0;
-        int maxChars = 2 * 1024 * 1024;
+        int maxBytes = 1024 * 1024;
         int len;
-        while ((len = reader.read(buffer, 0, buffer.length)) != -1) {
-            total += len;
-            if (total > maxChars) {
-                reader.close();
-                is.close();
-                caw.close();
-                throw new java.io.IOException("响应数据过大 (" + total + " 字节)");
+        try {
+            while ((len = is.read(buffer, 0, buffer.length)) != -1) {
+                total += len;
+                if (total > maxBytes) {
+                    throw new java.io.IOException("响应数据过大 (" + total + " 字节)");
+                }
+                byte[] chunk = new byte[len];
+                System.arraycopy(buffer, 0, chunk, 0, len);
+                chunks.add(chunk);
             }
-            caw.write(buffer, 0, len);
+        } finally {
+            is.close();
         }
-        reader.close();
-        is.close();
 
-        String result = caw.toString();
-        caw.close();
+        String result;
+        try {
+            byte[] allBytes = new byte[total];
+            int offset = 0;
+            for (int i = 0; i < chunks.size(); i++) {
+                byte[] chunk = (byte[]) chunks.get(i);
+                System.arraycopy(chunk, 0, allBytes, offset, chunk.length);
+                offset += chunk.length;
+            }
+            chunks.clear();
+            result = new String(allBytes, "UTF-8");
+        } catch (OutOfMemoryError e) {
+            chunks.clear();
+            throw new java.io.IOException("响应数据过大，内存不足");
+        }
 
         String setCookie = conn.getHeaderField("Set-Cookie");
         if (setCookie != null && setCookie.length() > 0) {
@@ -559,6 +573,46 @@ public class NetWorkUtil {
         }
 
         return result;
+    }
+
+    // 流式解析 JSON，避免大响应构造 String（byte[]+char[] 双倍内存）
+    public static JSONObject getJsonStream(String url, ArrayList headers) throws IOException, JSONException {
+        HttpURLConnection conn = null;
+        InputStream is = null;
+        try {
+            conn = createConnection(url, "GET", headers);
+            conn.connect();
+            int responseCode = conn.getResponseCode();
+            is = responseCode >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            if (is == null) {
+                throw new JSONException("在访问 " + url + " 时返回数据为空");
+            }
+
+            // 反射调用 JSONTokener(Reader)（API 10+），无 String 分配
+            java.io.Reader reader = new java.io.InputStreamReader(is, "UTF-8");
+            try {
+                java.lang.reflect.Constructor c = JSONTokener.class.getConstructor(java.io.Reader.class);
+                JSONTokener tokener = (JSONTokener) c.newInstance(reader);
+                reader.close(); is.close(); is = null;
+                String setCookie = conn.getHeaderField("Set-Cookie");
+                if (setCookie != null && setCookie.length() > 0) saveCookieFromHeader(setCookie);
+                return new JSONObject(tokener);
+            } catch (Exception ignored) {
+                // API < 10：JSONTokener(Reader) 不存在，走老方式
+            }
+            // 原始连接已消耗，断开后重新请求
+            try { reader.close(); } catch (Exception ignored) {}
+            try { is.close(); } catch (Exception ignored) {}
+            conn.disconnect();
+            conn = null;
+            is = null;
+
+            String text = get(url, headers);
+            return new JSONObject(text);
+        } finally {
+            if (is != null) try { is.close(); } catch (Exception ignored) {}
+            if (conn != null) conn.disconnect();
+        }
     }
 
     private static synchronized void saveCookieFromHeader(String setCookie) {

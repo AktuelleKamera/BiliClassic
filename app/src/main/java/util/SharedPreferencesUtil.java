@@ -64,6 +64,7 @@ public class SharedPreferencesUtil {
     public static final String INCOGNITO_MODE = "incognito_mode";
     public static final String ENABLE_GESTURE = "player_enable_gesture";
     public static final String DOWNLOAD_FORMAT = "download_format"; // "mp4" 或 "original"
+    public static final String DIALOG_STYLE = "dialog_style";
 
     // CookieGenerator 需要的 key
     public static final String BUVid3 = "buvid3";

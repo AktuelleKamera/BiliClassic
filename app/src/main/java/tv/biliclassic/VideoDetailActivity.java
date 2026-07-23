@@ -51,6 +51,7 @@ import tv.biliclassic.util.BroadcastConstants;
 import tv.biliclassic.model.FavoriteFolder;
 import tv.biliclassic.model.VideoInfo;
 import tv.biliclassic.util.PermissionUtil;
+import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class VideoDetailActivity extends BaseActivity {
@@ -594,7 +595,7 @@ public class VideoDetailActivity extends BaseActivity {
         final String finalShareText = shareText;
         final String finalShareUrl = shareUrl;
         final String[] shareOptions = {"复制链接", "分享到...", "取消"};
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("分享视频")
                 .setItems(shareOptions, new DialogInterface.OnClickListener() {
                     @Override
@@ -627,8 +628,6 @@ public class VideoDetailActivity extends BaseActivity {
     private void showSendCommentDialog() {
         final LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(dpToPx(16), 0, dpToPx(16), 0);
-
         final EditText input = new EditText(this);
         input.setHint("输入评论内容...");
         input.setLines(3);
@@ -710,7 +709,7 @@ public class VideoDetailActivity extends BaseActivity {
         });
         layout.addView(clearText, lp);
 
-        final AlertDialog dialog = new AlertDialog.Builder(this)
+        final AlertDialog dialog = new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("发送评论")
                 .setView(layout)
                 .setPositiveButton("发送", new DialogInterface.OnClickListener() {
@@ -907,7 +906,7 @@ public class VideoDetailActivity extends BaseActivity {
     }
 
     private void showEmojiPicker(final EditText input) {
-        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        final AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(this));
         builder.setTitle("选择表情");
 
         final android.widget.ScrollView scroll = new android.widget.ScrollView(this);
@@ -1064,7 +1063,7 @@ public class VideoDetailActivity extends BaseActivity {
             return;
         }
         final String[] items = {"点赞", "投币", "收藏", "三连"};
-        new AlertDialog.Builder(VideoDetailActivity.this)
+        new AlertDialog.Builder(DialogUtil.wrap(VideoDetailActivity.this))
                 .setTitle("互动操作")
                 .setItems(items, new DialogInterface.OnClickListener() {
                     @Override
@@ -1099,7 +1098,7 @@ public class VideoDetailActivity extends BaseActivity {
                             }).start();
                         } else if (which == 1) {
                             final String[] coinItems = {"1枚硬币", "2枚硬币"};
-                            new AlertDialog.Builder(VideoDetailActivity.this)
+                            new AlertDialog.Builder(DialogUtil.wrap(VideoDetailActivity.this))
                                     .setTitle("投币")
                                     .setItems(coinItems, new DialogInterface.OnClickListener() {
                                         @Override
@@ -1252,14 +1251,14 @@ public class VideoDetailActivity extends BaseActivity {
                                 }
                             };
 
-                            new AlertDialog.Builder(VideoDetailActivity.this)
+                            new AlertDialog.Builder(DialogUtil.wrap(VideoDetailActivity.this))
                                     .setTitle("选择收藏夹")
                                     .setAdapter(adapter, new DialogInterface.OnClickListener() {
                                         @Override
                                         public void onClick(DialogInterface dialog, int which) {
                                             final long fid = folderIds[which];
                                             if (favStates[which]) {
-                                                new AlertDialog.Builder(VideoDetailActivity.this)
+                                                new AlertDialog.Builder(DialogUtil.wrap(VideoDetailActivity.this))
                                                         .setTitle("删除收藏")
                                                         .setMessage("是否从该收藏夹中删除？")
                                                         .setPositiveButton("删除", new DialogInterface.OnClickListener() {
@@ -1395,7 +1394,7 @@ public class VideoDetailActivity extends BaseActivity {
                 title = "该视频";
             }
         }
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("删除离线视频")
                 .setMessage("确定要删除 \"" + title + "\" 的离线缓存吗？")
                 .setPositiveButton("删除", new DialogInterface.OnClickListener() {
@@ -1497,7 +1496,7 @@ public class VideoDetailActivity extends BaseActivity {
         final PageListAdapter adapter = new PageListAdapter();
         listView.setAdapter(adapter);
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(this));
         builder.setTitle("选择分P和画质");
         builder.setView(dialogView);
         builder.setPositiveButton("下载", new DialogInterface.OnClickListener() {

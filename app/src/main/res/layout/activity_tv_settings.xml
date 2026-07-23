@@ -483,6 +483,22 @@
                 android:clickable="true" />
 
             <Button
+                android:id="@+id/btn_dialog_style"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="left|center_vertical"
+                android:text="弹窗样式"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:fontFamily="sans-serif-light"
+                android:textStyle="normal"
+                android:background="@drawable/tv_tile_bg"
+                android:padding="20dp"
+                android:layout_marginBottom="12dp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <Button
                 android:id="@+id/btn_check_update"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

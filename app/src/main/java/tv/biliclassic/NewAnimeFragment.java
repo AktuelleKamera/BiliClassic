@@ -1,6 +1,7 @@
 package tv.biliclassic;
 
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
@@ -61,6 +62,7 @@ public class NewAnimeFragment extends Fragment {
     private int screenHeight = 0;
     private boolean dataLoaded = false;
     private boolean isDestroyed = false;
+    private List<AnimeItem> animeItems;
 
     private File cacheDir;
 
@@ -167,6 +169,14 @@ public class NewAnimeFragment extends Fragment {
         return false;
     }
 
+    private boolean isTablet() {
+        return getResources().getBoolean(R.bool.is_tablet);
+    }
+
+    private boolean isOrientationLandscape() {
+        return getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+    }
+
     private boolean isNetworkAvailable() {
         try {
             android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
@@ -176,6 +186,23 @@ public class NewAnimeFragment extends Fragment {
             return info != null && info.isConnected();
         } catch (Exception e) {
             return true;
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (getActivity() == null || isDestroyed) return;
+        android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+        screenWidth = dm.widthPixels;
+        screenHeight = dm.heightPixels;
+        if (isLandscapeDevice() && screenWidth < screenHeight) {
+            int temp = screenWidth;
+            screenWidth = screenHeight;
+            screenHeight = temp;
+        }
+        if (animeItems != null && animeItems.size() > 0) {
+            displayAnimeList(animeItems);
         }
     }
 
@@ -663,17 +690,79 @@ public class NewAnimeFragment extends Fragment {
             return;
         }
 
+        animeItems = items;
         gridContainer.removeAllViews();
+
+        boolean tabletMode = isTablet();
 
         int index = 0;
         int largeCardIndex = 0;
         while (index < items.size()) {
             if (index % 3 == 0) {
-                boolean isFirstLarge = (largeCardIndex == 0);
-                View largeView = createLargeCard(items.get(index), isFirstLarge);
-                gridContainer.addView(largeView);
+                if (tabletMode && index + 2 < items.size()) {
+                    android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+                    int displayWidth = dm.widthPixels;
+                    boolean isLandscape = displayWidth > dm.heightPixels;
+                    // 横屏大卡占 2/3，竖屏大卡占 3/5
+                    int largeWidth = isLandscape ? displayWidth * 2 / 3 : displayWidth * 3 / 5;
+                    int smallWidth = displayWidth - largeWidth - dpToPx(4);
+                    int smallHeight = smallWidth / 3;
+                    int rowHeight = smallHeight * 2 + dpToPx(4);
+
+                    // 偶数行：大卡左、小卡右竖排；奇数行：小卡左竖排、大卡右
+                    boolean isEven = (largeCardIndex % 2 == 0);
+
+                    // 两张小卡竖排容器
+                    LinearLayout smallColumn = new LinearLayout(getActivity());
+                    smallColumn.setOrientation(LinearLayout.VERTICAL);
+                    smallColumn.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, rowHeight));
+
+                    View sm1 = createSmallCard(items.get(index + 1), smallWidth, false);
+                    sm1.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, smallHeight));
+                    smallColumn.addView(sm1);
+
+                    View gap = new View(getActivity());
+                    gap.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, dpToPx(4)));
+                    smallColumn.addView(gap);
+
+                    View sm2 = createSmallCard(items.get(index + 2), smallWidth, false);
+                    sm2.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, smallHeight));
+                    smallColumn.addView(sm2);
+
+                    // 大卡
+                    View largeView = createLargeCardForRow(items.get(index), largeCardIndex == 0, largeWidth);
+                    largeView.setLayoutParams(new LinearLayout.LayoutParams(largeWidth, rowHeight));
+
+                    // 组装行
+                    LinearLayout row = new LinearLayout(getActivity());
+                    row.setOrientation(LinearLayout.HORIZONTAL);
+                    LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, rowHeight);
+                    if (largeCardIndex == 0) {
+                        rowLp.setMargins(0, 0, 0, dpToPx(2));
+                    } else {
+                        rowLp.setMargins(0, dpToPx(2), 0, dpToPx(2));
+                    }
+                    row.setLayoutParams(rowLp);
+
+                    if (isEven) {
+                        row.addView(largeView);
+                        addRowDivider(row);
+                        row.addView(smallColumn);
+                    } else {
+                        row.addView(smallColumn);
+                        addRowDivider(row);
+                        row.addView(largeView);
+                    }
+                    gridContainer.addView(row);
+                    index += 3;
+                } else {
+                    boolean isFirstLarge = (largeCardIndex == 0);
+                    View largeView = createLargeCard(items.get(index), isFirstLarge);
+                    gridContainer.addView(largeView);
+                    index++;
+                }
                 largeCardIndex++;
-                index++;
             } else {
                 LinearLayout row = new LinearLayout(getActivity());
                 row.setOrientation(LinearLayout.HORIZONTAL);
@@ -706,11 +795,15 @@ public class NewAnimeFragment extends Fragment {
     }
 
     private View createLargeCard(final AnimeItem item, boolean isFirst) {
+        return createLargeCard(item, isFirst, screenWidth, true);
+    }
+
+    private View createLargeCard(final AnimeItem item, boolean isFirst, int width, boolean addMargins) {
         if (isDestroyed || getActivity() == null) {
             return new View(getActivity());
         }
 
-        int cardHeight = screenWidth / 2;
+        int cardHeight = width / 2;
         int maxHeight = (int) (screenHeight * 0.45f);
         if (cardHeight > maxHeight) {
             cardHeight = maxHeight;
@@ -721,13 +814,13 @@ public class NewAnimeFragment extends Fragment {
 
         View card = LayoutInflater.from(getActivity()).inflate(R.layout.item_anime_large, null);
 
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                cardHeight);
-        if (isFirst) {
-            params.setMargins(0, 0, 0, dpToPx(2));
-        } else {
-            params.setMargins(0, dpToPx(2), 0, dpToPx(2));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(width, cardHeight);
+        if (addMargins) {
+            if (isFirst) {
+                params.setMargins(0, 0, 0, dpToPx(2));
+            } else {
+                params.setMargins(0, dpToPx(2), 0, dpToPx(2));
+            }
         }
         card.setLayoutParams(params);
 
@@ -752,14 +845,31 @@ public class NewAnimeFragment extends Fragment {
         return card;
     }
 
+    /**
+     * 横屏平板专用：大卡与小卡混合行，不单独设置边距（由行统一控制）
+     */
+    private View createLargeCardForRow(final AnimeItem item, boolean isFirst, int width) {
+        return createLargeCard(item, isFirst, width, false);
+    }
+
+    private void addRowDivider(LinearLayout row) {
+        View divider = new View(getActivity());
+        divider.setLayoutParams(new LinearLayout.LayoutParams(dpToPx(4), LinearLayout.LayoutParams.MATCH_PARENT));
+        row.addView(divider);
+    }
+
     private View createSmallCard(final AnimeItem item) {
+        int dividerWidth = dpToPx(4);
+        int itemWidth = (screenWidth - dividerWidth) / 2;
+        return createSmallCard(item, itemWidth, true);
+    }
+
+    private View createSmallCard(final AnimeItem item, int width, boolean addMargins) {
         if (isDestroyed || getActivity() == null) {
             return new View(getActivity());
         }
 
-        int dividerWidth = dpToPx(4);
-        int itemWidth = (screenWidth - dividerWidth) / 2;
-        int cardHeight = itemWidth / 2;
+        int cardHeight = width / 2;
         int maxHeight = (int) (screenHeight * 0.4f);
         if (cardHeight > maxHeight) {
             cardHeight = maxHeight;
@@ -770,10 +880,10 @@ public class NewAnimeFragment extends Fragment {
 
         View card = LayoutInflater.from(getActivity()).inflate(R.layout.item_anime_small, null);
 
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                itemWidth,
-                cardHeight);
-        params.setMargins(0, dpToPx(2), 0, dpToPx(2));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(width, cardHeight);
+        if (addMargins) {
+            params.setMargins(0, dpToPx(2), 0, dpToPx(2));
+        }
         card.setLayoutParams(params);
 
         TextView tvTitle = (TextView) card.findViewById(R.id.anime_title);

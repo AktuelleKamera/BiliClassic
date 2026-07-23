@@ -25,6 +25,7 @@ import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.BroadcastConstants;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.StringUtil;
 
 public class RelatedVideosFragment extends Fragment {
@@ -130,7 +131,7 @@ public class RelatedVideosFragment extends Fragment {
                                 folderIds[i] = folder.fid;
                             }
 
-                            new AlertDialog.Builder(getActivity())
+                            new AlertDialog.Builder(DialogUtil.wrap(getActivity()))
                                     .setTitle("选择收藏夹")
                                     .setItems(folderNames, new DialogInterface.OnClickListener() {
                                         @Override

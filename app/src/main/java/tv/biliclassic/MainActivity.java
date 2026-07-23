@@ -34,6 +34,7 @@ import tv.biliclassic.util.DeviceInfoUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.DialogUtil;
 
 public class MainActivity extends BaseActivity {
 
@@ -67,7 +68,7 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    // 兼容 Android 1.6 获取 SDK 版本
+    // 兼容 Android 1.5 获取 SDK 版本
     private int getSdkInt() {
         try {
             java.lang.reflect.Field field = android.os.Build.VERSION.class.getField("SDK_INT");
@@ -389,7 +390,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void showAutoUpdateDialog(String versionName, String changelog, final String downloadUrl, boolean forceUpdate) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(this));
         builder.setTitle("发现新版本: " + versionName);
 
         String message = "当前: " + currentVersionName + "\n" +
@@ -554,7 +555,7 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("上次程序异常退出")
                 .setMessage("程序上次运行时发生了异常，是否查看详细信息？")
                 .setPositiveButton("查看", new DialogInterface.OnClickListener() {
@@ -705,7 +706,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void showLandscapeTipDialog() {
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("设备适配提示")
                 .setMessage("您的设备已自动适配横屏模式，以获得更好的使用体验。\n\n如您不需要横屏，可在「设置」中关闭哦~")
                 .setPositiveButton("知道了", new DialogInterface.OnClickListener() {
@@ -803,7 +804,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void showMenuLogoutDialog() {
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("真的要离开了吗…？")
                 .setMessage("呜…你确定要退出登录吗？\n退出后就不能愉快地看番了哦 (；′⌒`)")
                 .setPositiveButton("留下来", new DialogInterface.OnClickListener() {
@@ -828,7 +829,7 @@ public class MainActivity extends BaseActivity {
         if (DeviceInfoUtil.isLegacy) {
             boolean isLegacyDevice = DeviceInfoUtil.isLegacyDevice();
             if (!isLegacyDevice) {
-                new AlertDialog.Builder(this)
+                new AlertDialog.Builder(DialogUtil.wrap(this))
                         .setTitle("版本提示")
                         .setMessage("检测到您的设备并非清朝老设备，但您正在运行 Legacy（超低配）版本。\n\n建议下载使用完整版 BiliClassic，以获得更好的体验和更多功能。")
                         .setPositiveButton("立即下载", new DialogInterface.OnClickListener() {

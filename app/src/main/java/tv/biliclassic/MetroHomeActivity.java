@@ -289,6 +289,12 @@ public class MetroHomeActivity extends BaseActivity {
         }
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
+    }
+
     private int dpToPx(int dp) {
         return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
     }

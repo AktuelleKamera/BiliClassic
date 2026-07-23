@@ -21,6 +21,7 @@ import java.util.List;
 import tv.biliclassic.api.FavoriteApi;
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class FavoriteVideoListActivity extends BaseActivity {
@@ -118,7 +119,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
     }
 
     private void showDeleteConfirm(final int position) {
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("提示")
                 .setMessage("确定要从收藏夹中删除该视频吗？")
                 .setPositiveButton("确定", new DialogInterface.OnClickListener() {

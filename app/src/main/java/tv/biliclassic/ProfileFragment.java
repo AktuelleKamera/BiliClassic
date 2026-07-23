@@ -36,6 +36,7 @@ import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.UpdateUtil;
+import tv.biliclassic.util.DialogUtil;
 
 public class ProfileFragment extends Fragment {
 
@@ -465,7 +466,7 @@ public class ProfileFragment extends Fragment {
     }
 
     private void showLogoutDialog() {
-        new AlertDialog.Builder(getActivity())
+        new AlertDialog.Builder(DialogUtil.wrap(getActivity()))
                 .setTitle("真的要离开了吗…？")
                 .setMessage("呜…你确定要退出登录吗？\n退出后就不能愉快地看番了哦 (；′⌒`)")
                 .setPositiveButton("留下来", new DialogInterface.OnClickListener() {

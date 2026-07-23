@@ -219,4 +219,10 @@ public abstract class BaseActivity extends FragmentActivity {
             }
         }
     }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        tv.biliclassic.util.GlobalImageCache.getInstance().clear();
+    }
 }

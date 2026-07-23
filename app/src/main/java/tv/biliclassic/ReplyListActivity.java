@@ -47,14 +47,20 @@ import java.util.Locale;
 
 import tv.biliclassic.api.ReplyApi;
 import tv.biliclassic.model.Reply;
+import java.util.HashSet;
+import java.util.Set;
+
+import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.ReplyHelper;
+import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class ReplyListActivity extends BaseActivity {
 
     private static final String TAG = "ReplyListActivity";
     private Handler mainHandler = new Handler(Looper.getMainLooper());
+    private Set<String> loadingUrls = new HashSet<String>();
     private ListView lv;
     private TextView tvTitle;
     private TextView tvEmpty;
@@ -293,7 +299,7 @@ public class ReplyListActivity extends BaseActivity {
                                     final String text = rootCommentMessage;
                                     if (text != null && text.length() > 0) {
                                         if (rootMid == finalMid && finalMid != 0) {
-                                            AlertDialog.Builder builder = new AlertDialog.Builder(ReplyListActivity.this);
+                                            AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(ReplyListActivity.this));
                                             builder.setItems(new String[]{"复制评论", "删除评论"}, new DialogInterface.OnClickListener() {
                                                 @Override
                                                 public void onClick(DialogInterface dialog, int which) {
@@ -862,7 +868,18 @@ public class ReplyListActivity extends BaseActivity {
         if (urlStr.startsWith("https://")) {
             urlStr = "http://" + urlStr.substring(8);
         }
+
+        Bitmap cached = GlobalImageCache.getInstance().get(urlStr);
+        if (cached != null && !cached.isRecycled()) {
+            imageView.setImageBitmap(cached);
+            return;
+        }
+
         final String finalUrl = urlStr;
+        synchronized (loadingUrls) {
+            if (loadingUrls.contains(finalUrl)) return;
+            loadingUrls.add(finalUrl);
+        }
 
         new Thread(new Runnable() {
             @Override
@@ -910,6 +927,7 @@ public class ReplyListActivity extends BaseActivity {
                     conn.disconnect();
 
                     if (bitmap != null && !bitmap.isRecycled()) {
+                        GlobalImageCache.getInstance().put(finalUrl, bitmap);
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
@@ -922,6 +940,9 @@ public class ReplyListActivity extends BaseActivity {
                 } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
+                    synchronized (loadingUrls) {
+                        loadingUrls.remove(finalUrl);
+                    }
                     if (conn != null) {
                         try { conn.disconnect(); } catch (Exception e) {}
                     }
@@ -1001,8 +1022,6 @@ public class ReplyListActivity extends BaseActivity {
 
         final LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(dpToPx(16), 0, dpToPx(16), 0);
-
         final EditText input = new EditText(this);
         input.setHint(hint);
         input.setLines(3);
@@ -1062,7 +1081,7 @@ public class ReplyListActivity extends BaseActivity {
 
         final long parentRpid = reply != null ? reply.rpid : 0;
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("发送回复")
                 .setView(layout)
                 .setPositiveButton("发送", new DialogInterface.OnClickListener() {
@@ -1087,7 +1106,7 @@ public class ReplyListActivity extends BaseActivity {
     }
 
     private void showEmojiPicker(final EditText input) {
-        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        final AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(this));
         builder.setTitle("选择表情");
 
         final android.widget.ScrollView scroll = new android.widget.ScrollView(this);

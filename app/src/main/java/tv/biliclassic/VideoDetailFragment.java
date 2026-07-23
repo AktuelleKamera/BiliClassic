@@ -652,8 +652,21 @@ public class VideoDetailFragment extends Fragment {
 
         if (videoInfo.description != null && videoInfo.description.length() > 0) {
             tvDesc.setText(videoInfo.description);
+            tvDesc.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    android.text.ClipboardManager cm = (android.text.ClipboardManager)
+                            getActivity().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+                    if (cm != null) {
+                        cm.setText(videoInfo.description);
+                        android.widget.Toast.makeText(getActivity(), "简介已复制", android.widget.Toast.LENGTH_SHORT).show();
+                    }
+                    return true;
+                }
+            });
         } else {
             tvDesc.setText("暂无简介");
+            tvDesc.setOnLongClickListener(null);
         }
 
         if (tvPubDate != null) {
@@ -879,6 +892,9 @@ public class VideoDetailFragment extends Fragment {
                                         intent.putExtra("cid", targetCid);
                                         intent.putExtra("online_mode", true);
                                         intent.putExtra("part_index", tempPartIndex);
+                                        if (videoInfo != null) {
+                                            intent.putExtra("cover_url", videoInfo.cover);
+                                        }
                                         if (cidArray != null) {
                                             intent.putExtra("cids", cidArray);
                                             intent.putExtra("pagenames", partNameArray);
@@ -938,6 +954,9 @@ public class VideoDetailFragment extends Fragment {
                                     intent.putExtra("aid", tempAid);
                                     intent.putExtra("cid", targetCid);
                                     intent.putExtra("part_index", tempPartIndex);
+                                    if (videoInfo != null) {
+                                        intent.putExtra("cover_url", videoInfo.cover);
+                                    }
                                     if (cidArray != null) {
                                         intent.putExtra("cids", cidArray);
                                         intent.putExtra("pagenames", partNameArray);
@@ -1031,6 +1050,9 @@ public class VideoDetailFragment extends Fragment {
             intent.putExtra("danmaku_cache_path", danmakuFile.getAbsolutePath());
         }
         intent.putExtra("offline_mode", true);
+        if (videoInfo != null) {
+            intent.putExtra("cover_url", videoInfo.cover);
+        }
         intent.putExtra("current_qn", qualityQn);
         if (qualityName != null && qualityName.length() > 0) {
             intent.putExtra("qn_str_array", new String[]{qualityName});

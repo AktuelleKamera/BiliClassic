@@ -35,6 +35,7 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.UpdateUtil;
 
 import tv.biliclassic.util.SdkHelper;
+import tv.biliclassic.util.DialogUtil;
 public class SettingsActivity extends BaseActivity {
 
     // 播放器偏好
@@ -165,6 +166,19 @@ public class SettingsActivity extends BaseActivity {
             });
         }
 
+        // 弹窗样式选择
+        LinearLayout dialogStyleItem = (LinearLayout) findViewById(R.id.dialog_style_item);
+        final TextView dialogStyleText = (TextView) findViewById(R.id.dialog_style_text);
+        updateDialogStyleDisplay(dialogStyleText);
+        if (dialogStyleItem != null) {
+            dialogStyleItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showDialogStyleDialog(dialogStyleText);
+                }
+            });
+        }
+
         // 横屏适配开关
         final CheckBox landscapeCheckbox = (CheckBox) findViewById(R.id.checkbox_landscape);
         LinearLayout landscapeItem = (LinearLayout) findViewById(R.id.landscape_item);
@@ -258,7 +272,7 @@ public class SettingsActivity extends BaseActivity {
                         if (isChecked) {
                             int playerPref = getPlayerPreference();
                             if (playerPref != PLAYER_BUILTIN) {
-                                new AlertDialog.Builder(SettingsActivity.this)
+                                new AlertDialog.Builder(DialogUtil.wrap(SettingsActivity.this))
                                         .setTitle("提示")
                                         .setMessage("在线播放需要配合内置播放器使用。\n\n是否切换到内置播放器并开启在线播放？")
                                         .setPositiveButton("切换并开启", new DialogInterface.OnClickListener() {
@@ -779,7 +793,7 @@ public class SettingsActivity extends BaseActivity {
             }
         }
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("选择视频画质")
                 .setSingleChoiceItems(qualities, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
@@ -836,7 +850,7 @@ public class SettingsActivity extends BaseActivity {
             }
         }
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("视频渲染方式")
                 .setSingleChoiceItems(modes, checkedIndex, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
@@ -863,7 +877,7 @@ public class SettingsActivity extends BaseActivity {
         int current = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, 0);
         int checkedIndex = Math.min(current, 1);
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("弹幕引擎")
                 .setSingleChoiceItems(modes, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
@@ -913,7 +927,7 @@ public class SettingsActivity extends BaseActivity {
             }
         }
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("选择默认首页")
                 .setSingleChoiceItems(tabNames, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
@@ -964,7 +978,7 @@ public class SettingsActivity extends BaseActivity {
             }
         }
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("选择默认播放器")
                 .setSingleChoiceItems(players, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
@@ -1036,7 +1050,7 @@ public class SettingsActivity extends BaseActivity {
             }
         }
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("选择解码方式")
                 .setSingleChoiceItems(decoders, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
@@ -1069,7 +1083,7 @@ public class SettingsActivity extends BaseActivity {
         }
         if (checkedIndex == 1 && current != 3) checkedIndex = 2;
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("图片加载线程")
                 .setSingleChoiceItems(items, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
@@ -1094,7 +1108,7 @@ public class SettingsActivity extends BaseActivity {
         int current = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 3);
         input.setText(String.valueOf(current == -1 ? 3 : current));
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("自定义线程数（1-15）")
                 .setView(input)
                 .setPositiveButton("确定", new DialogInterface.OnClickListener() {
@@ -1109,7 +1123,7 @@ public class SettingsActivity extends BaseActivity {
                                 return;
                             }
                             if (val > 5) {
-                                new AlertDialog.Builder(SettingsActivity.this)
+                                new AlertDialog.Builder(DialogUtil.wrap(SettingsActivity.this))
                                         .setTitle("警告：线程数偏大")
                                         .setMessage("当前设置 " + val + " 个线程，超过安全建议值（5）。部分手机可能出现频繁卡顿甚至闪退的问题。若遇到此类问题，建议回到此处重新调低。\n\n确定继续吗？")
                                         .setPositiveButton("仍然设置", new DialogInterface.OnClickListener() {
@@ -1136,6 +1150,49 @@ public class SettingsActivity extends BaseActivity {
         SharedPreferencesUtil.putInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, val);
         updateImageThreadDisplay(textView);
         Toast.makeText(SettingsActivity.this, "重启应用后生效", Toast.LENGTH_SHORT).show();
+    }
+
+    private void showDialogStyleDialog(final TextView textView) {
+        int sdkInt = tv.biliclassic.util.SdkHelper.getSdkInt();
+        final String[] items;
+        final int[] values;
+        if (sdkInt >= 21) {
+            items = new String[]{"自动适配", "经典样式", "Holo", "Material"};
+            values = new int[]{0, 1, 2, 3};
+        } else {
+            items = new String[]{"自动适配", "经典样式", "Holo"};
+            values = new int[]{0, 1, 2};
+        }
+        int current = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DIALOG_STYLE, 0);
+        int checkedIndex = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == current) {
+                checkedIndex = i;
+                break;
+            }
+        }
+        new android.app.AlertDialog.Builder(tv.biliclassic.util.DialogUtil.wrap(this))
+                .setTitle("选择弹窗样式")
+                .setSingleChoiceItems(items, checkedIndex, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        int val = values[which];
+                        SharedPreferencesUtil.putInt(SharedPreferencesUtil.DIALOG_STYLE, val);
+                        updateDialogStyleDisplay(textView);
+                        Toast.makeText(SettingsActivity.this, "已切换", Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void updateDialogStyleDisplay(TextView textView) {
+        int val = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DIALOG_STYLE, 0);
+        if (val == 0) textView.setText("自动适配");
+        else if (val == 1) textView.setText("经典样式");
+        else if (val == 2) textView.setText("Holo");
+        else if (val == 3) textView.setText("Material");
     }
 
     // 缓存管理
@@ -1210,7 +1267,7 @@ public class SettingsActivity extends BaseActivity {
     private void showClearCacheDialog() {
         long totalSize = getTotalCacheSize();
         String sizeText = formatFileSize(totalSize);
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("清除图片缓存")
                 .setMessage("将清除以下缓存：\n\n• 头像缓存\n• 番剧封面缓存\n\n共 " + sizeText + "，清除后下次启动会自动重新下载。")
                 .setPositiveButton("清除", new DialogInterface.OnClickListener() {
@@ -1348,7 +1405,7 @@ public class SettingsActivity extends BaseActivity {
         }
 
         String totalSize = formatFileSize(getPlayCacheTotalSize());
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("清除播放缓存")
                 .setMessage("确定要清除所有播放缓存吗？\n" +
                         "共 " + fileCount + " 个视频文件，总计 " + totalSize + "\n" +
@@ -1398,7 +1455,7 @@ public class SettingsActivity extends BaseActivity {
     }
 
     private void showCookieDialog() {
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("Cookie管理")
                 .setItems(new String[]{"保存到本地", "复制到剪切板", "从本地导入", "从剪切板导入"}, new DialogInterface.OnClickListener() {
                     @Override
@@ -1514,7 +1571,7 @@ public class SettingsActivity extends BaseActivity {
         input.setText(clipText);
         input.setMinLines(3);
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("粘贴Cookie内容")
                 .setView(input)
                 .setPositiveButton("导入", new DialogInterface.OnClickListener() {
@@ -1616,7 +1673,7 @@ public class SettingsActivity extends BaseActivity {
         }
 
         String sizeText = formatFileSize(getCrashLogTotalSize());
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("删除崩溃日志")
                 .setMessage("确定要删除所有崩溃日志吗？\n共 " + count + " 个文件，总计 " + sizeText)
                 .setPositiveButton("删除", new DialogInterface.OnClickListener() {
@@ -1698,7 +1755,7 @@ public class SettingsActivity extends BaseActivity {
                                         msg += "\n来自 " + device;
                                     }
                                     msg += "\n" + time;
-                                    new AlertDialog.Builder(SettingsActivity.this)
+                                    new AlertDialog.Builder(DialogUtil.wrap(SettingsActivity.this))
                                             .setTitle("回声洞")
                                             .setMessage(msg)
                                             .setPositiveButton("关闭", null)

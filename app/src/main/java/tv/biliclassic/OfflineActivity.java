@@ -48,6 +48,7 @@ import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.player.BiliPlayerActivity;
 
+import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SdkHelper;
 public class OfflineActivity extends BaseActivity {
 
@@ -281,7 +282,7 @@ public class OfflineActivity extends BaseActivity {
     private void showDeleteDialog(final OfflineItem item) {
         String displayTitle = (item.pageTitle != null && item.pageTitle.length() > 0)
                 ? item.pageTitle : item.title;
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("删除视频")
                 .setMessage("确定要删除 \"" + displayTitle + "\" 吗？")
                 .setPositiveButton("删除", new DialogInterface.OnClickListener() {

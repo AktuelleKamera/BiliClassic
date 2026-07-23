@@ -4,10 +4,13 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
+import android.util.SparseArray;
 import android.view.View;
+import android.view.ViewGroup;
 import android.net.Uri;
 import android.widget.ImageButton;
 import android.widget.TextView;
@@ -19,7 +22,6 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.List;
 
 import tv.biliclassic.util.FileProviderCompat;
 import tv.biliclassic.util.GlobalImageCache;
@@ -30,7 +32,6 @@ import tv.biliclassic.widget.PhotoViewPager;
 import tv.biliclassic.util.SdkHelper;
 public class ImageViewerActivity extends BaseActivity {
 
-    // 判断是否现代设备（内存充足，Android 4.0+ 且内存大于 48MB）
     private static final boolean IS_MODERN_DEVICE;
 
     static {
@@ -48,81 +49,34 @@ public class ImageViewerActivity extends BaseActivity {
         IS_MODERN_DEVICE = isModern;
     }
 
+    private PhotoViewPager viewPager;
+    private TextView textView;
+    private ArrayList<String> imageList;
+    private ImagePagerAdapter adapter;
+    private boolean isDestroyed = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_image_viewer);
 
         final Intent intent = getIntent();
-        final ArrayList<String> imageList = intent.getStringArrayListExtra("imageList");
+        imageList = intent.getStringArrayListExtra("imageList");
         final int startIndex = intent.getIntExtra("index", 0);
 
-        final PhotoViewPager viewPager = (PhotoViewPager) findViewById(R.id.viewPager);
-        final TextView textView = (TextView) findViewById(R.id.text_page);
+        viewPager = (PhotoViewPager) findViewById(R.id.viewPager);
+        textView = (TextView) findViewById(R.id.text_page);
 
-        final List<View> photoViewList = new ArrayList<View>();
+        adapter = new ImagePagerAdapter();
+        viewPager.setAdapter(adapter);
 
-        final GlobalImageCache cache = GlobalImageCache.getInstance();
-
-        // 加载所有图片
-        for (int i = 0; i < imageList.size(); i++) {
-            final PhotoView photoView = new PhotoView(ImageViewerActivity.this);
-            final String url = imageList.get(i);
-
-            // 先检查缓存
-            Bitmap cached = cache.get(url);
-            if (cached != null && !cached.isRecycled()) {
-                photoView.setImageBitmap(cached);
-                setMaxScale(photoView, 6.25f);
-                photoViewList.add(photoView);
-                continue;
-            }
-
-            // 异步加载图片
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        String imageUrl = url;
-                        if (imageUrl.startsWith("https://")) {
-                            imageUrl = "http://" + imageUrl.substring(8);
-                        }
-                        final Bitmap bitmap = downloadImage(imageUrl);
-                        if (bitmap != null && !bitmap.isRecycled()) {
-                            cache.put(url, bitmap);
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    photoView.setImageBitmap(bitmap);
-                                    setMaxScale(photoView, 6.25f);
-                                }
-                            });
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            }).start();
-
-            photoViewList.add(photoView);
-        }
-
-        // 适配器
-        tv.biliclassic.adapter.ViewPagerViewAdapter vpiAdapter =
-                new tv.biliclassic.adapter.ViewPagerViewAdapter(photoViewList);
-
-        viewPager.setAdapter(vpiAdapter);
-
-        // 跳转到指定页码
         if (startIndex > 0 && startIndex < imageList.size()) {
             viewPager.setCurrentItem(startIndex);
         }
 
-        // 初始化页码显示
         textView.setText("第" + (viewPager.getCurrentItem() + 1) + "/" + imageList.size() + "张");
 
-        // 页码切换监听
-        viewPager.setOnPageChangeListener(new android.support.v4.view.ViewPager.OnPageChangeListener() {
+        viewPager.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
             @SuppressLint("SetTextI18n")
             @Override
             public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
@@ -138,33 +92,103 @@ public class ImageViewerActivity extends BaseActivity {
             public void onPageScrollStateChanged(int state) {}
         });
 
-        // 下载按钮
         ImageButton btnDownload = (ImageButton) findViewById(R.id.btn_download);
         btnDownload.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 int position = viewPager.getCurrentItem();
                 if (position < 0 || position >= imageList.size()) return;
-                String url = imageList.get(position);
-                saveImageToGallery(url);
+                saveImageToGallery(imageList.get(position));
             }
         });
     }
 
-    // 兼容方法
+    @Override
+    protected void onDestroy() {
+        isDestroyed = true;
+        super.onDestroy();
+    }
 
-    // 通过反射调用 setMaximumScale（兼容 PhotoView 不同版本）
+    private class ImagePagerAdapter extends PagerAdapter {
+        private SparseArray<PhotoView> views = new SparseArray<PhotoView>();
+
+        @Override
+        public int getCount() {
+            return imageList.size();
+        }
+
+        @Override
+        public boolean isViewFromObject(View view, Object object) {
+            return view == object;
+        }
+
+        @Override
+        public Object instantiateItem(ViewGroup container, int position) {
+            PhotoView photoView = new PhotoView(ImageViewerActivity.this);
+            photoView.setLayoutParams(new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+
+            String url = imageList.get(position);
+            Bitmap cached = GlobalImageCache.getInstance().getAndAcquire(url);
+            if (cached != null && !cached.isRecycled()) {
+                photoView.setImageBitmap(cached);
+                setMaxScale(photoView, 6.25f);
+            } else {
+                loadImageForView(photoView, url, position);
+            }
+
+            container.addView(photoView);
+            views.put(position, photoView);
+            return photoView;
+        }
+
+        @Override
+        public void destroyItem(ViewGroup container, int position, Object object) {
+            PhotoView photoView = (PhotoView) object;
+            String url = imageList.get(position);
+            GlobalImageCache.getInstance().release(url);
+            container.removeView(photoView);
+            views.remove(position);
+        }
+    }
+
+    private void loadImageForView(final PhotoView photoView, final String url, final int position) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                if (isDestroyed) return;
+                String imageUrl = url;
+                if (imageUrl.startsWith("https://")) {
+                    imageUrl = "http://" + imageUrl.substring(8);
+                }
+                final Bitmap bitmap = downloadImage(imageUrl);
+                if (bitmap != null && !bitmap.isRecycled()) {
+                    GlobalImageCache.getInstance().put(url, bitmap);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (isDestroyed) return;
+                            if (adapter.views.get(position) == photoView) {
+                                photoView.setImageBitmap(bitmap);
+                                GlobalImageCache.getInstance().acquire(url);
+                                setMaxScale(photoView, 6.25f);
+                            }
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+
     private void setMaxScale(PhotoView photoView, float maxScale) {
         if (photoView == null) return;
         try {
             java.lang.reflect.Method method = PhotoView.class.getMethod("setMaximumScale", float.class);
             method.invoke(photoView, maxScale);
         } catch (Exception e) {
-            // 如果 PhotoView 没有这个方法，忽略
         }
     }
-
-    // 保存图片（重新下载原图）
 
     private void saveImageToGallery(final String url) {
         if (!PermissionUtil.hasWriteStorage(this)) {
@@ -180,7 +204,6 @@ public class ImageViewerActivity extends BaseActivity {
             @Override
             public void run() {
                 try {
-                    // 重新下载原图（不采样，用于保存）
                     final Bitmap originalBitmap = downloadOriginalImage(url);
                     if (originalBitmap == null || originalBitmap.isRecycled()) {
                         runOnUiThread(new Runnable() {
@@ -223,12 +246,10 @@ public class ImageViewerActivity extends BaseActivity {
         }).start();
     }
 
-    // 下载原图（用于保存，尽量保持清晰）
     private Bitmap downloadOriginalImage(String urlStr) {
         HttpURLConnection conn = null;
         InputStream is = null;
         try {
-            // Android 2.3 兼容：https 转 http
             if (urlStr.startsWith("https://")) {
                 urlStr = "http://" + urlStr.substring(8);
             }
@@ -242,13 +263,11 @@ public class ImageViewerActivity extends BaseActivity {
 
             is = conn.getInputStream();
 
-            // 只做最基础的采样，防止 OOM
             BitmapFactory.Options opts = new BitmapFactory.Options();
             opts.inJustDecodeBounds = true;
             BitmapFactory.decodeStream(is, null, opts);
             is.close();
 
-            // 如果图片太大，适当采样防止 OOM（但尽量保持清晰）
             int sampleSize = 1;
             int maxDimension = Math.max(opts.outWidth, opts.outHeight);
             if (maxDimension > 4000) {
@@ -286,12 +305,9 @@ public class ImageViewerActivity extends BaseActivity {
         }
     }
 
-    // 保存到文件
-
     private File saveBitmapToFile(Bitmap bitmap, String fileName) throws Exception {
         File targetFile = null;
 
-        // 优先尝试保存到 SD 卡 Pictures 目录
         try {
             String state = Environment.getExternalStorageState();
             if (Environment.MEDIA_MOUNTED.equals(state) && PermissionUtil.hasWriteStorage(this)) {
@@ -314,10 +330,8 @@ public class ImageViewerActivity extends BaseActivity {
                 }
             }
         } catch (Exception e) {
-            // 外部存储失败，继续尝试内部存储
         }
 
-        // 如果 SD 卡保存失败，降级到内部存储
         if (targetFile == null) {
             File internalDir = new File(getFilesDir(), "Pictures");
             if (!internalDir.exists()) {
@@ -333,7 +347,6 @@ public class ImageViewerActivity extends BaseActivity {
         return targetFile;
     }
 
-    // 通知图库刷新
     private void notifyGallery(File file) {
         try {
             Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
@@ -343,17 +356,13 @@ public class ImageViewerActivity extends BaseActivity {
             mediaScanIntent.setData(uri);
             sendBroadcast(mediaScanIntent);
         } catch (Exception e) {
-            // 忽略
         }
     }
-
-    // 显示图片下载（根据设备动态采样）
 
     private Bitmap downloadImage(String urlStr) {
         HttpURLConnection conn = null;
         InputStream is = null;
         try {
-            // Android 2.3 兼容：https 转 http
             if (urlStr.startsWith("https://")) {
                 urlStr = "http://" + urlStr.substring(8);
             }
@@ -374,11 +383,9 @@ public class ImageViewerActivity extends BaseActivity {
 
             int sampleSize;
 
-            // 现代设备：显示原图（ARGB_8888）
             if (IS_MODERN_DEVICE) {
                 sampleSize = 1;
             } else {
-                // 老设备：根据图片尺寸降采样
                 sampleSize = 4;
                 int maxDimension = Math.max(opts.outWidth, opts.outHeight);
                 if (maxDimension > 2000) {
@@ -410,7 +417,6 @@ public class ImageViewerActivity extends BaseActivity {
             return BitmapFactory.decodeStream(is, null, opts);
         } catch (OutOfMemoryError e) {
             System.gc();
-            // OOM 时固定用 8 倍采样重试
             try {
                 if (conn != null) conn.disconnect();
                 conn = (HttpURLConnection) new URL(urlStr).openConnection();
@@ -438,7 +444,7 @@ public class ImageViewerActivity extends BaseActivity {
             }
         }
     }
-    
+
     private static File getExternalStoragePublicDirectoryPictures() {
         try {
             String type = (String) Environment.class.getField("DIRECTORY_PICTURES").get(null);

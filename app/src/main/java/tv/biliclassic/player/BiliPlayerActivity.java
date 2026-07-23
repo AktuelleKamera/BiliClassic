@@ -14,6 +14,8 @@ import android.os.Bundle;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
@@ -44,6 +46,9 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
@@ -73,8 +78,10 @@ import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import tv.biliclassic.widget.BatteryView2;
 import tv.biliclassic.util.DeviceInfoUtil;
 import tv.biliclassic.util.FileProviderCompat;
+import tv.biliclassic.util.MediaSessionHelper;
 import util.LocalStreamProxy;
 
+import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SdkHelper;
 public class BiliPlayerActivity extends Activity implements
         SurfaceHolder.Callback,
@@ -153,6 +160,10 @@ public class BiliPlayerActivity extends Activity implements
 
     private boolean isPlaying = false;
     private boolean isPrepared = false;
+    private MediaSessionHelper mediaSessionHelper;
+    private Runnable mRehideNavRunnable = new Runnable() {
+        public void run() { hideSystemUI(); }
+    };
     private boolean mIsFirstInit = true;
     private boolean mPlaybackCompleted;
     private boolean controlsVisible = true;
@@ -166,6 +177,14 @@ public class BiliPlayerActivity extends Activity implements
     private long mAid;
     private long mCid;
     private long mLastBackPressTime = 0;
+    private static final long OK_DOUBLE_CLICK_INTERVAL = 300;
+    private Handler mOkHandler = new Handler();
+    private Runnable mOkSingleClick = new Runnable() {
+        public void run() {
+            if (!isPrepared) return;
+            showControlsWithAutoHide();
+        }
+    };
     private boolean mAllowDecoderFallback = true;
     private int mLastReportProgress = -1;
     private FileInputStream mFileInputStream;
@@ -356,13 +375,16 @@ public class BiliPlayerActivity extends Activity implements
             }
         }
         if (SdkHelper.getSdkInt() >= 19) {
-            getWindow().getDecorView().setSystemUiVisibility(
-                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    | android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    | android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    | android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
-                    | android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    | android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+            hideSystemUI();
+            getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(
+                new android.view.View.OnSystemUiVisibilityChangeListener() {
+                    public void onSystemUiVisibilityChange(int visibility) {
+                        if ((visibility & android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION) == 0) {
+                            handler.removeCallbacks(mRehideNavRunnable);
+                            handler.postDelayed(mRehideNavRunnable, 3000);
+                        }
+                    }
+                });
         }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF000000));
@@ -387,6 +409,39 @@ public class BiliPlayerActivity extends Activity implements
         videoUrl = getIntent().getStringExtra("video_url");
         videoTitle = getIntent().getStringExtra("video_title");
         cachePath = getIntent().getStringExtra("cache_path");
+        final String coverUrl = getIntent().getStringExtra("cover_url");
+
+        mediaSessionHelper = new MediaSessionHelper(this, BiliPlayerActivity.class);
+        mediaSessionHelper.setPlayPauseListener(new MediaSessionHelper.PlayPauseListener() {
+            @Override
+            public void onPlayPause() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        togglePlayPause();
+                    }
+                });
+            }
+        });
+        if (coverUrl != null && coverUrl.length() > 0) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    final Bitmap bitmap = loadCoverBitmap(coverUrl);
+                    if (bitmap != null) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (mediaSessionHelper != null) {
+                                    mediaSessionHelper.setCoverBitmap(bitmap);
+                                    mediaSessionHelper.setMetadata(videoTitle, "");
+                                }
+                            }
+                        });
+                    }
+                }
+            }).start();
+        }
         isLiveStream = getIntent().getBooleanExtra("live", false);
         boolean onlineMode = getIntent().getBooleanExtra("online_mode", false);
         decoderType = SettingsActivity.getDecoderType();
@@ -460,16 +515,16 @@ public class BiliPlayerActivity extends Activity implements
 
         if (DeviceInfoUtil.isUnsupportedCpu()) {
             if (!DeviceInfoUtil.isLegacy) {
-                new AlertDialog.Builder(this)
-                        .setTitle("设备不支持")
-                        .setMessage("ARMv5TE 或无 VFP 的 ARMv6 设备无法使用内置播放器，请关闭\"在线播放\"后下载视频，使用第三方播放器播放。")
-                        .setPositiveButton("继续尝试", null)
-                        .setNegativeButton("确定", new android.content.DialogInterface.OnClickListener() {
-                            public void onClick(android.content.DialogInterface dialog, int which) {
-                                finish();
-                            }
-                        })
-                        .show();
+        new AlertDialog.Builder(DialogUtil.wrap(this))
+                .setTitle("设备不支持")
+                .setMessage("ARMv5TE 或无 VFP 的 ARMv6 设备无法使用内置播放器，请关闭\"在线播放\"后下载视频，使用第三方播放器播放。")
+                .setPositiveButton("继续尝试", null)
+                .setNegativeButton("确定", new android.content.DialogInterface.OnClickListener() {
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        finish();
+                    }
+                })
+                .show();
                 return;
             }
         }
@@ -1939,6 +1994,9 @@ public class BiliPlayerActivity extends Activity implements
                             public void run() {
                                 videoUrl = newUrl;
                                 videoTitle = newTitle;
+                                if (mediaSessionHelper != null) {
+                                    mediaSessionHelper.setMetadata(videoTitle, "");
+                                }
                                 mCid = newCid;
                                 mCurrentPartIndex = newPartIndex;
                                 if (newQnStrs != null && newQnVals != null) {
@@ -1999,7 +2057,7 @@ public class BiliPlayerActivity extends Activity implements
         for (int i = 0; i < mCids.length; i++) {
             items[i] = (i + 1) + ". " + (mPartNames != null && i < mPartNames.length ? mPartNames[i] : "P" + (i + 1));
         }
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("选集")
                 .setSingleChoiceItems(items, mCurrentPartIndex, new android.content.DialogInterface.OnClickListener() {
                     public void onClick(android.content.DialogInterface dialog, int which) {
@@ -2363,6 +2421,9 @@ public class BiliPlayerActivity extends Activity implements
         }
         mp.start();
         isPlaying = true;
+        if (mediaSessionHelper != null) {
+            mediaSessionHelper.setMetadata(videoTitle, "");
+        }
         updatePlayPauseButton();
         if (mSeekWhenPrepared > 0) {
             updateTimeDisplay();
@@ -3115,7 +3176,7 @@ public class BiliPlayerActivity extends Activity implements
             msg.append("时长: ").append(duration);
         }
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle("视频信息")
                 .setMessage(msg.toString())
                 .setPositiveButton("确定", null)
@@ -3216,9 +3277,24 @@ public class BiliPlayerActivity extends Activity implements
         }
     }
 
+    private void hideSystemUI() {
+        if (SdkHelper.getSdkInt() >= 19) {
+            getWindow().getDecorView().setSystemUiVisibility(
+                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    | android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    | android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | android.view.View.SYSTEM_UI_FLAG_IMMERSIVE);
+        }
+    }
+
     private void updatePlayPauseButton() {
         if (btnPlayPause != null) {
             btnPlayPause.setImageLevel(isPlaying ? 1 : 0);
+        }
+        if (mediaSessionHelper != null) {
+            mediaSessionHelper.setPlaying(isPlaying);
         }
     }
 
@@ -3296,6 +3372,10 @@ public class BiliPlayerActivity extends Activity implements
             }
             if (tvCurrentTime != null) {
                 tvCurrentTime.setText(formatTime((int) current));
+            }
+
+            if (mediaSessionHelper != null) {
+                mediaSessionHelper.updatePlaybackPosition(current, duration);
             }
 
             int progressMs = (int) current;
@@ -3377,6 +3457,7 @@ public class BiliPlayerActivity extends Activity implements
         if (mQualityManager != null) mQualityManager.hideQualityList();
         controlsVisible = false;
         handler.removeMessages(MSG_HIDE_CONTROLS);
+        hideSystemUI();
     }
 
     private void showControlsWithAutoHide() {
@@ -3404,6 +3485,30 @@ public class BiliPlayerActivity extends Activity implements
             return String.format("%02d:%02d:%02d", hours, minutes, seconds);
         }
         return String.format("%02d:%02d", minutes, seconds);
+    }
+
+    private Bitmap loadCoverBitmap(String urlStr) {
+        if (urlStr == null || urlStr.length() == 0) return null;
+        HttpURLConnection conn = null;
+        InputStream is = null;
+        try {
+            URL url = new URL(urlStr);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(8000);
+            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
+            conn.connect();
+            is = conn.getInputStream();
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inSampleSize = 2;
+            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+            return BitmapFactory.decodeStream(is, null, opts);
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (is != null) { try { is.close(); } catch (Exception ignored) {} }
+            if (conn != null) conn.disconnect();
+        }
     }
 
     @Override
@@ -3599,6 +3704,18 @@ public class BiliPlayerActivity extends Activity implements
             return true;
         }
 
+        if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER
+                && event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (!isPrepared) return true;
+            if (mOkHandler.hasMessages(0)) {
+                mOkHandler.removeMessages(0);
+                togglePlayPause();
+            } else {
+                mOkHandler.postDelayed(mOkSingleClick, OK_DOUBLE_CLICK_INTERVAL);
+            }
+            return true;
+        }
+
         return super.dispatchKeyEvent(event);
     }
 
@@ -3622,6 +3739,10 @@ public class BiliPlayerActivity extends Activity implements
         if (mGestureController != null) {
             mGestureController.release();
             mGestureController = null;
+        }
+        if (mediaSessionHelper != null) {
+            mediaSessionHelper.release();
+            mediaSessionHelper = null;
         }
         handler.removeCallbacksAndMessages(null);
         if (mQualityManager != null) {

@@ -49,6 +49,7 @@ import java.util.concurrent.TimeUnit;
 
 import tv.biliclassic.api.ReplyApi;
 import tv.biliclassic.util.GlobalImageCache;
+import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class ReplyListAdapter extends BaseAdapter {
@@ -59,6 +60,7 @@ public class ReplyListAdapter extends BaseAdapter {
     private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
+    private Set<String> loadingUrls = new HashSet<String>();
     private boolean isScrolling = false;
     private Set<Long> expandedRpids = new HashSet<Long>();
     private float mDensity;
@@ -158,7 +160,7 @@ public class ReplyListAdapter extends BaseAdapter {
                                     if (itemMid == mMid && mMid != 0) {
                                         final long oid = h.oid;
                                         final long rpid = h.rpid;
-                                        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                                        AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(context));
                                         builder.setItems(new String[]{"复制评论", "删除评论"}, new DialogInterface.OnClickListener() {
                                             @Override
                                             public void onClick(DialogInterface dialog, int which) {
@@ -469,9 +471,20 @@ public class ReplyListAdapter extends BaseAdapter {
 
     private void loadReplyImage(final ImageView imageView, String urlStr) {
         if (urlStr == null || urlStr.length() == 0) return;
-        final String finalUrl = urlStr;
 
-        new Thread(new Runnable() {
+        Bitmap cached = GlobalImageCache.getInstance().get(urlStr);
+        if (cached != null && !cached.isRecycled()) {
+            imageView.setImageBitmap(cached);
+            return;
+        }
+
+        synchronized (loadingUrls) {
+            if (loadingUrls.contains(urlStr)) return;
+            loadingUrls.add(urlStr);
+        }
+
+        final String finalUrl = urlStr;
+        executor.execute(new Runnable() {
             @Override
             public void run() {
                 HttpURLConnection conn = null;
@@ -521,8 +534,9 @@ public class ReplyListAdapter extends BaseAdapter {
                     }
                     imageData = null;
 
-                    final Bitmap resultBitmap = bitmap;
-                    if (resultBitmap != null && !resultBitmap.isRecycled()) {
+                    if (bitmap != null && !bitmap.isRecycled()) {
+                        GlobalImageCache.getInstance().put(finalUrl, bitmap);
+                        final Bitmap resultBitmap = bitmap;
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
@@ -535,12 +549,15 @@ public class ReplyListAdapter extends BaseAdapter {
                 } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
+                    synchronized (loadingUrls) {
+                        loadingUrls.remove(finalUrl);
+                    }
                     if (conn != null) {
                         try { conn.disconnect(); } catch (Exception e) {}
                     }
                 }
             }
-        }).start();
+        });
     }
 
     private void addAvatarBorder(ImageView imageView) {

@@ -11,6 +11,7 @@ import android.widget.TextView;
 
 import tv.biliclassic.BaseActivity;
 import tv.biliclassic.R;
+import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class DecoderSettingsActivity extends BaseActivity {
@@ -115,7 +116,7 @@ public class DecoderSettingsActivity extends BaseActivity {
             }
         }
 
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle(title)
                 .setSingleChoiceItems(entries, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override

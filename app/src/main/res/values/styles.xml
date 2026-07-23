@@ -10,17 +10,17 @@
     <style name="AppTheme" parent="android:Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@drawable/bili_texture_background</item>
         <item name="android:tabStripEnabled">true</item>
-        <item name="android:alertDialogTheme">@style/ModernAlertDialog</item>
-    </style>
-
-    <style name="ModernAlertDialog" parent="android:Theme.Dialog">
     </style>
 
     <style name="PlayerTheme" parent="@android:style/Theme.Black.NoTitleBar.Fullscreen">
-        <item name="android:alertDialogTheme">@style/PlayerAlertDialog</item>
     </style>
-
-    <style name="PlayerAlertDialog" parent="android:Theme.Dialog">
+    <style name="DialogStyle_Holo" parent="android:Theme.Dialog">
+        <item name="android:windowMinWidthMajor">0dp</item>
+        <item name="android:windowMinWidthMinor">0dp</item>
+    </style>
+    <style name="DialogStyle_Material" parent="android:Theme.Dialog">
+        <item name="android:windowMinWidthMajor">0dp</item>
+        <item name="android:windowMinWidthMinor">0dp</item>
     </style>
 
     <!-- 自定义 Tab 文字样式 -->
@@ -174,4 +174,5 @@
         <item name="android:windowEnterAnimation">@anim/options_pannel_in</item>
         <item name="android:windowExitAnimation">@anim/options_pannel_out</item>
     </style>
+
 </resources>

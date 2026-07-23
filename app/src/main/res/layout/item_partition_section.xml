@@ -5,43 +5,95 @@
     android:orientation="horizontal"
     android:paddingLeft="4dp"
     android:paddingTop="4dp"
-    android:weightSum="7">
+    android:weightSum="7"
+    android:background="#F5F5F5">
 
-    <FrameLayout
+    <LinearLayout
+        android:id="@+id/video_area"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="2"
-        android:layout_marginRight="4dp"
-        android:background="@drawable/bili_thumb_boarder"
-        android:padding="3dp">
+        android:layout_weight="4"
+        android:orientation="horizontal">
 
-        <ImageView
-            android:id="@+id/video1_cover"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="centerCrop"
-            android:adjustViewBounds="true"
-            android:src="@drawable/bili_default_image_tv_with_bg" />
+        <FrameLayout
+            android:id="@+id/video1_container"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginRight="4dp"
+            android:background="@drawable/bili_thumb_boarder"
+            android:padding="3dp">
 
-    </FrameLayout>
+            <ImageView
+                android:id="@+id/video1_cover"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scaleType="centerCrop"
+                android:adjustViewBounds="true"
+                android:src="@drawable/bili_default_image_tv_with_bg" />
 
-    <FrameLayout
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="2"
-        android:layout_marginRight="4dp"
-        android:background="@drawable/bili_thumb_boarder"
-        android:padding="3dp">
+        </FrameLayout>
 
-        <ImageView
-            android:id="@+id/video2_cover"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="centerCrop"
-            android:adjustViewBounds="true"
-            android:src="@drawable/bili_default_image_tv_with_bg" />
+        <FrameLayout
+            android:id="@+id/video2_container"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginRight="4dp"
+            android:background="@drawable/bili_thumb_boarder"
+            android:padding="3dp">
 
-    </FrameLayout>
+            <ImageView
+                android:id="@+id/video2_cover"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scaleType="centerCrop"
+                android:adjustViewBounds="true"
+                android:src="@drawable/bili_default_image_tv_with_bg" />
+
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/video3_container"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginRight="4dp"
+            android:background="@drawable/bili_thumb_boarder"
+            android:padding="3dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/video3_cover"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scaleType="centerCrop"
+                android:adjustViewBounds="true"
+                android:src="@drawable/bili_default_image_tv_with_bg" />
+
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/video4_container"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginRight="4dp"
+            android:background="@drawable/bili_thumb_boarder"
+            android:padding="3dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/video4_cover"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:scaleType="centerCrop"
+                android:src="@drawable/bili_default_image_tv_with_bg" />
+
+        </FrameLayout>
+
+    </LinearLayout>
 
     <FrameLayout
         android:id="@+id/partition_card"
@@ -55,7 +107,6 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="fitXY"
-            android:src="@drawable/bili_intent_dark"
             android:contentDescription="@null" />
 
         <TextView
@@ -76,7 +127,6 @@
             android:layout_gravity="left"
             android:scaleType="centerCrop"
             android:adjustViewBounds="true"
-            android:src="@drawable/bili_intent_to_bangumi"
             android:contentDescription="@null" />
 
         <ImageView

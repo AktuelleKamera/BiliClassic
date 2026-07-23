@@ -1,6 +1,7 @@
 package tv.biliclassic;
 
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -71,12 +72,14 @@ public class PartitionPageFragment extends Fragment {
 
         footerContainer.setVisibility(View.GONE);
 
-        gridView.setNumColumns(2);
+        int numColumns = isTablet() ? (isLandscape() ? 4 : 3) : 2;
+        gridView.setNumColumns(numColumns);
         gridView.setVerticalSpacing(dpToPx(8));
         gridView.setHorizontalSpacing(dpToPx(8));
         gridView.setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4));
 
         adapter = new RecommendGridAdapter(getActivity(), videoList);
+        adapter.setNumColumns(numColumns);
         gridView.setAdapter(adapter);
 
         gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -148,6 +151,23 @@ public class PartitionPageFragment extends Fragment {
                 loadMoreVideos();
             }
         }
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (getActivity() == null) return;
+        int numColumns = isTablet() ? (isLandscape() ? 4 : 3) : 2;
+        gridView.setNumColumns(numColumns);
+        adapter.setNumColumns(numColumns);
+    }
+
+    private boolean isTablet() {
+        return getResources().getBoolean(R.bool.is_tablet);
+    }
+
+    private boolean isLandscape() {
+        return getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
     }
 
     private int dpToPx(int dp) {

@@ -25,7 +25,7 @@ import tv.biliclassic.BuildConfig;
 
 /**
  * 公告工具类
- * 兼容 Android 1.6 (API 4) 及以上
+ * 兼容 Android 1.5 (API 3) 及以上
  */
 public class AnnouncementUtil {
 
@@ -207,7 +207,7 @@ public class AnnouncementUtil {
         }
 
         // 显示公告对话框
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(context));
         builder.setTitle(announcement.title);
         builder.setMessage(announcement.getDisplayContent());
 
