@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/bili_texture_background"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="手动登录"
+        android:textSize="20sp"
+        android:textColor="#333333"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/desc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="请输入JSON格式的登录信息："
+        android:textSize="14sp"
+        android:textColor="#666666"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/loginInput"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:background="#FFFFFF"
+        android:gravity="top"
+        android:padding="8dp"
+        android:textSize="11sp"
+        android:inputType="textMultiLine"
+        android:singleLine="false"
+        android:hint='示例：\n{"cookies":"DedeUserID=xxxx; bili_jct=xxx; SESSDATA=xxxx", "refresh_token":"xxxx"}\n\n提示：\n1. 可以从其他客户端复制Cookie\n2. 必须包含 DedeUserID 和 bili_jct\n3. 格式必须为有效的JSON'
+        android:minLines="8" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="16dp">
+
+        <Button
+            android:id="@+id/confirm"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="确认登录"
+            android:background="#D86DA5"
+            android:textColor="#FFFFFF"
+            android:layout_marginRight="8dp" />
+
+        <Button
+            android:id="@+id/refuse"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="返回"
+            android:background="#999999"
+            android:textColor="#FFFFFF" />
+
+        <Button
+            android:id="@+id/copy"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="复制"
+            android:background="#D86DA5"
+            android:textColor="#FFFFFF"
+            android:layout_marginLeft="8dp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</LinearLayout>
