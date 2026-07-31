@@ -20,7 +20,7 @@
         android:largeHeap="true"
         android:resizeableActivity="true"
         android:icon="@drawable/ic_launcher"
-        android:label="哔哩经典"
+        android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme" >
 
@@ -162,6 +162,17 @@
         <service
             android:name=".util.UpdateCheckService"
             android:exported="false" />
+
+        <!-- 桌面搜索小工具 -->
+        <receiver
+            android:name=".widget.SearchWidgetProvider">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/search_widget_info" />
+        </receiver>
 
         <!-- FileProvider（兼容 minSdkVersion 4 的自实现） -->
         <provider

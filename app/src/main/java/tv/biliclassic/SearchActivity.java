@@ -161,7 +161,7 @@ public class SearchActivity extends BaseActivity {
                 } else if (item.bvid != null && item.bvid.length() > 0) {
                     intent.putExtra("bvid", item.bvid);
                 } else {
-                    Toast.makeText(SearchActivity.this, "无法获取视频信息", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SearchActivity.this, SearchActivity.this.getString(R.string.searchactivity_toast_65e0), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 startActivity(intent);
@@ -363,7 +363,7 @@ public class SearchActivity extends BaseActivity {
         if (historyContainer != null) {
             historyContainer.setVisibility(View.GONE);
         }
-        Toast.makeText(this, "已清空搜索历史", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, this.getString(R.string.searchactivity_toast_5df2), Toast.LENGTH_SHORT).show();
     }
 
     private void showFirstLoading() {
@@ -402,7 +402,7 @@ public class SearchActivity extends BaseActivity {
             String aidStr = avMatcher.group(1);
             try {
                 final long aid = Long.parseLong(aidStr);
-                Toast.makeText(this, "正在打开视频...", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.searchactivity_toast_6b63), Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(SearchActivity.this, VideoDetailActivity.class);
                 intent.putExtra("aid", aid);
                 startActivity(intent);
@@ -417,7 +417,7 @@ public class SearchActivity extends BaseActivity {
             if (!bvid.startsWith("BV") && !bvid.startsWith("bv")) {
                 bvid = "BV" + bvid;
             }
-            Toast.makeText(this, "正在打开视频...", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.searchactivity_toast_6b63), Toast.LENGTH_SHORT).show();
             Intent intent = new Intent(SearchActivity.this, VideoDetailActivity.class);
             intent.putExtra("bvid", bvid);
             startActivity(intent);
@@ -448,7 +448,7 @@ public class SearchActivity extends BaseActivity {
                 e.printStackTrace();
             }
 
-            Toast.makeText(this, "作弊码已启用！", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, this.getString(R.string.searchactivity_toast_4f5c), Toast.LENGTH_LONG).show();
 
             new Handler().postDelayed(new Runnable() {
                 @Override
@@ -471,7 +471,7 @@ public class SearchActivity extends BaseActivity {
                 e.printStackTrace();
             }
 
-            Toast.makeText(this, "作弊码已启用！", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, this.getString(R.string.searchactivity_toast_4f5c), Toast.LENGTH_LONG).show();
 
             new Handler().postDelayed(new Runnable() {
                 @Override
@@ -496,7 +496,7 @@ public class SearchActivity extends BaseActivity {
                 e.printStackTrace();
             }
 
-            Toast.makeText(this, "作弊码已启用！", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, this.getString(R.string.searchactivity_toast_4f5c), Toast.LENGTH_LONG).show();
 
             new Handler().postDelayed(new Runnable() {
                 @Override
@@ -513,7 +513,7 @@ public class SearchActivity extends BaseActivity {
     private void performSearch() {
         final String keyword = searchEdit.getText().toString().trim();
         if (keyword == null || keyword.length() == 0) {
-            Toast.makeText(this, "请输入搜索内容", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.searchactivity_toast_8bf7), Toast.LENGTH_SHORT).show();
             return;
         }
 

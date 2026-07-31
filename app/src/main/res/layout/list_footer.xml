@@ -16,7 +16,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginLeft="8dp"
-        android:text="嘿咻…嘿咻…"
+        android:text="@string/list_footer_563f"
         android:textSize="12sp"
         android:textColor="#999999" />
 

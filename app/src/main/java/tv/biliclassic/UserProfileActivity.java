@@ -105,7 +105,7 @@ public class UserProfileActivity extends BaseActivity {
         mid = getIntent().getLongExtra("mid", 0);
 
         if (mid == 0) {
-            Toast.makeText(this, "用户ID无效", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.userprofileactivity_toast_7528), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -138,7 +138,7 @@ public class UserProfileActivity extends BaseActivity {
             footerProgressBar.setVisibility(View.GONE);
         }
         if (footerText != null) {
-            footerText.setText("嘿咻…嘿咻…");
+            footerText.setText(getString(R.string.userprofileactivity_settext_563f));
         }
         footerView.setVisibility(View.GONE);
         listView.addFooterView(footerView);
@@ -204,7 +204,7 @@ public class UserProfileActivity extends BaseActivity {
                             if (isDestroyed) return;
                             loadingLayout.setVisibility(View.GONE);
                             if (userInfo == null) {
-                                Toast.makeText(UserProfileActivity.this, "获取用户信息失败", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(UserProfileActivity.this, UserProfileActivity.this.getString(R.string.userprofileactivity_toast_83b7), Toast.LENGTH_SHORT).show();
                                 finish();
                                 return;
                             }
@@ -239,7 +239,7 @@ public class UserProfileActivity extends BaseActivity {
             tvUserSign.setText(userInfo.sign);
             tvUserSign.setVisibility(View.VISIBLE);
         } else {
-            tvUserSign.setText("这个人很懒，什么都没有写~");
+            tvUserSign.setText(getString(R.string.userprofileactivity_settext_8fd9));
             tvUserSign.setVisibility(View.VISIBLE);
         }
 
@@ -490,7 +490,7 @@ public class UserProfileActivity extends BaseActivity {
                             Log.d("UserProfile", "UI 线程更新，视频数量=" + (items == null ? 0 : items.size()));
 
                             if (items == null || items.size() == 0) {
-                                videoEmptyView.setText("该用户暂无视频");
+                                videoEmptyView.setText(getString(R.string.userprofileactivity_settext_8be5));
                                 footerView.setVisibility(View.GONE);
                                 Log.d("UserProfile", "视频列表为空，显示空视图");
                                 return;
@@ -516,13 +516,13 @@ public class UserProfileActivity extends BaseActivity {
                                         footerProgressBar.setVisibility(View.GONE);
                                     }
                                     if (footerText != null) {
-                                        footerText.setText("嘿咻…嘿咻…");
+                                        footerText.setText(getString(R.string.userprofileactivity_settext_563f));
                                         footerText.setVisibility(View.VISIBLE);
                                     }
                                 }
                                 Log.d("UserProfile", "视频列表更新成功，当前页=" + currentPage);
                             } else {
-                                videoEmptyView.setText("暂无视频");
+                                videoEmptyView.setText(getString(R.string.userprofileactivity_settext_6682));
                                 footerView.setVisibility(View.GONE);
                                 Log.d("UserProfile", "无可添加的视频");
                             }
@@ -566,7 +566,7 @@ public class UserProfileActivity extends BaseActivity {
             footerProgressBar.setVisibility(View.VISIBLE);
         }
         if (footerText != null) {
-            footerText.setText("嘿咻…嘿咻…");
+            footerText.setText(getString(R.string.userprofileactivity_settext_563f));
             footerText.setVisibility(View.VISIBLE);
         }
         footerView.setVisibility(View.VISIBLE);
@@ -771,7 +771,7 @@ public class UserProfileActivity extends BaseActivity {
                     } else if (clickItem.bvid != null && clickItem.bvid.length() > 0) {
                         intent.putExtra("bvid", clickItem.bvid);
                     } else {
-                        Toast.makeText(UserProfileActivity.this, "无法获取视频信息", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(UserProfileActivity.this, UserProfileActivity.this.getString(R.string.userprofileactivity_toast_65e0), Toast.LENGTH_SHORT).show();
                         return;
                     }
                     startActivity(intent);

@@ -230,7 +230,7 @@ public class TimelineFragment extends Fragment {
                 public void run() {
                     hideAllLoading();
                     if (items == null || items.size() == 0) {
-                        emptyView.setText("暂无放送时间表数据");
+                        emptyView.setText(getString(R.string.timelinefragment_settext_6682));
                         emptyView.setVisibility(View.VISIBLE);
                         listView.setVisibility(View.GONE);
                         return;

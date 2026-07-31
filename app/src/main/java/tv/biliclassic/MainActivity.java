@@ -151,7 +151,7 @@ public class MainActivity extends BaseActivity {
                 // 只显示一次提示
                 boolean alreadyShown = SharedPreferencesUtil.getBoolean(KEY_TV_UNSUPPORTED_SHOWN, false);
                 if (!alreadyShown) {
-                    Toast.makeText(this, "TV模式需要 Android 4.0 及以上系统\n已为您自动切换为横屏模式", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, this.getString(R.string.mainactivity_toast_6a21), Toast.LENGTH_LONG).show();
                     SharedPreferencesUtil.putBoolean(KEY_TV_UNSUPPORTED_SHOWN, true);
                 }
             }
@@ -173,12 +173,12 @@ public class MainActivity extends BaseActivity {
         mPager.setAdapter(new ViewPagerAdapter(getSupportFragmentManager()));
         mPager.setOffscreenPageLimit(1);
 
-        addTab("个人中心", ProfileFragment.class);
-        addTab("分区导航", HomeFragment.class);
-        addTab("新番专题", NewAnimeFragment.class);
-        addTab("放送时间表", TimelineFragment.class);
-        addTab("推荐视频", RecommendFragment.class);
-        addTab("关于我们", AboutFragment.class);
+        addTab(getString(R.string.mainactivity_tab_profile), ProfileFragment.class);
+        addTab(getString(R.string.mainactivity_tab_home), HomeFragment.class);
+        addTab(getString(R.string.mainactivity_tab_newanime), NewAnimeFragment.class);
+        addTab(getString(R.string.mainactivity_tab_timeline), TimelineFragment.class);
+        addTab(getString(R.string.mainactivity_tab_recommend), RecommendFragment.class);
+        addTab(getString(R.string.mainactivity_tab_about), AboutFragment.class);
 
         int targetTab = getIntent().getIntExtra("tab_index", -1);
         if (targetTab >= 0 && targetTab < mFragments.size()) {
@@ -406,7 +406,7 @@ public class MainActivity extends BaseActivity {
                     intent.setData(Uri.parse(downloadUrl));
                     startActivity(intent);
                 } else {
-                    Toast.makeText(MainActivity.this, "下载地址无效", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, MainActivity.this.getString(R.string.mainactivity_toast_4e0b), Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -556,8 +556,8 @@ public class MainActivity extends BaseActivity {
         }
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("上次程序异常退出")
-                .setMessage("程序上次运行时发生了异常，是否查看详细信息？")
+                .setTitle(getString(R.string.mainactivity_settitle_4e0a))
+                .setMessage(getString(R.string.mainactivity_setmessage_7a0b))
                 .setPositiveButton("查看", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -604,7 +604,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void triggerSpaceQuake() {
-        Toast.makeText(this, "空間震！", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, this.getString(R.string.mainactivity_toast_7a7a), Toast.LENGTH_SHORT).show();
 
         try {
             Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
@@ -707,8 +707,8 @@ public class MainActivity extends BaseActivity {
 
     private void showLandscapeTipDialog() {
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("设备适配提示")
-                .setMessage("您的设备已自动适配横屏模式，以获得更好的使用体验。\n\n如您不需要横屏，可在「设置」中关闭哦~")
+                .setTitle(getString(R.string.mainactivity_settitle_8bbe))
+                .setMessage(getString(R.string.mainactivity_setmessage_60a8))
                 .setPositiveButton("知道了", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -764,10 +764,10 @@ public class MainActivity extends BaseActivity {
 
         if (mid != 0 && cookies != null && cookies.length() > 0) {
             if (uname != null && uname.length() > 0) {
-                loginItem.setTitle("登录/注销");
+                loginItem.setTitle(getString(R.string.mainactivity_settitle_767b));
             }
         } else {
-            loginItem.setTitle("登录/注销");
+            loginItem.setTitle(getString(R.string.mainactivity_settitle_767b));
         }
 
         return true;
@@ -805,12 +805,12 @@ public class MainActivity extends BaseActivity {
 
     private void showMenuLogoutDialog() {
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("真的要离开了吗…？")
-                .setMessage("呜…你确定要退出登录吗？\n退出后就不能愉快地看番了哦 (；′⌒`)")
+                .setTitle(getString(R.string.mainactivity_settitle_771f))
+                .setMessage(getString(R.string.mainactivity_setmessage_545c))
                 .setPositiveButton("留下来", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        Toast.makeText(MainActivity.this, "嗯嗯！留下来陪我们一起看番吧！(＾▽＾)", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, MainActivity.this.getString(R.string.mainactivity_toast_55ef), Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
                     }
                 })
@@ -830,8 +830,8 @@ public class MainActivity extends BaseActivity {
             boolean isLegacyDevice = DeviceInfoUtil.isLegacyDevice();
             if (!isLegacyDevice) {
                 new AlertDialog.Builder(DialogUtil.wrap(this))
-                        .setTitle("版本提示")
-                        .setMessage("检测到您的设备并非清朝老设备，但您正在运行 Legacy（超低配）版本。\n\n建议下载使用完整版 BiliClassic，以获得更好的体验和更多功能。")
+                        .setTitle(getString(R.string.mainactivity_settitle_7248))
+                        .setMessage(getString(R.string.mainactivity_setmessage_68c0))
                         .setPositiveButton("立即下载", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
@@ -840,7 +840,7 @@ public class MainActivity extends BaseActivity {
                                     intent.setData(Uri.parse("http://www.biliclassic.cn/"));
                                     startActivity(intent);
                                 } catch (Exception e) {
-                                    Toast.makeText(MainActivity.this, "请访问 www.biliclassic.cn 下载完整版", Toast.LENGTH_LONG).show();
+                                    Toast.makeText(MainActivity.this, MainActivity.this.getString(R.string.mainactivity_toast_8bf7), Toast.LENGTH_LONG).show();
                                 }
                             }
                         })
@@ -857,7 +857,7 @@ public class MainActivity extends BaseActivity {
         SharedPreferencesUtil.removeValue("csrf");
         SharedPreferencesUtil.removeValue("refresh_token");
 
-        Toast.makeText(this, "已退出登录…随时欢迎回来哦(´；ω；`)", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, this.getString(R.string.mainactivity_toast_5df2), Toast.LENGTH_SHORT).show();
 
         Intent intent = getIntent();
         finish();

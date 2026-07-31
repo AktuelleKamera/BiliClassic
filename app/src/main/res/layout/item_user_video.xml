@@ -31,7 +31,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|right"
             android:padding="3dp"
-            android:text="0观看"
+            android:text="@string/item_user_video_89c2"
             android:textSize="10sp"
             android:textColor="#FFFFFF" />
 
@@ -49,7 +49,7 @@
             android:id="@+id/title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="视频标题"
+            android:text="@string/item_user_video_89c6"
             android:textSize="13sp"
             android:textColor="#333333"
             android:maxLines="2"

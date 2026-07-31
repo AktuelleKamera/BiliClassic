@@ -39,7 +39,7 @@
                 android:id="@+id/title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="视频标题"
+                android:text="@string/item_favorite_video_89c6"
                 android:textSize="14sp"
                 android:textColor="#333333"
                 android:maxLines="2"
@@ -50,7 +50,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="UP主"
+                android:text="@string/item_favorite_video_4e3b"
                 android:textSize="12sp"
                 android:textColor="#666666" />
 
@@ -59,7 +59,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="0播放"
+                android:text="@string/item_favorite_video_64ad"
                 android:textSize="11sp"
                 android:textColor="#999999" />
 

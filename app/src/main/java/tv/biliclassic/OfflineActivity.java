@@ -202,7 +202,7 @@ public class OfflineActivity extends BaseActivity {
         }
 
         if (item.videoFile == null || !item.videoFile.exists()) {
-            Toast.makeText(this, "视频文件不存在", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.offlineactivity_toast_89c6), Toast.LENGTH_SHORT).show();
             refreshList();
             return;
         }
@@ -248,9 +248,9 @@ public class OfflineActivity extends BaseActivity {
         }
         String preferredPlayer = SettingsActivity.getPlayerPackageName();
         if (preferredPlayer != null) {
-            intent.setPackage(preferredPlayer);
+            try { Intent.class.getMethod("setPackage", String.class).invoke(intent, new Object[]{preferredPlayer}); } catch (Exception ignored) {};
             if (getPackageManager().queryIntentActivities(intent, 0).size() == 0) {
-                intent.setPackage(null);
+                try { Intent.class.getMethod("setPackage", String.class).invoke(intent, new Object[]{null}); } catch (Exception ignored) {};
             }
         }
         try {
@@ -258,7 +258,7 @@ public class OfflineActivity extends BaseActivity {
         } catch (Exception e) {
             // 首选播放器失败，尝试不带 package 重新解析（弹出系统选择器）
             if (preferredPlayer != null) {
-                intent.setPackage(null);
+                try { Intent.class.getMethod("setPackage", String.class).invoke(intent, new Object[]{null}); } catch (Exception ignored) {};
                 try {
                     startActivity(intent);
                     return;
@@ -283,7 +283,7 @@ public class OfflineActivity extends BaseActivity {
         String displayTitle = (item.pageTitle != null && item.pageTitle.length() > 0)
                 ? item.pageTitle : item.title;
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("删除视频")
+                .setTitle(getString(R.string.offlineactivity_settitle_5220))
                 .setMessage("确定要删除 \"" + displayTitle + "\" 吗？")
                 .setPositiveButton("删除", new DialogInterface.OnClickListener() {
                     @Override
@@ -422,7 +422,7 @@ public class OfflineActivity extends BaseActivity {
             String totalStr = formatFileSize(totalBytes);
             storageText.setText("可用 " + availStr + " / 共 " + totalStr);
         } catch (Exception e) {
-            storageText.setText("存储信息获取失败");
+            storageText.setText(getString(R.string.offlineactivity_settext_5b58));
         }
     }
 
@@ -935,7 +935,7 @@ public class OfflineActivity extends BaseActivity {
                                 }
                             });
                         }
-                        holder.state.setText("准备中...");
+                        holder.state.setText(getString(R.string.offlineactivity_settext_51c6));
                     } else {
                         holder.itemProgress.setVisibility(View.GONE);
                         if (holder.progressIndeterminate != null) {

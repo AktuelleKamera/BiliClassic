@@ -16,7 +16,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="推荐视频"
+            android:text="@string/activity_metro_home_63a8"
             android:textSize="36sp"
             android:textColor="#D86DA5" />
 
@@ -32,7 +32,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:text="正在加载推荐视频..."
+        android:text="@string/activity_metro_home_6b63"
         android:textSize="16sp"
         android:textColor="#999999"
         android:gravity="center" />

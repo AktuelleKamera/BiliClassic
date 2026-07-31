@@ -30,6 +30,7 @@ import java.util.ArrayList;
 
 import tv.biliclassic.subsettings.DecoderSettingsActivity;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.util.LocaleHelper;
 import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.UpdateUtil;
@@ -166,17 +167,21 @@ public class SettingsActivity extends BaseActivity {
             });
         }
 
-        // 弹窗样式选择
+        // 弹窗样式选择（2.3不支持，隐藏）
         LinearLayout dialogStyleItem = (LinearLayout) findViewById(R.id.dialog_style_item);
-        final TextView dialogStyleText = (TextView) findViewById(R.id.dialog_style_text);
-        updateDialogStyleDisplay(dialogStyleText);
-        if (dialogStyleItem != null) {
-            dialogStyleItem.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    showDialogStyleDialog(dialogStyleText);
-                }
-            });
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() < 11) {
+            if (dialogStyleItem != null) dialogStyleItem.setVisibility(View.GONE);
+        } else {
+            final TextView dialogStyleText = (TextView) findViewById(R.id.dialog_style_text);
+            updateDialogStyleDisplay(dialogStyleText);
+            if (dialogStyleItem != null) {
+                dialogStyleItem.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showDialogStyleDialog(dialogStyleText);
+                    }
+                });
+            }
         }
 
         // 横屏适配开关
@@ -273,8 +278,8 @@ public class SettingsActivity extends BaseActivity {
                             int playerPref = getPlayerPreference();
                             if (playerPref != PLAYER_BUILTIN) {
                                 new AlertDialog.Builder(DialogUtil.wrap(SettingsActivity.this))
-                                        .setTitle("提示")
-                                        .setMessage("在线播放需要配合内置播放器使用。\n\n是否切换到内置播放器并开启在线播放？")
+                                        .setTitle(getString(R.string.settingsactivity_settitle_63d0))
+                                        .setMessage(getString(R.string.settingsactivity_setmessage_5728))
                                         .setPositiveButton("切换并开启", new DialogInterface.OnClickListener() {
                                             @Override
                                             public void onClick(DialogInterface dialog, int which) {
@@ -282,7 +287,7 @@ public class SettingsActivity extends BaseActivity {
                                                 updatePlayerChoiceDisplay();
                                                 SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, true);
                                                 checkboxOnlinePlay.setChecked(true);
-                                                Toast.makeText(SettingsActivity.this, "已切换到内置播放器并开启在线播放", Toast.LENGTH_SHORT).show();
+                                                Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2_1), Toast.LENGTH_SHORT).show();
                                             }
                                         })
                                         .setNegativeButton("取消", new DialogInterface.OnClickListener() {
@@ -296,10 +301,10 @@ public class SettingsActivity extends BaseActivity {
                             }
 
                             SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, true);
-                            Toast.makeText(SettingsActivity.this, "已开启在线播放模式", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2_4), Toast.LENGTH_SHORT).show();
                         } else {
                             SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, false);
-                            Toast.makeText(SettingsActivity.this, "已关闭在线播放模式", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2), Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
@@ -484,6 +489,20 @@ public class SettingsActivity extends BaseActivity {
                 @Override
                 public void onClick(View v) {
                     showDefaultTabDialog();
+                }
+            });
+        }
+
+        // 语言选择
+        LinearLayout localeItem = (LinearLayout) findViewById(R.id.locale_item);
+        final TextView localeText = (TextView) findViewById(R.id.locale_text);
+
+        if (localeItem != null && localeText != null) {
+            updateLocaleDisplay(localeText);
+            localeItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showLocaleDialog(localeText);
                 }
             });
         }
@@ -794,7 +813,7 @@ public class SettingsActivity extends BaseActivity {
         }
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("选择视频画质")
+                .setTitle(getString(R.string.settingsactivity_settitle_9009_1))
                 .setSingleChoiceItems(qualities, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -814,13 +833,13 @@ public class SettingsActivity extends BaseActivity {
     private void updateVideoQualityDisplay() {
         int quality = getVideoQuality();
         if (quality == QUALITY_1080P) {
-            videoQualityText.setText("1080P 超清");
+            videoQualityText.setText(getString(R.string.settingsactivity_settext_8d85));
         } else if (quality == QUALITY_720P) {
-            videoQualityText.setText("720P 高清");
+            videoQualityText.setText(getString(R.string.settingsactivity_settext_9ad8));
         } else if (quality == QUALITY_480P) {
-            videoQualityText.setText("480P 清晰");
+            videoQualityText.setText(getString(R.string.settingsactivity_settext_6e05));
         } else {
-            videoQualityText.setText("360P 流畅");
+            videoQualityText.setText(getString(R.string.settingsactivity_settext_6d41));
         }
     }
 
@@ -851,7 +870,7 @@ public class SettingsActivity extends BaseActivity {
         }
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("视频渲染方式")
+                .setTitle(getString(R.string.settingsactivity_settitle_89c6))
                 .setSingleChoiceItems(modes, checkedIndex, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         SharedPreferencesUtil.putInt(SharedPreferencesUtil.RENDERER_TYPE, values[which]);
@@ -878,7 +897,7 @@ public class SettingsActivity extends BaseActivity {
         int checkedIndex = Math.min(current, 1);
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("弹幕引擎")
+                .setTitle(getString(R.string.settingsactivity_settitle_5f39))
                 .setSingleChoiceItems(modes, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -910,7 +929,7 @@ public class SettingsActivity extends BaseActivity {
         if (index >= 0 && index < tabNames.length) {
             defaultTabText.setText(tabNames[index]);
         } else {
-            defaultTabText.setText("新番专题");
+            defaultTabText.setText(getString(R.string.settingsactivity_settext_65b0));
         }
     }
 
@@ -928,7 +947,7 @@ public class SettingsActivity extends BaseActivity {
         }
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("选择默认首页")
+                .setTitle(getString(R.string.settingsactivity_settitle_9009_4))
                 .setSingleChoiceItems(tabNames, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -979,7 +998,7 @@ public class SettingsActivity extends BaseActivity {
         }
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("选择默认播放器")
+                .setTitle(getString(R.string.settingsactivity_settitle_9009_4))
                 .setSingleChoiceItems(players, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -1013,14 +1032,14 @@ public class SettingsActivity extends BaseActivity {
         int decoder = getDecoderType();
         switch (decoder) {
             case DECODER_SYSTEM:
-                decoderChoiceText.setText("系统解码器");
+                decoderChoiceText.setText(getString(R.string.settingsactivity_settext_7cfb));
                 break;
             case DECODER_IJK_HARD:
             default:
-                decoderChoiceText.setText("IJK 硬解");
+                decoderChoiceText.setText(getString(R.string.settingsactivity_settext_786c));
                 break;
             case DECODER_IJK_SOFT:
-                decoderChoiceText.setText("IJK 软解");
+                decoderChoiceText.setText(getString(R.string.settingsactivity_settext_8f6f));
                 break;
         }
     }
@@ -1051,7 +1070,7 @@ public class SettingsActivity extends BaseActivity {
         }
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("选择解码方式")
+                .setTitle(getString(R.string.settingsactivity_settitle_9009_2))
                 .setSingleChoiceItems(decoders, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -1084,7 +1103,7 @@ public class SettingsActivity extends BaseActivity {
         if (checkedIndex == 1 && current != 3) checkedIndex = 2;
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("图片加载线程")
+                .setTitle(getString(R.string.settingsactivity_settitle_56fe))
                 .setSingleChoiceItems(items, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -1093,7 +1112,7 @@ public class SettingsActivity extends BaseActivity {
                         } else {
                             SharedPreferencesUtil.putInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, values[which]);
                             updateImageThreadDisplay(textView);
-                            Toast.makeText(SettingsActivity.this, "重启应用后生效", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_91cd), Toast.LENGTH_SHORT).show();
                         }
                         dialog.dismiss();
                     }
@@ -1109,7 +1128,7 @@ public class SettingsActivity extends BaseActivity {
         input.setText(String.valueOf(current == -1 ? 3 : current));
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("自定义线程数（1-15）")
+                .setTitle(getString(R.string.settingsactivity_settitle_81ea))
                 .setView(input)
                 .setPositiveButton("确定", new DialogInterface.OnClickListener() {
                     @Override
@@ -1119,12 +1138,12 @@ public class SettingsActivity extends BaseActivity {
                         try {
                             final int val = Integer.parseInt(s);
                             if (val < 1 || val > 15) {
-                                Toast.makeText(SettingsActivity.this, "请输入1-15之间的数字", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_8bf7_1), Toast.LENGTH_SHORT).show();
                                 return;
                             }
                             if (val > 5) {
                                 new AlertDialog.Builder(DialogUtil.wrap(SettingsActivity.this))
-                                        .setTitle("警告：线程数偏大")
+                                        .setTitle(getString(R.string.settingsactivity_settitle_8b66))
                                         .setMessage("当前设置 " + val + " 个线程，超过安全建议值（5）。部分手机可能出现频繁卡顿甚至闪退的问题。若遇到此类问题，建议回到此处重新调低。\n\n确定继续吗？")
                                         .setPositiveButton("仍然设置", new DialogInterface.OnClickListener() {
                                             @Override
@@ -1132,13 +1151,13 @@ public class SettingsActivity extends BaseActivity {
                                                 saveThreadValue(val, textView);
                                             }
                                         })
-                                        .setNegativeButton("取消", null)
+.setNegativeButton(getString(R.string.common_cancel), null)
                                         .show();
                             } else {
                                 saveThreadValue(val, textView);
                             }
                         } catch (NumberFormatException e) {
-                            Toast.makeText(SettingsActivity.this, "请输入有效数字", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_8bf7_2), Toast.LENGTH_SHORT).show();
                         }
                     }
                 })
@@ -1149,11 +1168,12 @@ public class SettingsActivity extends BaseActivity {
     private void saveThreadValue(int val, TextView textView) {
         SharedPreferencesUtil.putInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, val);
         updateImageThreadDisplay(textView);
-        Toast.makeText(SettingsActivity.this, "重启应用后生效", Toast.LENGTH_SHORT).show();
+        Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_91cd), Toast.LENGTH_SHORT).show();
     }
 
     private void showDialogStyleDialog(final TextView textView) {
         int sdkInt = tv.biliclassic.util.SdkHelper.getSdkInt();
+        if (sdkInt < 11) return; // 2.3 不支持样式选择
         final String[] items;
         final int[] values;
         if (sdkInt >= 21) {
@@ -1172,14 +1192,14 @@ public class SettingsActivity extends BaseActivity {
             }
         }
         new android.app.AlertDialog.Builder(tv.biliclassic.util.DialogUtil.wrap(this))
-                .setTitle("选择弹窗样式")
+                .setTitle(getString(R.string.settingsactivity_settitle_9009))
                 .setSingleChoiceItems(items, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         int val = values[which];
                         SharedPreferencesUtil.putInt(SharedPreferencesUtil.DIALOG_STYLE, val);
                         updateDialogStyleDisplay(textView);
-                        Toast.makeText(SettingsActivity.this, "已切换", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2_1), Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
                     }
                 })
@@ -1189,10 +1209,48 @@ public class SettingsActivity extends BaseActivity {
 
     private void updateDialogStyleDisplay(TextView textView) {
         int val = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DIALOG_STYLE, 0);
-        if (val == 0) textView.setText("自动适配");
-        else if (val == 1) textView.setText("经典样式");
+        if (val == 0) textView.setText(getString(R.string.settingsactivity_settext_81ea));
+        else if (val == 1) textView.setText(getString(R.string.settingsactivity_settext_7ecf));
         else if (val == 2) textView.setText("Holo");
         else if (val == 3) textView.setText("Material");
+    }
+
+    // 语言选择
+    private void showLocaleDialog(final TextView textView) {
+        final String[] items = {"简体中文", "繁體中文"};
+        final String[] values = {"zh_CN", "zh_TW"};
+        String current = LocaleHelper.getCurrentLocale();
+        int checkedIndex = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i].equals(current)) {
+                checkedIndex = i;
+                break;
+            }
+        }
+        new AlertDialog.Builder(DialogUtil.wrap(this))
+                .setTitle(getString(R.string.settingsactivity_settitle_9009_3))
+                .setSingleChoiceItems(items, checkedIndex, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        LocaleHelper.setCurrentLocale(values[which]);
+                        dialog.dismiss();
+                        Intent intent = new Intent(SettingsActivity.this, MainActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        finish();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void updateLocaleDisplay(TextView textView) {
+        String current = LocaleHelper.getCurrentLocale();
+        if ("zh_TW".equals(current)) {
+            textView.setText(getString(R.string.settingsactivity_settext_7e41));
+        } else {
+            textView.setText(getString(R.string.settingsactivity_settext_7b80));
+        }
     }
 
     // 缓存管理
@@ -1260,7 +1318,7 @@ public class SettingsActivity extends BaseActivity {
         if (totalSize > 0) {
             cacheSizeText.setText(formatFileSize(totalSize));
         } else {
-            cacheSizeText.setText("无缓存");
+            cacheSizeText.setText(getString(R.string.settingsactivity_settext_65e0_2));
         }
     }
 
@@ -1268,7 +1326,7 @@ public class SettingsActivity extends BaseActivity {
         long totalSize = getTotalCacheSize();
         String sizeText = formatFileSize(totalSize);
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("清除图片缓存")
+                .setTitle(getString(R.string.settingsactivity_settitle_6e05))
                 .setMessage("将清除以下缓存：\n\n• 头像缓存\n• 番剧封面缓存\n\n共 " + sizeText + "，清除后下次启动会自动重新下载。")
                 .setPositiveButton("清除", new DialogInterface.OnClickListener() {
                     @Override
@@ -1381,7 +1439,7 @@ public class SettingsActivity extends BaseActivity {
             String sizeText = formatFileSize(totalSize);
             playCacheSizeText.setText(sizeText + " (" + fileCount + "个视频)");
         } else {
-            playCacheSizeText.setText("无播放缓存");
+            playCacheSizeText.setText(getString(R.string.settingsactivity_settext_65e0));
         }
     }
 
@@ -1400,13 +1458,13 @@ public class SettingsActivity extends BaseActivity {
     private void showClearPlayCacheDialog() {
         int fileCount = getPlayCacheFileCount();
         if (fileCount == 0) {
-            Toast.makeText(this, "没有播放缓存", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.settingsactivity_toast_6ca1_2), Toast.LENGTH_SHORT).show();
             return;
         }
 
         String totalSize = formatFileSize(getPlayCacheTotalSize());
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("清除播放缓存")
+                .setTitle(getString(R.string.settingsactivity_settitle_6e05_1))
                 .setMessage("确定要清除所有播放缓存吗？\n" +
                         "共 " + fileCount + " 个视频文件，总计 " + totalSize + "\n" +
                         "清除后可释放存储空间。")
@@ -1438,7 +1496,7 @@ public class SettingsActivity extends BaseActivity {
             if (deletedCount > 0) {
                 Toast.makeText(this, "已清除 " + deletedCount + " 个缓存文件，释放 " + formatFileSize(freedSpace), Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(this, "没有找到可清除的缓存文件", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.settingsactivity_toast_6ca1_1), Toast.LENGTH_SHORT).show();
             }
 
             updatePlayCacheSize();
@@ -1456,7 +1514,7 @@ public class SettingsActivity extends BaseActivity {
 
     private void showCookieDialog() {
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("Cookie管理")
+                .setTitle(getString(R.string.settingsactivity_settitle_7ba1))
                 .setItems(new String[]{"保存到本地", "复制到剪切板", "从本地导入", "从剪切板导入"}, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -1480,7 +1538,7 @@ public class SettingsActivity extends BaseActivity {
 
     private boolean checkLogin() {
         if (!isLoggedIn()) {
-            Toast.makeText(this, "请先登录的说~", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.settingsactivity_toast_8bf7), Toast.LENGTH_SHORT).show();
             return false;
         }
         return true;
@@ -1538,9 +1596,9 @@ public class SettingsActivity extends BaseActivity {
         try {
             ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             cm.setText(getCookieJson());
-            Toast.makeText(this, "已复制到剪切板", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.settingsactivity_toast_5df2_3), Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Toast.makeText(this, "复制失败", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.settingsactivity_toast_590d), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1572,7 +1630,7 @@ public class SettingsActivity extends BaseActivity {
         input.setMinLines(3);
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("粘贴Cookie内容")
+                .setTitle(getString(R.string.settingsactivity_settitle_7c98))
                 .setView(input)
                 .setPositiveButton("导入", new DialogInterface.OnClickListener() {
                     @Override
@@ -1586,14 +1644,14 @@ public class SettingsActivity extends BaseActivity {
 
     private void applyCookieJson(String jsonStr) {
         if (jsonStr == null || jsonStr.length() == 0) {
-            Toast.makeText(this, "内容为空", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.settingsactivity_toast_5185), Toast.LENGTH_SHORT).show();
             return;
         }
         try {
             JSONObject json = new JSONObject(jsonStr);
             String cookies = json.optString("cookies", "");
             if (cookies == null || cookies.length() == 0) {
-                Toast.makeText(this, "无效的Cookie数据", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.settingsactivity_toast_65e0), Toast.LENGTH_SHORT).show();
                 return;
             }
             SharedPreferencesUtil.putString("cookies", cookies);
@@ -1615,12 +1673,12 @@ public class SettingsActivity extends BaseActivity {
             NetWorkUtil.refreshHeaders();
 
             if (isLoggedIn()) {
-                Toast.makeText(this, "导入成功，已登录", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.settingsactivity_toast_5bfc_1), Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(this, "导入完成，但登录状态异常，请检查Cookie是否有效", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, this.getString(R.string.settingsactivity_toast_5bfc), Toast.LENGTH_LONG).show();
             }
         } catch (JSONException e) {
-            Toast.makeText(this, "格式错误，请检查", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.settingsactivity_toast_683c), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1659,7 +1717,7 @@ public class SettingsActivity extends BaseActivity {
         int count = getCrashLogFileCount();
         long size = getCrashLogTotalSize();
         if (count == 0) {
-            crashLogSizeText.setText("无日志");
+            crashLogSizeText.setText(getString(R.string.settingsactivity_settext_65e0_1));
         } else {
             crashLogSizeText.setText(count + "个, " + formatFileSize(size));
         }
@@ -1668,13 +1726,13 @@ public class SettingsActivity extends BaseActivity {
     private void showClearCrashLogDialog() {
         int count = getCrashLogFileCount();
         if (count == 0) {
-            Toast.makeText(this, "没有崩溃日志", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.settingsactivity_toast_6ca1), Toast.LENGTH_SHORT).show();
             return;
         }
 
         String sizeText = formatFileSize(getCrashLogTotalSize());
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("删除崩溃日志")
+                .setTitle(getString(R.string.settingsactivity_settitle_5220))
                 .setMessage("确定要删除所有崩溃日志吗？\n共 " + count + " 个文件，总计 " + sizeText)
                 .setPositiveButton("删除", new DialogInterface.OnClickListener() {
                     @Override
@@ -1711,7 +1769,7 @@ public class SettingsActivity extends BaseActivity {
 
     // 回声洞
     private void loadEchoHole() {
-        echoHoleText.setText("嘿咻…嘿咻…");
+        echoHoleText.setText(getString(R.string.settingsactivity_settext_563f));
         echoHoleItem.setEnabled(false);
         new Thread(new Runnable() {
             public void run() {
@@ -1732,7 +1790,7 @@ public class SettingsActivity extends BaseActivity {
                     final String jsonStr = sb.toString();
                     runOnUiThread(new Runnable() {
                         public void run() {
-                            echoHoleText.setText("随一个");
+                            echoHoleText.setText(getString(R.string.settingsactivity_settext_968f));
                             echoHoleItem.setEnabled(true);
                             if (isFinishing()) return;
                             try {
@@ -1756,15 +1814,15 @@ public class SettingsActivity extends BaseActivity {
                                     }
                                     msg += "\n" + time;
                                     new AlertDialog.Builder(DialogUtil.wrap(SettingsActivity.this))
-                                            .setTitle("回声洞")
+                                            .setTitle(getString(R.string.settingsactivity_settitle_56de))
                                             .setMessage(msg)
                                             .setPositiveButton("关闭", null)
                                             .show();
                                 } else {
-                                    Toast.makeText(SettingsActivity.this, "回声洞暂无内容", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_56de), Toast.LENGTH_SHORT).show();
                                 }
                             } catch (JSONException e) {
-                                Toast.makeText(SettingsActivity.this, "解析失败", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_89e3), Toast.LENGTH_SHORT).show();
                             }
                         }
                     });
@@ -1772,7 +1830,7 @@ public class SettingsActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         public void run() {
                             if (isFinishing()) return;
-                            echoHoleText.setText("随一个");
+                            echoHoleText.setText(getString(R.string.settingsactivity_settext_968f));
                             echoHoleItem.setEnabled(true);
                             Toast.makeText(SettingsActivity.this, "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
@@ -1784,7 +1842,7 @@ public class SettingsActivity extends BaseActivity {
 
     // 检查更新（使用 UpdateUtil）
     private void checkForUpdate() {
-        checkUpdateText.setText("正在检查...");
+        checkUpdateText.setText(getString(R.string.settingsactivity_settext_6b63));
         checkUpdateItem.setEnabled(false);
 
         UpdateUtil.checkUpdate(this, currentVersionCode, currentVersionName,
@@ -1796,7 +1854,7 @@ public class SettingsActivity extends BaseActivity {
 
                     @Override
                     public void onCheckComplete(boolean hasUpdate, String message) {
-                        checkUpdateText.setText("检查完成");
+                        checkUpdateText.setText(getString(R.string.settingsactivity_settext_68c0));
                         checkUpdateItem.setEnabled(true);
                         if (!hasUpdate) {
                             Toast.makeText(SettingsActivity.this, message, Toast.LENGTH_SHORT).show();
@@ -1805,7 +1863,7 @@ public class SettingsActivity extends BaseActivity {
 
                     @Override
                     public void onCheckFailed(String error) {
-                        checkUpdateText.setText("检查完成");
+                        checkUpdateText.setText(getString(R.string.settingsactivity_settext_68c0));
                         checkUpdateItem.setEnabled(true);
                         Toast.makeText(SettingsActivity.this, error, Toast.LENGTH_SHORT).show();
                     }

@@ -87,7 +87,7 @@ public class MetroHomeActivity extends BaseActivity {
                         @Override
                         public void run() {
                             if (items.size() == 0) {
-                                mTvLoading.setText("暂无推荐视频");
+                                mTvLoading.setText(getString(R.string.metrohomeactivity_settext_6682));
                                 mIsLoading = false;
                                 return;
                             }
@@ -105,7 +105,7 @@ public class MetroHomeActivity extends BaseActivity {
                         @Override
                         public void run() {
                             if (mVideoList.size() == 0) {
-                                mTvLoading.setText("加载失败");
+                                mTvLoading.setText(getString(R.string.metrohomeactivity_settext_52a0));
                             }
                             mIsLoading = false;
                         }

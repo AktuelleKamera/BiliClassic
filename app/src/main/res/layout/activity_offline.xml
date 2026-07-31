@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="离线管理"
+            android:text="@string/activity_offline_79bb"
             android:textSize="18sp"
             android:textColor="#333333"/>
 
@@ -70,7 +70,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:text="暂无离线视频"
+            android:text="@string/activity_offline_6682"
             android:textSize="14sp"
             android:textColor="#999999"
             android:visibility="gone" />
@@ -96,7 +96,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="可用 0 B / 共 0 B"
+            android:text="@string/activity_offline_53ef"
             android:textSize="12sp"
             android:textColor="#616161" />
 

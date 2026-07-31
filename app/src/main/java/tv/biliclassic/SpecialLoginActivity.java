@@ -4,14 +4,11 @@ import android.text.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.v4.app.FragmentActivity;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.content.pm.ActivityInfo;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -19,9 +16,8 @@ import org.json.JSONObject;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.CookieHelper;
-import tv.biliclassic.tv.util.TvUtil;
 
-public class SpecialLoginActivity extends FragmentActivity {
+public class SpecialLoginActivity extends BaseActivity {
 
     private EditText textInput;
     private Button confirmBtn;
@@ -32,15 +28,6 @@ public class SpecialLoginActivity extends FragmentActivity {
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // TV 模式：强制横屏 + 全屏
-        if (TvUtil.isTv(this)) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        } else {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-        }
 
         setContentView(R.layout.activity_special_login);
 
@@ -55,7 +42,7 @@ public class SpecialLoginActivity extends FragmentActivity {
         final boolean isLoginMode = getIntent().getBooleanExtra("login", true);
 
         if (isLoginMode) {
-            descText.setText("请粘贴登录信息");
+            descText.setText(getString(R.string.specialloginactivity_settext_8bf7));
             if (hintText != null) {
                 hintText.setText("支持格式：\n• 浏览器复制的 Cookie 字符串\n• JSON 格式 { \"cookies\": \"...\" }\n• 任意包含 SESSDATA 的文本");
                 hintText.setVisibility(View.VISIBLE);
@@ -74,7 +61,7 @@ public class SpecialLoginActivity extends FragmentActivity {
                 public void onClick(View v) {
                     String input = textInput.getText().toString().trim();
                     if (input == null || input.length() == 0) {
-                        Toast.makeText(SpecialLoginActivity.this, "请输入内容", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_8bf7), Toast.LENGTH_SHORT).show();
                         return;
                     }
 
@@ -86,20 +73,17 @@ public class SpecialLoginActivity extends FragmentActivity {
                             JSONObject json = new JSONObject(input);
                             cookies = json.optString("cookies", "");
                             if (cookies == null || cookies.length() == 0) {
-                                Toast.makeText(SpecialLoginActivity.this,
-                                        "未找到有效的登录凭证 (SESSDATA)", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_672a), Toast.LENGTH_SHORT).show();
                                 return;
                             }
                         } catch (JSONException e) {
-                            Toast.makeText(SpecialLoginActivity.this,
-                                    "无法解析输入，请检查格式是否正确", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_65e0), Toast.LENGTH_SHORT).show();
                             return;
                         }
                     }
 
                     if (cookies == null || cookies.length() == 0) {
-                        Toast.makeText(SpecialLoginActivity.this,
-                                "未找到有效的登录凭证 (SESSDATA)", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_672a), Toast.LENGTH_SHORT).show();
                         return;
                     }
 
@@ -122,7 +106,7 @@ public class SpecialLoginActivity extends FragmentActivity {
                     NetWorkUtil.refreshHeaders();
                     saveUserName();
 
-                    Toast.makeText(SpecialLoginActivity.this, "登录成功", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_767b), Toast.LENGTH_SHORT).show();
 
                     Intent intent = new Intent(SpecialLoginActivity.this, MainActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -134,7 +118,7 @@ public class SpecialLoginActivity extends FragmentActivity {
             copyBtn.setVisibility(View.GONE);
 
         } else {
-            descText.setText("当前登录信息：");
+            descText.setText(getString(R.string.specialloginactivity_settext_5f53));
             if (hintText != null) {
                 hintText.setVisibility(View.GONE);
             }
@@ -152,7 +136,7 @@ public class SpecialLoginActivity extends FragmentActivity {
             textInput.setFocusable(false);
             textInput.setFocusableInTouchMode(false);
 
-            confirmBtn.setText("导入");
+            confirmBtn.setText(getString(R.string.specialloginactivity_settext_5bfc));
             confirmBtn.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
                     String input = textInput.getText().toString().trim();
@@ -169,10 +153,10 @@ public class SpecialLoginActivity extends FragmentActivity {
                                 }
                             }
                             NetWorkUtil.refreshHeaders();
-                            Toast.makeText(SpecialLoginActivity.this, "导入成功", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_5bfc), Toast.LENGTH_SHORT).show();
                         }
                     } catch (JSONException e) {
-                        Toast.makeText(SpecialLoginActivity.this, "JSON格式错误", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_683c), Toast.LENGTH_SHORT).show();
                     }
                 }
             });
@@ -184,7 +168,7 @@ public class SpecialLoginActivity extends FragmentActivity {
                 public void onClick(View v) {
                     ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                     cm.setText(textInput.getText().toString());
-                    Toast.makeText(SpecialLoginActivity.this, "已复制到剪贴板", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_5df2), Toast.LENGTH_SHORT).show();
                 }
             });
         }

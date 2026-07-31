@@ -346,7 +346,7 @@ public class CommentAdapter extends BaseAdapter {
                                                 h2.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                             }
                                             h2.likeCount.setText(String.valueOf(item.likeCount));
-                                            Toast.makeText(context, "操作失败", Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(context, context.getString(R.string.commentadapter_toast_64cd), Toast.LENGTH_SHORT).show();
                                         }
                                     });
                                 } else {
@@ -370,7 +370,7 @@ public class CommentAdapter extends BaseAdapter {
                                             h2.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                         }
                                         h2.likeCount.setText(String.valueOf(item.likeCount));
-                                        Toast.makeText(context, "网络错误", Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(context, context.getString(R.string.commentadapter_toast_7f51), Toast.LENGTH_SHORT).show();
                                     }
                                 });
                             }
@@ -469,7 +469,7 @@ public class CommentAdapter extends BaseAdapter {
                             intent.putExtra("mid", mid);
                             context.startActivity(intent);
                         } else {
-                            Toast.makeText(context, "无法获取用户信息", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(context, context.getString(R.string.commentadapter_toast_65e0), Toast.LENGTH_SHORT).show();
                         }
                     }
                     @Override
@@ -559,7 +559,7 @@ public class CommentAdapter extends BaseAdapter {
                     intent.putExtra("mid", mid);
                     context.startActivity(intent);
                 } else {
-                    Toast.makeText(context, "无法获取用户信息", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, context.getString(R.string.commentadapter_toast_65e0), Toast.LENGTH_SHORT).show();
                 }
             }
         };
@@ -807,7 +807,7 @@ public class CommentAdapter extends BaseAdapter {
                 Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
                 if (vibrator != null) vibrator.vibrate(50);
             } catch (Exception e) { e.printStackTrace(); }
-            Toast.makeText(context, "已复制评论", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, context.getString(R.string.commentadapter_toast_5df2_1), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -832,14 +832,14 @@ public class CommentAdapter extends BaseAdapter {
                                     list.remove(pos);
                                     notifyDataSetChanged();
                                 }
-                                Toast.makeText(context, "已删除", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(context, context.getString(R.string.commentadapter_toast_5df2), Toast.LENGTH_SHORT).show();
                             }
                         });
                     } else {
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(context, "删除失败", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(context, context.getString(R.string.commentadapter_toast_5220), Toast.LENGTH_SHORT).show();
                             }
                         });
                     }

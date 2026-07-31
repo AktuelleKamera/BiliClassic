@@ -57,7 +57,7 @@
         android:id="@+id/tv_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="正在努力缓冲中..."
+        android:text="@string/activity_player_anim_6b63"
         android:textColor="#666666"
         android:textSize="14sp"
         android:layout_above="@+id/linearLayout"

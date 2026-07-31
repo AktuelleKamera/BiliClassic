@@ -48,11 +48,11 @@ public class WebViewActivity extends BaseActivity {
         if (pageTitle != null && pageTitle.length() > 0) {
             tvTitle.setText(pageTitle);
         } else {
-            tvTitle.setText("网页");
+            tvTitle.setText(getString(R.string.webviewactivity_settext_7f51));
         }
 
         if (url == null || url.length() == 0) {
-            Toast.makeText(this, "网页地址无效", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.webviewactivity_toast_7f51), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }

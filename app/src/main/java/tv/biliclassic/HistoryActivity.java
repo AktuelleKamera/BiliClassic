@@ -103,7 +103,7 @@ public class HistoryActivity extends BaseActivity {
                 } else if (item.bvid != null && item.bvid.length() > 0) {
                     intent.putExtra("bvid", item.bvid);
                 } else {
-                    Toast.makeText(HistoryActivity.this, "无法获取视频信息", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(HistoryActivity.this, HistoryActivity.this.getString(R.string.historyactivity_toast_65e0), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 startActivity(intent);
@@ -179,7 +179,7 @@ public class HistoryActivity extends BaseActivity {
             if (emptyView.getVisibility() == View.VISIBLE) {
                 return;
             }
-            emptyView.setText("加载失败，点击重试");
+            emptyView.setText(getString(R.string.historyactivity_settext_52a0));
             emptyView.setVisibility(View.VISIBLE);
             progressBar.setVisibility(View.GONE);
             return;
@@ -193,7 +193,7 @@ public class HistoryActivity extends BaseActivity {
             mainHandler.post(new Runnable() {
                 public void run() {
                     progressBar.setVisibility(View.GONE);
-                    emptyView.setText("还没有登录");
+                    emptyView.setText(getString(R.string.historyactivity_settext_8fd8));
                     emptyView.setVisibility(View.VISIBLE);
                     historyList.setVisibility(View.GONE);
                 }
@@ -257,7 +257,7 @@ public class HistoryActivity extends BaseActivity {
                                 }
 
                                 if (videoList.size() == 0) {
-                                    emptyView.setText("暂无历史记录");
+                                    emptyView.setText(getString(R.string.historyactivity_settext_6682));
                                     emptyView.setVisibility(View.VISIBLE);
                                     historyList.setVisibility(View.GONE);
                                 } else {

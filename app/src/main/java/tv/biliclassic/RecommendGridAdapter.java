@@ -3,6 +3,7 @@ package tv.biliclassic;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -15,12 +16,14 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.GlobalImageCache;
@@ -32,12 +35,39 @@ public class RecommendGridAdapter extends BaseAdapter {
     private Context context;
     private List<VideoCard> list;
     private int numColumns = 2;
-    private ExecutorService executor = Executors.newFixedThreadPool(4);
+    private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public RecommendGridAdapter(Context context, List<VideoCard> list) {
         this.context = context;
         this.list = list;
+        initExecutor();
+    }
+
+    private boolean isLowMemoryDevice() {
+        int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
+        return maxMemory < 16384;
+    }
+
+    private int getConfiguredThreadCount() {
+        int savedThreads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
+        if (savedThreads > 0) {
+            return savedThreads;
+        }
+        return isLowMemoryDevice() ? 1 : 2;
+    }
+
+    private void initExecutor() {
+        if (executor != null && !executor.isShutdown()) {
+            executor.shutdownNow();
+        }
+        int threadCount = getConfiguredThreadCount();
+        if (threadCount <= 1) {
+            executor = Executors.newSingleThreadExecutor();
+        } else {
+            executor = new ThreadPoolExecutor(threadCount, threadCount, 60L, TimeUnit.SECONDS,
+                    new LinkedBlockingQueue<Runnable>());
+        }
     }
 
     public void setNumColumns(int numColumns) {
@@ -180,8 +210,8 @@ public class RecommendGridAdapter extends BaseAdapter {
 
     private Bitmap downloadImage(String urlStr) {
         if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
-        java.io.File tempFile = null;
         HttpURLConnection conn = null;
+        java.io.File tempFile = null;
         try {
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
@@ -191,45 +221,62 @@ public class RecommendGridAdapter extends BaseAdapter {
             conn.setRequestProperty("Accept-Encoding", "identity");
             conn.connect();
 
-            // 下载到临时文件（避免 ByteArrayOutputStream OOM）
-            tempFile = new java.io.File(context.getCacheDir(), "img_" + urlStr.hashCode() + ".tmp");
+            tempFile = new java.io.File(context.getCacheDir(), "rec_" + urlStr.hashCode() + ".tmp");
             InputStream is = conn.getInputStream();
             java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
-            byte[] buffer = new byte[8192];
+            byte[] buf = new byte[8192];
             int len;
-            while ((len = is.read(buffer)) != -1) {
-                fos.write(buffer, 0, len);
+            while ((len = is.read(buf)) != -1) {
+                fos.write(buf, 0, len);
             }
             is.close();
             fos.close();
-            conn.disconnect();
-            conn = null;
 
             if (!tempFile.exists() || tempFile.length() == 0) return null;
 
+            byte[] imageData = new byte[(int) tempFile.length()];
+            java.io.FileInputStream fis = new java.io.FileInputStream(tempFile);
+            int offset = 0;
+            while (offset < imageData.length) {
+                int read = fis.read(imageData, offset, imageData.length - offset);
+                if (read < 0) break;
+                offset += read;
+            }
+            fis.close();
+
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
-            BitmapFactory.decodeFile(tempFile.getAbsolutePath(), options);
+            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
 
             int targetWidth = 160;
             int targetHeight = 90;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                targetWidth = (int)(targetWidth * 1.25f);
+                targetHeight = (int)(targetHeight * 1.25f);
+            }
+            int minScale = Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD ? 2 : 4;
             int scale = 1;
             if (options.outWidth > targetWidth || options.outHeight > targetHeight) {
                 int widthRatio = options.outWidth / targetWidth;
                 int heightRatio = options.outHeight / targetHeight;
                 scale = Math.max(widthRatio, heightRatio);
                 if (scale < 1) scale = 1;
-                if (scale > 4) scale = 4;
+                if (scale > 8) scale = 8;
             }
+            if (scale < minScale) scale = minScale;
 
             Bitmap bitmap = null;
             while (scale <= 16 && bitmap == null) {
                 try {
+                    System.gc();
                     options = new BitmapFactory.Options();
                     options.inSampleSize = scale;
                     options.inPreferredConfig = Bitmap.Config.RGB_565;
-                    bitmap = BitmapFactory.decodeFile(tempFile.getAbsolutePath(), options);
+                    options.inPurgeable = true;
+                    options.inInputShareable = true;
+                    bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
                 } catch (OutOfMemoryError e) {
+                    System.gc();
                     scale *= 2;
                 }
             }
@@ -238,12 +285,8 @@ public class RecommendGridAdapter extends BaseAdapter {
             Log.e(TAG, "下载失败: " + urlStr, e);
             return null;
         } finally {
-            if (conn != null) {
-                conn.disconnect();
-            }
-            if (tempFile != null && tempFile.exists()) {
-                tempFile.delete();
-            }
+            if (conn != null) conn.disconnect();
+            if (tempFile != null && tempFile.exists()) tempFile.delete();
         }
     }
 

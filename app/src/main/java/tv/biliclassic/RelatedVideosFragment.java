@@ -70,14 +70,14 @@ public class RelatedVideosFragment extends Fragment {
             @Override
             public void onVideoLongClick(VideoCard video, int position) {
                 if (video == null || video.aid == 0) {
-                    Toast.makeText(getActivity(), "无法收藏该视频", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.relatedvideosfragment_toast_65e0), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 if (mIsFavoriteUpdating) return;
                 long mid = SharedPreferencesUtil.getLong("mid", 0);
                 String cookies = SharedPreferencesUtil.getString("cookies", "");
                 if (mid == 0 || cookies == null || cookies.length() == 0) {
-                    Toast.makeText(getActivity(), "请先登录的说~", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.relatedvideosfragment_toast_8bf7), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 showFavoriteDialog(video.aid);
@@ -100,7 +100,7 @@ public class RelatedVideosFragment extends Fragment {
 
         final long mid = SharedPreferencesUtil.getLong("mid", 0);
         if (mid == 0) {
-            Toast.makeText(getActivity(), "请先登录的说~", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.relatedvideosfragment_toast_8bf7), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -119,7 +119,7 @@ public class RelatedVideosFragment extends Fragment {
                         public void run() {
                             mIsFavoriteUpdating = false;
                             if (folders == null || folders.size() == 0) {
-                                Toast.makeText(getActivity(), "暂无收藏夹，请先在网页端创建", Toast.LENGTH_LONG).show();
+                                Toast.makeText(getActivity(), getActivity().getString(R.string.relatedvideosfragment_toast_6682), Toast.LENGTH_LONG).show();
                                 return;
                             }
 
@@ -132,7 +132,7 @@ public class RelatedVideosFragment extends Fragment {
                             }
 
                             new AlertDialog.Builder(DialogUtil.wrap(getActivity()))
-                                    .setTitle("选择收藏夹")
+                                    .setTitle(getString(R.string.relatedvideosfragment_settitle_9009))
                                     .setItems(folderNames, new DialogInterface.OnClickListener() {
                                         @Override
                                         public void onClick(DialogInterface dialog, int which) {
@@ -178,12 +178,12 @@ public class RelatedVideosFragment extends Fragment {
                         public void run() {
                             mIsFavoriteUpdating = false;
                             if (code == 0) {
-                                Toast.makeText(getActivity(), "收藏好了喵～(=w=)", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getActivity(), getActivity().getString(R.string.relatedvideosfragment_toast_6536), Toast.LENGTH_SHORT).show();
                                 if (getActivity() != null) {
                                     getActivity().sendBroadcast(new Intent(BroadcastConstants.ACTION_FAVORITE_CHANGED));
                                 }
                             } else if (code == 11201) {
-                                Toast.makeText(getActivity(), "已收藏过该视频", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getActivity(), getActivity().getString(R.string.relatedvideosfragment_toast_5df2), Toast.LENGTH_SHORT).show();
                             } else {
                                 Toast.makeText(getActivity(), "收藏失败喵: " + code, Toast.LENGTH_SHORT).show();
                             }
@@ -235,7 +235,7 @@ public class RelatedVideosFragment extends Fragment {
 
     private void loadRelatedVideos() {
         if (aid == 0 && (bvid == null || bvid.length() == 0)) {
-            emptyView.setText("无法加载相关视频");
+            emptyView.setText(getString(R.string.relatedvideosfragment_settext_65e0));
             emptyView.setVisibility(View.VISIBLE);
             progressBar.setVisibility(View.GONE);
             return;
@@ -367,7 +367,7 @@ public class RelatedVideosFragment extends Fragment {
                 }
 
                 if (videoList.size() == 0) {
-                    emptyView.setText("暂无相关视频");
+                    emptyView.setText(getString(R.string.relatedvideosfragment_settext_6682));
                     emptyView.setVisibility(View.VISIBLE);
                 } else {
                     emptyView.setVisibility(View.GONE);

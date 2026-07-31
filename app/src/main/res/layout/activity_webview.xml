@@ -23,7 +23,7 @@
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:layout_centerVertical="true"
-                android:contentDescription="返回"
+                android:contentDescription="@string/activity_webview_8fd4"
                 android:padding="8dp"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_action_back" />
@@ -33,7 +33,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:text="网页"
+                android:text="@string/activity_webview_7f51"
                 android:textSize="18sp"
                 android:textColor="#333333"/>
 
@@ -73,7 +73,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="嘿咻…嘿咻…"
+            android:text="@string/activity_webview_563f"
             android:textSize="12sp"
             android:textColor="#999999" />
 

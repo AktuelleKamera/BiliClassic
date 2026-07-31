@@ -45,7 +45,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="视频标题"
+                android:text="@string/fragment_video_detail_89c6"
                 android:textSize="16sp"
                 android:textColor="#000000"
                 android:layout_marginLeft="10dp"
@@ -83,7 +83,7 @@
                         android:id="@+id/tv_up_name"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="UP主: "
+                        android:text="@string/fragment_video_detail_4e3b"
                         android:textColor="#666666" />
 
                     <TextView
@@ -106,7 +106,7 @@
                         android:id="@+id/tv_play"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="播放: 0"
+                        android:text="@string/fragment_video_detail_64ad"
                         android:textColor="#666666"
                         android:layout_marginRight="50dp" />
 
@@ -114,7 +114,7 @@
                         android:id="@+id/tv_danmaku"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="弹幕: 0"
+                        android:text="@string/fragment_video_detail_5f39"
                         android:textColor="#666666" />
 
                 </LinearLayout>
@@ -125,7 +125,7 @@
                 android:id="@+id/btn_play"
                 android:layout_width="wrap_content"
                 android:layout_height="40dp"
-                android:text="点击播放"
+                android:text="@string/fragment_video_detail_70b9"
                 android:textColor="#FFFFFF"
                 android:background="#D86DA5"
                 android:paddingLeft="20dp"
@@ -174,7 +174,7 @@
                 android:id="@+id/tv_pubdate"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="发布时间:"
+                android:text="@string/fragment_video_detail_53d1"
                 android:textSize="12sp"
                 android:textColor="#999999" />
 
@@ -202,7 +202,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="这里显示视频的简介内容"
+                android:text="@string/fragment_video_detail_8fd9"
                 android:textSize="14sp"
                 android:textColor="#333333"
                 android:lineSpacingExtra="4dp" />
@@ -229,7 +229,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="#F5F5F5"
-            android:text="共0段视频"
+            android:text="@string/fragment_video_detail_5171"
             android:textSize="14sp"
             android:textColor="#FCA3C5"
             android:paddingLeft="10dp"

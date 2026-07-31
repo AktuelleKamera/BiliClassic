@@ -30,7 +30,7 @@ public class TvMainActivity extends FragmentActivity {
 
         int sdkInt = getSdkInt();
         if (sdkInt < 14) {
-            Toast.makeText(this, "TV模式需要 Android 4.0 及以上系统", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, this.getString(R.string.tvmainactivity_toast_6a21), Toast.LENGTH_LONG).show();
             Intent intent = new Intent(this, MainActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);

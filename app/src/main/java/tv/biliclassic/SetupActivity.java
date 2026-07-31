@@ -75,10 +75,10 @@ public class SetupActivity extends BaseActivity {
         TextView titleText = (TextView) findViewById(R.id.title_text);
         TextView btnText = (TextView) findViewById(R.id.btn_text);
         if (isUpgrade) {
-            titleText.setText("更新完成");
-            btnText.setText("欢迎回到 BiliClassic");
+            titleText.setText(getString(R.string.setupactivity_settext_66f4));
+            btnText.setText(getString(R.string.setupactivity_settext_6b22));
         } else {
-            titleText.setText("初次见面");
+            titleText.setText(getString(R.string.setupactivity_settext_521d));
         }
 
         mPageWelcome = findViewById(R.id.page_welcome);
@@ -94,10 +94,10 @@ public class SetupActivity extends BaseActivity {
 
         TextView page2Title = (TextView) findViewById(R.id.page2_title);
         if (isUpgrade) {
-            page2Title.setText("更新日志");
+            page2Title.setText(getString(R.string.setupactivity_settext_66f4_1));
             generateChangelog();
         } else {
-            page2Title.setText("选择初始主页");
+            page2Title.setText(getString(R.string.setupactivity_settext_9009));
             generateTiles();
         }
 
@@ -328,7 +328,7 @@ public class SetupActivity extends BaseActivity {
         container.removeAllViews();
 
         final TextView loadingText = new TextView(this);
-        loadingText.setText("正在获取更新日志...");
+        loadingText.setText(getString(R.string.setupactivity_settext_6b63));
         loadingText.setTextColor(0xFF999999);
         loadingText.setTextSize(15);
         loadingText.setGravity(Gravity.CENTER);

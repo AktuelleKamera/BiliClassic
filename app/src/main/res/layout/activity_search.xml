@@ -25,7 +25,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_gravity="center_vertical"
-            android:contentDescription="返回"
+            android:contentDescription="@string/activity_search_8fd4"
             android:padding="1dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_action_back"
@@ -39,7 +39,7 @@
             android:layout_gravity="center_vertical"
             android:layout_weight="1"
             android:background="@drawable/bili_search_edit_background"
-            android:hint="输入关键词或AV/BV号"
+            android:hint="@string/activity_search_8f93"
             android:imeOptions="actionSearch"
             android:inputType="text"
             android:maxLines="1"
@@ -55,7 +55,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_gravity="center_vertical"
-            android:contentDescription="搜索"
+            android:contentDescription="@string/activity_search_641c"
             android:padding="1dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_action_search"
@@ -91,7 +91,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="搜索历史"
+                android:text="@string/activity_search_641c_1"
                 android:textSize="14sp"
                 android:textColor="#666666" />
 
@@ -99,7 +99,7 @@
                 android:id="@+id/clear_history"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="清空"
+                android:text="@string/activity_search_6e05"
                 android:textSize="12sp"
                 android:textColor="#D86DA5"
                 android:focusable="true"
@@ -125,7 +125,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="暂无搜索历史"
+                android:text="@string/activity_search_6682"
                 android:textSize="12sp"
                 android:textColor="#999999" />
 
@@ -153,7 +153,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginLeft="8dp"
-            android:text="嘿咻…嘿咻…"
+            android:text="@string/activity_search_563f"
             android:textSize="12sp"
             android:textColor="#999999" />
 
@@ -179,7 +179,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:layout_marginTop="50dp"
-        android:text="暂无搜索结果"
+        android:text="@string/activity_search_1_6682"
         android:textSize="14sp"
         android:textColor="#999999"
         android:visibility="gone" />

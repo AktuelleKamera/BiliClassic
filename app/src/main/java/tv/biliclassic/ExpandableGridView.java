@@ -26,7 +26,7 @@ public class ExpandableGridView extends GridView {
             super.onMeasure(widthMeasureSpec, heightMeasureSpec);
             return;
         }
-        if (android.os.Build.VERSION.SDK_INT >= 4) {
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 4) {
             int expandSpec = MeasureSpec.makeMeasureSpec(
                     Integer.MAX_VALUE >> 2, MeasureSpec.AT_MOST);
             super.onMeasure(widthMeasureSpec, expandSpec);

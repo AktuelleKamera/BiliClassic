@@ -11,12 +11,14 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.support.v4.app.Fragment;
+import android.support.v4.widget.SwipeRefreshLayout;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,6 +65,18 @@ public class PartitionPageFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_recommend, container, false);
 
+        // 移除 SwipeRefreshLayout（分区不需要下拉刷新，留著會因 mListener==null 閃退）
+        SwipeRefreshLayout srl = (SwipeRefreshLayout) view.findViewById(R.id.swipe_refresh);
+        FrameLayout parent = (FrameLayout) view.findViewById(R.id.recommend_content);
+        if (srl != null && parent != null) {
+            scrollView = (ScrollView) view.findViewById(R.id.scroll_view);
+            ViewGroup svParent = (ViewGroup) scrollView.getParent();
+            if (svParent != null) svParent.removeView(scrollView);
+            int idx = parent.indexOfChild(srl);
+            parent.removeView(srl);
+            parent.addView(scrollView, idx, srl.getLayoutParams());
+        }
+
         gridView = (ExpandableGridView) view.findViewById(R.id.recommend_grid);
         progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
         emptyView = (TextView) view.findViewById(R.id.empty_view);
@@ -94,7 +108,7 @@ public class PartitionPageFragment extends Fragment {
                 } else if (item.bvid != null && item.bvid.length() > 0) {
                     intent.putExtra("bvid", item.bvid);
                 } else {
-                    Toast.makeText(getActivity(), "无法获取视频信息", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.partitionpagefragment_toast_65e0), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 startActivity(intent);

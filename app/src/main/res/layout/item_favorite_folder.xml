@@ -43,7 +43,7 @@
                 android:id="@+id/name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="收藏夹名称"
+                android:text="@string/item_favorite_folder_6536"
                 android:textColor="#333333"
                 android:textSize="16sp" />
 
@@ -52,7 +52,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="0个视频"
+                android:text="@string/item_favorite_folder_4e2a"
                 android:textColor="#999999"
                 android:textSize="12sp" />
 

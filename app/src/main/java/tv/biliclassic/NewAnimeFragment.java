@@ -262,7 +262,7 @@ public class NewAnimeFragment extends Fragment {
             headerContainer.setVisibility(View.VISIBLE);
             TextView textView = (TextView) headerContainer.findViewById(R.id.header_text);
             if (textView != null) {
-                textView.setText("网络不可用，显示缓存");
+                textView.setText(getString(R.string.newanimefragment_settext_7f51));
             }
         }
         if (contentContainer != null) {
@@ -284,7 +284,7 @@ public class NewAnimeFragment extends Fragment {
                         headerContainer.setVisibility(View.VISIBLE);
                         TextView textView = (TextView) headerContainer.findViewById(R.id.header_text);
                         if (textView != null) {
-                            textView.setText("网络不可用，显示缓存");
+                            textView.setText(getString(R.string.newanimefragment_settext_7f51));
                         }
                     }
                 }
@@ -441,9 +441,19 @@ public class NewAnimeFragment extends Fragment {
             String fileName = getCacheFileName(url);
             File cacheFile = new File(coverDir, fileName);
             if (cacheFile.exists()) {
+                byte[] imageData = new byte[(int) cacheFile.length()];
+                FileInputStream fis = new FileInputStream(cacheFile);
+                int offset = 0;
+                while (offset < imageData.length) {
+                    int read = fis.read(imageData, offset, imageData.length - offset);
+                    if (read < 0) break;
+                    offset += read;
+                }
+                fis.close();
+
                 BitmapFactory.Options options = new BitmapFactory.Options();
                 options.inJustDecodeBounds = true;
-                BitmapFactory.decodeFile(cacheFile.getAbsolutePath(), options);
+                BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
 
                 int scale = 1;
                 int targetSize = 200;
@@ -459,7 +469,9 @@ public class NewAnimeFragment extends Fragment {
                         options = new BitmapFactory.Options();
                         options.inSampleSize = scale;
                         options.inPreferredConfig = Bitmap.Config.RGB_565;
-                        bitmap = BitmapFactory.decodeFile(cacheFile.getAbsolutePath(), options);
+                        options.inPurgeable = true;
+                        options.inInputShareable = true;
+                        bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
                     } catch (OutOfMemoryError e) {
                         scale *= 2;
                     }
@@ -925,7 +937,7 @@ public class NewAnimeFragment extends Fragment {
             intent = new Intent(getActivity(), VideoDetailActivity.class);
             intent.putExtra("aid", item.aid);
         } else {
-            Toast.makeText(getActivity(), "无法获取视频信息", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.newanimefragment_toast_65e0), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -1028,8 +1040,8 @@ public class NewAnimeFragment extends Fragment {
             options.inJustDecodeBounds = true;
             BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
 
-            int targetWidth = isLarge ? 320 : 160;
-            int targetHeight = isLarge ? 160 : 80;
+            int targetWidth = isLarge ? 480 : 200;
+            int targetHeight = isLarge ? 240 : 100;
             int scale = 1;
 
             if (options.outWidth > 0 && options.outHeight > 0) {
@@ -1048,6 +1060,8 @@ public class NewAnimeFragment extends Fragment {
                     options = new BitmapFactory.Options();
                     options.inSampleSize = scale;
                     options.inPreferredConfig = Bitmap.Config.RGB_565;
+                    options.inPurgeable = true;
+                    options.inInputShareable = true;
                     bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
                 } catch (OutOfMemoryError e) {
                     scale *= 2;

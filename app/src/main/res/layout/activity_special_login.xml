@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="手动登录"
+        android:text="@string/activity_special_login_624b"
         android:textSize="20sp"
         android:textColor="#333333"
         android:layout_marginBottom="16dp" />
@@ -18,7 +18,7 @@
         android:id="@+id/desc"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="请输入JSON格式的登录信息："
+        android:text="@string/activity_special_login_8bf7"
         android:textSize="14sp"
         android:textColor="#666666"
         android:layout_marginBottom="8dp" />
@@ -27,7 +27,7 @@
         android:id="@+id/hint_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="支持格式：\n• 浏览器复制的 Cookie 字符串\n• JSON 格式 { &quot;cookies&quot;: &quot;...&quot; }\n• 任意包含 SESSDATA 的文本"
+        android:text="@string/activity_special_login_652f"
         android:textSize="12sp"
         android:textColor="#888888"
         android:layout_marginBottom="8dp"
@@ -57,7 +57,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="确认登录"
+            android:text="@string/activity_special_login_786e"
             android:background="#D86DA5"
             android:textColor="#FFFFFF"
             android:layout_marginRight="8dp" />
@@ -67,7 +67,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="返回"
+            android:text="@string/activity_special_login_8fd4"
             android:background="#999999"
             android:textColor="#FFFFFF" />
 
@@ -76,7 +76,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="复制"
+            android:text="@string/activity_special_login_590d"
             android:background="#D86DA5"
             android:textColor="#FFFFFF"
             android:layout_marginLeft="8dp"

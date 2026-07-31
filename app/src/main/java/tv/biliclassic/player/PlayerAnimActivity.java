@@ -97,7 +97,7 @@ public class PlayerAnimActivity extends Activity {
         android.util.Log.e("PlayerAnim", "isOnlineMode: " + isOnlineMode);
 
         if (videoUrl == null || videoUrl.length() == 0) {
-            Toast.makeText(this, "视频地址无效", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.playeranimactivity_toast_89c6), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -105,7 +105,7 @@ public class PlayerAnimActivity extends Activity {
         startTvAnimation();
 
         if (isOnlineMode) {
-            tvStatus.setText("在线播放模式...");
+            tvStatus.setText(getString(R.string.playeranimactivity_settext_5728));
             progressBar.setVisibility(ProgressBar.GONE);
             tvProgress.setVisibility(TextView.GONE);
             handler.post(new Runnable() {
@@ -187,7 +187,7 @@ public class PlayerAnimActivity extends Activity {
     private void playWithBuiltinPlayer(String url) {
         android.util.Log.e("PlayerAnim", "playWithBuiltinPlayer, url: " + url);
         if (url == null || url.length() == 0) {
-            Toast.makeText(this, "视频地址为空", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.playeranimactivity_toast_89c6_1), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -236,7 +236,7 @@ public class PlayerAnimActivity extends Activity {
     }
 
     private void startDownload() {
-        tvStatus.setText("正在缓冲...");
+        tvStatus.setText(getString(R.string.playeranimactivity_settext_6b63));
         isDownloadCancelled = false;
 
         downloadThread = new Thread(new Runnable() {
@@ -360,7 +360,7 @@ public class PlayerAnimActivity extends Activity {
 
     private void playWithPlayer() {
         if (!cacheFile.exists() || cacheFile.length() == 0) {
-            Toast.makeText(this, "视频文件不存在", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.playeranimactivity_toast_89c6_1), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -440,7 +440,7 @@ public class PlayerAnimActivity extends Activity {
             if (SdkHelper.getSdkInt() >= 24) {
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             }
-            intent.setPackage(packageName);
+            try { Intent.class.getMethod("setPackage", String.class).invoke(intent, new Object[]{packageName}); } catch (Exception ignored) {};
             if (getPackageManager().queryIntentActivities(intent, 0).size() > 0) {
                 startActivity(intent);
                 finish();
@@ -528,7 +528,7 @@ public class PlayerAnimActivity extends Activity {
         if (trySystemPlayer()) {
             return;
         }
-        Toast.makeText(this, "未找到可用的视频播放器，请安装设置里的任意播放器", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, this.getString(R.string.playeranimactivity_toast_672a), Toast.LENGTH_LONG).show();
         finish();
     }
 
@@ -539,7 +539,7 @@ public class PlayerAnimActivity extends Activity {
             if (SdkHelper.getSdkInt() >= 24) {
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             }
-            intent.setPackage(packageName);
+            try { Intent.class.getMethod("setPackage", String.class).invoke(intent, new Object[]{packageName}); } catch (Exception ignored) {};
             if (getPackageManager().queryIntentActivities(intent, 0).size() > 0) {
                 startActivity(intent);
                 finish();

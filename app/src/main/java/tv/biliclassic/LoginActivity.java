@@ -1,18 +1,13 @@
 package tv.biliclassic;
 
-import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentActivity;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
-import tv.biliclassic.tv.util.TvUtil;
-
-public class LoginActivity extends FragmentActivity {
+public class LoginActivity extends BaseActivity {
 
     private LinearLayout loadingContainer;
     private FrameLayout fragmentContainer;
@@ -22,13 +17,6 @@ public class LoginActivity extends FragmentActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // TV 模式：强制横屏 + 全屏
-        if (TvUtil.isTv(this)) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        }
 
         setContentView(R.layout.activity_login);
 

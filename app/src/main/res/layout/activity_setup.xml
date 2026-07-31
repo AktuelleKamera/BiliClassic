@@ -23,7 +23,7 @@
                 android:id="@+id/title_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="初次见面"
+                android:text="@string/activity_setup_521d"
                 android:textSize="40sp"
                 android:textColor="#D86DA5" />
 
@@ -44,7 +44,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:text="欢迎使用 BiliClassic"
+                android:text="@string/activity_setup_6b22"
                 android:textSize="18sp"
                 android:textColor="#666666" />
 
@@ -62,7 +62,7 @@
                 android:id="@+id/btn_next"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="下一步"
+                android:text="@string/activity_setup_4e0b"
                 android:textSize="18sp"
                 android:textColor="#D86DA5"
                 android:padding="8dp"
@@ -91,7 +91,7 @@
                 android:id="@+id/page2_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="选择初始主页"
+                android:text="@string/activity_setup_9009"
                 android:textSize="40sp"
                 android:textColor="#D86DA5" />
 
@@ -131,7 +131,7 @@
                 android:id="@+id/btn_start"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="开始使用"
+                android:text="@string/activity_setup_5f00"
                 android:textSize="18sp"
                 android:textColor="#D86DA5"
                 android:padding="8dp"

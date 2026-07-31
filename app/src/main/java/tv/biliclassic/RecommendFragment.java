@@ -12,6 +12,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.support.v4.widget.SwipeRefreshLayout;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
@@ -37,6 +39,7 @@ public class RecommendFragment extends Fragment {
     private RecommendGridAdapter adapter;
     private List<VideoCard> videoList = new ArrayList<VideoCard>();
     private Handler mainHandler = new Handler(Looper.getMainLooper());
+    private SwipeRefreshLayout swipeRefreshLayout;
 
     private int currentPage = 1;
     private boolean isLoading = false;
@@ -55,6 +58,21 @@ public class RecommendFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_recommend, container, false);
+
+        // API 3: 移除 SwipeRefreshLayout（引起 Layout.draw 递归），直接用 ScrollView
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() < 4) {
+            android.support.v4.widget.SwipeRefreshLayout srl = (android.support.v4.widget.SwipeRefreshLayout)
+                    view.findViewById(R.id.swipe_refresh);
+            FrameLayout parent = (FrameLayout) view.findViewById(R.id.recommend_content);
+            scrollView = (ScrollView) view.findViewById(R.id.scroll_view);
+            if (srl != null && parent != null && scrollView != null) {
+                int idx = parent.indexOfChild(srl);
+                ViewGroup svParent = (ViewGroup) scrollView.getParent();
+                if (svParent != null) svParent.removeView(scrollView);
+                parent.removeView(srl);
+                parent.addView(scrollView, idx, srl.getLayoutParams());
+            }
+        }
 
         gridView = (ExpandableGridView) view.findViewById(R.id.recommend_grid);
         progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
@@ -99,6 +117,17 @@ public class RecommendFragment extends Fragment {
         });
 
         gridView.setFocusable(false);
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 4) {
+            swipeRefreshLayout = (SwipeRefreshLayout) view.findViewById(R.id.swipe_refresh);
+            if (swipeRefreshLayout != null) {
+                swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+                    @Override
+                    public void onRefresh() {
+                        loadRecommend();
+                    }
+                });
+            }
+        }
         scrollView.setFocusable(true);
         scrollView.setFocusable(true);
         scrollView.setFocusableInTouchMode(true);
@@ -218,6 +247,12 @@ public class RecommendFragment extends Fragment {
         }
     }
 
+    private void stopRefreshing() {
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setRefreshing(false);
+        }
+    }
+
     private void showFooter() {
         if (footerContainer != null) {
             footerContainer.setVisibility(View.VISIBLE);
@@ -234,7 +269,11 @@ public class RecommendFragment extends Fragment {
     }
 
     private void loadRecommend() {
+        if (isLoading) return;
+        isLoading = true;
+
         if (!isNetworkAvailable()) {
+            isLoading = false;
             hideAllLoading();
             emptyView.setText(getString(R.string.emoticon__no_network));
             emptyView.setVisibility(View.VISIBLE);
@@ -254,17 +293,25 @@ public class RecommendFragment extends Fragment {
                     final List<VideoCard> items = new ArrayList<VideoCard>();
                     RecommendApi.getRecommend(items);
 
-                    if (getActivity() == null) return;
+                    if (getActivity() == null) {
+                        isLoading = false;
+                        return;
+                    }
 
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            if (getActivity() == null) return;
+                            if (getActivity() == null || getView() == null) {
+                                isLoading = false;
+                                return;
+                            }
                             hideAllLoading();
+                            stopRefreshing();
+                            isLoading = false;
 
                             if (items == null || items.size() == 0) {
-                                emptyView.setVisibility(View.VISIBLE);
-                                gridView.setVisibility(View.GONE);
+                                if (emptyView != null) emptyView.setVisibility(View.VISIBLE);
+                                if (gridView != null) gridView.setVisibility(View.GONE);
                                 return;
                             }
                             videoList.clear();
@@ -294,22 +341,30 @@ public class RecommendFragment extends Fragment {
                                 scrollView.smoothScrollTo(0, 0);
                                 scrollView.requestFocus();
                             }
-                        }
+                                        }
                     });
                 } catch (final Exception e) {
-                    if (getActivity() == null) return;
+                    if (getActivity() == null) {
+                        isLoading = false;
+                        return;
+                    }
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            if (getActivity() == null) return;
+                            if (getActivity() == null || getView() == null) {
+                                isLoading = false;
+                                return;
+                            }
+                            isLoading = false;
                             hideAllLoading();
+                            stopRefreshing();
                             String msg = e.getMessage();
                             if (msg != null && (msg.contains("Unable to resolve host") || msg.contains("ConnectException") || msg.contains("SocketException") || msg.contains("timeout") || msg.contains("timed out"))) {
-                                emptyView.setText(getString(R.string.emoticon__no_network));
+                                if (emptyView != null) emptyView.setText(getString(R.string.emoticon__no_network));
                             } else {
-                                emptyView.setText("加载失败: " + msg);
+                                if (emptyView != null) emptyView.setText("加载失败: " + msg);
                             }
-                            emptyView.setVisibility(View.VISIBLE);
+                            if (emptyView != null) emptyView.setVisibility(View.VISIBLE);
                         }
                     });
                     e.printStackTrace();
@@ -354,7 +409,7 @@ public class RecommendFragment extends Fragment {
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            if (getActivity() == null) {
+                            if (getActivity() == null || getView() == null) {
                                 hideFooter();
                                 isLoading = false;
                                 return;
@@ -390,7 +445,7 @@ public class RecommendFragment extends Fragment {
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            if (getActivity() == null) {
+                            if (getActivity() == null || getView() == null) {
                                 hideFooter();
                                 isLoading = false;
                                 return;

@@ -36,7 +36,7 @@
                 android:id="@+id/tv_settings"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="设置"
+                android:text="@string/activity_tv_main_8bbe"
                 android:textSize="14sp"
                 android:textColor="#FFFFFF"
                 android:alpha="0.8"

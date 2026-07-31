@@ -120,7 +120,7 @@ public class BangumiDetailFragment extends Fragment {
 
     private void playEpisode(final Bangumi.Episode episode) {
         if (episode == null || episode.aid == 0) {
-            Toast.makeText(getActivity(), "分集信息无效", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.bangumidetailfragment_toast_5206), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -151,7 +151,7 @@ public class BangumiDetailFragment extends Fragment {
                                     bangumi = result;
                                     displayBangumi();
                                 } else {
-                                    Toast.makeText(getActivity(), "获取番剧信息失败", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(getActivity(), getActivity().getString(R.string.bangumidetailfragment_toast_83b7), Toast.LENGTH_SHORT).show();
                                 }
                                 showLoading(false);
                             }
@@ -166,7 +166,7 @@ public class BangumiDetailFragment extends Fragment {
                                 showLoading(false);
                                 String msg = e.getMessage();
                                 if (msg != null && msg.contains("404")) {
-                                    Toast.makeText(getActivity(), "番剧不存在或已下架", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(getActivity(), getActivity().getString(R.string.bangumidetailfragment_toast_756a), Toast.LENGTH_SHORT).show();
                                 } else {
                                     Toast.makeText(getActivity(), "加载失败: " + msg, Toast.LENGTH_SHORT).show();
                                 }
@@ -233,11 +233,11 @@ public class BangumiDetailFragment extends Fragment {
                             if (isExpanded) {
                                 tvDesc.setMaxLines(Integer.MAX_VALUE);
                                 tvDesc.setEllipsize(null);
-                                tvDescExpand.setText("收起");
+                                tvDescExpand.setText(getString(R.string.bangumidetailfragment_settext_6536));
                             } else {
                                 tvDesc.setMaxLines(3);
                                 tvDesc.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                                tvDescExpand.setText("展开");
+                                tvDescExpand.setText(getString(R.string.bangumidetailfragment_settext_5c55));
                             }
                         }
                     });

@@ -15,7 +15,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="程序崩溃"
+            android:text="@string/activity_crash_report_7a0b"
             android:textColor="#333333"
             android:textSize="18sp"/>
 
@@ -33,7 +33,7 @@
         android:layout_height="wrap_content"
         android:background="#F0F0F0"
         android:padding="12dp"
-        android:text="很抱歉，程序遇到了一些问题。请复制下方日志并反馈给开发者，谢谢！"
+        android:text="@string/activity_crash_report_5f88"
         android:textColor="#666666"
         android:textSize="13sp" />
 
@@ -52,7 +52,7 @@
             android:background="#FFFFFF"
             android:fontFamily="monospace"
             android:padding="12dp"
-            android:text="正在收集信息..."
+            android:text="@string/activity_crash_report_6b63"
             android:textColor="#333333"
             android:textSize="10sp" />
 
@@ -72,7 +72,7 @@
             android:layout_weight="1"
             android:layout_marginRight="6dp"
             android:background="#D86DA5"
-            android:text="复制日志"
+            android:text="@string/activity_crash_report_590d"
             android:textColor="#FFFFFF"
             android:textSize="14sp" />
 
@@ -84,7 +84,7 @@
             android:layout_marginLeft="6dp"
             android:layout_marginRight="6dp"
             android:background="#FFFFFF"
-            android:text="分享日志"
+            android:text="@string/activity_crash_report_5206"
             android:textColor="#D86DA5"
             android:textSize="14sp" />
 
@@ -95,7 +95,7 @@
             android:layout_weight="1"
             android:layout_marginLeft="6dp"
             android:background="#FFFFFF"
-            android:text="退出页面"
+            android:text="@string/activity_crash_report_9000"
             android:textColor="#666666"
             android:textSize="14sp" />
 

@@ -132,13 +132,13 @@ public class ReplyListActivity extends BaseActivity {
         Log.e("ReplyList", "onCreate aid=" + aid + " bvid=" + bvid + " rpid=" + rpid + " msg=" + (rootCommentMessage != null ? rootCommentMessage.substring(0, Math.min(20, rootCommentMessage.length())) : "null"));
 
         if (aid == 0 && (bvid == null || bvid.length() == 0)) {
-            Toast.makeText(this, "视频参数无效", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.replylistactivity_toast_89c6), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
 
         if (aid == 0 && bvid != null && bvid.length() > 0) {
-            tvTitle.setText("正在获取信息...");
+            tvTitle.setText(getString(R.string.replylistactivity_settext_6b63));
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -149,7 +149,7 @@ public class ReplyListActivity extends BaseActivity {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    tvTitle.setText("全部回复");
+                                    tvTitle.setText(getString(R.string.replylistactivity_settext_5168));
                                     initViews();
                                     loadReplies();
                                 }
@@ -158,7 +158,7 @@ public class ReplyListActivity extends BaseActivity {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    Toast.makeText(ReplyListActivity.this, "无法获取视频信息", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.replylistactivity_toast_65e0), Toast.LENGTH_SHORT).show();
                                     finish();
                                 }
                             });
@@ -178,7 +178,7 @@ public class ReplyListActivity extends BaseActivity {
             return;
         }
 
-        tvTitle.setText("全部回复");
+        tvTitle.setText(getString(R.string.replylistactivity_settext_5168));
         initViews();
         loadReplies();
     }
@@ -217,7 +217,7 @@ public class ReplyListActivity extends BaseActivity {
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA);
                 rootTimeView.setText(sdf.format(new Date(rootTime * 1000)));
             } else {
-                rootTimeView.setText("刚刚");
+                rootTimeView.setText(getString(R.string.replylistactivity_settext_521a));
             }
 
             // 根评论展开/收起（隐藏再显示，不闪烁）
@@ -259,11 +259,11 @@ public class ReplyListActivity extends BaseActivity {
                         if (isExpanded) {
                             rootMsgView.setMaxLines(Integer.MAX_VALUE);
                             rootMsgView.setEllipsize(null);
-                            rootExpandBtn.setText("收起");
+                            rootExpandBtn.setText(getString(R.string.replylistactivity_settext_6536));
                         } else {
                             rootMsgView.setMaxLines(3);
                             rootMsgView.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                            rootExpandBtn.setText("展开");
+                            rootExpandBtn.setText(getString(R.string.replylistactivity_settext_5c55));
                         }
                     }
                 });
@@ -310,7 +310,7 @@ public class ReplyListActivity extends BaseActivity {
                                                             Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
                                                             if (vibrator != null) vibrator.vibrate(50);
                                                         } catch (Exception e) { e.printStackTrace(); }
-                                                        Toast.makeText(ReplyListActivity.this, "已复制评论", Toast.LENGTH_SHORT).show();
+                                                        Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.replylistactivity_toast_5df2_1), Toast.LENGTH_SHORT).show();
                                                     } else if (which == 1) {
                                                         deleteRootComment();
                                                     }
@@ -324,7 +324,7 @@ public class ReplyListActivity extends BaseActivity {
                                                 Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
                                                 if (vibrator != null) vibrator.vibrate(50);
                                             } catch (Exception e) { e.printStackTrace(); }
-                                            Toast.makeText(ReplyListActivity.this, "已复制评论", Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.replylistactivity_toast_5df2_1), Toast.LENGTH_SHORT).show();
                                         }
                                     }
                                 }
@@ -391,7 +391,7 @@ public class ReplyListActivity extends BaseActivity {
                                                 rootLikeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                             }
                                             rootLikeCount.setText(String.valueOf(mRootLikeCount));
-                                            Toast.makeText(ReplyListActivity.this, "操作失败", Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.replylistactivity_toast_64cd), Toast.LENGTH_SHORT).show();
                                         }
                                     });
                                 } else {
@@ -418,7 +418,7 @@ public class ReplyListActivity extends BaseActivity {
                                             rootLikeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                         }
                                         rootLikeCount.setText(String.valueOf(mRootLikeCount));
-                                        Toast.makeText(ReplyListActivity.this, "网络错误", Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.replylistactivity_toast_7f51), Toast.LENGTH_SHORT).show();
                                     }
                                 });
                             }
@@ -590,7 +590,7 @@ public class ReplyListActivity extends BaseActivity {
                 toggleView = moreTv;
             } else {
                 TextView collapseTv = new TextView(this);
-                collapseTv.setText("收起");
+                collapseTv.setText(getString(R.string.replylistactivity_settext_6536));
                 collapseTv.setTextSize(12);
                 collapseTv.setTextColor(0xFFD86DA5);
                 collapseTv.setGravity(Gravity.CENTER);
@@ -615,7 +615,7 @@ public class ReplyListActivity extends BaseActivity {
 
         final String cookies = SharedPreferencesUtil.getString("cookies", "");
         if (cookies == null || cookies.length() == 0) {
-            Toast.makeText(this, "请先登录的说~", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.replylistactivity_toast_8bf7), Toast.LENGTH_SHORT).show();
             isLoading = false;
             return;
         }
@@ -626,7 +626,7 @@ public class ReplyListActivity extends BaseActivity {
             footerProgress.setVisibility(View.VISIBLE);
         }
         if (footerText != null) {
-            footerText.setText("嘿咻…嘿咻…");
+            footerText.setText(getString(R.string.replylistactivity_settext_563f));
             footerText.setVisibility(View.VISIBLE);
         }
 
@@ -718,7 +718,7 @@ public class ReplyListActivity extends BaseActivity {
                                     footerProgress.setVisibility(View.GONE);
                                 }
                                 if (footerText != null) {
-                                    footerText.setText("嘿咻…嘿咻…");
+                                    footerText.setText(getString(R.string.replylistactivity_settext_563f));
                                     footerText.setVisibility(View.VISIBLE);
                                 }
                             }
@@ -990,7 +990,7 @@ public class ReplyListActivity extends BaseActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(ReplyListActivity.this, "已删除", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.replylistactivity_toast_5df2), Toast.LENGTH_SHORT).show();
                                 finish();
                             }
                         });
@@ -998,7 +998,7 @@ public class ReplyListActivity extends BaseActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(ReplyListActivity.this, "删除失败", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.replylistactivity_toast_5220), Toast.LENGTH_SHORT).show();
                             }
                         });
                     }
@@ -1040,7 +1040,7 @@ public class ReplyListActivity extends BaseActivity {
         btnRow.setPadding(0, 0, 0, dpToPx(6));
 
         final TextView emojiBtn = new TextView(this);
-        emojiBtn.setText("表情");
+        emojiBtn.setText(getString(R.string.replylistactivity_settext_8868));
         emojiBtn.setTextSize(13);
         emojiBtn.setTextColor(0xFFD86DA5);
         emojiBtn.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
@@ -1059,7 +1059,7 @@ public class ReplyListActivity extends BaseActivity {
         layout.addView(input, lp);
 
         final TextView clearText = new TextView(this);
-        clearText.setText("清空");
+        clearText.setText(getString(R.string.replylistactivity_settext_6e05));
         clearText.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         clearText.setPadding(0, 8, 0, 0);
         clearText.setTextSize(14);
@@ -1082,14 +1082,14 @@ public class ReplyListActivity extends BaseActivity {
         final long parentRpid = reply != null ? reply.rpid : 0;
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("发送回复")
+                .setTitle(getString(R.string.replylistactivity_settitle_53d1))
                 .setView(layout)
                 .setPositiveButton("发送", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface d, int which) {
                         String text = input.getText().toString().trim();
                         if (text == null || text.length() == 0) {
-                            Toast.makeText(ReplyListActivity.this, "回复内容不能为空", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.replylistactivity_toast_56de), Toast.LENGTH_SHORT).show();
                             return;
                         }
                         sendReply(rpid, parentRpid, text);
@@ -1107,7 +1107,7 @@ public class ReplyListActivity extends BaseActivity {
 
     private void showEmojiPicker(final EditText input) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(this));
-        builder.setTitle("选择表情");
+        builder.setTitle(getString(R.string.replylistactivity_settitle_9009));
 
         final android.widget.ScrollView scroll = new android.widget.ScrollView(this);
         final LinearLayout list = new LinearLayout(this);

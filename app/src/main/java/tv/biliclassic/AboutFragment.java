@@ -22,8 +22,10 @@ public class AboutFragment extends Fragment {
         View view = inflater.inflate(R.layout.content_about, container, false);
 
         TextView appBrief = (TextView) view.findViewById(R.id.app_brief);
-        String versionName = getVersionName();
-        appBrief.setText("哔哩经典 " + versionName + "\n安卓" + (SdkHelper.getSdkInt() < 5 ? "1" : "2") + "也要看B站！");
+        if (appBrief != null) {
+            String versionName = getVersionName();
+            appBrief.setText("哔哩经典 " + versionName + "\n安卓" + (SdkHelper.getSdkInt() < 5 ? "1" : "2") + "也要看B站！");
+        }
 
         TextView officialWebsite = (TextView) view.findViewById(R.id.official_website);
         if (officialWebsite != null) {
@@ -52,12 +54,22 @@ public class AboutFragment extends Fragment {
         }
 
         TextView releaseWebsite = (TextView) view.findViewById(R.id.release_website);
-        releaseWebsite.setText(Html.fromHtml("<a href=\"https://github.com/AktuelleKamera/BiliClassic\">GitHub</a>"));
-        releaseWebsite.setMovementMethod(LinkMovementMethod.getInstance());
+        if (releaseWebsite != null) {
+            releaseWebsite.setText(Html.fromHtml("<a href=\"https://github.com/AktuelleKamera/BiliClassic\">GitHub</a>"));
+            releaseWebsite.setMovementMethod(LinkMovementMethod.getInstance());
+        }
+
+        TextView oldpodsWebsite = (TextView) view.findViewById(R.id.oldpods_website);
+        if (oldpodsWebsite != null) {
+            oldpodsWebsite.setText(Html.fromHtml("<a href=\"http://2012rs.oldpods.cn\">2012资源站</a>"));
+            oldpodsWebsite.setMovementMethod(LinkMovementMethod.getInstance());
+        }
 
         TextView bilibiliWebsite = (TextView) view.findViewById(R.id.bilibili_website);
-        bilibiliWebsite.setText(Html.fromHtml("<a href=\"https://www.bilibili.com\">哔哩哔哩弹幕网</a>"));
-        bilibiliWebsite.setMovementMethod(LinkMovementMethod.getInstance());
+        if (bilibiliWebsite != null) {
+            bilibiliWebsite.setText(Html.fromHtml("<a href=\"https://www.bilibili.com\">哔哩哔哩弹幕网</a>"));
+            bilibiliWebsite.setMovementMethod(LinkMovementMethod.getInstance());
+        }
 
         return view;
     }
@@ -67,7 +79,7 @@ public class AboutFragment extends Fragment {
             PackageInfo packageInfo = getActivity().getPackageManager().getPackageInfo(getActivity().getPackageName(), 0);
             return packageInfo.versionName;
         } catch (PackageManager.NameNotFoundException e) {
-            return "0.4.9";
+            return "0.4.10";
         }
     }
 }

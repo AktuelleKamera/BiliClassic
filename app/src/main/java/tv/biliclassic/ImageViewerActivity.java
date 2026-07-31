@@ -209,7 +209,7 @@ public class ImageViewerActivity extends BaseActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(ImageViewerActivity.this, "获取原图失败", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(ImageViewerActivity.this, ImageViewerActivity.this.getString(R.string.imagevieweractivity_toast_83b7), Toast.LENGTH_SHORT).show();
                             }
                         });
                         return;
@@ -221,7 +221,7 @@ public class ImageViewerActivity extends BaseActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(ImageViewerActivity.this, "保存失败", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(ImageViewerActivity.this, ImageViewerActivity.this.getString(R.string.imagevieweractivity_toast_4fdd), Toast.LENGTH_SHORT).show();
                             }
                         });
                         return;

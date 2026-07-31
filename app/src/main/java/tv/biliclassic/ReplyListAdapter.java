@@ -275,7 +275,7 @@ public class ReplyListAdapter extends BaseAdapter {
                                                 h2.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                             }
                                             h2.likeCount.setText(String.valueOf(rd.likeCount));
-                                            Toast.makeText(context, "操作失败", Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(context, context.getString(R.string.replylistadapter_toast_64cd), Toast.LENGTH_SHORT).show();
                                         }
                                     });
                                 }
@@ -295,7 +295,7 @@ public class ReplyListAdapter extends BaseAdapter {
                                             h2.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                         }
                                         h2.likeCount.setText(String.valueOf(rd.likeCount));
-                                        Toast.makeText(context, "网络错误", Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(context, context.getString(R.string.replylistadapter_toast_7f51), Toast.LENGTH_SHORT).show();
                                     }
                                 });
                             }
@@ -644,7 +644,7 @@ public class ReplyListAdapter extends BaseAdapter {
                 Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
                 if (vibrator != null) vibrator.vibrate(50);
             } catch (Exception e) { e.printStackTrace(); }
-            Toast.makeText(context, "已复制评论", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, context.getString(R.string.replylistadapter_toast_5df2_1), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -669,14 +669,14 @@ public class ReplyListAdapter extends BaseAdapter {
                                     list.remove(pos);
                                     notifyDataSetChanged();
                                 }
-                                Toast.makeText(context, "已删除", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(context, context.getString(R.string.replylistadapter_toast_5df2), Toast.LENGTH_SHORT).show();
                             }
                         });
                     } else {
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(context, "删除失败", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(context, context.getString(R.string.replylistadapter_toast_5220), Toast.LENGTH_SHORT).show();
                             }
                         });
                     }

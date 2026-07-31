@@ -184,7 +184,7 @@ public class FavoriteFolderListActivity extends BaseActivity {
         final long mid = SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0L);
 
         if (mid == 0L) {
-            emptyView.setText("登录以后才能访问收藏列表哦");
+            emptyView.setText(getString(R.string.favoritefolderlistactivity_settext_767b));
             emptyView.setVisibility(View.VISIBLE);
             listView.setVisibility(View.GONE);
             return;
@@ -192,10 +192,10 @@ public class FavoriteFolderListActivity extends BaseActivity {
 
         String cookies = SharedPreferencesUtil.getString("cookies", "");
         if (cookies == null || cookies.length() == 0) {
-            emptyView.setText("请先登录的说~");
+            emptyView.setText(getString(R.string.favoritefolderlistactivity_settext_8bf7));
             emptyView.setVisibility(View.VISIBLE);
             listView.setVisibility(View.GONE);
-            Toast.makeText(this, "请先登录的说~", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.favoritefolderlistactivity_toast_8bf7), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -234,16 +234,16 @@ public class FavoriteFolderListActivity extends BaseActivity {
                                 emptyView.setVisibility(View.GONE);
 
                                 if (forceRefresh) {
-                                    Toast.makeText(FavoriteFolderListActivity.this, "刷新成功", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(FavoriteFolderListActivity.this, FavoriteFolderListActivity.this.getString(R.string.favoritefolderlistactivity_toast_5237), Toast.LENGTH_SHORT).show();
                                 }
                             } else {
-                                emptyView.setText("暂无收藏夹");
+                                emptyView.setText(getString(R.string.favoritefolderlistactivity_settext_6682));
                                 emptyView.setVisibility(View.VISIBLE);
                                 listView.setVisibility(View.GONE);
                                 folderList.clear();
                                 adapter.notifyDataSetChanged();
                                 if (forceRefresh) {
-                                    Toast.makeText(FavoriteFolderListActivity.this, "没有收藏夹", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(FavoriteFolderListActivity.this, FavoriteFolderListActivity.this.getString(R.string.favoritefolderlistactivity_toast_6ca1), Toast.LENGTH_SHORT).show();
                                 }
                             }
                         }

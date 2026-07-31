@@ -471,9 +471,9 @@ public class BiliPlayerActivity extends Activity implements
                     Intent extIntent = new Intent(Intent.ACTION_VIEW);
                     extIntent.setDataAndType(Uri.parse(videoUrl), "video/mp4");
                     if (playerPkg != null) {
-                        extIntent.setPackage(playerPkg);
+                        try { Intent.class.getMethod("setPackage", String.class).invoke(extIntent, new Object[]{playerPkg}); } catch (Exception ignored) {};
                         if (getPackageManager().queryIntentActivities(extIntent, 0).size() == 0) {
-                            extIntent.setPackage(null);
+                            try { Intent.class.getMethod("setPackage", String.class).invoke(extIntent, new Object[]{null}); } catch (Exception ignored) {};
                         }
                     }
                     extIntent.putExtra("_from_external_redirect", true);
@@ -489,7 +489,7 @@ public class BiliPlayerActivity extends Activity implements
 
         if (onlineMode) {
             if (videoUrl == null || videoUrl.length() == 0) {
-                Toast.makeText(this, "在线模式：视频地址为空", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_5728), Toast.LENGTH_SHORT).show();
                 finish();
                 return;
             }
@@ -516,7 +516,7 @@ public class BiliPlayerActivity extends Activity implements
         if (DeviceInfoUtil.isUnsupportedCpu()) {
             if (!DeviceInfoUtil.isLegacy) {
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("设备不支持")
+                .setTitle(getString(R.string.biliplayeractivity_settitle_8bbe))
                 .setMessage("ARMv5TE 或无 VFP 的 ARMv6 设备无法使用内置播放器，请关闭\"在线播放\"后下载视频，使用第三方播放器播放。")
                 .setPositiveButton("继续尝试", null)
                 .setNegativeButton("确定", new android.content.DialogInterface.OnClickListener() {
@@ -1090,7 +1090,7 @@ public class BiliPlayerActivity extends Activity implements
                         intent.putExtra("mid", mid);
                         startActivity(intent);
                     } else {
-                        Toast.makeText(BiliPlayerActivity.this, "无法获取用户信息", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.biliplayeractivity_toast_65e0), Toast.LENGTH_SHORT).show();
                     }
                 }
             });
@@ -1224,7 +1224,7 @@ public class BiliPlayerActivity extends Activity implements
                         lockOverlay.setVisibility(View.VISIBLE);
                     }
                     hideLockIcons();
-                    Toast.makeText(BiliPlayerActivity.this, "已锁定",
+                    Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.biliplayeractivity_toast_5df2),
                             Toast.LENGTH_SHORT).show();
                 }
             });
@@ -1434,7 +1434,7 @@ public class BiliPlayerActivity extends Activity implements
         container.setVisibility(View.GONE);
 
         btnResetScale = new TextView(this);
-        btnResetScale.setText("还原屏幕");
+        btnResetScale.setText(getString(R.string.biliplayeractivity_settext_8fd8));
         btnResetScale.setTextSize(16);
         btnResetScale.setTextColor(0xFFD86DA5);
         btnResetScale.setGravity(Gravity.CENTER);
@@ -1485,7 +1485,7 @@ public class BiliPlayerActivity extends Activity implements
 
         if (commentEmpty != null) {
             commentEmpty.setVisibility(View.VISIBLE);
-            commentEmpty.setText("嘿咻…嘿咻…");
+            commentEmpty.setText(getString(R.string.biliplayeractivity_settext_563f));
         }
 
         commentFooterView.setVisibility(View.GONE);
@@ -1747,7 +1747,7 @@ public class BiliPlayerActivity extends Activity implements
                     commentAdapter.updateData(commentItems);
 
                     if (commentItems.size() == 0) {
-                        commentEmpty.setText("暂无评论");
+                        commentEmpty.setText(getString(R.string.biliplayeractivity_settext_6682));
                         commentEmpty.setVisibility(View.VISIBLE);
                     } else {
                         commentEmpty.setVisibility(View.GONE);
@@ -1943,8 +1943,7 @@ public class BiliPlayerActivity extends Activity implements
                         runOnUiThread(new Runnable() {
                             public void run() {
                                 showBuffering(false);
-                                Toast.makeText(BiliPlayerActivity.this,
-                                        "切换画质失败，请重试", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.biliplayeractivity_toast_5207), Toast.LENGTH_SHORT).show();
                             }
                         });
                     }
@@ -2035,7 +2034,7 @@ public class BiliPlayerActivity extends Activity implements
                         runOnUiThread(new Runnable() {
                             public void run() {
                                 showBuffering(false);
-                                Toast.makeText(BiliPlayerActivity.this, "换P失败，获取播放地址失败", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.biliplayeractivity_toast_6362), Toast.LENGTH_SHORT).show();
                             }
                         });
                     }
@@ -2058,7 +2057,7 @@ public class BiliPlayerActivity extends Activity implements
             items[i] = (i + 1) + ". " + (mPartNames != null && i < mPartNames.length ? mPartNames[i] : "P" + (i + 1));
         }
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("选集")
+                .setTitle(getString(R.string.biliplayeractivity_settitle_9009))
                 .setSingleChoiceItems(items, mCurrentPartIndex, new android.content.DialogInterface.OnClickListener() {
                     public void onClick(android.content.DialogInterface dialog, int which) {
                         dialog.dismiss();
@@ -2106,6 +2105,16 @@ public class BiliPlayerActivity extends Activity implements
 
         videoView.setKeepScreenOn(true);
         container.addView(videoView, 0);
+    }
+
+    private boolean tryLoadIjkLibrary() {
+        try {
+            System.loadLibrary("ijkffmpeg");
+            System.loadLibrary("ijksdl");
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     private void cleanupAndRestartWithQuality() {
@@ -2179,6 +2188,24 @@ public class BiliPlayerActivity extends Activity implements
             }
         }
 
+        if (decoderType != DECODER_SYSTEM) {
+            // IJK 需要加载 native 库；部分 ROM 上 libijkffmpeg.so 加载失败（如缺少 libOpenSLES 符号）
+            boolean ijkLoaded = tryLoadIjkLibrary();
+            if (!ijkLoaded && decoderType == DECODER_IJK_HARD) {
+                // 硬解失败，无感切换软解
+                decoderType = DECODER_IJK_SOFT;
+                ijkLoaded = tryLoadIjkLibrary();
+                if (ijkLoaded) {
+                    Toast.makeText(this, "硬件解码失败，已切换软件解码", Toast.LENGTH_LONG).show();
+                }
+            }
+            if (!ijkLoaded) {
+                android.util.Log.w("BiliPlayer", "IJK native 库加载失败，回退到系统播放器");
+                decoderType = DECODER_SYSTEM;
+                Toast.makeText(this, "内置播放器加载失败，使用系统播放器", Toast.LENGTH_LONG).show();
+            }
+        }
+
         if (decoderType == DECODER_SYSTEM) {
             AndroidMediaPlayer androidPlayer = new AndroidMediaPlayer();
             mediaPlayer = androidPlayer;
@@ -2211,7 +2238,7 @@ public class BiliPlayerActivity extends Activity implements
                             }
                         }
                     } else {
-                        Toast.makeText(this, "无视频源", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_65e0_1), Toast.LENGTH_SHORT).show();
                         finish();
                         return;
                     }
@@ -2306,7 +2333,7 @@ public class BiliPlayerActivity extends Activity implements
                 } else if (videoUrl != null && new File(videoUrl).exists()) {
                     ijkPlayer.setDataSource(videoUrl);
                 } else {
-                    Toast.makeText(this, "无视频源", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_65e0_1), Toast.LENGTH_SHORT).show();
                     finish();
                     return;
                 }
@@ -2550,10 +2577,10 @@ public class BiliPlayerActivity extends Activity implements
                 mAllowDecoderFallback = false;
                 if (sdkInt < 16) {
                     decoderType = DECODER_IJK_SOFT;
-                    Toast.makeText(this, "系统解码器失败，切换到IJK软解", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_7cfb), Toast.LENGTH_LONG).show();
                 } else {
                     decoderType = DECODER_IJK_HARD;
-                    Toast.makeText(this, "系统解码器失败，切换到IJK硬解", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_7cfb), Toast.LENGTH_LONG).show();
                 }
                 mHardwareDecodeRetryCount = 0;
                 cleanupAndRestart();
@@ -2573,10 +2600,10 @@ public class BiliPlayerActivity extends Activity implements
             mAllowDecoderFallback = false;
             if (sdkInt < 16) {
                 decoderType = DECODER_IJK_SOFT;
-                Toast.makeText(this, "系统解码器失败，切换到IJK软解", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_7cfb), Toast.LENGTH_LONG).show();
             } else {
                 decoderType = DECODER_IJK_HARD;
-                Toast.makeText(this, "系统解码器失败，切换到IJK硬解", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_7cfb), Toast.LENGTH_LONG).show();
             }
             mHardwareDecodeRetryCount = 0;
             cleanupAndRestart();
@@ -2597,7 +2624,7 @@ public class BiliPlayerActivity extends Activity implements
             mAllowDecoderFallback = false;
             decoderType = DECODER_IJK_SOFT;
             mHardwareDecodeRetryCount = 0;
-            Toast.makeText(this, "IJK硬解失败，切换到IJK软解", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_786c), Toast.LENGTH_LONG).show();
             cleanupAndRestart();
             return true;
         }
@@ -2605,7 +2632,7 @@ public class BiliPlayerActivity extends Activity implements
         if (decoderType == DECODER_IJK_SOFT || !mAllowDecoderFallback) {
             if (!mErrorToastShown) {
                 mErrorToastShown = true;
-                Toast.makeText(this, "播放失败，请检查网络或重试", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_64ad), Toast.LENGTH_LONG).show();
             }
             finish();
             return true;
@@ -2860,8 +2887,7 @@ public class BiliPlayerActivity extends Activity implements
                 optionsMenuItemBlock.setOnClickListener(new View.OnClickListener() {
                     public void onClick(View v) {
                         hideOptionsMenu();
-                        Toast.makeText(BiliPlayerActivity.this,
-                                "用户屏蔽 (暂未实现)", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.biliplayeractivity_toast_7528), Toast.LENGTH_SHORT).show();
                         showControlsWithAutoHide();
                     }
                 });
@@ -3177,7 +3203,7 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("视频信息")
+                .setTitle(getString(R.string.biliplayeractivity_settitle_89c6))
                 .setMessage(msg.toString())
                 .setPositiveButton("确定", null)
                 .show();
@@ -3686,7 +3712,7 @@ public class BiliPlayerActivity extends Activity implements
                 return true;
             } else {
                 mLastBackPressTime = currentTime;
-                Toast.makeText(this, "再次按后退可以结束播放", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_518d), Toast.LENGTH_SHORT).show();
                 return true;
             }
         }

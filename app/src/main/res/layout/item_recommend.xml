@@ -47,7 +47,7 @@
                     android:layout_width="12dp"
                     android:layout_height="12dp"
                     android:src="@drawable/ic_info_views"
-                    android:contentDescription="播放" />
+                    android:contentDescription="@string/item_recommend_64ad" />
 
                 <TextView
                     android:id="@+id/view"
@@ -75,7 +75,7 @@
                     android:layout_width="12dp"
                     android:layout_height="12dp"
                     android:src="@drawable/ic_info_danmakus"
-                    android:contentDescription="弹幕" />
+                    android:contentDescription="@string/item_recommend_5f39" />
 
                 <TextView
                     android:id="@+id/danmaku"
@@ -106,7 +106,7 @@
             android:id="@+id/title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="视频标题"
+            android:text="@string/item_recommend_89c6"
             android:textSize="12sp"
             android:textColor="#333333"
             android:maxLines="2"

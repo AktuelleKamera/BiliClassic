@@ -20,7 +20,7 @@
             android:layout_height="wrap_content"
             android:paddingLeft="8dp"
             android:paddingRight="8dp"
-            android:text="按时间"
+            android:text="@string/fragment_comment_6309"
             android:textColor="#D86DA5"
             android:textSize="13sp" />
 
@@ -30,7 +30,7 @@
             android:layout_height="wrap_content"
             android:paddingLeft="8dp"
             android:paddingRight="8dp"
-            android:text="按热度"
+            android:text="@string/fragment_comment_6309_1"
             android:textColor="#999999"
             android:textSize="13sp" />
 
@@ -57,7 +57,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:layout_marginTop="50dp"
-        android:text="暂无评论"
+        android:text="@string/fragment_comment_6682"
         android:textSize="14sp"
         android:textColor="#999999"
         android:visibility="gone" />

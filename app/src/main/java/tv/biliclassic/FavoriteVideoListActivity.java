@@ -120,8 +120,8 @@ public class FavoriteVideoListActivity extends BaseActivity {
 
     private void showDeleteConfirm(final int position) {
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("提示")
-                .setMessage("确定要从收藏夹中删除该视频吗？")
+                .setTitle(getString(R.string.favoritevideolistactivity_settitle_63d0))
+                .setMessage(getString(R.string.favoritevideolistactivity_setmessage_786e))
                 .setPositiveButton("确定", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         deleteVideo(position);
@@ -182,13 +182,13 @@ public class FavoriteVideoListActivity extends BaseActivity {
 
     private void deleteVideo(final int position) {
         if (fid == 0) {
-            Toast.makeText(this, "收藏夹ID无效，无法删除", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.favoritevideolistactivity_toast_6536), Toast.LENGTH_SHORT).show();
             return;
         }
 
         final VideoCard video = videoList.get(position);
         if (video == null) {
-            Toast.makeText(this, "视频信息无效", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.favoritevideolistactivity_toast_89c6), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -209,7 +209,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
                     mainHandler.post(new Runnable() {
                         public void run() {
                             if (result == 0) {
-                                Toast.makeText(FavoriteVideoListActivity.this, "删除成功", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(FavoriteVideoListActivity.this, FavoriteVideoListActivity.this.getString(R.string.favoritevideolistactivity_toast_5220), Toast.LENGTH_SHORT).show();
                                 videoList.remove(position);
                                 adapter.notifyDataSetChanged();
 
@@ -218,7 +218,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
                                 sendBroadcast(broadcastIntent);
 
                                 if (videoList.size() == 0) {
-                                    emptyView.setText("暂无收藏视频");
+                                    emptyView.setText(getString(R.string.favoritevideolistactivity_settext_6682));
                                     emptyView.setVisibility(View.VISIBLE);
                                     footerView.setVisibility(View.GONE);
                                     setResult(RESULT_OK);
@@ -227,7 +227,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
                                     setResult(RESULT_OK);
                                 }
                             } else if (result == -401) {
-                                Toast.makeText(FavoriteVideoListActivity.this, "登录已过期，请重新登录", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(FavoriteVideoListActivity.this, FavoriteVideoListActivity.this.getString(R.string.favoritevideolistactivity_toast_767b), Toast.LENGTH_SHORT).show();
                             } else {
                                 Toast.makeText(FavoriteVideoListActivity.this, "删除失败，错误码: " + result, Toast.LENGTH_SHORT).show();
                             }
@@ -254,7 +254,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
         final long mid = SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0L);
 
         if (mid == 0L) {
-            emptyView.setText("请先登录的说~");
+            emptyView.setText(getString(R.string.favoritevideolistactivity_settext_8bf7));
             emptyView.setVisibility(View.VISIBLE);
             footerView.setVisibility(View.GONE);
             listView.setVisibility(View.GONE);
@@ -289,7 +289,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
                             footerProgressBar.setVisibility(View.GONE);
 
                             if (videoList.size() == 0) {
-                                emptyView.setText("暂无收藏视频");
+                                emptyView.setText(getString(R.string.favoritevideolistactivity_settext_6682));
                                 emptyView.setVisibility(View.VISIBLE);
                                 footerView.setVisibility(View.GONE);
                                 isEnd = true;
@@ -371,7 +371,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
                                 footerView.setVisibility(View.VISIBLE);
                             } else {
                                 footerView.setVisibility(View.GONE);
-                                Toast.makeText(FavoriteVideoListActivity.this, "加载更多失败", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(FavoriteVideoListActivity.this, FavoriteVideoListActivity.this.getString(R.string.favoritevideolistactivity_toast_52a0), Toast.LENGTH_SHORT).show();
                             }
                         }
                     });

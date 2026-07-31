@@ -28,7 +28,7 @@
             android:layout_centerVertical="true"
             android:layout_toRightOf="@+id/btn_back"
             android:layout_marginLeft="8dp"
-            android:text="用户名的空间"
+            android:text="@string/activity_user_profile_7528"
             android:textSize="18sp"
             android:textColor="#333333"
             android:maxWidth="200dp"
@@ -66,7 +66,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginLeft="5dp"
-            android:text="加载中…"
+            android:text="@string/activity_user_profile_52a0"
             android:textSize="14sp"
             android:textColor="#999999" />
 
@@ -108,7 +108,7 @@
                     android:id="@+id/tv_user_sign"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="个人签名"
+                    android:text="@string/activity_user_profile_4e2a"
                     android:textSize="12sp"
                     android:textColor="#666666"
                     android:maxWidth="250dp"
@@ -135,7 +135,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginLeft="8dp"
-                        android:text="粉丝: 0"
+                        android:text="@string/activity_user_profile_7c89"
                         android:textSize="11sp"
                         android:textColor="#999999" />
 
@@ -144,7 +144,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginLeft="10dp"
-                        android:text="关注: 0"
+                        android:text="@string/activity_user_profile_5173"
                         android:textSize="11sp"
                         android:textColor="#999999" />
 
@@ -179,7 +179,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:layout_marginTop="20dp"
-            android:text="暂无视频"
+            android:text="@string/activity_user_profile_6682"
             android:textSize="13sp"
             android:textColor="#999999"
             android:visibility="gone" />

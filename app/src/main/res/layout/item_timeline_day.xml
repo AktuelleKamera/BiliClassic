@@ -16,7 +16,7 @@
         android:layout_marginLeft="0dp"
         android:layout_marginTop="0dp"
         android:src="@drawable/bili_timeline_clock_6"
-        android:contentDescription="星期" />
+        android:contentDescription="@string/item_timeline_day_661f" />
 
     <!-- 气泡 -->
     <LinearLayout
@@ -41,7 +41,7 @@
                     android:layout_height="18dp"
                     android:src="@drawable/bili_timeline_group_background"
                     android:scaleType="fitXY"
-                    android:contentDescription="气泡开头" />
+                    android:contentDescription="@string/item_timeline_day_6c14" />
 
                 <View
                     android:layout_width="0dp"
@@ -65,7 +65,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="周三"
+                    android:text="@string/item_timeline_day_5468"
                     android:textSize="13sp"
                     android:textColor="#333333" />
 
@@ -73,7 +73,7 @@
                     android:id="@+id/day_date"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="4月10日"
+                    android:text="@string/item_timeline_day_6708"
                     android:textSize="11sp"
                     android:textColor="#333333" />
 

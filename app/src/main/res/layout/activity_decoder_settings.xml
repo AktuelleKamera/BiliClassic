@@ -17,7 +17,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_centerVertical="true"
-            android:contentDescription="返回"
+            android:contentDescription="@string/activity_decoder_settings_8fd4"
             android:padding="1dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_action_back" />
@@ -100,7 +100,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="选择" />
+                        android:contentDescription="@string/activity_decoder_settings_9009" />
 
                 </LinearLayout>
 
@@ -150,7 +150,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="选择" />
+                        android:contentDescription="@string/activity_decoder_settings_9009" />
 
                 </LinearLayout>
 
@@ -200,7 +200,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="选择" />
+                        android:contentDescription="@string/activity_decoder_settings_9009" />
 
                 </LinearLayout>
 
@@ -250,7 +250,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="选择" />
+                        android:contentDescription="@string/activity_decoder_settings_9009" />
 
                 </LinearLayout>
 
@@ -300,7 +300,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="选择" />
+                        android:contentDescription="@string/activity_decoder_settings_9009" />
 
                 </LinearLayout>
 

@@ -116,7 +116,7 @@
             android:gravity="left|top"
             android:paddingLeft="8dp"
             android:paddingTop="5dp"
-            android:text="番剧"
+            android:text="@string/item_partition_section_756a"
             android:textColor="#FFFFFF"
             android:textSize="18sp"/>
 

@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="选择分P"
+        android:text="@string/dialog_download_choice_9009"
         android:textSize="14sp"
         android:textColor="#666666"
         android:layout_marginBottom="8dp" />
@@ -34,7 +34,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="选择画质"
+        android:text="@string/dialog_download_choice_9009_1"
         android:textSize="14sp"
         android:textColor="#666666"
         android:layout_marginBottom="8dp" />
@@ -50,7 +50,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="流畅"
+            android:text="@string/dialog_download_choice_6d41"
             android:textColor="#333333"
             android:button="@drawable/ic_btn_holo_pink_radio"
             android:paddingTop="4dp"
@@ -61,7 +61,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="清晰"
+            android:text="@string/dialog_download_choice_6e05"
             android:textColor="#333333"
             android:button="@drawable/ic_btn_holo_pink_radio"
             android:paddingTop="4dp"
@@ -72,7 +72,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="高清"
+            android:text="@string/dialog_download_choice_9ad8"
             android:textColor="#333333"
             android:button="@drawable/ic_btn_holo_pink_radio"
             android:paddingTop="4dp"
@@ -83,7 +83,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="超清"
+            android:text="@string/dialog_download_choice_8d85"
             android:textColor="#333333"
             android:button="@drawable/ic_btn_holo_pink_radio"
             android:paddingTop="4dp"

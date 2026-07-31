@@ -12,7 +12,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
-import android.os.Build;
 import android.view.KeyEvent;
 
 import tv.biliclassic.R;
@@ -42,10 +41,10 @@ public class MediaSessionHelper {
         this.context = context;
         this.activityClass = activityClass;
 
-        if (Build.VERSION.SDK_INT < 21) return;
+        if (SdkHelper.getSdkInt() < 21) return;
 
         notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (Build.VERSION.SDK_INT >= 26) {
+        if (SdkHelper.getSdkInt() >= 26) {
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "媒体播放", NotificationManager.IMPORTANCE_DEFAULT);
             channel.setShowBadge(false);
             channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
@@ -104,7 +103,7 @@ public class MediaSessionHelper {
     public void setMetadata(String title, String artist) {
         this.title = title != null ? title : "";
         this.artist = artist != null ? artist : "";
-        if (Build.VERSION.SDK_INT >= 21 && mediaSession != null) {
+        if (SdkHelper.getSdkInt() >= 21 && mediaSession != null) {
             android.media.MediaMetadata.Builder builder = new android.media.MediaMetadata.Builder();
             builder.putString(android.media.MediaMetadata.METADATA_KEY_TITLE, this.title);
             builder.putString(android.media.MediaMetadata.METADATA_KEY_ARTIST, this.artist);
@@ -123,7 +122,7 @@ public class MediaSessionHelper {
 
     public void setPlaying(boolean playing) {
         isPlaying = playing;
-        if (Build.VERSION.SDK_INT >= 21 && mediaSession != null) {
+        if (SdkHelper.getSdkInt() >= 21 && mediaSession != null) {
             int state = isPlaying ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED;
             PlaybackState.Builder stateBuilder = new PlaybackState.Builder()
                     .setState(state, 0, 1.0f)
@@ -134,7 +133,7 @@ public class MediaSessionHelper {
     }
 
     public void updatePlaybackPosition(long position, long duration) {
-        if (Build.VERSION.SDK_INT < 21 || mediaSession == null) return;
+        if (SdkHelper.getSdkInt() < 21 || mediaSession == null) return;
         int state = isPlaying ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED;
         PlaybackState.Builder stateBuilder = new PlaybackState.Builder()
                 .setState(state, position, 1.0f)
@@ -143,7 +142,7 @@ public class MediaSessionHelper {
     }
 
     private void showNotification() {
-        if (Build.VERSION.SDK_INT < 21 || notificationManager == null) return;
+        if (SdkHelper.getSdkInt() < 21 || notificationManager == null) return;
 
         Intent activityIntent = new Intent(context, activityClass);
         activityIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -155,7 +154,7 @@ public class MediaSessionHelper {
         int playIcon = isPlaying ? R.drawable.bili_player_play_can_pause : R.drawable.bili_player_play_can_play;
 
         Notification.Builder builder;
-        if (Build.VERSION.SDK_INT >= 26) {
+        if (SdkHelper.getSdkInt() >= 26) {
             builder = new Notification.Builder(context, CHANNEL_ID);
         } else {
             builder = new Notification.Builder(context);
@@ -174,7 +173,7 @@ public class MediaSessionHelper {
             builder.setLargeIcon(largeIcon);
         }
 
-        if (Build.VERSION.SDK_INT >= 21) {
+        if (SdkHelper.getSdkInt() >= 21) {
             builder.setColor(0xff212121);
         }
 
@@ -195,7 +194,7 @@ public class MediaSessionHelper {
     }
 
     public void release() {
-        if (Build.VERSION.SDK_INT >= 21 && mediaSession != null) {
+        if (SdkHelper.getSdkInt() >= 21 && mediaSession != null) {
             mediaSession.setActive(false);
             mediaSession.release();
             mediaSession = null;

@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -15,7 +16,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.support.v4.app.Fragment;
 
-import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -304,58 +304,78 @@ public class HomeFragment extends Fragment {
         android.content.Context ctx = tv.biliclassic.BaseActivity.getAppContext();
         if (ctx == null) return null;
 
-        java.io.File cacheDir = ctx.getCacheDir();
-        java.io.File tempFile = new java.io.File(cacheDir, "img_" + urlStr.hashCode() + ".tmp");
-
+        HttpURLConnection conn = null;
+        java.io.File tempFile = null;
         try {
             URL url = new URL(urlStr);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(12000);
             conn.setReadTimeout(12000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
             conn.setRequestProperty("Accept-Encoding", "identity");
             conn.connect();
 
+            tempFile = new java.io.File(ctx.getCacheDir(), "hom_" + urlStr.hashCode() + ".tmp");
             InputStream is = conn.getInputStream();
             java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
-            byte[] buffer = new byte[8192];
+            byte[] buf = new byte[8192];
             int len;
-            while ((len = is.read(buffer)) != -1) {
-                fos.write(buffer, 0, len);
+            while ((len = is.read(buf)) != -1) {
+                fos.write(buf, 0, len);
             }
             is.close();
             fos.close();
-            conn.disconnect();
 
             if (!tempFile.exists() || tempFile.length() == 0) return null;
 
+            byte[] imageData = new byte[(int) tempFile.length()];
+            java.io.FileInputStream fis = new java.io.FileInputStream(tempFile);
+            int offset = 0;
+            while (offset < imageData.length) {
+                int read = fis.read(imageData, offset, imageData.length - offset);
+                if (read < 0) break;
+                offset += read;
+            }
+            fis.close();
+
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
-            BitmapFactory.decodeFile(tempFile.getAbsolutePath(), options);
+            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
 
             int targetWidth = 160;
             int targetHeight = 90;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                targetWidth = (int)(targetWidth * 1.25f);
+                targetHeight = (int)(targetHeight * 1.25f);
+            }
+            int minScale = Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD ? 2 : 4;
             int scale = 1;
             if (options.outWidth > targetWidth || options.outHeight > targetHeight) {
                 scale = Math.max(options.outWidth / targetWidth, options.outHeight / targetHeight);
                 if (scale < 1) scale = 1;
-                if (scale > 4) scale = 4;
+                if (scale > 8) scale = 8;
             }
+            if (scale < minScale) scale = minScale;
 
             Bitmap bitmap = null;
             while (scale <= 16 && bitmap == null) {
                 try {
+                    System.gc();
                     options = new BitmapFactory.Options();
                     options.inSampleSize = scale;
                     options.inPreferredConfig = Bitmap.Config.RGB_565;
-                    bitmap = BitmapFactory.decodeFile(tempFile.getAbsolutePath(), options);
+                    options.inPurgeable = true;
+                    options.inInputShareable = true;
+                    bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
                 } catch (OutOfMemoryError e) {
+                    System.gc();
                     scale *= 2;
                 }
             }
             return bitmap;
         } finally {
-            if (tempFile.exists()) tempFile.delete();
+            if (conn != null) conn.disconnect();
+            if (tempFile != null && tempFile.exists()) tempFile.delete();
         }
     }
 }

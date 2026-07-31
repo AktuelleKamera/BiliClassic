@@ -20,13 +20,13 @@
             android:padding="1dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_action_back"
-            android:contentDescription="返回" />
+            android:contentDescription="@string/activity_reply_list_8fd4" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="评论详情"
+            android:text="@string/activity_reply_list_8bc4"
             android:textColor="#333333"
             android:textSize="18sp"/>
 
@@ -63,7 +63,7 @@
         android:id="@+id/tv_reply_list_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="全部回复"
+        android:text="@string/activity_reply_list_5168"
         android:textSize="16sp"
         android:textColor="#D86DA5"
         android:padding="10dp"
@@ -78,7 +78,7 @@
         android:id="@+id/tv_empty"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:text="暂无回复"
+        android:text="@string/activity_reply_list_6682"
         android:textSize="14sp"
         android:textColor="#999999"
         android:gravity="center"

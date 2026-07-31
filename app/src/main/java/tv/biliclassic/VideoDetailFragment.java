@@ -256,17 +256,17 @@ public class VideoDetailFragment extends Fragment {
     public void prepareDownload(final VideoPage page, final int quality, final String qualityName) {
         if (!isAdded() || getActivity() == null) return;
         if (page == null) {
-            Toast.makeText(getActivity(), "分P信息为空", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_5206), Toast.LENGTH_SHORT).show();
             return;
         }
         if (page.cid == 0) {
-            Toast.makeText(getActivity(), "无法获取视频ID", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_65e0), Toast.LENGTH_SHORT).show();
             return;
         }
 
         final long realAid = (videoInfo != null && videoInfo.aid != 0) ? videoInfo.aid : aid;
         if (realAid == 0) {
-            Toast.makeText(getActivity(), "无法获取视频ID", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_65e0), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -278,7 +278,7 @@ public class VideoDetailFragment extends Fragment {
         final String mainTitle = (videoInfo != null) ? videoInfo.title : page.title;
         final String bvidStr = (videoInfo != null) ? videoInfo.bvid : null;
 
-        Toast.makeText(getActivity(), "正在获取下载地址...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_6b63), Toast.LENGTH_SHORT).show();
 
         new Thread(new Runnable() {
             @Override
@@ -313,7 +313,7 @@ public class VideoDetailFragment extends Fragment {
                                                 coverUrl, upName, bvidStr, desc, tagsStr);
                                     }
                                 } else {
-                                    Toast.makeText(getActivity(), "获取下载地址失败", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_83b7), Toast.LENGTH_SHORT).show();
                                 }
                             }
                         });
@@ -342,7 +342,7 @@ public class VideoDetailFragment extends Fragment {
 
     private void loadVideoData() {
         if (!isAdded() || getActivity() == null) return;
-        tvTitle.setText("加载中…");
+        tvTitle.setText(getString(R.string.videodetailfragment_settext_52a0));
 
         if (mOfflineMode) {
             loadVideoDataFromOffline();
@@ -368,8 +368,8 @@ public class VideoDetailFragment extends Fragment {
                                 @Override
                                 public void run() {
                                     if (!isAdded() || getActivity() == null) return;
-                                    tvTitle.setText("参数错误");
-                                    Toast.makeText(getActivity(), "缺少视频参数", Toast.LENGTH_SHORT).show();
+                                    tvTitle.setText(getString(R.string.videodetailfragment_settext_53c2));
+                                    Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_7f3a), Toast.LENGTH_SHORT).show();
                                 }
                             });
                         }
@@ -391,7 +391,7 @@ public class VideoDetailFragment extends Fragment {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
-                                tvTitle.setText("加载失败");
+                                tvTitle.setText(getString(R.string.videodetailfragment_settext_52a0_1));
                                 Toast.makeText(getActivity(), "加载失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                             }
                         });
@@ -479,7 +479,7 @@ public class VideoDetailFragment extends Fragment {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
-                                tvTitle.setText("离线数据加载失败");
+                                tvTitle.setText(getString(R.string.videodetailfragment_settext_79bb));
                             }
                         });
                     }
@@ -619,7 +619,7 @@ public class VideoDetailFragment extends Fragment {
     private void displayVideoInfo() {
         if (!isAdded() || getActivity() == null) return;
         if (videoInfo == null) {
-            tvTitle.setText("获取数据失败");
+            tvTitle.setText(getString(R.string.videodetailfragment_settext_83b7));
             return;
         }
 
@@ -637,12 +637,12 @@ public class VideoDetailFragment extends Fragment {
                         intent.putExtra("mid", staff.mid);
                         startActivity(intent);
                     } else {
-                        Toast.makeText(getActivity(), "无法获取UP主信息", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_65e0), Toast.LENGTH_SHORT).show();
                     }
                 }
             });
         } else {
-            tvUpNameNew.setText("未知");
+            tvUpNameNew.setText(getString(R.string.videodetailfragment_settext_672a));
         }
 
         if (videoInfo.stats != null) {
@@ -659,13 +659,13 @@ public class VideoDetailFragment extends Fragment {
                             getActivity().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
                     if (cm != null) {
                         cm.setText(videoInfo.description);
-                        android.widget.Toast.makeText(getActivity(), "简介已复制", android.widget.Toast.LENGTH_SHORT).show();
+                        android.widget.Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_7b80), android.widget.Toast.LENGTH_SHORT).show();
                     }
                     return true;
                 }
             });
         } else {
-            tvDesc.setText("暂无简介");
+            tvDesc.setText(getString(R.string.videodetailfragment_settext_6682));
             tvDesc.setOnLongClickListener(null);
         }
 
@@ -675,7 +675,7 @@ public class VideoDetailFragment extends Fragment {
                 String dateStr = sdf.format(new Date(videoInfo.pubdate * 1000));
                 tvPubDate.setText("发布时间: " + dateStr);
             } else {
-                tvPubDate.setText("发布时间: --");
+                tvPubDate.setText(getString(R.string.videodetailfragment_settext_53d1));
             }
         }
 
@@ -696,7 +696,7 @@ public class VideoDetailFragment extends Fragment {
             tvPartCount.setText("共" + partList.size() + "段视频");
             partAdapter.notifyDataSetChanged();
         } else {
-            tvPartCount.setText("共1段视频");
+            tvPartCount.setText(getString(R.string.videodetailfragment_settext_5171));
             partList.clear();
             partList.add(new VideoPart(1, videoInfo.title, 0));
             partAdapter.notifyDataSetChanged();
@@ -824,7 +824,7 @@ public class VideoDetailFragment extends Fragment {
             return;
         }
         if (videoInfo == null) {
-            Toast.makeText(getActivity(), "视频信息未加载", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_89c6), Toast.LENGTH_SHORT).show();
             isPlayButtonClicked = false;
             return;
         }
@@ -843,7 +843,7 @@ public class VideoDetailFragment extends Fragment {
             targetCid = 0;
         }
         if (targetCid == 0) {
-            Toast.makeText(getActivity(), "无法获取视频地址", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_65e0), Toast.LENGTH_SHORT).show();
             isPlayButtonClicked = false;
             return;
         }
@@ -903,7 +903,7 @@ public class VideoDetailFragment extends Fragment {
                                         isPlayButtonClicked = false;
                                         startActivity(intent);
                                     } else {
-                                        Toast.makeText(getActivity(), "获取播放地址失败", Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_83b7_1), Toast.LENGTH_SHORT).show();
                                         isPlayButtonClicked = false;
                                     }
                                 }
@@ -965,7 +965,7 @@ public class VideoDetailFragment extends Fragment {
                                     isPlayButtonClicked = false;
                                     startActivity(intent);
                                 } else {
-                                    Toast.makeText(getActivity(), "获取播放地址失败", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_83b7_1), Toast.LENGTH_SHORT).show();
                                     isPlayButtonClicked = false;
                                 }
                             }
@@ -1017,7 +1017,7 @@ public class VideoDetailFragment extends Fragment {
         java.io.File danmakuFile = env.getDanmakuFile(false);
 
         if (!videoFile.exists()) {
-            Toast.makeText(getActivity(), "缓存视频文件不存在", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_7f13), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -1083,9 +1083,9 @@ public class VideoDetailFragment extends Fragment {
             }
             String pkg = SettingsActivity.getPlayerPackageName();
             if (pkg != null) {
-                extIntent.setPackage(pkg);
+                try { Intent.class.getMethod("setPackage", String.class).invoke(extIntent, pkg); } catch (Exception ignored) {}
                 if (getActivity().getPackageManager().queryIntentActivities(extIntent, 0).size() == 0) {
-                    extIntent.setPackage(null);
+                    try { Intent.class.getMethod("setPackage", String.class).invoke(extIntent, new Object[]{null}); } catch (Exception ignored) {}
                 }
             }
             try {
@@ -1095,7 +1095,7 @@ public class VideoDetailFragment extends Fragment {
                 startActivity(extIntent);
                 return;
             } catch (Exception e) {
-                Toast.makeText(getActivity(), "未找到可用的外部播放器", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_672a), Toast.LENGTH_SHORT).show();
                 return;
             }
         }

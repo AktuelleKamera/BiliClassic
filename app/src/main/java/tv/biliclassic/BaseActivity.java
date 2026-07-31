@@ -6,7 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
-import android.os.Build;
+import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.view.WindowManager;
@@ -16,7 +17,9 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 
 import tv.biliclassic.tv.util.TvUtil;
+import tv.biliclassic.util.LocaleHelper;
 import tv.biliclassic.util.PermissionUtil;
+import tv.biliclassic.util.SdkHelper;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public abstract class BaseActivity extends FragmentActivity {
@@ -30,10 +33,32 @@ public abstract class BaseActivity extends FragmentActivity {
     private Runnable mPendingStorageAction;
 
     @Override
+    protected void attachBaseContext(Context newBase) {
+        if (SdkHelper.getSdkInt() >= 17) {
+            super.attachBaseContext(LocaleHelper.wrapContext(newBase));
+        } else {
+            super.attachBaseContext(newBase);
+        }
+    }
+
+    @Override
+    public Resources getResources() {
+        if (SdkHelper.getSdkInt() >= 17) {
+            return super.getResources();
+        }
+        Resources res = super.getResources();
+        Configuration config = res.getConfiguration();
+        config.locale = LocaleHelper.getLocale();
+        res.updateConfiguration(config, res.getDisplayMetrics());
+        return res;
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         // 防止有心人直接跳转到 BaseActivity
         if (getClass() == BaseActivity.class) {
-            Toast.makeText(this, "无法直接打开此页面", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.baseactivity_toast_65e0), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -65,7 +90,7 @@ public abstract class BaseActivity extends FragmentActivity {
         }
 
         // 透明状态栏：API 21+ 状态栏透明，API 23+ 深色图标
-        if (getSdkInt() >= 21) {
+        if (SdkHelper.getSdkInt() >= 21) {
             try {
                 android.view.Window window = getWindow();
                 java.lang.reflect.Method addFlags = android.view.Window.class.getMethod("addFlags", int.class);
@@ -76,8 +101,6 @@ public abstract class BaseActivity extends FragmentActivity {
             } catch (Exception e) {
             }
         }
-
-        super.onCreate(savedInstanceState);
     }
 
     /**
@@ -111,7 +134,7 @@ public abstract class BaseActivity extends FragmentActivity {
                     mPendingStorageAction = null;
                 }
             } else {
-                Toast.makeText(this, "需要存储权限才能使用此功能", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.baseactivity_toast_9700), Toast.LENGTH_SHORT).show();
                 mPendingStorageAction = null;
             }
         }
@@ -132,7 +155,7 @@ public abstract class BaseActivity extends FragmentActivity {
      * 检测是否为横屏设备
      */
     protected boolean isLandscapeDevice() {
-        String model = Build.MODEL;
+        String model = android.os.Build.MODEL;
         String device = getBuildField("DEVICE");
         String manufacturer = getManufacturer();
         String product = getBuildField("PRODUCT");
@@ -197,27 +220,15 @@ public abstract class BaseActivity extends FragmentActivity {
 
     private static String getManufacturer() {
         try {
-            return (String) Build.class.getField("MANUFACTURER").get(null);
+            return (String) android.os.Build.class.getField("MANUFACTURER").get(null);
         } catch (Exception e) {
             return "";
         }
     }
 
     private static String getBuildField(String name) {
-        try { return (String) Build.class.getField(name).get(null); }
+        try { return (String) android.os.Build.class.getField(name).get(null); }
         catch (Exception e) { return ""; }
-    }
-
-    private static int getSdkInt() {
-        try {
-            return Build.VERSION.class.getField("SDK_INT").getInt(null);
-        } catch (Exception e) {
-            try {
-                return Integer.parseInt(Build.VERSION.SDK);
-            } catch (Exception ex) {
-                return 0;
-            }
-        }
     }
 
     @Override

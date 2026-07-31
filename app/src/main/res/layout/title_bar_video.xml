@@ -14,7 +14,7 @@
         android:src="@drawable/ic_action_back"
         android:scaleType="centerInside"
         android:padding="8dp"
-        android:contentDescription="返回" />
+        android:contentDescription="@string/title_bar_video_8fd4" />
 
     <TextView
         android:id="@+id/tv_avid"
@@ -23,7 +23,7 @@
         android:layout_centerVertical="true"
         android:layout_toRightOf="@id/btn_back"
         android:layout_marginLeft="8dp"
-        android:text="av号"
+        android:text="@string/title_bar_video_53f7"
         android:textSize="16sp"
         android:textColor="#333333"
         android:maxLines="1"

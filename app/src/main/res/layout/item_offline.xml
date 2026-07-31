@@ -34,7 +34,7 @@
                 android:id="@+id/title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="视频标题"
+                android:text="@string/item_offline_89c6"
                 android:textSize="14sp"
                 android:textColor="#FF333333"
                 android:maxLines="2"
@@ -85,7 +85,7 @@
             android:src="@drawable/ic_btn_av_play_chroma"
             android:scaleType="centerInside"
             android:layout_gravity="center_vertical"
-            android:contentDescription="播放" />
+            android:contentDescription="@string/item_offline_64ad" />
     </LinearLayout>
 
     <View

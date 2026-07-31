@@ -43,7 +43,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:gravity="center"
-                        android:text="反馈群:"
+                        android:text="@string/bili_about_53cd"
                         android:textSize="12sp"
                         android:textColor="#CCCCCC" />
                     <TextView
@@ -61,7 +61,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:gravity="center"
-                        android:text="反馈论坛:"
+                        android:text="@string/bili_about_53cd"
                         android:textSize="12sp"
                         android:textColor="#CCCCCC" />
                     <TextView
@@ -93,7 +93,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="原作"
+            android:text="@string/bili_about_539f"
             android:textSize="12sp"
             android:textColor="#CCCCCC"
             android:layout_marginTop="8dp" />
@@ -110,7 +110,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="企画"
+            android:text="@string/bili_about_4f01"
             android:textSize="12sp"
             android:textColor="#CCCCCC"
             android:layout_marginTop="12dp" />
@@ -133,7 +133,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="一只毛子球"
+                    android:text="@string/bili_about_4e00"
                     android:textSize="12sp"
                     android:textColor="#CCCCCC" />
             </TableRow>
@@ -143,7 +143,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="制作"
+            android:text="@string/bili_about_5236"
             android:textSize="12sp"
             android:textColor="#CCCCCC"
             android:layout_marginTop="12dp" />
@@ -152,7 +152,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="某科学的弹幕委员会"
+            android:text="@string/bili_about_67d0"
             android:textSize="12sp"
             android:textColor="#CCCCCC" />
 
@@ -162,7 +162,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:gravity="center"
-            android:text="软件开发"
+            android:text="@string/bili_about_8f6f"
             android:textColor="#CCCCCC"
             android:textSize="12sp" />
 
@@ -176,7 +176,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="一只毛子球"
+                    android:text="@string/bili_about_4e00"
                     android:textSize="12sp"
                     android:textColor="#CCCCCC" />
                 <TextView
@@ -194,7 +194,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="系统构成"
+            android:text="@string/bili_about_7cfb"
             android:textSize="12sp"
             android:textColor="#CCCCCC"
             android:layout_marginTop="12dp" />
@@ -212,7 +212,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="开源项目"
+            android:text="@string/bili_about_5f00"
             android:textSize="12sp"
             android:textColor="#CCCCCC"
             android:layout_marginTop="12dp" />
@@ -276,7 +276,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="特别鸣谢"
+            android:text="@string/bili_about_7279"
             android:textSize="12sp"
             android:textColor="#CCCCCC"
             android:layout_marginTop="12dp" />
@@ -290,7 +290,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="K老余"
+                    android:text="@string/bili_about_8001"
                     android:textSize="12sp"
                     android:textColor="#CCCCCC" />
                 <TextView
@@ -308,7 +308,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="流浪的猎人"
+                    android:text="@string/bili_about_6d41"
                     android:textSize="12sp"
                     android:textColor="#CCCCCC" />
                 <TextView
@@ -334,7 +334,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="水渠-official"
+                    android:text="@string/bili_about_6c34"
                     android:textSize="12sp"
                     android:textColor="#CCCCCC" />
             </TableRow>
@@ -371,7 +371,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="是真寻酱哒awa"
+                    android:text="@string/bili_about_662f"
                     android:textSize="12sp"
                     android:textColor="#CCCCCC" />
             </TableRow>
@@ -384,7 +384,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:gravity="center"
-            android:text="赞助"
+            android:text="@string/bili_about_8d5e"
             android:textColor="#CCCCCC"
             android:textSize="12sp" />
 
@@ -424,7 +424,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:text="监督"
+                android:text="@string/bili_about_76d1"
                 android:textSize="12sp"
                 android:textColor="#CCCCCC" />
 
@@ -432,7 +432,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:text="逐梦-3"
+                android:text="@string/bili_about_9010"
                 android:textSize="12sp"
                 android:textColor="#CCCCCC" />
 

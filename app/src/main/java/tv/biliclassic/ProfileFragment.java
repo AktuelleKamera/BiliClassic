@@ -110,10 +110,10 @@ public class ProfileFragment extends Fragment {
                         intent.putExtra("mid", mid);
                         startActivity(intent);
                     } else {
-                        Toast.makeText(getActivity(), "获取用户信息失败", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getActivity(), getActivity().getString(R.string.profilefragment_toast_83b7), Toast.LENGTH_SHORT).show();
                     }
                 } else {
-                    Toast.makeText(getActivity(), "请先登录的说~", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.profilefragment_toast_8bf7), Toast.LENGTH_SHORT).show();
                 }
             }
         };
@@ -164,7 +164,7 @@ public class ProfileFragment extends Fragment {
             @Override
             public void onClick(View v) {
                 if (!isLoggedIn()) {
-                    Toast.makeText(getActivity(), "请先登录的说~", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.profilefragment_toast_8bf7), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 Intent intent = new Intent(getActivity(), FavoriteFolderListActivity.class);
@@ -215,7 +215,7 @@ public class ProfileFragment extends Fragment {
 
     // 检查更新（使用 UpdateUtil）
     private void checkForUpdate() {
-        Toast.makeText(getActivity(), "正在检查更新...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(getActivity(), getActivity().getString(R.string.profilefragment_toast_6b63), Toast.LENGTH_SHORT).show();
 
         UpdateUtil.checkUpdate(getActivity(), currentVersionCode, currentVersionName,
                 new UpdateUtil.UpdateCallback() {
@@ -272,7 +272,7 @@ public class ProfileFragment extends Fragment {
             } else {
                 mainHandler.post(new Runnable() {
                     public void run() {
-                        if (isAdded() && tvUserId != null) tvUserId.setText("用户名");
+                        if (isAdded() && tvUserId != null) tvUserId.setText(getString(R.string.profilefragment_settext_7528));
                     }
                 });
             }
@@ -282,7 +282,7 @@ public class ProfileFragment extends Fragment {
                 }
             });
 
-            tvCoin.setText("加载中……");
+            tvCoin.setText(getString(R.string.profilefragment_settext_52a0));
 
             loadAvatarFromFileOrNetwork(mid);
 
@@ -300,9 +300,9 @@ public class ProfileFragment extends Fragment {
                 loginContainer.setVisibility(View.VISIBLE);
             }
 
-            tvUserId.setText("未登录");
+            tvUserId.setText(getString(R.string.profilefragment_settext_672a));
             tvUid.setText("");
-            tvCoin.setText("请登录以使用完整功能");
+            tvCoin.setText(getString(R.string.profilefragment_settext_8bf7));
             tvVipBadge.setVisibility(View.GONE);
             ivAvatar.setImageResource(R.drawable.bili_default_avatar);
             currentMid = 0;
@@ -388,7 +388,7 @@ public class ProfileFragment extends Fragment {
                 @Override
                 public void run() {
                     if (isAdded() && tvCoin != null) {
-                        tvCoin.setText("请重新登录");
+                        tvCoin.setText(getString(R.string.profilefragment_settext_8bf7_1));
                     }
                 }
             });
@@ -453,7 +453,7 @@ public class ProfileFragment extends Fragment {
                             @Override
                             public void run() {
                                 if (isAdded() && tvCoin != null) {
-                                    tvCoin.setText("请重新登录");
+                                    tvCoin.setText(getString(R.string.profilefragment_settext_8bf7_1));
                                 }
                             }
                         });
@@ -467,12 +467,12 @@ public class ProfileFragment extends Fragment {
 
     private void showLogoutDialog() {
         new AlertDialog.Builder(DialogUtil.wrap(getActivity()))
-                .setTitle("真的要离开了吗…？")
-                .setMessage("呜…你确定要退出登录吗？\n退出后就不能愉快地看番了哦 (；′⌒`)")
+                .setTitle(getString(R.string.profilefragment_settitle_771f))
+                .setMessage(getString(R.string.profilefragment_setmessage_545c))
                 .setPositiveButton("留下来", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        Toast.makeText(getActivity(), "嗯嗯！留下来陪我们一起看番吧！(＾▽＾)", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getActivity(), getActivity().getString(R.string.profilefragment_toast_55ef), Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
                     }
                 })

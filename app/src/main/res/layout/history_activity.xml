@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="历史记录"
+            android:text="@string/history_activity_5386"
             android:textColor="#333333"
             android:textSize="18sp"/>
 
@@ -68,7 +68,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:layout_marginTop="50dp"
-        android:text="暂无历史记录"
+        android:text="@string/history_activity_6682"
         android:textSize="14sp"
         android:textColor="#999999"
         android:visibility="gone" />

@@ -90,6 +90,9 @@ public class TvSettingsActivity extends FragmentActivity {
         btnCheckUpdate = (Button) findViewById(R.id.btn_check_update);
         btnAbout = (Button) findViewById(R.id.btn_about);
         btnDialogStyle = (Button) findViewById(R.id.btn_dialog_style);
+        if (SdkHelper.getSdkInt() < 11) {
+            btnDialogStyle.setVisibility(View.GONE);
+        }
         checkboxOnlinePlay = (CheckBox) findViewById(R.id.checkbox_online_play);
         onlinePlayItem = (LinearLayout) findViewById(R.id.online_play_item);
         checkboxLandscape = (CheckBox) findViewById(R.id.checkbox_landscape);
@@ -318,7 +321,7 @@ public class TvSettingsActivity extends FragmentActivity {
         }
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("解码方式")
+                .setTitle(getString(R.string.tvsettingsactivity_settitle_89e3))
                 .setSingleChoiceItems(decoders, checked, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -343,7 +346,7 @@ public class TvSettingsActivity extends FragmentActivity {
         }
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("视频渲染方式")
+                .setTitle(getString(R.string.tvsettingsactivity_settitle_89c6))
                 .setSingleChoiceItems(modes, checked, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -364,7 +367,7 @@ public class TvSettingsActivity extends FragmentActivity {
         int checked = Math.min(current, 1);
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("弹幕引擎")
+                .setTitle(getString(R.string.tvsettingsactivity_settitle_5f39))
                 .setSingleChoiceItems(modes, checked, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -389,7 +392,7 @@ public class TvSettingsActivity extends FragmentActivity {
         }
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("图片加载线程")
+                .setTitle(getString(R.string.tvsettingsactivity_settitle_56fe))
                 .setSingleChoiceItems(items, checked, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -426,7 +429,7 @@ public class TvSettingsActivity extends FragmentActivity {
             if (playerValues[i] == current) checked = i;
         }
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("默认播放器")
+                .setTitle(getString(R.string.tvsettingsactivity_settitle_9ed8))
                 .setSingleChoiceItems(players, checked, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -451,7 +454,7 @@ public class TvSettingsActivity extends FragmentActivity {
         }
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("视频画质")
+                .setTitle(getString(R.string.tvsettingsactivity_settitle_89c6_1))
                 .setSingleChoiceItems(qualities, checked, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -476,7 +479,7 @@ public class TvSettingsActivity extends FragmentActivity {
         }
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("默认首页")
+                .setTitle(getString(R.string.tvsettingsactivity_settitle_9ed8_1))
                 .setSingleChoiceItems(tabs, checked, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -493,7 +496,7 @@ public class TvSettingsActivity extends FragmentActivity {
 
     private void showCookieDialog() {
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("Cookie 管理")
+                .setTitle(getString(R.string.tvsettingsactivity_settitle_7ba1))
                 .setItems(new String[]{"保存到本地", "复制到剪切板", "从本地导入", "从剪切板导入"}, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -548,7 +551,7 @@ public class TvSettingsActivity extends FragmentActivity {
             PermissionUtil.requestWriteStorage(this);
             return;
         }
-        if (!isLoggedIn()) { Toast.makeText(this, "请先登录的说~", Toast.LENGTH_SHORT).show(); return; }
+        if (!isLoggedIn()) { Toast.makeText(this, this.getString(R.string.tvsettingsactivity_toast_8bf7), Toast.LENGTH_SHORT).show(); return; }
         try {
             File file = getCookieSaveFile();
             java.io.FileWriter fw = new java.io.FileWriter(file);
@@ -568,20 +571,20 @@ public class TvSettingsActivity extends FragmentActivity {
                     mPendingStorageAction = null;
                 }
             } else {
-                Toast.makeText(this, "需要存储权限才能使用此功能", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.tvsettingsactivity_toast_9700), Toast.LENGTH_SHORT).show();
                 mPendingStorageAction = null;
             }
         }
     }
 
     private void exportCookieToClipboard() {
-        if (!isLoggedIn()) { Toast.makeText(this, "请先登录的说~", Toast.LENGTH_SHORT).show(); return; }
+        if (!isLoggedIn()) { Toast.makeText(this, this.getString(R.string.tvsettingsactivity_toast_8bf7), Toast.LENGTH_SHORT).show(); return; }
         try {
             ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             cm.setText(getCookieJson());
-            Toast.makeText(this, "已复制到剪切板", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.tvsettingsactivity_toast_5df2), Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Toast.makeText(this, "复制失败", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.tvsettingsactivity_toast_590d), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -611,7 +614,7 @@ public class TvSettingsActivity extends FragmentActivity {
         input.setMinLines(3);
 
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("粘贴 Cookie 内容")
+                .setTitle(getString(R.string.tvsettingsactivity_settitle_7c98))
                 .setView(input)
                 .setPositiveButton("导入", new DialogInterface.OnClickListener() {
                     @Override
@@ -625,14 +628,14 @@ public class TvSettingsActivity extends FragmentActivity {
 
     private void applyCookieJson(String jsonStr) {
         if (jsonStr == null || jsonStr.length() == 0) {
-            Toast.makeText(this, "内容为空", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.tvsettingsactivity_toast_5185), Toast.LENGTH_SHORT).show();
             return;
         }
         try {
             JSONObject json = new JSONObject(jsonStr);
             String cookies = json.optString("cookies", "");
             if (cookies == null || cookies.length() == 0) {
-                Toast.makeText(this, "无效的 Cookie 数据", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.tvsettingsactivity_toast_65e0), Toast.LENGTH_SHORT).show();
                 return;
             }
             SharedPreferencesUtil.putString("cookies", cookies);
@@ -651,12 +654,12 @@ public class TvSettingsActivity extends FragmentActivity {
             NetWorkUtil.refreshHeaders();
 
             if (isLoggedIn()) {
-                Toast.makeText(this, "导入成功，已登录", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.tvsettingsactivity_toast_5bfc_1), Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(this, "导入完成，但登录状态异常", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, this.getString(R.string.tvsettingsactivity_toast_5bfc), Toast.LENGTH_LONG).show();
             }
         } catch (JSONException e) {
-            Toast.makeText(this, "格式错误", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.tvsettingsactivity_toast_683c), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -664,8 +667,8 @@ public class TvSettingsActivity extends FragmentActivity {
 
     private void showClearImageCacheDialog() {
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("清除图片缓存")
-                .setMessage("将清除头像缓存和番剧封面缓存")
+                .setTitle(getString(R.string.tvsettingsactivity_settitle_6e05))
+                .setMessage(getString(R.string.tvsettingsactivity_setmsg_5c06))
                 .setPositiveButton("清除", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -701,8 +704,8 @@ public class TvSettingsActivity extends FragmentActivity {
 
     private void showClearPlayCacheDialog() {
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("清除播放缓存")
-                .setMessage("确定要清除所有视频缓存吗？")
+                .setTitle(getString(R.string.tvsettingsactivity_settitle_6e05_1))
+                .setMessage(getString(R.string.tvsettingsactivity_setmsg_786e))
                 .setPositiveButton("清除", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -732,7 +735,7 @@ public class TvSettingsActivity extends FragmentActivity {
                 }
                 Toast.makeText(this, "已清除 " + count + " 个视频缓存", Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(this, "无播放缓存", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.tvsettingsactivity_toast_65e0), Toast.LENGTH_SHORT).show();
             }
         } catch (Exception e) {
             Toast.makeText(this, "清除失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -759,12 +762,12 @@ public class TvSettingsActivity extends FragmentActivity {
     private void showCrashLogDialog() {
         File crashDir = getCrashLogDir();
         if (crashDir == null || !crashDir.exists()) {
-            Toast.makeText(this, "没有崩溃日志", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.tvsettingsactivity_toast_6ca1), Toast.LENGTH_SHORT).show();
             return;
         }
         File[] files = crashDir.listFiles();
         if (files == null || files.length == 0) {
-            Toast.makeText(this, "没有崩溃日志", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.tvsettingsactivity_toast_6ca1), Toast.LENGTH_SHORT).show();
             return;
         }
         int count = files.length;
@@ -773,7 +776,7 @@ public class TvSettingsActivity extends FragmentActivity {
 
         final int fileCount = count;
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("崩溃日志")
+                .setTitle(getString(R.string.tvsettingsactivity_settitle_5d29))
                 .setMessage("共 " + count + " 个文件，总计 " + formatSize(size) + "\n确定要删除吗？")
                 .setPositiveButton("删除", new DialogInterface.OnClickListener() {
                     @Override
@@ -810,7 +813,7 @@ public class TvSettingsActivity extends FragmentActivity {
     // ---- 回声洞 ----
 
     private void loadEchoHole() {
-        btnEchoHole.setText("嘿咻…嘿咻…");
+        btnEchoHole.setText(getString(R.string.tvsettingsactivity_settext_563f));
         btnEchoHole.setEnabled(false);
         new Thread(new Runnable() {
             @Override
@@ -831,7 +834,7 @@ public class TvSettingsActivity extends FragmentActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            btnEchoHole.setText("回声洞");
+                            btnEchoHole.setText(getString(R.string.tvsettingsactivity_settext_56de));
                             btnEchoHole.setEnabled(true);
                             if (isFinishing()) return;
                             try {
@@ -853,15 +856,15 @@ public class TvSettingsActivity extends FragmentActivity {
                                     if (device != null && device.length() > 0) msg += "\n来自 " + device;
                                     msg += "\n" + time;
                                     new AlertDialog.Builder(DialogUtil.wrap(TvSettingsActivity.this))
-                                            .setTitle("回声洞")
+                                            .setTitle(getString(R.string.tvsettingsactivity_settitle_56de))
                                             .setMessage(msg)
                                             .setPositiveButton("关闭", null)
                                             .show();
                                 } else {
-                                    Toast.makeText(TvSettingsActivity.this, "回声洞暂无内容", Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(TvSettingsActivity.this, TvSettingsActivity.this.getString(R.string.tvsettingsactivity_toast_56de), Toast.LENGTH_SHORT).show();
                                 }
                             } catch (JSONException e) {
-                                Toast.makeText(TvSettingsActivity.this, "解析失败", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(TvSettingsActivity.this, TvSettingsActivity.this.getString(R.string.tvsettingsactivity_toast_89e3), Toast.LENGTH_SHORT).show();
                             }
                         }
                     });
@@ -870,7 +873,7 @@ public class TvSettingsActivity extends FragmentActivity {
                         @Override
                         public void run() {
                             if (isFinishing()) return;
-                            btnEchoHole.setText("回声洞");
+                            btnEchoHole.setText(getString(R.string.tvsettingsactivity_settext_56de));
                             btnEchoHole.setEnabled(true);
                             Toast.makeText(TvSettingsActivity.this, "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
@@ -883,7 +886,7 @@ public class TvSettingsActivity extends FragmentActivity {
     // ---- 检查更新 ----
 
     private void checkForUpdate() {
-        btnCheckUpdate.setText("检查中...");
+        btnCheckUpdate.setText(getString(R.string.tvsettingsactivity_settext_68c0));
         btnCheckUpdate.setEnabled(false);
 
         UpdateUtil.checkUpdate(this, currentVersionCode, currentVersionName,
@@ -892,7 +895,7 @@ public class TvSettingsActivity extends FragmentActivity {
                     public void onCheckStart() {}
                     @Override
                     public void onCheckComplete(boolean hasUpdate, String message) {
-                        btnCheckUpdate.setText("检查更新");
+                        btnCheckUpdate.setText(getString(R.string.tvsettingsactivity_settext_68c0_1));
                         btnCheckUpdate.setEnabled(true);
                         if (!hasUpdate) {
                             Toast.makeText(TvSettingsActivity.this, message, Toast.LENGTH_SHORT).show();
@@ -900,7 +903,7 @@ public class TvSettingsActivity extends FragmentActivity {
                     }
                     @Override
                     public void onCheckFailed(String error) {
-                        btnCheckUpdate.setText("检查更新");
+                        btnCheckUpdate.setText(getString(R.string.tvsettingsactivity_settext_68c0_1));
                         btnCheckUpdate.setEnabled(true);
                         Toast.makeText(TvSettingsActivity.this, error, Toast.LENGTH_SHORT).show();
                     }
@@ -910,10 +913,10 @@ public class TvSettingsActivity extends FragmentActivity {
     // ---- 关于 ----
 
     private void showAboutDialog() {
-        String version = "0.4.9";
+        String version = "0.4.10";
         try { version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) {}
         new AlertDialog.Builder(DialogUtil.wrap(this))
-                .setTitle("关于")
+                .setTitle(getString(R.string.tvsettingsactivity_settitle_5173))
                 .setMessage("BiliClassic TV\n版本: " + version + "\n\n专为电视遥控器优化的简洁界面")
                 .setPositiveButton("确定", null)
                 .show();
@@ -921,14 +924,15 @@ public class TvSettingsActivity extends FragmentActivity {
 
     private void showDialogStyleDialog() {
         int sdkInt = tv.biliclassic.util.SdkHelper.getSdkInt();
+        if (sdkInt < 11) return; // 2.3 不支持样式选择
         final String[] items;
         final int[] values;
         if (sdkInt >= 21) {
             items = new String[]{"自动适配", "经典样式", "Holo", "Material"};
-            values = new int[]{1, 2, 3};
+            values = new int[]{0, 1, 2, 3};
         } else {
             items = new String[]{"自动适配", "经典样式", "Holo"};
-            values = new int[]{1, 2};
+            values = new int[]{0, 1, 2};
         }
         int current = tv.biliclassic.util.SharedPreferencesUtil.getInt(
                 tv.biliclassic.util.SharedPreferencesUtil.DIALOG_STYLE, 0);
@@ -940,7 +944,7 @@ public class TvSettingsActivity extends FragmentActivity {
             }
         }
         new android.app.AlertDialog.Builder(tv.biliclassic.util.DialogUtil.wrap(this))
-                .setTitle("选择弹窗样式")
+                .setTitle(getString(R.string.tvsettingsactivity_settitle_9009))
                 .setSingleChoiceItems(items, checkedIndex, new android.content.DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(android.content.DialogInterface dialog, int which) {
@@ -949,8 +953,7 @@ public class TvSettingsActivity extends FragmentActivity {
                                 tv.biliclassic.util.SharedPreferencesUtil.DIALOG_STYLE, val);
                         btnDialogStyle.setText(
                                 val == 0 ? "自动适配" : val == 1 ? "经典样式" : val == 2 ? "Holo" : "Material");
-                        android.widget.Toast.makeText(TvSettingsActivity.this,
-                                "已切换", android.widget.Toast.LENGTH_SHORT).show();
+                        android.widget.Toast.makeText(TvSettingsActivity.this, TvSettingsActivity.this.getString(R.string.tvsettingsactivity_toast_5df2_1), android.widget.Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
                     }
                 })

@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <style name="PlayerTheme" parent="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+        <item name="android:alertDialogTheme">@android:style/Theme.Material.Dialog</item>
+    </style>
+
     <style name="DialogStyle_Holo" parent="android:Theme.Holo.Light.Dialog">
         <item name="android:windowMinWidthMajor">0dp</item>
         <item name="android:windowMinWidthMinor">0dp</item>

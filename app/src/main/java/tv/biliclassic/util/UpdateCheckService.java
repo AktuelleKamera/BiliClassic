@@ -74,11 +74,11 @@ public class UpdateCheckService extends Service {
             Object manager = getSystemService("notification");
             Class<?> nmClass = manager.getClass();
 
-            Object fgChannel = createChannel(manager, CHANNEL_ID_FG, "更新检查运行中", 1);
+            Object fgChannel = createChannel(manager, CHANNEL_ID_FG, getString(R.string.update_channel_fg), 1);
             nmClass.getMethod("createNotificationChannel", getChannelClass())
                     .invoke(manager, fgChannel);
 
-            Object resultChannel = createChannel(manager, CHANNEL_ID_RESULT, "更新检查结果", 4);
+            Object resultChannel = createChannel(manager, CHANNEL_ID_RESULT, getString(R.string.update_channel_result), 4);
             nmClass.getMethod("createNotificationChannel", getChannelClass())
                     .invoke(manager, resultChannel);
         } catch (Exception e) {
@@ -103,9 +103,9 @@ public class UpdateCheckService extends Service {
             Object builder = builderClass.getConstructor(Context.class, String.class)
                     .newInstance(this, CHANNEL_ID_FG);
             builderClass.getMethod("setContentTitle", CharSequence.class)
-                    .invoke(builder, "检查更新");
+                    .invoke(builder, getString(R.string.update_notify_checking_title));
             builderClass.getMethod("setContentText", CharSequence.class)
-                    .invoke(builder, "正在检查新版本...");
+                    .invoke(builder, getString(R.string.update_notify_checking_text));
             builderClass.getMethod("setSmallIcon", int.class)
                     .invoke(builder, android.R.drawable.stat_sys_download);
             builderClass.getMethod("setOngoing", boolean.class).invoke(builder, true);
@@ -178,7 +178,7 @@ public class UpdateCheckService extends Service {
                 Object builder = builderClass.getConstructor(Context.class, String.class)
                         .newInstance(this, CHANNEL_ID_RESULT);
                 builderClass.getMethod("setContentTitle", CharSequence.class)
-                        .invoke(builder, "发现新版本");
+                        .invoke(builder, getString(R.string.update_notify_found_title));
                 builderClass.getMethod("setContentText", CharSequence.class)
                         .invoke(builder, message);
                 builderClass.getMethod("setSmallIcon", int.class)
@@ -190,13 +190,13 @@ public class UpdateCheckService extends Service {
                 notif = (Notification) builderClass.getMethod("build").invoke(builder);
             } else {
                 notif = new Notification(android.R.drawable.ic_menu_info_details,
-                        "发现新版本", System.currentTimeMillis());
+                        getString(R.string.update_notify_found_title), System.currentTimeMillis());
                 try {
                     Class<?> builderClass = Class.forName("android.app.Notification$Builder");
                     Object builder = builderClass.getConstructor(Context.class)
                             .newInstance(this);
                     builderClass.getMethod("setContentTitle", CharSequence.class)
-                            .invoke(builder, "发现新版本");
+                            .invoke(builder, getString(R.string.update_notify_found_title));
                     builderClass.getMethod("setContentText", CharSequence.class)
                             .invoke(builder, message);
                     builderClass.getMethod("setSmallIcon", int.class)

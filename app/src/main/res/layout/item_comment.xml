@@ -33,7 +33,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="用户名"
+                android:text="@string/item_comment_7528"
                 android:textSize="14sp"
                 android:textColor="#333333"
                 android:textStyle="bold"
@@ -44,7 +44,7 @@
                 android:id="@+id/time"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="刚刚"
+                android:text="@string/item_comment_521a"
                 android:textSize="10sp"
                 android:textColor="#999999" />
 
@@ -56,7 +56,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="评论内容"
+            android:text="@string/item_comment_8bc4"
             android:textSize="13sp"
             android:textColor="#555555"
             android:lineSpacingExtra="2dp" />
@@ -72,7 +72,7 @@
             android:paddingRight="8dp"
             android:paddingTop="2dp"
             android:paddingBottom="2dp"
-            android:text="展开"
+            android:text="@string/item_comment_5c55"
             android:textSize="12sp"
             android:textColor="#D86DA5"
             android:background="@drawable/item_click_effect"
@@ -101,7 +101,7 @@
                 android:layout_width="16dp"
                 android:layout_height="16dp"
                 android:src="@drawable/ic_action_like"
-                android:contentDescription="点赞" />
+                android:contentDescription="@string/item_comment_70b9" />
 
             <TextView
                 android:id="@+id/like_count"
@@ -117,7 +117,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginLeft="8dp"
-                android:text="回复"
+                android:text="@string/item_comment_56de"
                 android:textSize="11sp"
                 android:textColor="#FF4081"
                 android:padding="2dp"
@@ -156,7 +156,7 @@
                 android:background="#DDDDDD"
                 android:padding="6dp"
                 android:layout_marginTop="4dp"
-                android:text="共0条回复，点击查看"
+                android:text="@string/item_comment_5171"
                 android:textSize="12sp"
                 android:textColor="#666666"
                 android:gravity="center"

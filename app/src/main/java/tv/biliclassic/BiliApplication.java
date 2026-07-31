@@ -6,6 +6,8 @@ import android.os.Handler;
 import com.swetake.util.Qrcode;
 
 import tv.biliclassic.util.CrashHandler;
+import tv.biliclassic.util.LocaleHelper;
+import tv.biliclassic.util.SdkHelper;
 import tv.biliclassic.util.QRCodeUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.UpdateCheckService;
@@ -16,6 +18,10 @@ public class BiliApplication extends Application {
     public void onCreate() {
         super.onCreate();
         SharedPreferencesUtil.init(this);
+        LocaleHelper.init(this);
+        if (SdkHelper.getSdkInt() < 17) {
+            LocaleHelper.updateResourcesLocale(this);
+        }
         CrashHandler.getInstance().init(this);
         Qrcode.init(this);
         QRCodeUtil.init(this);
