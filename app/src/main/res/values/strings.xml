@@ -150,7 +150,8 @@
     <string name="activity_settings_82e7c8815861">在线播放</string>
     <string name="activity_settings_832b23a08f2d">选择启动时默认显示的页面</string>
     <string name="activity_settings_8bed">语言 / Language</string>
-    <string name="activity_settings_8f121a2c52e3">清除所有已缓存的视频文件，释放存储空间</string>
+    <string name="activity_settings_play_stream_format">播放流格式</string>
+    <string name="activity_settings_play_stream_format_desc">切换在线播放的视频流格式</string>    <string name="activity_settings_8f121a2c52e3">清除所有已缓存的视频文件，释放存储空间</string>
     <string name="activity_settings_8f40e7a054ce">清除播放缓存</string>
     <string name="activity_settings_9009">选择</string>
     <string name="activity_settings_978e275133d1">检查</string>
@@ -598,6 +599,7 @@
     <string name="settingsactivity_settitle_9009_2">选择解码方式</string>
     <string name="settingsactivity_settitle_9009_3">选择语言 / Select Language</string>
     <string name="settingsactivity_settitle_9009_4">选择默认首页</string>
+    <string name="settingsactivity_settitle_9009_5">选择播放流格式</string>
     <string name="settingsactivity_toast_1_91cd">重启应用后生效</string>
     <string name="settingsactivity_toast_5185">内容为空</string>
     <string name="settingsactivity_toast_56de">回声洞暂无内容</string>

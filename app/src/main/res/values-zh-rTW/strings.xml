@@ -150,6 +150,8 @@
     <string name="activity_settings_82e7c8815861">在線播放</string>
     <string name="activity_settings_832b23a08f2d">選擇啟動時默認顯示的頁面</string>
     <string name="activity_settings_8bed">語言 / Language</string>
+    <string name="activity_settings_play_stream_format">播放流格式</string>
+    <string name="activity_settings_play_stream_format_desc">切換在線播放的影片流格式</string>
     <string name="activity_settings_8f121a2c52e3">清除所有已緩存的視頻文件，釋放存儲空間</string>
     <string name="activity_settings_8f40e7a054ce">清除播放緩存</string>
     <string name="activity_settings_9009">選擇</string>
@@ -598,6 +600,7 @@
     <string name="settingsactivity_settitle_9009_2">選擇解碼方式</string>
     <string name="settingsactivity_settitle_9009_3">選擇語言 / Select Language</string>
     <string name="settingsactivity_settitle_9009_4">選擇默認首頁</string>
+    <string name="settingsactivity_settitle_9009_5">選擇播放流格式</string>
     <string name="settingsactivity_toast_1_91cd">重啟應用後生效</string>
     <string name="settingsactivity_toast_5185">內容為空</string>
     <string name="settingsactivity_toast_56de">回聲洞暫無內容</string>

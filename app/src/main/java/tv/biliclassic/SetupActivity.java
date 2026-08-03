@@ -41,6 +41,8 @@ public class SetupActivity extends BaseActivity {
     private FrameLayout mLastSelectedTile = null;
     private boolean mAnimating = false;
     private boolean mOnPage2 = false;
+    private JSONArray mPendingChangelog = null;
+    private boolean mPendingChangelogFailed = false;
 
     static final int TAB_PROFILE = 0;
     static final int TAB_HOME = 1;
@@ -283,21 +285,9 @@ public class SetupActivity extends BaseActivity {
             a.setStartOffset(baseDelay + tileIdx * 80);
             a.setInterpolator(new DecelerateInterpolator());
             a.setFillAfter(true);
-            child.startAnimation(a);
-            tileIdx++;
-        }
-
-        // 磁贴行逐行滑入（更晚、更慢）
-        final LinearLayout tileContainer = (LinearLayout) findViewById(R.id.tile_container);
-        int rowBase = baseDelay + tileIdx * 80 + 60;
-        for (int i = 0; i < tileContainer.getChildCount(); i++) {
-            View row = tileContainer.getChildAt(i);
-            TranslateAnimation a = new TranslateAnimation(width, 0, 0, 0);
-            a.setDuration(400);
-            a.setStartOffset(rowBase + i * 100);
-            a.setInterpolator(new DecelerateInterpolator());
-            a.setFillAfter(true);
-            if (i == tileContainer.getChildCount() - 1) {
+            // 转场完成监听器挂到 btn_start 行（固定元素，不会被 removeAllViews 移除）
+            if (i == tilesGroup.getChildCount() - 1) {
+                final LinearLayout tileContainer = (LinearLayout) findViewById(R.id.tile_container);
                 a.setAnimationListener(new Animation.AnimationListener() {
                     @Override
                     public void onAnimationStart(Animation animation) {
@@ -313,12 +303,27 @@ public class SetupActivity extends BaseActivity {
                         for (int j = 0; j < tileContainer.getChildCount(); j++) {
                             tileContainer.getChildAt(j).clearAnimation();
                         }
+                        applyPendingChangelog();
                     }
                     @Override
                     public void onAnimationRepeat(Animation animation) {
                     }
                 });
             }
+            child.startAnimation(a);
+            tileIdx++;
+        }
+
+        // 磁贴行逐行滑入（更晚、更慢）
+        final LinearLayout tileContainer = (LinearLayout) findViewById(R.id.tile_container);
+        int rowBase = baseDelay + tileIdx * 80 + 60;
+        for (int i = 0; i < tileContainer.getChildCount(); i++) {
+            View row = tileContainer.getChildAt(i);
+            TranslateAnimation a = new TranslateAnimation(width, 0, 0, 0);
+            a.setDuration(400);
+            a.setStartOffset(rowBase + i * 100);
+            a.setInterpolator(new DecelerateInterpolator());
+            a.setFillAfter(true);
             row.startAnimation(a);
         }
     }
@@ -345,56 +350,73 @@ public class SetupActivity extends BaseActivity {
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
                     @Override
                     public void run() {
-                        container.removeAllViews();
-                        if (changelog == null) {
-                            TextView errorText = new TextView(SetupActivity.this);
-                            errorText.setText("\u83B7\u53D6\u66F4\u65B0\u65E5\u5FD7\u5931\u8D25");
-                            errorText.setTextColor(0xFF999999);
-                            errorText.setTextSize(15);
-                            errorText.setGravity(Gravity.CENTER);
-                            errorText.setPadding(0, dpToPx(40), 0, 0);
-                            errorText.setLayoutParams(new LinearLayout.LayoutParams(
-                                    LinearLayout.LayoutParams.MATCH_PARENT,
-                                    LinearLayout.LayoutParams.WRAP_CONTENT));
-                            container.addView(errorText);
-                            return;
-                        }
-                        int textColor = 0xFF333333;
-                        int pinkColor = 0xFFD86DA5;
-                        for (int i = 0; i < changelog.length(); i++) {
-                            String line = changelog.optString(i, "");
-                            if (line.length() == 0) {
-                                View spacer = new View(SetupActivity.this);
-                                spacer.setLayoutParams(new LinearLayout.LayoutParams(
-                                        LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(12)));
-                                container.addView(spacer);
-                            } else if (line.startsWith("-")) {
-                                TextView tv = new TextView(SetupActivity.this);
-                                tv.setText(line);
-                                tv.setTextColor(textColor);
-                                tv.setTextSize(15);
-                                tv.setPadding(dpToPx(24), dpToPx(4), dpToPx(16), dpToPx(4));
-                                tv.setLayoutParams(new LinearLayout.LayoutParams(
-                                        LinearLayout.LayoutParams.MATCH_PARENT,
-                                        LinearLayout.LayoutParams.WRAP_CONTENT));
-                                container.addView(tv);
-                            } else {
-                                TextView tv = new TextView(SetupActivity.this);
-                                tv.setText(line);
-                                tv.setTextColor(pinkColor);
-                                tv.setTextSize(16);
-                                tv.setTypeface(null, Typeface.BOLD);
-                                tv.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(4));
-                                tv.setLayoutParams(new LinearLayout.LayoutParams(
-                                        LinearLayout.LayoutParams.MATCH_PARENT,
-                                        LinearLayout.LayoutParams.WRAP_CONTENT));
-                                container.addView(tv);
-                            }
-                        }
+                        mPendingChangelog = changelog;
+                        renderChangelogIfReady();
                     }
                 });
             }
         }).start();
+    }
+
+    private void applyPendingChangelog() {
+        if (mPendingChangelog != null || mPendingChangelogFailed) {
+            renderChangelogIfReady();
+        }
+    }
+
+    private void renderChangelogIfReady() {
+        // 转场中不填充，避免 removeAllViews 打断滑入动画
+        if (mAnimating || !mOnPage2 || isFinishing()) return;
+        final LinearLayout container = (LinearLayout) findViewById(R.id.tile_container);
+        container.removeAllViews();
+        final JSONArray changelog = mPendingChangelog;
+        mPendingChangelog = null;
+        mPendingChangelogFailed = false;
+        if (changelog == null) {
+            TextView errorText = new TextView(SetupActivity.this);
+            errorText.setText("\u83B7\u53D6\u66F4\u65B0\u65E5\u5FD7\u5931\u8D25");
+            errorText.setTextColor(0xFF999999);
+            errorText.setTextSize(15);
+            errorText.setGravity(Gravity.CENTER);
+            errorText.setPadding(0, dpToPx(40), 0, 0);
+            errorText.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT));
+            container.addView(errorText);
+            return;
+        }
+        int textColor = 0xFF333333;
+        int pinkColor = 0xFFD86DA5;
+        for (int i = 0; i < changelog.length(); i++) {
+            String line = changelog.optString(i, "");
+            if (line.length() == 0) {
+                View spacer = new View(SetupActivity.this);
+                spacer.setLayoutParams(new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(12)));
+                container.addView(spacer);
+            } else if (line.startsWith("-")) {
+                TextView tv = new TextView(SetupActivity.this);
+                tv.setText(line);
+                tv.setTextColor(textColor);
+                tv.setTextSize(15);
+                tv.setPadding(dpToPx(24), dpToPx(4), dpToPx(16), dpToPx(4));
+                tv.setLayoutParams(new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+                container.addView(tv);
+            } else {
+                TextView tv = new TextView(SetupActivity.this);
+                tv.setText(line);
+                tv.setTextColor(pinkColor);
+                tv.setTextSize(16);
+                tv.setTypeface(null, Typeface.BOLD);
+                tv.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(4));
+                tv.setLayoutParams(new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+                container.addView(tv);
+            }
+        }
     }
 
     private JSONArray fetchChangelog() {

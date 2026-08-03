@@ -371,6 +371,59 @@
                 android:textColor="#FF6B35"
                 android:textSize="11sp" />
 
+            <!-- 播放流格式选择 -->
+            <LinearLayout
+                android:id="@+id/play_stream_format_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="#FFFFFF"
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/activity_settings_play_stream_format"
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/activity_settings_play_stream_format_desc"
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/play_stream_format_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
+                    android:layout_gravity="center_vertical"
+                    android:text="MP4"
+                    android:textColor="#999999"
+                    android:textSize="13sp" />
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center_vertical"
+                    android:contentDescription="@string/activity_settings_c11330b85234"
+                    android:src="@android:drawable/ic_menu_edit" />
+
+            </LinearLayout>
+
             <!-- 分隔线 -->
             <View
                 android:layout_width="match_parent"

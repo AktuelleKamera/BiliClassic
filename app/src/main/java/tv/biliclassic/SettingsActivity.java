@@ -93,6 +93,8 @@ public class SettingsActivity extends BaseActivity {
     private TextView playerChoiceText;
     private LinearLayout decoderChoiceItem;
     private TextView decoderChoiceText;
+    private LinearLayout playStreamFormatItem;
+    private TextView playStreamFormatText;
     private LinearLayout defaultTabItem;
     private TextView defaultTabText;
     private LinearLayout videoQualityItem;
@@ -434,6 +436,20 @@ public class SettingsActivity extends BaseActivity {
                 @Override
                 public void onClick(View v) {
                     showDecoderChoiceDialog();
+                }
+            });
+        }
+
+        // 播放流格式选择
+        playStreamFormatItem = (LinearLayout) findViewById(R.id.play_stream_format_item);
+        playStreamFormatText = (TextView) findViewById(R.id.play_stream_format_text);
+
+        if (playStreamFormatItem != null) {
+            updatePlayStreamFormatDisplay();
+            playStreamFormatItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showPlayStreamFormatDialog();
                 }
             });
         }
@@ -888,6 +904,46 @@ public class SettingsActivity extends BaseActivity {
     private void updateRendererTypeDisplay(TextView textView) {
         int type = getRendererType();
         textView.setText(type == 1 ? "TextureView" : "SurfaceView");
+    }
+
+    // 播放流格式选择 (1=MP4, 16=DASH)
+    private void showPlayStreamFormatDialog() {
+        final String[] modes = {"MP4 (fnval=1)", "DASH (fnval=16)"};
+        final int[] values = {1, 16};
+        int current = getPlayStreamFormat();
+
+        int checkedIndex = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == current) {
+                checkedIndex = i;
+                break;
+            }
+        }
+
+        new AlertDialog.Builder(DialogUtil.wrap(this))
+                .setTitle(getString(R.string.settingsactivity_settitle_9009_5))
+                .setSingleChoiceItems(modes, checkedIndex, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        SharedPreferencesUtil.putInt(SharedPreferencesUtil.PLAY_STREAM_FORMAT, values[which]);
+                        updatePlayStreamFormatDisplay();
+                        Toast.makeText(SettingsActivity.this,
+                                "已切换为: " + modes[which],
+                                Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void updatePlayStreamFormatDisplay() {
+        if (playStreamFormatText == null) return;
+        int f = getPlayStreamFormat();
+        playStreamFormatText.setText(f == 16 ? "DASH" : "MP4");
+    }
+
+    public static int getPlayStreamFormat() {
+        return SharedPreferencesUtil.getInt(SharedPreferencesUtil.PLAY_STREAM_FORMAT, 1);
     }
 
     // 弹幕引擎选择

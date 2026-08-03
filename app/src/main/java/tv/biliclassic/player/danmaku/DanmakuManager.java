@@ -13,6 +13,7 @@ import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.PopupWindow;
+import android.widget.RadioButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -85,6 +86,7 @@ public class DanmakuManager {
     private ViewStub mInputStub;
     private View mInputOverlay;
     private boolean mWasPlayingBeforeInput;
+    private int mInputColor = DanmakuApi.COLOR_WHITE;
 
     private final Resources mRes;
 
@@ -441,6 +443,54 @@ public class DanmakuManager {
                 View optionsView = mInputOverlay.findViewById(R.id.danmaku_input_options);
                 final RadioGroup modeGroup = (RadioGroup) optionsView.findViewById(R.id.input_options_group_type);
                 final RadioGroup sizeGroup = (RadioGroup) optionsView.findViewById(R.id.input_options_group_textsize);
+                final View basicOptions = optionsView.findViewById(R.id.input_options_basic);
+                final View moreOptions = optionsView.findViewById(R.id.input_options_more);
+                final RadioButton currentColor = (RadioButton) optionsView.findViewById(
+                        R.id.input_options_color_current);
+                final RadioGroup colorGroup = (RadioGroup) optionsView.findViewById(
+                        R.id.input_options_color_group);
+
+                if (currentColor != null) {
+                    currentColor.setBackgroundColor(0xFF000000 | mInputColor);
+                }
+                if (colorGroup != null) {
+                    colorGroup.setVisibility(View.GONE);
+                }
+                if (moreOptions != null && colorGroup != null) {
+                    moreOptions.setOnClickListener(new View.OnClickListener() {
+                        public void onClick(View v) {
+                            if (basicOptions != null) basicOptions.setVisibility(View.GONE);
+                            moreOptions.setVisibility(View.GONE);
+                            ViewGroup.LayoutParams params = colorGroup.getLayoutParams();
+                            params.width = ViewGroup.LayoutParams.MATCH_PARENT;
+                            colorGroup.setLayoutParams(params);
+                            colorGroup.setVisibility(View.VISIBLE);
+                        }
+                    });
+                }
+                if (colorGroup != null) {
+                    for (int i = 0; i < colorGroup.getChildCount(); i++) {
+                        View colorOption = colorGroup.getChildAt(i);
+                        colorOption.setOnClickListener(new View.OnClickListener() {
+                            public void onClick(View v) {
+                                Object tag = v.getTag();
+                                if (tag != null) {
+                                    try {
+                                        mInputColor = Integer.parseInt(tag.toString(), 16);
+                                    } catch (NumberFormatException ignored) {
+                                        mInputColor = DanmakuApi.COLOR_WHITE;
+                                    }
+                                }
+                                if (currentColor != null) {
+                                    currentColor.setBackgroundColor(0xFF000000 | mInputColor);
+                                }
+                                colorGroup.setVisibility(View.GONE);
+                                if (basicOptions != null) basicOptions.setVisibility(View.VISIBLE);
+                                if (moreOptions != null) moreOptions.setVisibility(View.VISIBLE);
+                            }
+                        });
+                    }
+                }
 
                 if (clearBtn != null) {
                     clearBtn.setOnClickListener(new View.OnClickListener() {
@@ -476,7 +526,7 @@ public class DanmakuManager {
                                 }
                             }
                             hideInputPanel(playControl);
-                            sendDanmaku(text, mode, textSize);
+                            sendDanmaku(text, mode, textSize, mInputColor);
                         }
                     });
                 }
@@ -492,6 +542,15 @@ public class DanmakuManager {
             }
         }
         if (mInputOverlay != null) {
+            View optionsView = mInputOverlay.findViewById(R.id.danmaku_input_options);
+            if (optionsView != null) {
+                View basicOptions = optionsView.findViewById(R.id.input_options_basic);
+                View moreOptions = optionsView.findViewById(R.id.input_options_more);
+                View colorGroup = optionsView.findViewById(R.id.input_options_color_group);
+                if (basicOptions != null) basicOptions.setVisibility(View.VISIBLE);
+                if (moreOptions != null) moreOptions.setVisibility(View.VISIBLE);
+                if (colorGroup != null) colorGroup.setVisibility(View.GONE);
+            }
             mInputOverlay.setVisibility(View.VISIBLE);
         }
     }
@@ -689,7 +748,8 @@ public class DanmakuManager {
         }
     }
 
-    private void sendDanmaku(final String text, final int mode, final int textSize) {
+    private void sendDanmaku(final String text, final int mode, final int textSize,
+                             final int color) {
         if (mCid <= 0) {
             toast("无法发送弹幕：缺少视频信息");
             return;
@@ -704,7 +764,7 @@ public class DanmakuManager {
                     }
                     int result = DanmakuApi.sendVideoDanmakuByAid(
                             mCid, text, mAid, progress,
-                            DanmakuApi.COLOR_WHITE, mode);
+                            color, mode);
                     final String msg;
                     if (result == 0) {
                         msg = "弹幕发送成功";
@@ -715,7 +775,7 @@ public class DanmakuManager {
                                 danmaku.text = text;
                                 danmaku.padding = 5;
                                 danmaku.priority = 1;
-                                danmaku.textColor = Color.WHITE;
+                                danmaku.textColor = 0xFF000000 | color;
                                 danmaku.textSize = textSize * (mDanmakuView.getWidth() / 640f);
                                 danmaku.time = mDanmakuView.getCurrentTime() + 100;
                                 danmaku.isLive = false;
