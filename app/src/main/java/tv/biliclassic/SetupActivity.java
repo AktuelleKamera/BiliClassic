@@ -285,9 +285,24 @@ public class SetupActivity extends BaseActivity {
             a.setStartOffset(baseDelay + tileIdx * 80);
             a.setInterpolator(new DecelerateInterpolator());
             a.setFillAfter(true);
-            // 转场完成监听器挂到 btn_start 行（固定元素，不会被 removeAllViews 移除）
-            if (i == tilesGroup.getChildCount() - 1) {
-                final LinearLayout tileContainer = (LinearLayout) findViewById(R.id.tile_container);
+            child.startAnimation(a);
+            tileIdx++;
+        }
+
+        // 磁贴行逐行滑入（更晚、更慢），完成监听器挂到最后一个磁贴行，
+        // 保证所有行都滑入后才结束转场。异步日志在转场前已填充或已延迟到转场后，
+        // 不会在动画中 removeAllViews。
+        final LinearLayout tileContainer = (LinearLayout) findViewById(R.id.tile_container);
+        int rowBase = baseDelay + tileIdx * 80 + 60;
+        int lastRow = tileContainer.getChildCount() - 1;
+        for (int i = 0; i < tileContainer.getChildCount(); i++) {
+            View row = tileContainer.getChildAt(i);
+            TranslateAnimation a = new TranslateAnimation(width, 0, 0, 0);
+            a.setDuration(400);
+            a.setStartOffset(rowBase + i * 100);
+            a.setInterpolator(new DecelerateInterpolator());
+            a.setFillAfter(true);
+            if (i == lastRow) {
                 a.setAnimationListener(new Animation.AnimationListener() {
                     @Override
                     public void onAnimationStart(Animation animation) {
@@ -310,20 +325,6 @@ public class SetupActivity extends BaseActivity {
                     }
                 });
             }
-            child.startAnimation(a);
-            tileIdx++;
-        }
-
-        // 磁贴行逐行滑入（更晚、更慢）
-        final LinearLayout tileContainer = (LinearLayout) findViewById(R.id.tile_container);
-        int rowBase = baseDelay + tileIdx * 80 + 60;
-        for (int i = 0; i < tileContainer.getChildCount(); i++) {
-            View row = tileContainer.getChildAt(i);
-            TranslateAnimation a = new TranslateAnimation(width, 0, 0, 0);
-            a.setDuration(400);
-            a.setStartOffset(rowBase + i * 100);
-            a.setInterpolator(new DecelerateInterpolator());
-            a.setFillAfter(true);
             row.startAnimation(a);
         }
     }
@@ -360,13 +361,17 @@ public class SetupActivity extends BaseActivity {
 
     private void applyPendingChangelog() {
         if (mPendingChangelog != null || mPendingChangelogFailed) {
-            renderChangelogIfReady();
+            renderChangelogIfReady(true);
         }
     }
 
     private void renderChangelogIfReady() {
+        renderChangelogIfReady(false);
+    }
+
+    private void renderChangelogIfReady(boolean animateRows) {
         // 转场中不填充，避免 removeAllViews 打断滑入动画
-        if (mAnimating || !mOnPage2 || isFinishing()) return;
+        if (mAnimating || isFinishing()) return;
         final LinearLayout container = (LinearLayout) findViewById(R.id.tile_container);
         container.removeAllViews();
         final JSONArray changelog = mPendingChangelog;
@@ -416,6 +421,24 @@ public class SetupActivity extends BaseActivity {
                         LinearLayout.LayoutParams.WRAP_CONTENT));
                 container.addView(tv);
             }
+        }
+
+        // 若日志在转场结束后才填充，则逐行补一次滑入动画
+        if (animateRows) {
+            animateRowsIn(container);
+        }
+    }
+
+    private void animateRowsIn(final LinearLayout container) {
+        final int width = mPageTiles != null ? mPageTiles.getWidth() : 0;
+        if (width <= 0) return;
+        for (int i = 0; i < container.getChildCount(); i++) {
+            View row = container.getChildAt(i);
+            TranslateAnimation a = new TranslateAnimation(width, 0, 0, 0);
+            a.setDuration(300);
+            a.setStartOffset(i * 40);
+            a.setInterpolator(new DecelerateInterpolator());
+            row.startAnimation(a);
         }
     }
 
