@@ -29,6 +29,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import tv.biliclassic.model.VideoCard;
+import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class RelatedVideosAdapter extends BaseAdapter {
@@ -241,49 +242,12 @@ public class RelatedVideosAdapter extends BaseAdapter {
 
             if (!tempFile.exists() || tempFile.length() == 0) return null;
 
-            byte[] imageData = new byte[(int) tempFile.length()];
-            java.io.FileInputStream fis = new java.io.FileInputStream(tempFile);
-            int offset = 0;
-            while (offset < imageData.length) {
-                int read = fis.read(imageData, offset, imageData.length - offset);
-                if (read < 0) break;
-                offset += read;
-            }
-            fis.close();
-
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true;
-            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
-
             int targetWidth = (int) (160 * context.getResources().getDisplayMetrics().density);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 targetWidth = (int)(targetWidth * 1.25f);
             }
             int minScale = Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD ? 2 : 4;
-            int scale = 1;
-            if (options.outWidth > targetWidth && options.outWidth > 0) {
-                scale = options.outWidth / targetWidth;
-                if (scale < 1) scale = 1;
-                if (scale > 8) scale = 8;
-            }
-            if (scale < minScale) scale = minScale;
-
-            Bitmap bitmap = null;
-            while (scale <= 16 && bitmap == null) {
-                try {
-                    System.gc();
-                    options = new BitmapFactory.Options();
-                    options.inSampleSize = scale;
-                    options.inPreferredConfig = Bitmap.Config.RGB_565;
-                    options.inPurgeable = true;
-                    options.inInputShareable = true;
-                    bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
-                } catch (OutOfMemoryError e) {
-                    System.gc();
-                    scale *= 2;
-                }
-            }
-            return bitmap;
+            return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, 90, minScale);
         } catch (Exception e) {
             return null;
         } finally {

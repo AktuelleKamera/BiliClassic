@@ -274,13 +274,37 @@ public class NetWorkUtil {
     };
 
     public static SSLSocketFactory getTrustAllSSLSocketFactory() {
+        // 使用 SSLSocketFactoryCompat 显式启用现代 TLS 协议与加密套件：
+        // Android 2.x-4.x 系统默认不会自动协商 TLS 1.2/现代套件，导致握手慢或失败，
+        // 而 "部分设备能用、部分设备网络极慢" 正是这个原因。
         try {
-            SSLContext sc = SSLContext.getInstance("TLS");
-            sc.init(null, new X509TrustManager[]{TRUST_ALL_CERTS}, new java.security.SecureRandom());
-            return sc.getSocketFactory();
+            return new SSLSocketFactoryCompat(TRUST_ALL_CERTS);
         } catch (Exception e) {
-            Log.e("NetWorkUtil", "创建 TrustAll SSLSocketFactory 失败: " + e.getMessage());
-            return null;
+            Log.e("NetWorkUtil", "创建 SSLSocketFactoryCompat 失败，回退默认: " + e.getMessage());
+            try {
+                SSLContext sc = SSLContext.getInstance("TLS");
+                sc.init(null, new X509TrustManager[]{TRUST_ALL_CERTS}, new java.security.SecureRandom());
+                return sc.getSocketFactory();
+            } catch (Exception e2) {
+                return null;
+            }
+        }
+    }
+
+    /**
+     * 为任意 HttpURLConnection 应用兼容 TLS 设置（用于各处直接 openConnection 的 HTTPS 请求）。
+     * 若连接不是 HTTPS 则不做任何事。
+     */
+    public static void applySSLCompat(HttpURLConnection conn, String url) {
+        if (conn == null || url == null || !url.startsWith("https")) return;
+        if (!(conn instanceof HttpsURLConnection)) return;
+        try {
+            SSLSocketFactory sslFactory = getTrustAllSSLSocketFactory();
+            if (sslFactory != null) {
+                ((HttpsURLConnection) conn).setSSLSocketFactory(sslFactory);
+            }
+            ((HttpsURLConnection) conn).setHostnameVerifier(TRUST_ALL_HOSTNAMES);
+        } catch (Exception e) {
         }
     }
 
@@ -299,6 +323,16 @@ public class NetWorkUtil {
     }
 
     public static JSONObject getJson(String url, ArrayList headers) throws IOException, JSONException {
+        // API < 10 无 JSONTokener(Reader) 构造器，getJsonStream 会走反射失败→重连路径。
+        // Android 1.6 上重连会 Read timed out（0.4.9 单次请求正常，0.4.10 起双请求超时），
+        // 因此低版本直接走单次 get()，与 0.4.9 行为一致。
+        if (SdkHelper.getSdkInt() < 10) {
+            String response = get(url, headers);
+            if (response == null || response.length() == 0) {
+                throw new JSONException("在访问 " + url + " 时返回数据为空");
+            }
+            return new JSONObject(response);
+        }
         return getJsonStream(url, headers);
     }
 
@@ -317,10 +351,14 @@ public class NetWorkUtil {
         BufferedReader reader = null;
         java.io.CharArrayWriter caw = null;
         try {
+            Log.d("NetDiag", "GET 开始 " + hostOf(url) + " (retry=" + retryCount + ")");
+            long t0 = System.currentTimeMillis();
             conn = createConnection(url, "GET", headers);
             conn.connect();
+            Log.d("NetDiag", "GET connect 完成 " + hostOf(url) + " 耗时=" + (System.currentTimeMillis() - t0) + "ms");
 
             int responseCode = conn.getResponseCode();
+            Log.d("NetDiag", "GET 响应码=" + responseCode + " " + hostOf(url) + " 总耗时=" + (System.currentTimeMillis() - t0) + "ms");
 
             if (responseCode == 301 || responseCode == 302 || responseCode == 307) {
                 return handleRedirect(conn, url, headers, "GET", null, retryCount + 1);
@@ -329,8 +367,10 @@ public class NetWorkUtil {
             return readResponse(conn, responseCode);
 
         } catch (IOException e) {
+            Log.e("NetDiag", "GET 异常 " + hostOf(url) + " " + e.getClass().getName() + ": " + e.getMessage());
             throw e;
         } catch (Exception e) {
+            Log.e("NetDiag", "GET 异常(非IO) " + hostOf(url) + " " + e.getClass().getName() + ": " + e.getMessage());
             throw new IOException("请求异常: " + e.toString());
         } finally {
             closeQuietly(reader);
@@ -364,6 +404,8 @@ public class NetWorkUtil {
         BufferedReader reader = null;
         java.io.CharArrayWriter caw = null;
         try {
+            Log.d("NetDiag", "POST 开始 " + hostOf(url) + " (retry=" + retryCount + ")");
+            long t0 = System.currentTimeMillis();
             conn = createConnection(url, "POST", headers);
             conn.setRequestProperty("Content-Type", contentType + "; charset=utf-8");
 
@@ -371,8 +413,10 @@ public class NetWorkUtil {
             os.write(data.getBytes("UTF-8"));
             os.flush();
             os.close();
+            Log.d("NetDiag", "POST 写入完成 " + hostOf(url) + " 耗时=" + (System.currentTimeMillis() - t0) + "ms");
 
             int responseCode = conn.getResponseCode();
+            Log.d("NetDiag", "POST 响应码=" + responseCode + " " + hostOf(url) + " 总耗时=" + (System.currentTimeMillis() - t0) + "ms");
 
             if (responseCode == 301 || responseCode == 302 || responseCode == 307) {
                 return handleRedirect(conn, url, headers, "POST", data, retryCount + 1);
@@ -381,8 +425,10 @@ public class NetWorkUtil {
             return readResponse(conn, responseCode);
 
         } catch (IOException e) {
+            Log.e("NetDiag", "POST 异常 " + hostOf(url) + " " + e.getClass().getName() + ": " + e.getMessage());
             throw e;
         } catch (Exception e) {
+            Log.e("NetDiag", "POST 异常(非IO) " + hostOf(url) + " " + e.getClass().getName() + ": " + e.getMessage());
             throw new IOException("请求异常: " + e.toString());
         } finally {
             closeQuietly(reader);
@@ -404,6 +450,9 @@ public class NetWorkUtil {
             if (sslFactory != null) {
                 ((HttpsURLConnection) conn).setSSLSocketFactory(sslFactory);
                 ((HttpsURLConnection) conn).setHostnameVerifier(TRUST_ALL_HOSTNAMES);
+                Log.d("NetDiag", "已应用兼容SSL工厂: " + sslFactory.getClass().getName() + " for " + hostOf(url));
+            } else {
+                Log.e("NetDiag", "SSL工厂为null, 将使用系统默认 for " + hostOf(url));
             }
         }
 
@@ -484,6 +533,22 @@ public class NetWorkUtil {
             }
         }
         return map;
+    }
+
+    private static String hostOf(String url) {
+        try {
+            java.net.URI uri = new java.net.URI(url);
+            return uri.getHost();
+        } catch (Exception e) {
+            try {
+                int start = url.indexOf("://") + 3;
+                int end = url.indexOf('/', start);
+                if (end < 0) end = url.length();
+                return url.substring(start, end);
+            } catch (Exception e2) {
+                return url;
+            }
+        }
     }
 
     /**
@@ -589,9 +654,11 @@ public class NetWorkUtil {
         HttpURLConnection conn = null;
         InputStream is = null;
         try {
+            Log.d("NetDiag", "getJsonStream 开始 " + hostOf(url));
             conn = createConnection(url, "GET", headers);
             conn.connect();
             int responseCode = conn.getResponseCode();
+            Log.d("NetDiag", "getJsonStream 响应码=" + responseCode + " " + hostOf(url));
             is = responseCode >= 400 ? conn.getErrorStream() : conn.getInputStream();
             if (is == null) {
                 throw new JSONException("在访问 " + url + " 时返回数据为空");
@@ -607,21 +674,46 @@ public class NetWorkUtil {
                 if (setCookie != null && setCookie.length() > 0) saveCookieFromHeader(setCookie);
                 return new JSONObject(tokener);
             } catch (Exception ignored) {
-                // API < 10：JSONTokener(Reader) 不存在，走老方式
+                // JSONTokener(Reader) 不存在：从已打开的连接直接读完整个响应体，
+                // 绝不重新发起请求（Android 1.6 上重连会 Read timed out）
             }
-            // 原始连接已消耗，断开后重新请求
+            String text = readStreamRemaining(is);
             try { reader.close(); } catch (Exception ignored) {}
             try { is.close(); } catch (Exception ignored) {}
-            conn.disconnect();
-            conn = null;
             is = null;
-
-            String text = get(url, headers);
+            String setCookie = collectSetCookies(conn);
+            if (setCookie != null && setCookie.length() > 0) saveCookieFromHeader(setCookie);
             return new JSONObject(text);
         } finally {
             if (is != null) try { is.close(); } catch (Exception ignored) {}
             if (conn != null) conn.disconnect();
         }
+    }
+
+    private static String readStreamRemaining(InputStream is) throws IOException {
+        java.util.ArrayList chunks = new java.util.ArrayList();
+        byte[] buffer = new byte[4096];
+        int total = 0;
+        int maxBytes = 3 * 1024 * 1024;
+        int len;
+        while ((len = is.read(buffer, 0, buffer.length)) != -1) {
+            total += len;
+            if (total > maxBytes) {
+                throw new java.io.IOException("响应数据过大 (" + total + " 字节)");
+            }
+            byte[] chunk = new byte[len];
+            System.arraycopy(buffer, 0, chunk, 0, len);
+            chunks.add(chunk);
+        }
+        byte[] allBytes = new byte[total];
+        int offset = 0;
+        for (int i = 0; i < chunks.size(); i++) {
+            byte[] chunk = (byte[]) chunks.get(i);
+            System.arraycopy(chunk, 0, allBytes, offset, chunk.length);
+            offset += chunk.length;
+        }
+        chunks.clear();
+        return new String(allBytes, "UTF-8");
     }
 
     private static String collectSetCookies(HttpURLConnection conn) {
@@ -730,6 +822,13 @@ public class NetWorkUtil {
         try {
             String url = "https://www.bilibili.com";
             HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+            if (url.startsWith("https") && conn instanceof HttpsURLConnection) {
+                SSLSocketFactory sslFactory = getTrustAllSSLSocketFactory();
+                if (sslFactory != null) {
+                    ((HttpsURLConnection) conn).setSSLSocketFactory(sslFactory);
+                    ((HttpsURLConnection) conn).setHostnameVerifier(TRUST_ALL_HOSTNAMES);
+                }
+            }
             conn.setRequestMethod("GET");
             conn.setRequestProperty("User-Agent", USER_AGENT_WEB);
             conn.setRequestProperty("Accept-Language", getAcceptLanguage());

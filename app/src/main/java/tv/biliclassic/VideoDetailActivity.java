@@ -176,7 +176,7 @@ public class VideoDetailActivity extends BaseActivity {
             mBangumiMediaId = bangumiMediaId;
 
             viewPager = (ViewPager) findViewById(R.id.viewpager);
-            viewPager.setAdapter(new TwoTabPagerAdapter(getSupportFragmentManager()));
+            safeSetAdapter(new TwoTabPagerAdapter(getSupportFragmentManager()));
             viewPager.setOffscreenPageLimit(1);
             viewPager.setOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
                 @Override
@@ -344,7 +344,7 @@ public class VideoDetailActivity extends BaseActivity {
         }
 
         viewPager = (ViewPager) findViewById(R.id.viewpager);
-        viewPager.setAdapter(new BangumiPagerAdapter(getSupportFragmentManager()));
+        safeSetAdapter(new BangumiPagerAdapter(getSupportFragmentManager()));
         viewPager.setOffscreenPageLimit(1);
 
         viewPager.setOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
@@ -365,8 +365,8 @@ public class VideoDetailActivity extends BaseActivity {
     // 普通视频视图（三个 Tab）
     private void initNormalVideo() {
         viewPager = (ViewPager) findViewById(R.id.viewpager);
-        viewPager.setAdapter(new VideoDetailPagerAdapter(getSupportFragmentManager()));
-        viewPager.setOffscreenPageLimit(mOfflineMode ? 1 : 3);
+        safeSetAdapter(new VideoDetailPagerAdapter(getSupportFragmentManager()));
+        viewPager.setOffscreenPageLimit(mOfflineMode ? 1 : 1);
 
         viewPager.setOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
             @Override
@@ -381,6 +381,37 @@ public class VideoDetailActivity extends BaseActivity {
                 finish();
             }
         });
+    }
+
+    /**
+     * 安全地给 ViewPager 设置 adapter：
+     * 1. 设置前先释放全局图片缓存，为 inflate fragment 布局腾出外部堆空间（Android 2.x 上 bitmap 常驻外部堆）；
+     * 2. inflate 时若 OOM（InflateException/OOM），释放缓存后重试一次。
+     */
+    private void safeSetAdapter(final android.support.v4.view.PagerAdapter adapter) {
+        if (viewPager == null) return;
+        try {
+            tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
+            System.gc();
+        } catch (Throwable t) {
+        }
+        for (int attempt = 0; attempt < 2; attempt++) {
+            try {
+                viewPager.setAdapter(adapter);
+                return;
+            } catch (OutOfMemoryError e) {
+                tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            } catch (android.view.InflateException e) {
+                tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            } catch (Throwable e) {
+                android.util.Log.e("VideoDetail", "设置ViewPager adapter失败: " + e.getMessage());
+                if (attempt == 1) return;
+                tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            }
+        }
     }
 
     // 初始化底部四个shit按钮
@@ -518,12 +549,12 @@ public class VideoDetailActivity extends BaseActivity {
         isCleaned = false;
         if (viewPager != null && viewPager.getAdapter() == null) {
             if (isBangumi) {
-                viewPager.setAdapter(new BangumiPagerAdapter(getSupportFragmentManager()));
+                safeSetAdapter(new BangumiPagerAdapter(getSupportFragmentManager()));
             } else {
                 if (mBangumiMediaId > 0) {
-                    viewPager.setAdapter(new TwoTabPagerAdapter(getSupportFragmentManager()));
+                    safeSetAdapter(new TwoTabPagerAdapter(getSupportFragmentManager()));
                 } else {
-                    viewPager.setAdapter(new VideoDetailPagerAdapter(getSupportFragmentManager()));
+                    safeSetAdapter(new VideoDetailPagerAdapter(getSupportFragmentManager()));
                 }
             }
             viewPager.setCurrentItem(currentPagePosition, false);

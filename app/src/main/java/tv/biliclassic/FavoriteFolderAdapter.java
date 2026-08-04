@@ -27,6 +27,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import tv.biliclassic.model.FavoriteFolder;
+import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class FavoriteFolderAdapter extends BaseAdapter {
@@ -224,6 +225,7 @@ public class FavoriteFolderAdapter extends BaseAdapter {
     private Bitmap downloadImage(String urlStr) {
         if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
         HttpURLConnection conn = null;
+        java.io.File tempFile = null;
         try {
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
@@ -232,41 +234,21 @@ public class FavoriteFolderAdapter extends BaseAdapter {
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
             conn.connect();
 
+            tempFile = new java.io.File(context.getCacheDir(), "favf_" + urlStr.hashCode() + ".tmp");
             InputStream is = conn.getInputStream();
-
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true;
-            BitmapFactory.decodeStream(is, null, options);
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
+            byte[] buffer = new byte[8192];
+            int len;
+            while ((len = is.read(buffer)) != -1) {
+                fos.write(buffer, 0, len);
+            }
             is.close();
+            fos.close();
 
-            conn.disconnect();
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(12000);
-            conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.connect();
-            is = conn.getInputStream();
+            if (!tempFile.exists() || tempFile.length() == 0) return null;
 
             int targetWidth = (int) (120 * context.getResources().getDisplayMetrics().density);
-            int scale = 1;
-            if (options.outWidth > targetWidth) {
-                scale = options.outWidth / targetWidth;
-                if (scale < 1) scale = 1;
-                if (scale > 4) scale = 4;
-            }
-
-            options = new BitmapFactory.Options();
-            options.inSampleSize = scale;
-            options.inPreferredConfig = Bitmap.Config.RGB_565;
-            try {
-                BitmapFactory.Options.class.getField("inPurgeable").setBoolean(options, true);
-                BitmapFactory.Options.class.getField("inInputShareable").setBoolean(options, true);
-            } catch (Exception ignored) {
-            }
-
-            Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
-            is.close();
-            return bitmap;
+            return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, 90, 2);
         } catch (OutOfMemoryError e) {
             System.gc();
             return null;
@@ -275,6 +257,9 @@ public class FavoriteFolderAdapter extends BaseAdapter {
         } finally {
             if (conn != null) {
                 conn.disconnect();
+            }
+            if (tempFile != null && tempFile.exists()) {
+                try { tempFile.delete(); } catch (Exception e) {}
             }
         }
     }

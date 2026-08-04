@@ -25,6 +25,7 @@ import java.util.List;
 
 import tv.biliclassic.api.RecommendApi;
 import tv.biliclassic.model.VideoCard;
+import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class RecommendFragment extends Fragment {
 
@@ -272,7 +273,12 @@ public class RecommendFragment extends Fragment {
         if (isLoading) return;
         isLoading = true;
 
+        android.util.Log.d("RecommendDiag", "loadRecommend 开始, sdk=" + tv.biliclassic.util.SdkHelper.getSdkInt()
+                + ", networkAvailable=" + isNetworkAvailable()
+                + ", cookieLen=" + (SharedPreferencesUtil.getString(SharedPreferencesUtil.cookies, "") == null ? -1 : SharedPreferencesUtil.getString(SharedPreferencesUtil.cookies, "").length()));
+
         if (!isNetworkAvailable()) {
+            android.util.Log.e("RecommendDiag", "loadRecommend: isNetworkAvailable()==false, 显示无网络");
             isLoading = false;
             hideAllLoading();
             emptyView.setText(getString(R.string.emoticon__no_network));
@@ -291,7 +297,10 @@ public class RecommendFragment extends Fragment {
             public void run() {
                 try {
                     final List<VideoCard> items = new ArrayList<VideoCard>();
+                    android.util.Log.d("RecommendDiag", "开始调用 RecommendApi.getRecommend");
+                    long t0 = System.currentTimeMillis();
                     RecommendApi.getRecommend(items);
+                    android.util.Log.d("RecommendDiag", "RecommendApi.getRecommend 返回, 耗时=" + (System.currentTimeMillis() - t0) + "ms, items=" + (items == null ? -1 : items.size()));
 
                     if (getActivity() == null) {
                         isLoading = false;
@@ -310,6 +319,7 @@ public class RecommendFragment extends Fragment {
                             isLoading = false;
 
                             if (items == null || items.size() == 0) {
+                                android.util.Log.e("RecommendDiag", "推荐结果为空, 显示空视图");
                                 if (emptyView != null) emptyView.setVisibility(View.VISIBLE);
                                 if (gridView != null) gridView.setVisibility(View.GONE);
                                 return;
@@ -344,6 +354,10 @@ public class RecommendFragment extends Fragment {
                                         }
                     });
                 } catch (final Exception e) {
+                    android.util.Log.e("RecommendDiag", "推荐加载异常, 类型=" + e.getClass().getName()
+                            + ", msg=" + e.getMessage()
+                            + ", sdk=" + tv.biliclassic.util.SdkHelper.getSdkInt()
+                            + ", networkAvailable=" + isNetworkAvailable(), e);
                     if (getActivity() == null) {
                         isLoading = false;
                         return;
@@ -360,8 +374,10 @@ public class RecommendFragment extends Fragment {
                             stopRefreshing();
                             String msg = e.getMessage();
                             if (msg != null && (msg.contains("Unable to resolve host") || msg.contains("ConnectException") || msg.contains("SocketException") || msg.contains("timeout") || msg.contains("timed out"))) {
+                                android.util.Log.e("RecommendDiag", "异常被判定为无网络: " + msg);
                                 if (emptyView != null) emptyView.setText(getString(R.string.emoticon__no_network));
                             } else {
+                                android.util.Log.e("RecommendDiag", "异常未判定为无网络: " + msg);
                                 if (emptyView != null) emptyView.setText("加载失败: " + msg);
                             }
                             if (emptyView != null) emptyView.setVisibility(View.VISIBLE);

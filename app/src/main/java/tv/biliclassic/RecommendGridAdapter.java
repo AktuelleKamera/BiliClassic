@@ -49,7 +49,15 @@ public class RecommendGridAdapter extends BaseAdapter {
         return maxMemory < 16384;
     }
 
+    // Android 2.x 上 setImageResource 每次可能重新解码资源图（drawable 被 purge 后），
+    // 列表滚动时 30 个 item 全部触发会把外部堆撑爆。这里缓存默认 Drawable 实例复用。
+    private static android.graphics.drawable.Drawable sDefaultCoverDrawable;
+
     private int getConfiguredThreadCount() {
+        // Android 2.x 外部堆极小，强制单线程解码，避免并发撑爆
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() < 14) {
+            return 1;
+        }
         int savedThreads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
         if (savedThreads > 0) {
             return savedThreads;
@@ -160,7 +168,17 @@ public class RecommendGridAdapter extends BaseAdapter {
         }
 
         final ViewHolder fHolder = holder;
-        holder.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+        // 复用默认 Drawable 实例，避免每次 getView 重新解码占用外部堆（Android 2.x）
+        if (sDefaultCoverDrawable == null) {
+            try {
+                sDefaultCoverDrawable = context.getResources().getDrawable(R.drawable.bili_default_image_tv_with_bg);
+            } catch (Throwable t) {
+                sDefaultCoverDrawable = null;
+            }
+        }
+        if (sDefaultCoverDrawable != null) {
+            holder.cover.setImageDrawable(sDefaultCoverDrawable);
+        }
 
         if (item != null && item.cover != null && item.cover.length() > 0
                 && !SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) {
@@ -234,20 +252,6 @@ public class RecommendGridAdapter extends BaseAdapter {
 
             if (!tempFile.exists() || tempFile.length() == 0) return null;
 
-            byte[] imageData = new byte[(int) tempFile.length()];
-            java.io.FileInputStream fis = new java.io.FileInputStream(tempFile);
-            int offset = 0;
-            while (offset < imageData.length) {
-                int read = fis.read(imageData, offset, imageData.length - offset);
-                if (read < 0) break;
-                offset += read;
-            }
-            fis.close();
-
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true;
-            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
-
             int targetWidth = 160;
             int targetHeight = 90;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -255,32 +259,7 @@ public class RecommendGridAdapter extends BaseAdapter {
                 targetHeight = (int)(targetHeight * 1.25f);
             }
             int minScale = Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD ? 2 : 4;
-            int scale = 1;
-            if (options.outWidth > targetWidth || options.outHeight > targetHeight) {
-                int widthRatio = options.outWidth / targetWidth;
-                int heightRatio = options.outHeight / targetHeight;
-                scale = Math.max(widthRatio, heightRatio);
-                if (scale < 1) scale = 1;
-                if (scale > 8) scale = 8;
-            }
-            if (scale < minScale) scale = minScale;
-
-            Bitmap bitmap = null;
-            while (scale <= 16 && bitmap == null) {
-                try {
-                    System.gc();
-                    options = new BitmapFactory.Options();
-                    options.inSampleSize = scale;
-                    options.inPreferredConfig = Bitmap.Config.RGB_565;
-                    options.inPurgeable = true;
-                    options.inInputShareable = true;
-                    bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
-                } catch (OutOfMemoryError e) {
-                    System.gc();
-                    scale *= 2;
-                }
-            }
-            return bitmap;
+            return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, targetHeight, minScale);
         } catch (Exception e) {
             Log.e(TAG, "下载失败: " + urlStr, e);
             return null;

@@ -15,6 +15,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.support.v4.app.Fragment;
 import android.widget.Toast;
@@ -42,6 +43,9 @@ public class ProfileFragment extends Fragment {
 
     private static final String TAG = "ProfileFragment";
     private static final String AVATAR_FILE_NAME = "avatar_cache.jpg";
+
+    // inflate 失败（Android 2.x 外部堆不足）时为 true：跳过控件初始化，仅显示空白页
+    private boolean mInflateFailed = false;
 
     private TextView tvUserId;
     private TextView tvUid;
@@ -73,7 +77,37 @@ public class ProfileFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.content_profile, container, false);
+        // Android 2.x 外部堆小，inflate 布局可能 OOM，失败清缓存重试，仍失败返回空布局不崩溃
+        try {
+            GlobalImageCache.getInstance().releaseMemory();
+            System.gc();
+        } catch (Throwable t) {
+        }
+
+        View view = null;
+        for (int attempt = 0; attempt < 2 && view == null; attempt++) {
+            try {
+                view = inflater.inflate(R.layout.content_profile, container, false);
+            } catch (OutOfMemoryError e) {
+                GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            } catch (android.view.InflateException e) {
+                GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            } catch (Throwable e) {
+                GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            }
+        }
+        if (view == null) {
+            // inflate 失败（外部堆不足）：置标记并返回空布局，跳过所有控件初始化，避免 NPE
+            mInflateFailed = true;
+            view = new LinearLayout(getActivity());
+            view.setLayoutParams(new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            return view;
+        }
+        mInflateFailed = false;
 
         // 获取当前版本信息
         try {
@@ -204,12 +238,14 @@ public class ProfileFragment extends Fragment {
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        if (mInflateFailed) return;
         updateLoginStatus();
     }
 
     @Override
     public void onResume() {
         super.onResume();
+        if (mInflateFailed) return;
         updateLoginStatus();
     }
 

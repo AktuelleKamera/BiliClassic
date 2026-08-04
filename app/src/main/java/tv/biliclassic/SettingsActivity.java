@@ -169,10 +169,16 @@ public class SettingsActivity extends BaseActivity {
             });
         }
 
-        // 弹窗样式选择（2.3不支持，隐藏）
+        // 弹窗样式选择（2.3不支持，隐藏标题、选项、分隔线，避免隐藏不完全）
         LinearLayout dialogStyleItem = (LinearLayout) findViewById(R.id.dialog_style_item);
+        TextView dialogStyleTitle = (TextView) findViewById(R.id.dialog_style_title);
+        View dialogStyleDividerTop = findViewById(R.id.dialog_style_divider_top);
+        View dialogStyleDividerBottom = findViewById(R.id.dialog_style_divider_bottom);
         if (tv.biliclassic.util.SdkHelper.getSdkInt() < 11) {
             if (dialogStyleItem != null) dialogStyleItem.setVisibility(View.GONE);
+            if (dialogStyleTitle != null) dialogStyleTitle.setVisibility(View.GONE);
+            if (dialogStyleDividerTop != null) dialogStyleDividerTop.setVisibility(View.GONE);
+            if (dialogStyleDividerBottom != null) dialogStyleDividerBottom.setVisibility(View.GONE);
         } else {
             final TextView dialogStyleText = (TextView) findViewById(R.id.dialog_style_text);
             updateDialogStyleDisplay(dialogStyleText);

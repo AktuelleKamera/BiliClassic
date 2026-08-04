@@ -17,6 +17,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
+import tv.biliclassic.util.SharedPreferencesUtil;
+
 public class ConfInfoApi {
 
     private static final int[] MIXIN_KEY_ENC_TAB = {
@@ -28,6 +30,9 @@ public class ConfInfoApi {
 
     private static String sWbiMixinKey = "";
     private static int sLastWbiDate = 0;
+
+    private static final String SP_KEY_WBI_MIXIN = "wbi_mixin_key";
+    private static final String SP_KEY_WBI_DATE = "wbi_date";
 
     public static String getWBIRawKey() throws IOException, JSONException {
         String response = httpGet("https://api.bilibili.com/x/web-interface/nav");
@@ -49,13 +54,30 @@ public class ConfInfoApi {
     public static String signWBI(String url_query) throws IOException, JSONException {
         String mixin_key;
         int curr = getDateCurr();
+
+        // 从 SharedPreferences 恢复上次缓存的 WBI key（进程被杀后避免重新请求 nav）
+        if (sWbiMixinKey == null || sWbiMixinKey.length() == 0 || sLastWbiDate != curr) {
+            int savedDate = SharedPreferencesUtil.getInt(SP_KEY_WBI_DATE, 0);
+            String savedKey = SharedPreferencesUtil.getString(SP_KEY_WBI_MIXIN, "");
+            if (savedDate == curr && savedKey != null && savedKey.length() > 0) {
+                sWbiMixinKey = savedKey;
+                sLastWbiDate = curr;
+            }
+        }
+
         if (sLastWbiDate < curr) {
             sLastWbiDate = curr;
             try {
+                android.util.Log.d("NetDiag", "signWBI: 首次获取WBI key, 请求nav接口");
+                long t0 = System.currentTimeMillis();
                 String rawKey = getWBIRawKey();
+                android.util.Log.d("NetDiag", "signWBI: nav接口耗时=" + (System.currentTimeMillis() - t0) + "ms, rawKeyLen=" + (rawKey == null ? -1 : rawKey.length()));
                 mixin_key = getWBIMixinKey(rawKey);
                 sWbiMixinKey = mixin_key;
+                SharedPreferencesUtil.putString(SP_KEY_WBI_MIXIN, mixin_key);
+                SharedPreferencesUtil.putInt(SP_KEY_WBI_DATE, curr);
             } catch (Exception e) {
+                android.util.Log.e("NetDiag", "signWBI: 获取WBI key失败 " + e.getClass().getName() + ": " + e.getMessage());
                 if (sWbiMixinKey == null || sWbiMixinKey.length() == 0) {
                     sWbiMixinKey = "604f662d63f4ee19c94bd8ac0de3f84d";
                 }
@@ -66,7 +88,10 @@ public class ConfInfoApi {
                 try {
                     String rawKey = getWBIRawKey();
                     sWbiMixinKey = getWBIMixinKey(rawKey);
+                    SharedPreferencesUtil.putString(SP_KEY_WBI_MIXIN, sWbiMixinKey);
+                    SharedPreferencesUtil.putInt(SP_KEY_WBI_DATE, curr);
                 } catch (Exception e) {
+                    android.util.Log.e("NetDiag", "signWBI: 缓存WBI key为空且获取失败 " + e.getMessage());
                     sWbiMixinKey = "604f662d63f4ee19c94bd8ac0de3f84d";
                 }
             }
@@ -161,6 +186,8 @@ public class ConfInfoApi {
 
     private static String httpGet(String urlStr) throws IOException {
         HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+        // Android 2.x-4.x 默认 TLS 栈老旧，需显式启用现代协议/套件，否则 WBI key 请求慢/失败
+        tv.biliclassic.util.NetWorkUtil.applySSLCompat(conn, urlStr);
         conn.setRequestMethod("GET");
         conn.setConnectTimeout(12000);
         conn.setReadTimeout(12000);

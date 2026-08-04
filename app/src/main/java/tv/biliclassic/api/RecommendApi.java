@@ -52,10 +52,15 @@ public class RecommendApi {
         ArrayList<String> headers = buildHeaders(cookies);
 
         String signedUrl = ConfInfoApi.signWBI(url);
+        android.util.Log.d("RecommendDiag", "推荐请求URL: " + signedUrl + ", cookieLen=" + (cookies == null ? -1 : cookies.length()));
+        long t0 = System.currentTimeMillis();
         JSONObject result = NetWorkUtil.getJson(signedUrl, headers);
+        android.util.Log.d("RecommendDiag", "推荐响应耗时=" + (System.currentTimeMillis() - t0) + "ms, code="
+                + result.optInt("code", -1) + ", message=" + result.optString("message", ""));
 
         JSONObject data = result.getJSONObject("data");
         JSONArray item = data.getJSONArray("item");
+        android.util.Log.d("RecommendDiag", "推荐解析: data.item.length=" + item.length());
 
         for (int i = 0; i < item.length(); i++) {
             JSONObject card = item.getJSONObject(i);

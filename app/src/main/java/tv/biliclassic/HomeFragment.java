@@ -20,7 +20,11 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import tv.biliclassic.api.PartitionApi;
 import tv.biliclassic.model.VideoCard;
@@ -29,9 +33,13 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class HomeFragment extends Fragment {
 
+    // 分区视频数据缓存：划走再划回时不重新请求网络
+    private static final Map<Integer, List<VideoCard>> sCachedCards = new HashMap<Integer, List<VideoCard>>();
+
     private LinearLayout partitionsContainer;
     private int[] mainCategories;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
+    private ExecutorService imageExecutor;
 
     private static final int[] CARD_BACKGROUNDS = {
         R.drawable.bili_intent_light,
@@ -50,8 +58,44 @@ public class HomeFragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.content_home, container, false);
+        // Android 2.x 堆很小，串行加载避免并发解码耗尽外部堆
+        imageExecutor = Executors.newSingleThreadExecutor();
+
+        // 进入分区页前先释放全局图片缓存引用，为 inflate 布局腾出空间
+        // （Android 2.x 上 bitmap 常驻外部堆，满时 inflate 任何 ImageView 都会 OOM）
+        try {
+            GlobalImageCache.getInstance().releaseMemory();
+            System.gc();
+        } catch (Throwable t) {
+        }
+
+        View view = null;
+        for (int attempt = 0; attempt < 2 && view == null; attempt++) {
+            try {
+                view = inflater.inflate(R.layout.content_home, container, false);
+            } catch (OutOfMemoryError e) {
+                GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            } catch (android.view.InflateException e) {
+                GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            } catch (Throwable e) {
+                GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            }
+        }
+        // 重试仍失败：返回空布局而非崩溃，分区内容留空
+        if (view == null) {
+            view = new LinearLayout(getActivity());
+            view.setLayoutParams(new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
         partitionsContainer = (LinearLayout) view.findViewById(R.id.partitions_container);
+        if (partitionsContainer == null) {
+            partitionsContainer = new LinearLayout(getActivity());
+            partitionsContainer.setOrientation(LinearLayout.VERTICAL);
+            ((LinearLayout) view).addView(partitionsContainer);
+        }
 
         mainCategories = TidData.getMainCategories();
 
@@ -63,20 +107,61 @@ public class HomeFragment extends Fragment {
         return view;
     }
 
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (imageExecutor != null) {
+            imageExecutor.shutdownNow();
+            imageExecutor = null;
+        }
+    }
+
     private void addPartitionSection(final String partitionName, final int tid, final int index) {
         LayoutInflater inflater = LayoutInflater.from(getActivity());
-        final View section = inflater.inflate(R.layout.item_partition_section, partitionsContainer, false);
+        // Android 2.x 外部堆很小，inflate 布局加载资源图片可能抛 InflateException（cause 为 OOM）。
+        // 先释放全局图片缓存，重试一次仍失败则跳过该分区，避免整页崩溃
+        View section = null;
+        for (int attempt = 0; attempt < 2 && section == null; attempt++) {
+            try {
+                section = inflater.inflate(R.layout.item_partition_section, partitionsContainer, false);
+            } catch (OutOfMemoryError e) {
+                GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            } catch (android.view.InflateException e) {
+                GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            } catch (Throwable e) {
+                GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            }
+        }
+        if (section == null) {
+            return;
+        }
+        final View view = section;
 
-        TextView partitionNameView = (TextView) section.findViewById(R.id.partition_name);
+        TextView partitionNameView = (TextView) view.findViewById(R.id.partition_name);
         partitionNameView.setText(partitionName);
 
-        ImageView cardBg = (ImageView) section.findViewById(R.id.card_background);
-        cardBg.setImageResource(CARD_BACKGROUNDS[index % 2]);
+        ImageView cardBg = (ImageView) view.findViewById(R.id.card_background);
+        try {
+            cardBg.setImageResource(CARD_BACKGROUNDS[index % 2]);
+        } catch (OutOfMemoryError e) {
+            GlobalImageCache.getInstance().freeAllUnreferenced();
+            System.gc();
+            cardBg.setImageDrawable(null);
+        }
 
-        ImageView cardFg = (ImageView) section.findViewById(R.id.card_foreground);
-        cardFg.setImageResource(CARD_FOREGROUNDS[index]);
+        ImageView cardFg = (ImageView) view.findViewById(R.id.card_foreground);
+        try {
+            cardFg.setImageResource(CARD_FOREGROUNDS[index]);
+        } catch (OutOfMemoryError e) {
+            GlobalImageCache.getInstance().freeAllUnreferenced();
+            System.gc();
+            cardFg.setImageDrawable(null);
+        }
 
-        final View partitionCard = section.findViewById(R.id.partition_card);
+        final View partitionCard = view.findViewById(R.id.partition_card);
         partitionCard.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -86,41 +171,67 @@ public class HomeFragment extends Fragment {
             }
         });
 
-        final ImageView video1 = (ImageView) section.findViewById(R.id.video1_cover);
-        final ImageView video2 = (ImageView) section.findViewById(R.id.video2_cover);
-        final ImageView video3 = (ImageView) section.findViewById(R.id.video3_cover);
-        final ImageView video4 = (ImageView) section.findViewById(R.id.video4_cover);
+        final ImageView video1 = (ImageView) view.findViewById(R.id.video1_cover);
+        final ImageView video2 = (ImageView) view.findViewById(R.id.video2_cover);
+        final ImageView video3 = (ImageView) view.findViewById(R.id.video3_cover);
+        final ImageView video4 = (ImageView) view.findViewById(R.id.video4_cover);
         video1.setScaleType(ImageView.ScaleType.CENTER_CROP);
         video2.setScaleType(ImageView.ScaleType.CENTER_CROP);
         video3.setScaleType(ImageView.ScaleType.CENTER_CROP);
         video4.setScaleType(ImageView.ScaleType.CENTER_CROP);
 
-        final LinearLayout videoArea = (LinearLayout) section.findViewById(R.id.video_area);
+        final LinearLayout videoArea = (LinearLayout) view.findViewById(R.id.video_area);
         final LinearLayout root = (LinearLayout) videoArea.getParent();
-        final View v3c = section.findViewById(R.id.video3_container);
-        final View v4c = section.findViewById(R.id.video4_container);
+        final View v3c = view.findViewById(R.id.video3_container);
+        final View v4c = view.findViewById(R.id.video4_container);
         final LinearLayout.LayoutParams vp = (LinearLayout.LayoutParams) videoArea.getLayoutParams();
         final LinearLayout.LayoutParams cp = (LinearLayout.LayoutParams) partitionCard.getLayoutParams();
 
         loadThumbnails(tid, new ImageView[]{video1, video2, video3, video4});
-        partitionsContainer.addView(section);
+        partitionsContainer.addView(view);
 
-        section.post(new Runnable() {
+        view.post(new Runnable() {
             public void run() {
                 if (!isAdded()) return;
-                applyTabletSection(section, videoArea, root, partitionCard,
+                applyTabletSection(view, videoArea, root, partitionCard,
                         video1, video2, video3, video4, v3c, v4c, vp, cp);
             }
         });
     }
 
     private void loadThumbnails(final int tid, final ImageView[] previews) {
-        new Thread(new Runnable() {
+        // 命中缓存：直接用缓存数据填充封面，不重新请求网络
+        final List<VideoCard> cached;
+        synchronized (sCachedCards) {
+            cached = sCachedCards.get(tid);
+        }
+        if (cached != null && cached.size() > 0) {
+            final List<VideoCard> cards = cached;
+            if (getActivity() == null) return;
+            mainHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (getActivity() == null) return;
+                    for (int i = 0; i < previews.length && i < cards.size(); i++) {
+                        loadCover(previews[i], cards.get(i));
+                    }
+                }
+            });
+            return;
+        }
+
+        imageExecutor.execute(new Runnable() {
             @Override
             public void run() {
                 try {
                     final List<VideoCard> cards = new ArrayList<VideoCard>();
                     PartitionApi.getRegionVideos(cards, tid, 1);
+
+                    if (cards.size() > 0) {
+                        synchronized (sCachedCards) {
+                            sCachedCards.put(tid, cards);
+                        }
+                    }
 
                     if (getActivity() == null) return;
 
@@ -137,7 +248,7 @@ public class HomeFragment extends Fragment {
                     e.printStackTrace();
                 }
             }
-        }).start();
+        });
     }
 
     @Override
@@ -252,7 +363,7 @@ public class HomeFragment extends Fragment {
             return;
         }
 
-        new Thread(new Runnable() {
+        imageExecutor.execute(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -277,7 +388,7 @@ public class HomeFragment extends Fragment {
                     e.printStackTrace();
                 }
             }
-        }).start();
+        });
     }
 
     private void setupClickListener(ImageView imageView, final VideoCard card) {
@@ -328,20 +439,6 @@ public class HomeFragment extends Fragment {
 
             if (!tempFile.exists() || tempFile.length() == 0) return null;
 
-            byte[] imageData = new byte[(int) tempFile.length()];
-            java.io.FileInputStream fis = new java.io.FileInputStream(tempFile);
-            int offset = 0;
-            while (offset < imageData.length) {
-                int read = fis.read(imageData, offset, imageData.length - offset);
-                if (read < 0) break;
-                offset += read;
-            }
-            fis.close();
-
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true;
-            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
-
             int targetWidth = 160;
             int targetHeight = 90;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -349,30 +446,7 @@ public class HomeFragment extends Fragment {
                 targetHeight = (int)(targetHeight * 1.25f);
             }
             int minScale = Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD ? 2 : 4;
-            int scale = 1;
-            if (options.outWidth > targetWidth || options.outHeight > targetHeight) {
-                scale = Math.max(options.outWidth / targetWidth, options.outHeight / targetHeight);
-                if (scale < 1) scale = 1;
-                if (scale > 8) scale = 8;
-            }
-            if (scale < minScale) scale = minScale;
-
-            Bitmap bitmap = null;
-            while (scale <= 16 && bitmap == null) {
-                try {
-                    System.gc();
-                    options = new BitmapFactory.Options();
-                    options.inSampleSize = scale;
-                    options.inPreferredConfig = Bitmap.Config.RGB_565;
-                    options.inPurgeable = true;
-                    options.inInputShareable = true;
-                    bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
-                } catch (OutOfMemoryError e) {
-                    System.gc();
-                    scale *= 2;
-                }
-            }
-            return bitmap;
+            return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, targetHeight, minScale);
         } finally {
             if (conn != null) conn.disconnect();
             if (tempFile != null && tempFile.exists()) tempFile.delete();

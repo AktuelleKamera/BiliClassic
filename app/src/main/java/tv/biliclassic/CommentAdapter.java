@@ -640,6 +640,7 @@ public class CommentAdapter extends BaseAdapter {
             @Override
             public void run() {
                 HttpURLConnection conn = null;
+                java.io.File tempFile = null;
                 try {
                     URL url = new URL(finalUrl);
                     conn = (HttpURLConnection) url.openConnection();
@@ -649,42 +650,21 @@ public class CommentAdapter extends BaseAdapter {
                     conn.setRequestProperty("Accept-Encoding", "identity");
                     conn.connect();
 
+                    tempFile = new java.io.File(context.getCacheDir(), "cmt_" + finalUrl.hashCode() + ".tmp");
                     InputStream is = conn.getInputStream();
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
                     byte[] buffer = new byte[8192];
                     int len;
                     while ((len = is.read(buffer)) != -1) {
-                        baos.write(buffer, 0, len);
+                        fos.write(buffer, 0, len);
                     }
                     is.close();
-                    byte[] imageData = baos.toByteArray();
+                    fos.close();
 
-                    BitmapFactory.Options opts = new BitmapFactory.Options();
-                    opts.inJustDecodeBounds = true;
-                    BitmapFactory.decodeByteArray(imageData, 0, imageData.length, opts);
+                    if (!tempFile.exists() || tempFile.length() == 0) return;
 
                     int targetSize = dpToPx(80);
-                    int scale = 1;
-                    if (opts.outWidth > targetSize || opts.outHeight > targetSize) {
-                        int widthRatio = opts.outWidth / targetSize;
-                        int heightRatio = opts.outHeight / targetSize;
-                        scale = Math.max(widthRatio, heightRatio);
-                        if (scale < 1) scale = 1;
-                        if (scale > 4) scale = 4;
-                    }
-
-                    Bitmap bitmap = null;
-                    while (scale <= 16 && bitmap == null) {
-                        try {
-                            opts = new BitmapFactory.Options();
-                            opts.inSampleSize = scale;
-                            opts.inPreferredConfig = Bitmap.Config.RGB_565;
-                            bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, opts);
-                        } catch (OutOfMemoryError e) {
-                            scale *= 2;
-                        }
-                    }
-                    imageData = null;
+                    Bitmap bitmap = GlobalImageCache.decodeFileSafely(tempFile, targetSize, targetSize, 2);
 
                     if (bitmap != null && !bitmap.isRecycled()) {
                         GlobalImageCache.getInstance().put(finalUrl, bitmap);
@@ -706,6 +686,9 @@ public class CommentAdapter extends BaseAdapter {
                     }
                     if (conn != null) {
                         try { conn.disconnect(); } catch (Exception e) {}
+                    }
+                    if (tempFile != null && tempFile.exists()) {
+                        try { tempFile.delete(); } catch (Exception e) {}
                     }
                 }
             }
@@ -730,6 +713,7 @@ public class CommentAdapter extends BaseAdapter {
     private Bitmap downloadImage(String urlStr) {
         if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
         HttpURLConnection conn = null;
+        java.io.File tempFile = null;
         try {
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
@@ -739,43 +723,21 @@ public class CommentAdapter extends BaseAdapter {
             conn.setRequestProperty("Accept-Encoding", "identity");
             conn.connect();
 
+            tempFile = new java.io.File(context.getCacheDir(), "cmt_" + urlStr.hashCode() + ".tmp");
             InputStream is = conn.getInputStream();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
             byte[] buffer = new byte[8192];
             int len;
             while ((len = is.read(buffer)) != -1) {
-                baos.write(buffer, 0, len);
+                fos.write(buffer, 0, len);
             }
             is.close();
-            byte[] imageData = baos.toByteArray();
+            fos.close();
 
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true;
-            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
+            if (!tempFile.exists() || tempFile.length() == 0) return null;
 
             int targetSize = dpToPx(48);
-            int scale = 1;
-            if (options.outWidth > targetSize || options.outHeight > targetSize) {
-                int widthRatio = options.outWidth / targetSize;
-                int heightRatio = options.outHeight / targetSize;
-                scale = Math.max(widthRatio, heightRatio);
-                if (scale < 1) scale = 1;
-                if (scale > 4) scale = 4;
-            }
-
-            Bitmap bitmap = null;
-            while (scale <= 16 && bitmap == null) {
-                try {
-                    options = new BitmapFactory.Options();
-                    options.inSampleSize = scale;
-                    options.inPreferredConfig = Bitmap.Config.RGB_565;
-                    bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
-                } catch (OutOfMemoryError e) {
-                    scale *= 2;
-                }
-            }
-            imageData = null;
-            return bitmap;
+            return GlobalImageCache.decodeFileSafely(tempFile, targetSize, targetSize, 2);
         } catch (OutOfMemoryError e) {
             System.gc();
             return null;
@@ -784,6 +746,9 @@ public class CommentAdapter extends BaseAdapter {
         } finally {
             if (conn != null) {
                 try { conn.disconnect(); } catch (Exception e) {}
+            }
+            if (tempFile != null && tempFile.exists()) {
+                try { tempFile.delete(); } catch (Exception e) {}
             }
         }
     }

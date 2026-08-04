@@ -49,9 +49,14 @@ public class LocalStreamProxy {
 
     static {
         try {
-            SSLContext sc = SSLContext.getInstance("TLS");
-            sc.init(null, new X509TrustManager[]{TRUST_ALL}, new java.security.SecureRandom());
-            trustAllFactory = sc.getSocketFactory();
+            // 复用 NetWorkUtil 的兼容 SSL 工厂（显式启用现代 TLS 协议与套件，
+            // 否则 Android 2.x-4.x 上视频流握手慢/失败）
+            trustAllFactory = tv.biliclassic.util.NetWorkUtil.getTrustAllSSLSocketFactory();
+            if (trustAllFactory == null) {
+                SSLContext sc = SSLContext.getInstance("TLS");
+                sc.init(null, new X509TrustManager[]{TRUST_ALL}, new java.security.SecureRandom());
+                trustAllFactory = sc.getSocketFactory();
+            }
         } catch (Exception e) {
             Log.e(TAG, "Failed to create SSL factory", e);
         }

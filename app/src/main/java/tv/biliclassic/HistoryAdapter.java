@@ -180,6 +180,7 @@ public class HistoryAdapter extends BaseAdapter {
     private Bitmap downloadImage(String urlStr) {
         if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
         HttpURLConnection conn = null;
+        java.io.File tempFile = null;
         try {
             if (urlStr != null && urlStr.startsWith("https://")) {
                 urlStr = "http://" + urlStr.substring(8);
@@ -193,43 +194,20 @@ public class HistoryAdapter extends BaseAdapter {
             conn.setRequestProperty("Accept-Encoding", "identity");
             conn.connect();
 
+            tempFile = new java.io.File(context.getCacheDir(), "his_" + urlStr.hashCode() + ".tmp");
             InputStream is = conn.getInputStream();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
             byte[] buffer = new byte[8192];
             int len;
             while ((len = is.read(buffer)) != -1) {
-                baos.write(buffer, 0, len);
+                fos.write(buffer, 0, len);
             }
             is.close();
-            byte[] imageData = baos.toByteArray();
+            fos.close();
 
-            BitmapFactory.Options opts = new BitmapFactory.Options();
-            opts.inJustDecodeBounds = true;
-            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, opts);
+            if (!tempFile.exists() || tempFile.length() == 0) return null;
 
-            int sampleSize = 1;
-            int targetSize = 200;
-
-            while (opts.outWidth / sampleSize > targetSize
-                    || opts.outHeight / sampleSize > targetSize) {
-                sampleSize *= 2;
-                if (sampleSize > 16) break;
-            }
-
-            Bitmap bitmap = null;
-            while (sampleSize <= 16 && bitmap == null) {
-                try {
-                    opts = new BitmapFactory.Options();
-                    opts.inSampleSize = sampleSize;
-                    opts.inPreferredConfig = Bitmap.Config.RGB_565;
-                    bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, opts);
-                } catch (OutOfMemoryError e) {
-                    sampleSize *= 2;
-                }
-            }
-            imageData = null;
-            return bitmap;
-
+            return GlobalImageCache.decodeFileSafely(tempFile, 200, 200, 2);
         } catch (OutOfMemoryError e) {
             System.gc();
             return null;
@@ -239,6 +217,9 @@ public class HistoryAdapter extends BaseAdapter {
         } finally {
             if (conn != null) {
                 try { conn.disconnect(); } catch (Exception e) {}
+            }
+            if (tempFile != null && tempFile.exists()) {
+                try { tempFile.delete(); } catch (Exception e) {}
             }
         }
     }

@@ -3520,6 +3520,7 @@ public class BiliPlayerActivity extends Activity implements
         try {
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
+            NetWorkUtil.applySSLCompat(conn, urlStr);
             conn.setConnectTimeout(8000);
             conn.setReadTimeout(8000);
             conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);

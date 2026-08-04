@@ -221,6 +221,7 @@ public class ReplyApi {
         try {
             java.net.URL uploadUrl = new java.net.URL(url);
             java.net.HttpURLConnection conn = (java.net.HttpURLConnection) uploadUrl.openConnection();
+            NetWorkUtil.applySSLCompat(conn, url);
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setDoInput(true);

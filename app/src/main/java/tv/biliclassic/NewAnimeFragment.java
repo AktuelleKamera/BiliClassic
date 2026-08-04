@@ -441,42 +441,7 @@ public class NewAnimeFragment extends Fragment {
             String fileName = getCacheFileName(url);
             File cacheFile = new File(coverDir, fileName);
             if (cacheFile.exists()) {
-                byte[] imageData = new byte[(int) cacheFile.length()];
-                FileInputStream fis = new FileInputStream(cacheFile);
-                int offset = 0;
-                while (offset < imageData.length) {
-                    int read = fis.read(imageData, offset, imageData.length - offset);
-                    if (read < 0) break;
-                    offset += read;
-                }
-                fis.close();
-
-                BitmapFactory.Options options = new BitmapFactory.Options();
-                options.inJustDecodeBounds = true;
-                BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
-
-                int scale = 1;
-                int targetSize = 200;
-                if (options.outWidth > targetSize || options.outHeight > targetSize) {
-                    scale = Math.max(options.outWidth / targetSize, options.outHeight / targetSize);
-                    if (scale < 1) scale = 1;
-                    if (scale > 4) scale = 4;
-                }
-
-                Bitmap bitmap = null;
-                while (scale <= 16 && bitmap == null) {
-                    try {
-                        options = new BitmapFactory.Options();
-                        options.inSampleSize = scale;
-                        options.inPreferredConfig = Bitmap.Config.RGB_565;
-                        options.inPurgeable = true;
-                        options.inInputShareable = true;
-                        bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
-                    } catch (OutOfMemoryError e) {
-                        scale *= 2;
-                    }
-                }
-                return bitmap;
+                return GlobalImageCache.decodeFileSafely(cacheFile, 200, 100, 2);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -815,6 +780,26 @@ public class NewAnimeFragment extends Fragment {
             return new View(getActivity());
         }
 
+        // Android 2.x 外部堆小，inflate 卡片可能 OOM，失败时返回空白占位不崩溃
+        View card = null;
+        for (int attempt = 0; attempt < 2 && card == null; attempt++) {
+            try {
+                card = LayoutInflater.from(getActivity()).inflate(R.layout.item_anime_large, null);
+            } catch (OutOfMemoryError e) {
+                tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            } catch (android.view.InflateException e) {
+                tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            } catch (Throwable e) {
+                tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            }
+        }
+        if (card == null) {
+            return new View(getActivity());
+        }
+
         int cardHeight = width / 2;
         int maxHeight = (int) (screenHeight * 0.45f);
         if (cardHeight > maxHeight) {
@@ -823,8 +808,6 @@ public class NewAnimeFragment extends Fragment {
         if (cardHeight < 80) {
             cardHeight = 80;
         }
-
-        View card = LayoutInflater.from(getActivity()).inflate(R.layout.item_anime_large, null);
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(width, cardHeight);
         if (addMargins) {
@@ -840,7 +823,13 @@ public class NewAnimeFragment extends Fragment {
         ImageView ivCover = (ImageView) card.findViewById(R.id.anime_cover);
 
         tvTitle.setText(item.title);
-        ivCover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+        try {
+            ivCover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+        } catch (OutOfMemoryError e) {
+            tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
+            System.gc();
+        } catch (Throwable e) {
+        }
         ivCover.setTag(item.coverUrl);
 
         card.setOnClickListener(new View.OnClickListener() {
@@ -881,6 +870,26 @@ public class NewAnimeFragment extends Fragment {
             return new View(getActivity());
         }
 
+        // Android 2.x 外部堆小，inflate 卡片可能 OOM，失败时返回空白占位不崩溃
+        View card = null;
+        for (int attempt = 0; attempt < 2 && card == null; attempt++) {
+            try {
+                card = LayoutInflater.from(getActivity()).inflate(R.layout.item_anime_small, null);
+            } catch (OutOfMemoryError e) {
+                tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            } catch (android.view.InflateException e) {
+                tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            } catch (Throwable e) {
+                tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
+                System.gc();
+            }
+        }
+        if (card == null) {
+            return new View(getActivity());
+        }
+
         int cardHeight = width / 2;
         int maxHeight = (int) (screenHeight * 0.4f);
         if (cardHeight > maxHeight) {
@@ -889,8 +898,6 @@ public class NewAnimeFragment extends Fragment {
         if (cardHeight < 60) {
             cardHeight = 60;
         }
-
-        View card = LayoutInflater.from(getActivity()).inflate(R.layout.item_anime_small, null);
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(width, cardHeight);
         if (addMargins) {
@@ -902,7 +909,13 @@ public class NewAnimeFragment extends Fragment {
         ImageView ivCover = (ImageView) card.findViewById(R.id.anime_cover);
 
         tvTitle.setText(item.title);
-        ivCover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+        try {
+            ivCover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+        } catch (OutOfMemoryError e) {
+            tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
+            System.gc();
+        } catch (Throwable e) {
+        }
         ivCover.setTag(item.coverUrl);
 
         card.setOnClickListener(new View.OnClickListener() {
@@ -1007,6 +1020,7 @@ public class NewAnimeFragment extends Fragment {
 
     private Bitmap downloadImage(String urlStr, boolean isLarge) {
         HttpURLConnection conn = null;
+        java.io.File tempFile = null;
         try {
             String finalUrl = urlStr;
             if (finalUrl.startsWith("https://")) {
@@ -1026,49 +1040,22 @@ public class NewAnimeFragment extends Fragment {
                 return null;
             }
 
+            tempFile = new java.io.File(getActivity().getCacheDir(), "anime_" + finalUrl.hashCode() + ".tmp");
             InputStream is = conn.getInputStream();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
             byte[] buffer = new byte[8192];
             int len;
             while ((len = is.read(buffer)) != -1) {
-                baos.write(buffer, 0, len);
+                fos.write(buffer, 0, len);
             }
             is.close();
-            byte[] imageData = baos.toByteArray();
+            fos.close();
 
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true;
-            BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
+            if (!tempFile.exists() || tempFile.length() == 0) return null;
 
             int targetWidth = isLarge ? 480 : 200;
             int targetHeight = isLarge ? 240 : 100;
-            int scale = 1;
-
-            if (options.outWidth > 0 && options.outHeight > 0) {
-                if (options.outWidth > targetWidth || options.outHeight > targetHeight) {
-                    int widthRatio = options.outWidth / targetWidth;
-                    int heightRatio = options.outHeight / targetHeight;
-                    scale = Math.max(widthRatio, heightRatio);
-                    if (scale < 1) scale = 1;
-                    if (scale > 4) scale = 4;
-                }
-            }
-
-            Bitmap bitmap = null;
-            while (scale <= 16 && bitmap == null) {
-                try {
-                    options = new BitmapFactory.Options();
-                    options.inSampleSize = scale;
-                    options.inPreferredConfig = Bitmap.Config.RGB_565;
-                    options.inPurgeable = true;
-                    options.inInputShareable = true;
-                    bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, options);
-                } catch (OutOfMemoryError e) {
-                    scale *= 2;
-                }
-            }
-            imageData = null;
-            return bitmap;
+            return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, targetHeight, 2);
         } catch (Exception e) {
             return null;
         } finally {
@@ -1076,6 +1063,9 @@ public class NewAnimeFragment extends Fragment {
                 try {
                     conn.disconnect();
                 } catch (Exception e) {}
+            }
+            if (tempFile != null && tempFile.exists()) {
+                try { tempFile.delete(); } catch (Exception e) {}
             }
         }
     }

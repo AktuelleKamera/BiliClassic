@@ -897,6 +897,7 @@
 
             <!-- 分隔线 -->
             <View
+                android:id="@+id/dialog_style_divider_top"
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginBottom="12dp"
@@ -906,6 +907,7 @@
             
 <!-- 弹窗设置 -->
             <TextView
+                android:id="@+id/dialog_style_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/activity_settings_5f39_2"
@@ -966,6 +968,7 @@
 
             <!-- 分隔线 -->
             <View
+                android:id="@+id/dialog_style_divider_bottom"
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginBottom="12dp"

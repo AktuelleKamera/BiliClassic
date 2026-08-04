@@ -5,12 +5,35 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import tv.biliclassic.model.PlayerData;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class PlayerApi {
+
+    // 播放地址缓存：同一 aid+cid+qn 10 分钟内复用，避免每次点播放都重新请求
+    private static final long URL_CACHE_TTL = 600000; // 10 分钟
+    private static final Map<String, CachedUrl> sUrlCache = new HashMap<String, CachedUrl>();
+
+    private static class CachedUrl {
+        final String videoUrl;
+        final long timestamp;
+        final String[] qnStrList;
+        final int[] qnValueList;
+        CachedUrl(String videoUrl, long timestamp, String[] qnStrList, int[] qnValueList) {
+            this.videoUrl = videoUrl;
+            this.timestamp = timestamp;
+            this.qnStrList = qnStrList;
+            this.qnValueList = qnValueList;
+        }
+    }
+
+    private static String buildCacheKey(PlayerData playerData) {
+        return playerData.aid + "_" + playerData.cid + "_" + playerData.qn + "_" + playerData.type;
+    }
 
 /*
  * 本软件基于以下项目修改，致谢前辈：
@@ -43,6 +66,24 @@ public class PlayerApi {
         if (System.currentTimeMillis() - playerData.timeStamp < 600000) {
             android.util.Log.e("PlayerApi", "使用缓存的播放地址，跳过获取");
             return;
+        }
+
+        // 静态缓存：同一 aid+cid+qn 十分钟内复用，避免每次点播放都重新请求
+        String cacheKey = buildCacheKey(playerData);
+        if (!download) {
+            CachedUrl cached;
+            synchronized (sUrlCache) {
+                cached = sUrlCache.get(cacheKey);
+            }
+            if (cached != null && cached.videoUrl != null && cached.videoUrl.length() > 0
+                    && System.currentTimeMillis() - cached.timestamp < URL_CACHE_TTL) {
+                android.util.Log.e("PlayerApi", "命中静态缓存: " + cached.videoUrl);
+                playerData.videoUrl = cached.videoUrl;
+                playerData.qnStrList = cached.qnStrList;
+                playerData.qnValueList = cached.qnValueList;
+                playerData.timeStamp = System.currentTimeMillis();
+                return;
+            }
         }
 
         playerData.timeStamp = System.currentTimeMillis();
@@ -150,6 +191,14 @@ public class PlayerApi {
         }
         playerData.qnStrList = qnStrList;
         playerData.qnValueList = qnValueList;
+
+        // 写入静态缓存
+        if (!download && videoUrl.length() > 0) {
+            synchronized (sUrlCache) {
+                sUrlCache.put(cacheKey, new CachedUrl(videoUrl, System.currentTimeMillis(),
+                        qnStrList, qnValueList));
+            }
+        }
 
         android.util.Log.e("PlayerApi", "========== getVideo 结束，videoUrl=" + playerData.videoUrl + " ==========");
     }

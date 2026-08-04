@@ -249,11 +249,18 @@ public class MetroHomeActivity extends BaseActivity {
             final View row = mTileContainer.getChildAt(i);
             row.setVisibility(View.VISIBLE);
 
-            TranslateAnimation a = new TranslateAnimation(screenWidth, 0, 0, 0);
-            a.setDuration(350);
-            a.setStartOffset(i * 150);
-            a.setInterpolator(new DecelerateInterpolator());
-            a.setFillAfter(true);
+            final Animation a;
+            if (getSdkInt() < 16) {
+                // 安卓 4.0：改淡入淡出，避免 Translate 崩溃
+                a = new android.view.animation.AlphaAnimation(0f, 1f);
+                a.setDuration(350);
+                a.setStartOffset(i * 150);
+            } else {
+                a = new TranslateAnimation(screenWidth, 0, 0, 0);
+                a.setDuration(350);
+                a.setStartOffset(i * 150);
+                a.setInterpolator(new DecelerateInterpolator());
+            }
 
             if (i == count - 1) {
                 a.setAnimationListener(new Animation.AnimationListener() {
@@ -275,12 +282,27 @@ public class MetroHomeActivity extends BaseActivity {
     private void animateRowIn(View row, int delay) {
         row.setVisibility(View.VISIBLE);
         int screenWidth = getResources().getDisplayMetrics().widthPixels;
-        TranslateAnimation a = new TranslateAnimation(screenWidth, 0, 0, 0);
-        a.setDuration(400);
-        a.setStartOffset(delay);
-        a.setInterpolator(new DecelerateInterpolator());
-        a.setFillAfter(true);
+        final Animation a;
+        if (getSdkInt() < 16) {
+            // 安卓 4.0：淡入
+            a = new android.view.animation.AlphaAnimation(0f, 1f);
+            a.setDuration(400);
+            a.setStartOffset(delay);
+        } else {
+            a = new TranslateAnimation(screenWidth, 0, 0, 0);
+            a.setDuration(400);
+            a.setStartOffset(delay);
+            a.setInterpolator(new DecelerateInterpolator());
+        }
         row.startAnimation(a);
+    }
+
+    private int getSdkInt() {
+        try {
+            return android.os.Build.VERSION.class.getField("SDK_INT").getInt(null);
+        } catch (Exception e) {
+            return android.os.Build.VERSION.SDK_INT;
+        }
     }
 
     private void clearRowAnimations() {
