@@ -7,6 +7,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.content.Intent;
 import android.graphics.Paint;
 import android.content.pm.PackageInfo;
@@ -25,6 +26,18 @@ public class AboutFragment extends Fragment {
         if (appBrief != null) {
             String versionName = getVersionName();
             appBrief.setText("哔哩经典 " + versionName + "\n安卓" + (SdkHelper.getSdkInt() < 5 ? "1" : "2") + "也要看B站！");
+
+            // 长按版本号：切换性能日志开关
+            appBrief.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    boolean on = tv.biliclassic.util.PerfLog.toggle();
+                    if (getActivity() != null) {
+                        Toast.makeText(getActivity(), on ? "性能日志已开启" : "性能日志已关闭", Toast.LENGTH_SHORT).show();
+                    }
+                    return true;
+                }
+            });
         }
 
         TextView officialWebsite = (TextView) view.findViewById(R.id.official_website);

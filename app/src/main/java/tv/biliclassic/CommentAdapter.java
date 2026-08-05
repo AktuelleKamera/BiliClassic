@@ -109,7 +109,7 @@ public class CommentAdapter extends BaseAdapter {
 
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        return maxMemory < 16384;
+        return maxMemory < 24576;
     }
 
     private int getConfiguredThreadCount() {
@@ -677,7 +677,7 @@ public class CommentAdapter extends BaseAdapter {
                         });
                     }
                 } catch (OutOfMemoryError e) {
-                    System.gc();
+                    GlobalImageCache.getInstance().freeAllUnreferenced();
                 } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
@@ -739,7 +739,7 @@ public class CommentAdapter extends BaseAdapter {
             int targetSize = dpToPx(48);
             return GlobalImageCache.decodeFileSafely(tempFile, targetSize, targetSize, 2);
         } catch (OutOfMemoryError e) {
-            System.gc();
+            GlobalImageCache.getInstance().freeAllUnreferenced();
             return null;
         } catch (Exception e) {
             return null;

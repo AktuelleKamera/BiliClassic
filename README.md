@@ -23,7 +23,7 @@
 
 ## 当前版本
 
-### 0.4.10 (Puma) 更新
+### 0.4.11 (Wirbelwind) 更新 (开发中)
 
 **main版** —— 内置播放器，功能完整
 
@@ -114,7 +114,7 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 手机平台
 - 高通 MSM7227A — 1GHz Cortex-A5 单核
 - 高通骁龙 S1 (QSD8250/QSD8650) — 1GHz Scorpion 单核
-- 三星蜂鸟 (S5PC100) — 667MHz/800MHz Cortex-A8 单核
+- 三星蜂鸟 (S5PC110) — 1GHz Cortex-A8 单核
 - 德州仪器 OMAP 3430 — 600MHz Cortex-A8 单核
 - 英伟达 Tegra 2 (T20/T25) — 1GHz Cortex-A9 双核
 - 联发科 MT6575 — 1GHz Cortex-A9 单核

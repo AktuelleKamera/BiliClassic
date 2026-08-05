@@ -2,8 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@drawable/bili_texture_background">
+    android:orientation="vertical">
 
     <!-- 顶部排序栏：时间 / 热度（左对齐） -->
     <LinearLayout

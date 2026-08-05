@@ -1,9 +1,11 @@
 package tv.biliclassic;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -11,8 +13,11 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
+import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.support.v4.app.Fragment;
 
@@ -36,7 +41,8 @@ public class HomeFragment extends Fragment {
     // 分区视频数据缓存：划走再划回时不重新请求网络
     private static final Map<Integer, List<VideoCard>> sCachedCards = new HashMap<Integer, List<VideoCard>>();
 
-    private LinearLayout partitionsContainer;
+    private ListView homeList;
+    private HomeSectionAdapter adapter;
     private int[] mainCategories;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private ExecutorService imageExecutor;
@@ -56,6 +62,24 @@ public class HomeFragment extends Fragment {
         R.drawable.bili_intent_to_ent        // 36 科技
     };
 
+    // 分区卡背景/前景 Drawable 静态缓存复用（2.x 上 setImageResource 每次同步解码大 PNG）
+    private static final Drawable[] sCardBackgrounds =
+            new Drawable[CARD_BACKGROUNDS.length];
+    private static final Drawable[] sCardForegrounds =
+            new Drawable[CARD_FOREGROUNDS.length];
+
+    private Drawable getCachedCardDrawable(int resId, int slot, Drawable[] arr) {
+        if (slot < 0 || slot >= arr.length) return null;
+        if (arr[slot] == null) {
+            try {
+                arr[slot] = getResources().getDrawable(resId);
+            } catch (Throwable t) {
+                arr[slot] = null;
+            }
+        }
+        return arr[slot];
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         // Android 2.x 堆很小，串行加载避免并发解码耗尽外部堆
@@ -63,9 +87,9 @@ public class HomeFragment extends Fragment {
 
         // 进入分区页前先释放全局图片缓存引用，为 inflate 布局腾出空间
         // （Android 2.x 上 bitmap 常驻外部堆，满时 inflate 任何 ImageView 都会 OOM）
+        // 不显式 System.gc()：2.x GC 是 stop-the-world，会冻结主线程数百毫秒
         try {
             GlobalImageCache.getInstance().releaseMemory();
-            System.gc();
         } catch (Throwable t) {
         }
 
@@ -75,35 +99,73 @@ public class HomeFragment extends Fragment {
                 view = inflater.inflate(R.layout.content_home, container, false);
             } catch (OutOfMemoryError e) {
                 GlobalImageCache.getInstance().releaseMemory();
-                System.gc();
             } catch (android.view.InflateException e) {
                 GlobalImageCache.getInstance().releaseMemory();
-                System.gc();
             } catch (Throwable e) {
                 GlobalImageCache.getInstance().releaseMemory();
-                System.gc();
             }
         }
-        // 重试仍失败：返回空布局而非崩溃，分区内容留空
+        // 重试仍失败：返回空布局而非崩溃
         if (view == null) {
             view = new LinearLayout(getActivity());
             view.setLayoutParams(new ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         }
-        partitionsContainer = (LinearLayout) view.findViewById(R.id.partitions_container);
-        if (partitionsContainer == null) {
-            partitionsContainer = new LinearLayout(getActivity());
-            partitionsContainer.setOrientation(LinearLayout.VERTICAL);
-            ((LinearLayout) view).addView(partitionsContainer);
+
+        homeList = (ListView) view.findViewById(R.id.home_list);
+        if (homeList == null) {
+            return view;
         }
+
+        homeList.setDivider(null);
+        homeList.setDividerHeight(0);
+        homeList.setVerticalFadingEdgeEnabled(false);
+        homeList.setHorizontalFadingEdgeEnabled(false);
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
+            tv.biliclassic.util.SdkHelper.setOverScrollNever(homeList);
+        }
+        homeList.setCacheColorHint(0x00000000);
+        homeList.setClipToPadding(false);
+        homeList.setFocusable(true);
+        homeList.setFocusableInTouchMode(true);
+
+        // 绘制缓存（仅 32MB+ 堆设备）：ViewPager 滑页转场时本页没有被重排，
+        // 命中缓存可避免每帧软件重绘全部行；低内存设备开不起每页 ~1.5MB 缓存
+        if (tv.biliclassic.util.SdkHelper.isHighMemoryDevice()) {
+            homeList.setDrawingCacheEnabled(true);
+            homeList.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_AUTO);
+        }
+
+        // Banner 作为列表 header；显式按"全宽 × 图片比例"设高，避免 ListView header 里 adjustViewBounds 测量异常
+        View banner = inflater.inflate(R.layout.home_banner, homeList, false);
+        ImageView bannerImage = (ImageView) banner.findViewById(R.id.banner_image);
+        if (bannerImage != null) {
+            try {
+                android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+                o.inJustDecodeBounds = true;
+                android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.bili_main_banner, o);
+                if (o.outWidth > 0 && o.outHeight > 0) {
+                    int w = getResources().getDisplayMetrics().widthPixels;
+                    int h = (int) (w * (float) o.outHeight / o.outWidth);
+                    ViewGroup.LayoutParams lp = bannerImage.getLayoutParams();
+                    lp.height = h;
+                    bannerImage.setLayoutParams(lp);
+                }
+            } catch (Throwable t) {
+            }
+        }
+        homeList.addHeaderView(banner);
 
         mainCategories = TidData.getMainCategories();
-
+        String[] names = new String[mainCategories.length];
         for (int i = 0; i < mainCategories.length; i++) {
-            final int tid = mainCategories[i];
-            final String name = TidData.getNameByTid(tid);
-            addPartitionSection(name, tid, i);
+            names[i] = TidData.getNameByTid(mainCategories[i]);
         }
+
+        adapter = new HomeSectionAdapter(getActivity(), this);
+        adapter.setData(mainCategories, names);
+        homeList.setAdapter(adapter);
+
         return view;
     }
 
@@ -116,90 +178,7 @@ public class HomeFragment extends Fragment {
         }
     }
 
-    private void addPartitionSection(final String partitionName, final int tid, final int index) {
-        LayoutInflater inflater = LayoutInflater.from(getActivity());
-        // Android 2.x 外部堆很小，inflate 布局加载资源图片可能抛 InflateException（cause 为 OOM）。
-        // 先释放全局图片缓存，重试一次仍失败则跳过该分区，避免整页崩溃
-        View section = null;
-        for (int attempt = 0; attempt < 2 && section == null; attempt++) {
-            try {
-                section = inflater.inflate(R.layout.item_partition_section, partitionsContainer, false);
-            } catch (OutOfMemoryError e) {
-                GlobalImageCache.getInstance().releaseMemory();
-                System.gc();
-            } catch (android.view.InflateException e) {
-                GlobalImageCache.getInstance().releaseMemory();
-                System.gc();
-            } catch (Throwable e) {
-                GlobalImageCache.getInstance().releaseMemory();
-                System.gc();
-            }
-        }
-        if (section == null) {
-            return;
-        }
-        final View view = section;
-
-        TextView partitionNameView = (TextView) view.findViewById(R.id.partition_name);
-        partitionNameView.setText(partitionName);
-
-        ImageView cardBg = (ImageView) view.findViewById(R.id.card_background);
-        try {
-            cardBg.setImageResource(CARD_BACKGROUNDS[index % 2]);
-        } catch (OutOfMemoryError e) {
-            GlobalImageCache.getInstance().freeAllUnreferenced();
-            System.gc();
-            cardBg.setImageDrawable(null);
-        }
-
-        ImageView cardFg = (ImageView) view.findViewById(R.id.card_foreground);
-        try {
-            cardFg.setImageResource(CARD_FOREGROUNDS[index]);
-        } catch (OutOfMemoryError e) {
-            GlobalImageCache.getInstance().freeAllUnreferenced();
-            System.gc();
-            cardFg.setImageDrawable(null);
-        }
-
-        final View partitionCard = view.findViewById(R.id.partition_card);
-        partitionCard.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (getActivity() == null) return;
-                Intent intent = PartitionDetailActivity.createIntent(getActivity(), tid);
-                startActivity(intent);
-            }
-        });
-
-        final ImageView video1 = (ImageView) view.findViewById(R.id.video1_cover);
-        final ImageView video2 = (ImageView) view.findViewById(R.id.video2_cover);
-        final ImageView video3 = (ImageView) view.findViewById(R.id.video3_cover);
-        final ImageView video4 = (ImageView) view.findViewById(R.id.video4_cover);
-        video1.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        video2.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        video3.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        video4.setScaleType(ImageView.ScaleType.CENTER_CROP);
-
-        final LinearLayout videoArea = (LinearLayout) view.findViewById(R.id.video_area);
-        final LinearLayout root = (LinearLayout) videoArea.getParent();
-        final View v3c = view.findViewById(R.id.video3_container);
-        final View v4c = view.findViewById(R.id.video4_container);
-        final LinearLayout.LayoutParams vp = (LinearLayout.LayoutParams) videoArea.getLayoutParams();
-        final LinearLayout.LayoutParams cp = (LinearLayout.LayoutParams) partitionCard.getLayoutParams();
-
-        loadThumbnails(tid, new ImageView[]{video1, video2, video3, video4});
-        partitionsContainer.addView(view);
-
-        view.post(new Runnable() {
-            public void run() {
-                if (!isAdded()) return;
-                applyTabletSection(view, videoArea, root, partitionCard,
-                        video1, video2, video3, video4, v3c, v4c, vp, cp);
-            }
-        });
-    }
-
-    private void loadThumbnails(final int tid, final ImageView[] previews) {
+    private void loadThumbnails(final View section, final int tid, final ImageView[] previews) {
         // 命中缓存：直接用缓存数据填充封面，不重新请求网络
         final List<VideoCard> cached;
         synchronized (sCachedCards) {
@@ -212,8 +191,10 @@ public class HomeFragment extends Fragment {
                 @Override
                 public void run() {
                     if (getActivity() == null) return;
-                    for (int i = 0; i < previews.length && i < cards.size(); i++) {
-                        loadCover(previews[i], cards.get(i));
+                    if (section.getTag() != null && ((Integer) section.getTag()) == tid) {
+                        for (int i = 0; i < previews.length && i < cards.size(); i++) {
+                            loadCover(previews[i], cards.get(i));
+                        }
                     }
                 }
             });
@@ -239,8 +220,10 @@ public class HomeFragment extends Fragment {
                         @Override
                         public void run() {
                             if (getActivity() == null) return;
-                            for (int i = 0; i < previews.length && i < cards.size(); i++) {
-                                loadCover(previews[i], cards.get(i));
+                            if (section.getTag() != null && ((Integer) section.getTag()) == tid) {
+                                for (int i = 0; i < previews.length && i < cards.size(); i++) {
+                                    loadCover(previews[i], cards.get(i));
+                                }
                             }
                         }
                     });
@@ -254,25 +237,33 @@ public class HomeFragment extends Fragment {
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        if (partitionsContainer == null) return;
+        if (homeList == null) return;
         if (!getResources().getBoolean(R.bool.is_tablet)) return;
-        for (int i = 0; i < partitionsContainer.getChildCount(); i++) {
-            View section = partitionsContainer.getChildAt(i);
-            LinearLayout videoArea = (LinearLayout) section.findViewById(R.id.video_area);
-            if (videoArea == null) continue;
-            LinearLayout root = (LinearLayout) videoArea.getParent();
-            View partitionCard = section.findViewById(R.id.partition_card);
-            View v3c = section.findViewById(R.id.video3_container);
-            View v4c = section.findViewById(R.id.video4_container);
-            ImageView video1 = (ImageView) section.findViewById(R.id.video1_cover);
-            ImageView video2 = (ImageView) section.findViewById(R.id.video2_cover);
-            ImageView video3 = (ImageView) section.findViewById(R.id.video3_cover);
-            ImageView video4 = (ImageView) section.findViewById(R.id.video4_cover);
-            LinearLayout.LayoutParams vp = (LinearLayout.LayoutParams) videoArea.getLayoutParams();
-            LinearLayout.LayoutParams cp = (LinearLayout.LayoutParams) partitionCard.getLayoutParams();
-            applyTabletSection(section, videoArea, root, partitionCard,
-                    video1, video2, video3, video4, v3c, v4c, vp, cp);
+        for (int i = 0; i < homeList.getChildCount(); i++) {
+            View section = homeList.getChildAt(i);
+            if (section != null && section.findViewById(R.id.video_area) != null) {
+                applyTabletLayout(section);
+            }
         }
+    }
+
+    private void applyTabletLayout(final View section) {
+        if (!isAdded()) return;
+        if (!getResources().getBoolean(R.bool.is_tablet)) return;
+        LinearLayout videoArea = (LinearLayout) section.findViewById(R.id.video_area);
+        if (videoArea == null) return;
+        LinearLayout root = (LinearLayout) videoArea.getParent();
+        View partitionCard = section.findViewById(R.id.partition_card);
+        View v3c = section.findViewById(R.id.video3_container);
+        View v4c = section.findViewById(R.id.video4_container);
+        ImageView video1 = (ImageView) section.findViewById(R.id.video1_cover);
+        ImageView video2 = (ImageView) section.findViewById(R.id.video2_cover);
+        ImageView video3 = (ImageView) section.findViewById(R.id.video3_cover);
+        ImageView video4 = (ImageView) section.findViewById(R.id.video4_cover);
+        LinearLayout.LayoutParams vp = (LinearLayout.LayoutParams) videoArea.getLayoutParams();
+        LinearLayout.LayoutParams cp = (LinearLayout.LayoutParams) partitionCard.getLayoutParams();
+        applyTabletSection(section, videoArea, root, partitionCard,
+                video1, video2, video3, video4, v3c, v4c, vp, cp);
     }
 
     private void applyTabletSection(final View section, final LinearLayout videoArea,
@@ -441,15 +432,116 @@ public class HomeFragment extends Fragment {
 
             int targetWidth = 160;
             int targetHeight = 90;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 23) {
                 targetWidth = (int)(targetWidth * 1.25f);
                 targetHeight = (int)(targetHeight * 1.25f);
             }
-            int minScale = Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD ? 2 : 4;
+            int minScale = tv.biliclassic.util.SdkHelper.getSdkInt() >= 9 ? 2 : 4;
             return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, targetHeight, minScale);
         } finally {
             if (conn != null) conn.disconnect();
             if (tempFile != null && tempFile.exists()) tempFile.delete();
+        }
+    }
+
+    /**
+     * 虚拟化行适配器：ListView 每行一个分区卡，只构建可见行。
+     */
+    static class HomeSectionAdapter extends BaseAdapter {
+
+        private Context context;
+        private HomeFragment fragment;
+        private int[] tids;
+        private String[] names;
+
+        HomeSectionAdapter(Context context, HomeFragment fragment) {
+            this.context = context;
+            this.fragment = fragment;
+        }
+
+        void setData(int[] tids, String[] names) {
+            this.tids = tids;
+            this.names = names;
+            notifyDataSetChanged();
+        }
+
+        @Override
+        public int getCount() {
+            return tids == null ? 0 : tids.length;
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return tids == null ? null : tids[position];
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            View section = convertView;
+            if (section == null) {
+                try {
+                    section = LayoutInflater.from(context).inflate(R.layout.item_partition_section, parent, false);
+                } catch (Throwable t) {
+                    section = new LinearLayout(context);
+                    section.setLayoutParams(new AbsListView.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT, 80));
+                }
+            }
+            bindSection(section, position);
+            return section;
+        }
+
+        private void bindSection(final View section, final int position) {
+            final int tid = tids[position];
+            final String name = names[position];
+            // 用 tid 作行标签，网络回调回来时校验，避免回收错位
+            section.setTag(tid);
+
+            TextView nameView = (TextView) section.findViewById(R.id.partition_name);
+            if (nameView != null) {
+                nameView.setText(name);
+            }
+
+            ImageView cardBg = (ImageView) section.findViewById(R.id.card_background);
+            if (cardBg != null) {
+                Drawable d = fragment.getCachedCardDrawable(
+                        fragment.CARD_BACKGROUNDS[position % 2], position % 2, fragment.sCardBackgrounds);
+                if (d != null) cardBg.setImageDrawable(d);
+            }
+
+            ImageView cardFg = (ImageView) section.findViewById(R.id.card_foreground);
+            if (cardFg != null) {
+                Drawable d = fragment.getCachedCardDrawable(
+                        fragment.CARD_FOREGROUNDS[position], position, fragment.sCardForegrounds);
+                if (d != null) cardFg.setImageDrawable(d);
+            }
+
+            final View partitionCard = section.findViewById(R.id.partition_card);
+            partitionCard.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (fragment.getActivity() == null) return;
+                    Intent intent = PartitionDetailActivity.createIntent(fragment.getActivity(), tid);
+                    fragment.startActivity(intent);
+                }
+            });
+
+            ImageView[] previews = new ImageView[4];
+            previews[0] = (ImageView) section.findViewById(R.id.video1_cover);
+            previews[1] = (ImageView) section.findViewById(R.id.video2_cover);
+            previews[2] = (ImageView) section.findViewById(R.id.video3_cover);
+            previews[3] = (ImageView) section.findViewById(R.id.video4_cover);
+            for (ImageView iv : previews) {
+                if (iv != null) iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            }
+
+            fragment.loadThumbnails(section, tid, previews);
+            fragment.applyTabletLayout(section);
         }
     }
 }

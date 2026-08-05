@@ -28,6 +28,8 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -43,6 +45,35 @@ public class ProfileFragment extends Fragment {
 
     private static final String TAG = "ProfileFragment";
     private static final String AVATAR_FILE_NAME = "avatar_cache.jpg";
+
+    // list 选项图标 Drawable 静态缓存（2.x 上每次 inflate 都重新解码资源图，缓存后只解码一次）
+    private static final Map<Integer, android.graphics.drawable.Drawable> sIconCache =
+            new HashMap<Integer, android.graphics.drawable.Drawable>();
+
+    private android.graphics.drawable.Drawable getCachedIcon(int resId) {
+        android.graphics.drawable.Drawable d = sIconCache.get(resId);
+        if (d == null) {
+            try {
+                d = getResources().getDrawable(resId);
+                sIconCache.put(resId, d);
+            } catch (Throwable t) {
+                d = null;
+            }
+        }
+        return d;
+    }
+
+    private void applyCachedIcon(View item, int resId) {
+        if (item instanceof ViewGroup) {
+            View child = ((ViewGroup) item).getChildAt(0);
+            if (child instanceof ImageView) {
+                android.graphics.drawable.Drawable d = getCachedIcon(resId);
+                if (d != null) {
+                    ((ImageView) child).setImageDrawable(d);
+                }
+            }
+        }
+    }
 
     // inflate 失败（Android 2.x 外部堆不足）时为 true：跳过控件初始化，仅显示空白页
     private boolean mInflateFailed = false;
@@ -78,9 +109,9 @@ public class ProfileFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Android 2.x 外部堆小，inflate 布局可能 OOM，失败清缓存重试，仍失败返回空布局不崩溃
+        // 不显式 System.gc()：2.x GC 是 stop-the-world，会冻结主线程数百毫秒
         try {
             GlobalImageCache.getInstance().releaseMemory();
-            System.gc();
         } catch (Throwable t) {
         }
 
@@ -109,6 +140,12 @@ public class ProfileFragment extends Fragment {
         }
         mInflateFailed = false;
 
+        // 绘制缓存（仅 32MB+ 堆设备）：滑页转场命中缓存，避免每帧重绘全部内容
+        if (tv.biliclassic.util.SdkHelper.isHighMemoryDevice()) {
+            view.setDrawingCacheEnabled(true);
+            view.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_AUTO);
+        }
+
         // 获取当前版本信息
         try {
             currentVersionCode = getActivity().getPackageManager().getPackageInfo(getActivity().getPackageName(), 0).versionCode;
@@ -132,6 +169,13 @@ public class ProfileFragment extends Fragment {
         itemOffline = view.findViewById(R.id.item_offline);
         itemSettings = view.findViewById(R.id.item_settings);
         itemRefresh = view.findViewById(R.id.item_refresh);
+
+        // list 选项图标用静态缓存 Drawable（避免每次重建重新解码资源图）
+        applyCachedIcon(itemRefresh, R.drawable.ic_action_refresh);
+        applyCachedIcon(itemFavorites, R.drawable.ic_action_collections_collection);
+        applyCachedIcon(itemHistory, R.drawable.ic_action_device_access_data_usage);
+        applyCachedIcon(itemOffline, R.drawable.ic_action_download_manager);
+        applyCachedIcon(itemSettings, R.drawable.ic_action_settings);
 
         // 点击头像或名字进入个人主页
         View.OnClickListener profileClickListener = new View.OnClickListener() {

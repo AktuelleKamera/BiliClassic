@@ -1,8 +1,10 @@
 package tv.biliclassic;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -14,7 +16,9 @@ import java.util.List;
 import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -29,6 +33,10 @@ import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
+/**
+ * 推荐/分区列表的行式适配器（配合 ListView 使用，实现虚拟化）。
+ * 每行 = numColumns 个视频卡片；ListView 只构建可见行，滚动回收。
+ */
 public class RecommendGridAdapter extends BaseAdapter {
 
     private static final String TAG = "RecommendAdapter";
@@ -38,6 +46,9 @@ public class RecommendGridAdapter extends BaseAdapter {
     private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
+    // Android 2.x 上 setImageResource 每次可能重新解码资源图，这里缓存默认 Drawable 实例复用
+    private static Drawable sDefaultCoverDrawable;
+
     public RecommendGridAdapter(Context context, List<VideoCard> list) {
         this.context = context;
         this.list = list;
@@ -46,23 +57,20 @@ public class RecommendGridAdapter extends BaseAdapter {
 
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        return maxMemory < 16384;
+        return maxMemory < 24576;
     }
 
-    // Android 2.x 上 setImageResource 每次可能重新解码资源图（drawable 被 purge 后），
-    // 列表滚动时 30 个 item 全部触发会把外部堆撑爆。这里缓存默认 Drawable 实例复用。
-    private static android.graphics.drawable.Drawable sDefaultCoverDrawable;
-
     private int getConfiguredThreadCount() {
-        // Android 2.x 外部堆极小，强制单线程解码，避免并发撑爆
-        if (tv.biliclassic.util.SdkHelper.getSdkInt() < 14) {
+        // 不按 API 一刀切：低内存设备（堆<16MB，如 N900）强制单线程；
+        // 堆充足的设备（如小米1，32MB 堆但 API10）可用多线程加速解码
+        if (tv.biliclassic.util.SdkHelper.isLowMemoryDevice()) {
             return 1;
         }
         int savedThreads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
         if (savedThreads > 0) {
             return savedThreads;
         }
-        return isLowMemoryDevice() ? 1 : 2;
+        return 2;
     }
 
     private void initExecutor() {
@@ -80,6 +88,7 @@ public class RecommendGridAdapter extends BaseAdapter {
 
     public void setNumColumns(int numColumns) {
         this.numColumns = numColumns;
+        notifyDataSetChanged();
     }
 
     public int getNumColumns() {
@@ -88,12 +97,17 @@ public class RecommendGridAdapter extends BaseAdapter {
 
     @Override
     public int getCount() {
-        return list == null ? 0 : list.size();
+        if (list == null || list.size() == 0) return 0;
+        return (list.size() + numColumns - 1) / numColumns;
     }
 
     @Override
     public Object getItem(int position) {
-        return list.get(position);
+        int start = position * numColumns;
+        if (list != null && start < list.size()) {
+            return list.get(start);
+        }
+        return null;
     }
 
     @Override
@@ -102,73 +116,88 @@ public class RecommendGridAdapter extends BaseAdapter {
     }
 
     @Override
+    public int getItemViewType(int position) {
+        return 0;
+    }
+
+    @Override
+    public int getViewTypeCount() {
+        return 1;
+    }
+
+    @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        ViewHolder holder;
-        if (tv.biliclassic.util.SdkHelper.getSdkInt() < 4) {
-            if (convertView == null) {
-                convertView = LayoutInflater.from(context).inflate(
-                    R.layout.item_recommend_simple, parent, false);
-                holder = new ViewHolder();
-                holder.title = (TextView) convertView.findViewById(R.id.simple_title);
-                holder.view = (TextView) convertView.findViewById(R.id.simple_views);
-                holder.danmaku = (TextView) convertView.findViewById(R.id.simple_danmaku);
-                convertView.setTag(holder);
+        LinearLayout row;
+        if (convertView instanceof LinearLayout) {
+            row = (LinearLayout) convertView;
+        } else {
+            row = new LinearLayout(context);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(dpToPx(4), 0, dpToPx(4), 0);
+        }
+
+        // 列数变化时重建行内 cell
+        if (row.getChildCount() != numColumns) {
+            row.removeAllViews();
+            for (int i = 0; i < numColumns; i++) {
+                View cell = LayoutInflater.from(context).inflate(R.layout.item_recommend, row, false);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+                if (i < numColumns - 1) {
+                    lp.rightMargin = dpToPx(8);
+                }
+                cell.setLayoutParams(lp);
+                row.addView(cell);
+            }
+        }
+
+        int cellWidth = computeCellWidth();
+        int start = position * numColumns;
+        for (int i = 0; i < numColumns; i++) {
+            View cell = row.getChildAt(i);
+            int index = start + i;
+            if (index < list.size()) {
+                cell.setVisibility(View.VISIBLE);
+                bindCell(cell, list.get(index), cellWidth);
             } else {
-                holder = (ViewHolder) convertView.getTag();
+                cell.setVisibility(View.INVISIBLE);
             }
-            VideoCard item = list.get(position);
-            if (item != null) {
-                holder.title.setText(item.title);
-                holder.view.setText("\u25B6 " + (item.view != null ? item.view : "0"));
-                holder.danmaku.setText("\u2726 " + (item.danmaku > 0 ? String.valueOf(item.danmaku) : "0"));
+        }
+        return row;
+    }
+
+    private int computeCellWidth() {
+        int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
+        int padding = dpToPx(4) * 2;
+        int spacing = dpToPx(8);
+        return (screenWidth - padding - (numColumns - 1) * spacing) / numColumns;
+    }
+
+    private void bindCell(final View cell, final VideoCard item, int cellWidth) {
+        CellHolder h = (CellHolder) cell.getTag();
+        if (h == null) {
+            h = new CellHolder();
+            h.coverContainer = (FrameLayout) cell.findViewById(R.id.cover_container);
+            h.cover = (ImageView) cell.findViewById(R.id.cover);
+            h.title = (TextView) cell.findViewById(R.id.title);
+            h.view = (TextView) cell.findViewById(R.id.view);
+            h.danmaku = (TextView) cell.findViewById(R.id.danmaku);
+            cell.setTag(h);
+        }
+
+        int coverHeight = cellWidth * 9 / 16;
+        if (coverHeight > 0) {
+            ViewGroup.LayoutParams p = h.coverContainer.getLayoutParams();
+            if (p.height != coverHeight) {
+                p.height = coverHeight;
+                h.coverContainer.setLayoutParams(p);
             }
-            return convertView;
-        }
-        if (convertView == null) {
-            convertView = LayoutInflater.from(context).inflate(R.layout.item_recommend, parent, false);
-            holder = new ViewHolder();
-            holder.coverContainer = (FrameLayout) convertView.findViewById(R.id.cover_container);
-            holder.cover = (ImageView) convertView.findViewById(R.id.cover);
-            holder.title = (TextView) convertView.findViewById(R.id.title);
-            if (tv.biliclassic.util.SdkHelper.getSdkInt() < 4) {
-                holder.title.setMaxLines(Integer.MAX_VALUE);
-                holder.title.setEllipsize(null);
-            }
-            holder.view = (TextView) convertView.findViewById(R.id.view);
-            holder.danmaku = (TextView) convertView.findViewById(R.id.danmaku);
-            convertView.setTag(holder);
-        } else {
-            holder = (ViewHolder) convertView.getTag();
         }
 
-        if (holder.currentCoverUrl != null) {
-            GlobalImageCache.getInstance().release(holder.currentCoverUrl);
-            holder.currentCoverUrl = null;
-        }
+        h.title.setText(item.title != null ? item.title : "");
+        h.view.setText(item.view != null ? item.view : "0");
+        h.danmaku.setText(item.danmaku > 0 ? String.valueOf(item.danmaku) : "0");
 
-        int parentWidth = parent.getWidth();
-        int containerWidth;
-        if (parentWidth > 0) {
-            containerWidth = parentWidth / numColumns - dpToPx(6);
-        } else {
-            containerWidth = context.getResources().getDisplayMetrics().widthPixels / numColumns - dpToPx(6);
-        }
-        if (containerWidth > 0) {
-            int containerHeight = containerWidth * 9 / 16;
-            ViewGroup.LayoutParams params = holder.coverContainer.getLayoutParams();
-            params.height = containerHeight;
-            holder.coverContainer.setLayoutParams(params);
-        }
-
-        VideoCard item = list.get(position);
-        if (item != null) {
-            holder.title.setText(item.title);
-            holder.view.setText(item.view != null ? item.view : "0");
-            holder.danmaku.setText(item.danmaku > 0 ? String.valueOf(item.danmaku) : "0");
-        }
-
-        final ViewHolder fHolder = holder;
-        // 复用默认 Drawable 实例，避免每次 getView 重新解码占用外部堆（Android 2.x）
         if (sDefaultCoverDrawable == null) {
             try {
                 sDefaultCoverDrawable = context.getResources().getDrawable(R.drawable.bili_default_image_tv_with_bg);
@@ -176,27 +205,49 @@ public class RecommendGridAdapter extends BaseAdapter {
                 sDefaultCoverDrawable = null;
             }
         }
-        if (sDefaultCoverDrawable != null) {
-            holder.cover.setImageDrawable(sDefaultCoverDrawable);
+        if (sDefaultCoverDrawable != null && h.cover.getDrawable() != sDefaultCoverDrawable) {
+            h.cover.setImageDrawable(sDefaultCoverDrawable);
         }
 
-        if (item != null && item.cover != null && item.cover.length() > 0
+        // 点击：直接绑定当前视频
+        cell.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (item == null) return;
+                Intent intent = new Intent(context, VideoDetailActivity.class);
+                if (item.aid != 0) {
+                    intent.putExtra("aid", item.aid);
+                } else if (item.bvid != null && item.bvid.length() > 0) {
+                    intent.putExtra("bvid", item.bvid);
+                } else {
+                    Toast.makeText(context, "无法获取视频信息", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                context.startActivity(intent);
+            }
+        });
+
+        // 释放上一个封面引用
+        if (h.currentCoverUrl != null) {
+            GlobalImageCache.getInstance().release(h.currentCoverUrl);
+            h.currentCoverUrl = null;
+        }
+
+        if (item.cover != null && item.cover.length() > 0
                 && !SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) {
             String coverUrl = item.cover;
             if (coverUrl.startsWith("https://")) {
                 coverUrl = "http://" + coverUrl.substring(8);
             }
             final String finalUrl = coverUrl;
-            final ImageView coverView = holder.cover;
-            final int pos = position;
-
-            coverView.setTag(pos);
+            final ImageView coverView = h.cover;
+            coverView.setTag(finalUrl);
 
             Bitmap cached = GlobalImageCache.getInstance().getAndAcquire(finalUrl);
             if (cached != null && !cached.isRecycled()) {
                 coverView.setImageBitmap(cached);
-                fHolder.currentCoverUrl = finalUrl;
-                return convertView;
+                h.currentCoverUrl = finalUrl;
+                return;
             }
 
             executor.execute(new Runnable() {
@@ -210,9 +261,12 @@ public class RecommendGridAdapter extends BaseAdapter {
                             @Override
                             public void run() {
                                 Object tag = coverView.getTag();
-                                if (tag != null && tag instanceof Integer && ((Integer) tag) == pos) {
+                                if (tag != null && tag.equals(finalUrl)) {
                                     coverView.setImageBitmap(bitmap);
-                                    fHolder.currentCoverUrl = finalUrl;
+                                    CellHolder hh = (CellHolder) cell.getTag();
+                                    if (hh != null) {
+                                        hh.currentCoverUrl = finalUrl;
+                                    }
                                 } else {
                                     GlobalImageCache.getInstance().release(finalUrl);
                                 }
@@ -222,8 +276,6 @@ public class RecommendGridAdapter extends BaseAdapter {
                 }
             });
         }
-
-        return convertView;
     }
 
     private Bitmap downloadImage(String urlStr) {
@@ -254,11 +306,11 @@ public class RecommendGridAdapter extends BaseAdapter {
 
             int targetWidth = 160;
             int targetHeight = 90;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 23) {
                 targetWidth = (int)(targetWidth * 1.25f);
                 targetHeight = (int)(targetHeight * 1.25f);
             }
-            int minScale = Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD ? 2 : 4;
+            int minScale = tv.biliclassic.util.SdkHelper.getSdkInt() >= 9 ? 2 : 4;
             return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, targetHeight, minScale);
         } catch (Exception e) {
             Log.e(TAG, "下载失败: " + urlStr, e);
@@ -284,7 +336,7 @@ public class RecommendGridAdapter extends BaseAdapter {
         GlobalImageCache.getInstance().clear();
     }
 
-    static class ViewHolder {
+    static class CellHolder {
         FrameLayout coverContainer;
         ImageView cover;
         TextView title;

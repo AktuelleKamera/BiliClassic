@@ -3,7 +3,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@drawable/bili_texture_background"
     android:focusable="true"
     android:focusableInTouchMode="true"
     android:descendantFocusability="afterDescendants">

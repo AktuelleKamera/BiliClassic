@@ -5,6 +5,8 @@
     android:orientation="horizontal"
     android:paddingLeft="4dp"
     android:paddingTop="4dp"
+    android:paddingRight="4dp"
+    android:paddingBottom="4dp"
     android:weightSum="7"
     android:background="#F5F5F5">
 

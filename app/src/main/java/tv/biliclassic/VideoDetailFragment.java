@@ -53,6 +53,7 @@ import tv.biliclassic.model.VideoPart;
 import tv.biliclassic.model.UserInfo;
 import tv.biliclassic.player.PlayerAnimActivity;
 import tv.biliclassic.util.FileProviderCompat;
+import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.player.BiliPlayerActivity;
 
@@ -88,6 +89,23 @@ public class VideoDetailFragment extends Fragment {
     private boolean isPlayButtonClicked = false;
     private Handler mHandler = new Handler();
     private ScrollView mScrollView;
+
+    // Android 2.x 上 setImageResource 每次可能重新解码资源图，缓存默认 Drawable 实例复用
+    private static android.graphics.drawable.Drawable sDefaultCoverDrawable;
+
+    private void setDefaultCover(ImageView iv) {
+        if (iv == null) return;
+        if (sDefaultCoverDrawable == null) {
+            try {
+                sDefaultCoverDrawable = getResources().getDrawable(R.drawable.bili_default_image_tv_with_bg);
+            } catch (Throwable t) {
+                sDefaultCoverDrawable = null;
+            }
+        }
+        if (sDefaultCoverDrawable != null && iv.getDrawable() != sDefaultCoverDrawable) {
+            iv.setImageDrawable(sDefaultCoverDrawable);
+        }
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -151,15 +169,15 @@ public class VideoDetailFragment extends Fragment {
             lvParts.setFocusableInTouchMode(false);
         }
 
-        final ScrollView scrollView = (ScrollView) view.findViewById(R.id.scroll_view);
-        if (scrollView != null) {
-            scrollView.setFocusableInTouchMode(true);
-            scrollView.requestFocus();
-            scrollView.post(new Runnable() {
+        mScrollView = (ScrollView) view.findViewById(R.id.scroll_view);
+        if (mScrollView != null) {
+            mScrollView.setFocusableInTouchMode(true);
+            mScrollView.requestFocus();
+            mScrollView.post(new Runnable() {
                 @Override
                 public void run() {
-                    scrollView.fullScroll(ScrollView.FOCUS_UP);
-                    scrollView.scrollTo(0, 0);
+                    mScrollView.fullScroll(ScrollView.FOCUS_UP);
+                    mScrollView.scrollTo(0, 0);
                 }
             });
         }
@@ -600,8 +618,9 @@ public class VideoDetailFragment extends Fragment {
                     if (isAdded() && getActivity() != null) searchTag(tagText);
                 }
             });
-            tagView.measure(0, 0);
-            int tagWidth = tagView.getMeasuredWidth();
+            // 用 Paint.measureText 估算宽度（远快于 TextView.measure 的完整测量 pass，1.6 上 CJK 测量慢）
+            float textWidth = tagView.getPaint().measureText(tagText);
+            int tagWidth = (int) (textWidth + tagView.getPaddingLeft() + tagView.getPaddingRight() + 0.5f);
             if (currentRow == null || usedWidth + tagWidth > screenWidth - 20) {
                 currentRow = new LinearLayout(getActivity());
                 currentRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -714,20 +733,17 @@ public class VideoDetailFragment extends Fragment {
             ((VideoDetailActivity) getActivity()).setVideoDetailFragment(this);
         }
 
-        // 数据加载完成后强制滚动到顶部
+        // 数据加载完成后强制滚动到顶部（立即 + 布局完成后各一次）
         forceScrollToTop();
-        mHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                forceScrollToTop();
-            }
-        }, 200);
-        mHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                forceScrollToTop();
-            }
-        }, 500);
+        final View fv = getView();
+        if (fv != null) {
+            fv.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (isAdded()) forceScrollToTop();
+                }
+            });
+        }
     }
 
     private void loadCoverImage(String url) {
@@ -737,79 +753,85 @@ public class VideoDetailFragment extends Fragment {
             url = "http://" + url.substring(8);
         }
         final String finalUrl = url;
+
+        // 内存缓存命中：直接显示，不再重新下载解码
+        Bitmap cached = GlobalImageCache.getInstance().get(finalUrl);
+        if (cached != null && !cached.isRecycled()) {
+            ivCover.setImageBitmap(cached);
+            return;
+        }
+
         new Thread(new Runnable() {
             @Override
             public void run() {
-                HttpURLConnection conn = null;
-                java.io.File tempFile = null;
-                try {
-                    URL urlObj = new URL(finalUrl);
-                    conn = (HttpURLConnection) urlObj.openConnection();
-                    conn.setConnectTimeout(12000);
-                    conn.setReadTimeout(12000);
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-                    conn.connect();
+                // 磁盘缓存：同一封面不重复下载（文件按 URL hash 存于 cacheDir）
+                final java.io.File diskFile = new java.io.File(getActivity().getCacheDir(), "vd_" + finalUrl.hashCode() + ".jpg");
+                Bitmap bitmap = null;
+                if (diskFile.exists()) {
+                    bitmap = GlobalImageCache.decodeFileSafely(diskFile, 200, 150, 1);
+                }
+                if (bitmap == null || bitmap.isRecycled()) {
+                    bitmap = downloadCover(finalUrl, diskFile);
+                }
+                if (bitmap == null || bitmap.isRecycled()) return;
 
-                    // 下载到临时文件（避免 decodeStream mark/reset 问题）
-                    tempFile = new java.io.File(getActivity().getCacheDir(), "vd_" + finalUrl.hashCode() + ".tmp");
-                    InputStream is = conn.getInputStream();
-                    java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
-                    byte[] buf = new byte[8192];
-                    int readLen;
-                    while ((readLen = is.read(buf)) != -1) {
-                        fos.write(buf, 0, readLen);
-                    }
-                    is.close();
-                    fos.close();
-                    conn.disconnect();
-                    conn = null;
-
-                    if (!tempFile.exists() || tempFile.length() == 0) return;
-
-                    BitmapFactory.Options opts = new BitmapFactory.Options();
-                    opts.inJustDecodeBounds = true;
-                    BitmapFactory.decodeFile(tempFile.getAbsolutePath(), opts);
-
-                    int scale = 1;
-                    if (opts.outWidth > 200 || opts.outHeight > 150) {
-                        scale = Math.max(opts.outWidth / 200, opts.outHeight / 150);
-                        if (scale < 1) scale = 1;
-                        if (scale > 4) scale = 4;
-                    }
-
-                    Bitmap bitmap = null;
-                    while (scale <= 16 && bitmap == null) {
-                        try {
-                            opts = new BitmapFactory.Options();
-                            opts.inSampleSize = scale;
-                            opts.inPreferredConfig = Bitmap.Config.RGB_565;
-                            bitmap = BitmapFactory.decodeFile(tempFile.getAbsolutePath(), opts);
-                        } catch (OutOfMemoryError e) {
-                            scale *= 2;
+                GlobalImageCache.getInstance().put(finalUrl, bitmap);
+                final Bitmap resultBitmap = bitmap;
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!isAdded() || getActivity() == null) return;
+                        if (resultBitmap != null && !resultBitmap.isRecycled()) {
+                            ivCover.setImageBitmap(resultBitmap);
+                        } else {
+                            setDefaultCover(ivCover);
                         }
                     }
-                    final Bitmap resultBitmap = bitmap;
-                    if (resultBitmap != null && getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (!isAdded() || getActivity() == null) return;
-                                if (resultBitmap != null && !resultBitmap.isRecycled()) {
-                                    ivCover.setImageBitmap(resultBitmap);
-                                } else {
-                                    ivCover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
-                                }
-                            }
-                        });
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    if (conn != null) conn.disconnect();
-                    if (tempFile != null && tempFile.exists()) tempFile.delete();
-                }
+                });
             }
         }).start();
+    }
+
+    private Bitmap downloadCover(String urlStr, java.io.File diskFile) {
+        HttpURLConnection conn = null;
+        java.io.File tempFile = null;
+        try {
+            URL urlObj = new URL(urlStr);
+            conn = (HttpURLConnection) urlObj.openConnection();
+            tv.biliclassic.util.NetWorkUtil.applySSLCompat(conn, urlStr);
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(12000);
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.connect();
+
+            tempFile = new java.io.File(getActivity().getCacheDir(), "vd_" + urlStr.hashCode() + ".tmp");
+            InputStream is = conn.getInputStream();
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
+            byte[] buf = new byte[8192];
+            int readLen;
+            while ((readLen = is.read(buf)) != -1) {
+                fos.write(buf, 0, readLen);
+            }
+            is.close();
+            fos.close();
+            conn.disconnect();
+            conn = null;
+
+            if (!tempFile.exists() || tempFile.length() == 0) return null;
+
+            // 下载的原图直接作为磁盘缓存（同目录 renameTo 成功），下次直接解码
+            java.io.File decodeTarget = tempFile;
+            if (diskFile != null && tempFile.renameTo(diskFile)) {
+                decodeTarget = diskFile;
+            }
+            return GlobalImageCache.decodeFileSafely(decodeTarget, 200, 150, 1);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            if (conn != null) conn.disconnect();
+            if (tempFile != null && tempFile.exists()) tempFile.delete();
+        }
     }
 
     private void playVideo() {

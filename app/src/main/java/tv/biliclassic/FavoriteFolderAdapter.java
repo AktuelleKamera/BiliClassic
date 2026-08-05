@@ -52,7 +52,7 @@ public class FavoriteFolderAdapter extends BaseAdapter {
 
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        return maxMemory < 16384;
+        return maxMemory < 24576;
     }
 
     private int getConfiguredThreadCount() {

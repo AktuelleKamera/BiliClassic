@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class AboutActivity extends BaseActivity {
 
@@ -18,6 +19,16 @@ public class AboutActivity extends BaseActivity {
         TextView appBrief = (TextView) findViewById(R.id.app_brief);
         String versionName = getVersionName();
         appBrief.setText("哔哩经典 " + versionName);
+
+        // 长按版本号：切换性能日志开关
+        appBrief.setOnLongClickListener(new android.view.View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(android.view.View v) {
+                boolean on = tv.biliclassic.util.PerfLog.toggle();
+                Toast.makeText(AboutActivity.this, on ? "性能日志已开启" : "性能日志已关闭", Toast.LENGTH_SHORT).show();
+                return true;
+            }
+        });
 
         TextView releaseWebsite = (TextView) findViewById(R.id.release_website);
         releaseWebsite.setText(Html.fromHtml("<a href=\"https://github.com/AktuelleKamera/BiliClassic\">GitHub Issues</a>"));

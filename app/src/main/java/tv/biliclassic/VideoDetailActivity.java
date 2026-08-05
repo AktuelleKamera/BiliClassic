@@ -761,7 +761,6 @@ public class VideoDetailActivity extends BaseActivity {
                 .create();
 
         dialog.show();
-        System.gc();
         android.view.Window dialogWindow = dialog.getWindow();
         if (dialogWindow != null) {
             dialogWindow.setLayout(
@@ -892,7 +891,7 @@ public class VideoDetailActivity extends BaseActivity {
                             Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, opts);
 
                             java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, baos);
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, baos);
                             byte[] compressed = baos.toByteArray();
                             if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
 

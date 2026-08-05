@@ -353,7 +353,7 @@ public class CommentFragment extends Fragment {
                             Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, opts);
 
                             java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, baos);
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, baos);
                             byte[] compressed = baos.toByteArray();
                             if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
 
@@ -408,7 +408,6 @@ public class CommentFragment extends Fragment {
         if (adapter != null) {
             adapter.clearCache();
         }
-        System.gc();
     }
 
     // 恢复滚动位置
@@ -1156,7 +1155,6 @@ public class CommentFragment extends Fragment {
                 .create();
 
         dialog.show();
-        System.gc();
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

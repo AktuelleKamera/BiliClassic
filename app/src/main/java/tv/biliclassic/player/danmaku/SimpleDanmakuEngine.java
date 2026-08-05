@@ -90,7 +90,13 @@ public class SimpleDanmakuEngine extends View {
         float density = context.getResources().getDisplayMetrics().density;
         mTextSize = 14f * density;
         if (SdkHelper.getSdkInt() >= 11) {
-            setLayerType(LAYER_TYPE_SOFTWARE, null);
+            // setLayerType 是 API 11+，直接引用会在 API<11 上被 verifier 拒绝整类，改反射
+            try {
+                java.lang.reflect.Method m = android.view.View.class.getMethod(
+                        "setLayerType", int.class, android.graphics.Paint.class);
+                m.invoke(this, 1, null); // LAYER_TYPE_SOFTWARE = 1
+            } catch (Throwable t) {
+            }
         }
         mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mPaint.setStyle(Paint.Style.FILL);

@@ -5,16 +5,13 @@ import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.FrameLayout;
+import android.widget.AbsListView;
+import android.widget.ListView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.support.v4.app.Fragment;
@@ -30,8 +27,7 @@ public class PartitionPageFragment extends Fragment {
 
     private static final String ARG_TID = "tid";
 
-    private ScrollView scrollView;
-    private ExpandableGridView gridView;
+    private ListView gridView;
     private ProgressBar progressBar;
     private TextView emptyView;
     private LinearLayout footerContainer;
@@ -67,83 +63,56 @@ public class PartitionPageFragment extends Fragment {
 
         // 移除 SwipeRefreshLayout（分区不需要下拉刷新，留著會因 mListener==null 閃退）
         SwipeRefreshLayout srl = (SwipeRefreshLayout) view.findViewById(R.id.swipe_refresh);
-        FrameLayout parent = (FrameLayout) view.findViewById(R.id.recommend_content);
-        if (srl != null && parent != null) {
-            scrollView = (ScrollView) view.findViewById(R.id.scroll_view);
-            ViewGroup svParent = (ViewGroup) scrollView.getParent();
-            if (svParent != null) svParent.removeView(scrollView);
+        ViewGroup parent = (ViewGroup) view.findViewById(R.id.recommend_content);
+        ListView grid = (ListView) view.findViewById(R.id.recommend_grid);
+        if (srl != null && parent != null && grid != null) {
+            ViewGroup gParent = (ViewGroup) grid.getParent();
+            if (gParent != null) gParent.removeView(grid);
             int idx = parent.indexOfChild(srl);
             parent.removeView(srl);
-            parent.addView(scrollView, idx, srl.getLayoutParams());
+            parent.addView(grid, idx, srl.getLayoutParams());
         }
 
-        gridView = (ExpandableGridView) view.findViewById(R.id.recommend_grid);
+        gridView = (ListView) view.findViewById(R.id.recommend_grid);
         progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
         emptyView = (TextView) view.findViewById(R.id.empty_view);
-        footerContainer = (LinearLayout) view.findViewById(R.id.footer_container);
-        footerProgressBar = (ProgressBar) view.findViewById(R.id.footer_progress);
-        scrollView = (ScrollView) view.findViewById(R.id.scroll_view);
 
-        footerContainer.setVisibility(View.GONE);
+        hideFooter();
 
         int numColumns = isTablet() ? (isLandscape() ? 4 : 3) : 2;
-        gridView.setNumColumns(numColumns);
-        gridView.setVerticalSpacing(dpToPx(8));
-        gridView.setHorizontalSpacing(dpToPx(8));
         gridView.setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4));
+        gridView.setClipToPadding(false);
+        gridView.setVerticalFadingEdgeEnabled(false);
+        gridView.setHorizontalFadingEdgeEnabled(false);
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
+            tv.biliclassic.util.SdkHelper.setOverScrollNever(gridView);
+        }
+
+        // footer 直接加在列表内容之后（addFooterView，随列表滚动）
+        View footer = inflater.inflate(R.layout.item_recommend_footer, gridView, false);
+        footerContainer = (LinearLayout) footer;
+        footerProgressBar = (ProgressBar) footer.findViewById(R.id.footer_progress);
+        gridView.addFooterView(footer);
 
         adapter = new RecommendGridAdapter(getActivity(), videoList);
         adapter.setNumColumns(numColumns);
         gridView.setAdapter(adapter);
 
-        gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        gridView.setFocusable(true);
+        gridView.setFocusableInTouchMode(true);
+
+        // 滚动停止时若接近底部则自动加载更多（ListView 自带虚拟化，只构建可见项）
+        gridView.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                if (position < 0 || position >= videoList.size()) return;
-                VideoCard item = videoList.get(position);
-                if (item == null || getActivity() == null) return;
-                Intent intent = new Intent(getActivity(), VideoDetailActivity.class);
-                if (item.aid != 0) {
-                    intent.putExtra("aid", item.aid);
-                } else if (item.bvid != null && item.bvid.length() > 0) {
-                    intent.putExtra("bvid", item.bvid);
-                } else {
-                    Toast.makeText(getActivity(), getActivity().getString(R.string.partitionpagefragment_toast_65e0), Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                startActivity(intent);
+            public void onScroll(AbsListView view, int firstVisibleItem,
+                                 int visibleItemCount, int totalItemCount) {
             }
-        });
 
-        gridView.setFocusable(false);
-        scrollView.setFocusable(true);
-        scrollView.setFocusableInTouchMode(true);
-        scrollView.requestFocus();
-
-        scrollView.setOnTouchListener(new View.OnTouchListener() {
             @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_UP) {
+            public void onScrollStateChanged(AbsListView view, int scrollState) {
+                if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_IDLE) {
                     checkScrollToBottom();
                 }
-                return false;
-            }
-        });
-
-        scrollView.setOnKeyListener(new View.OnKeyListener() {
-            @Override
-            public boolean onKey(View v, int keyCode, KeyEvent event) {
-                if (event.getAction() == KeyEvent.ACTION_UP) {
-                    if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_PAGE_DOWN) {
-                        new Handler().postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                checkScrollToBottom();
-                            }
-                        }, 150);
-                    }
-                }
-                return false;
             }
         });
 
@@ -155,15 +124,12 @@ public class PartitionPageFragment extends Fragment {
     }
 
     private void checkScrollToBottom() {
-        if (scrollView == null) return;
-        View child = scrollView.getChildAt(0);
-        if (child != null) {
-            int scrollY = scrollView.getScrollY();
-            int height = child.getHeight();
-            int scrollViewHeight = scrollView.getHeight();
-            if (scrollY + scrollViewHeight >= height - 30) {
-                loadMoreVideos();
-            }
+        if (gridView == null) return;
+        int total = gridView.getCount();
+        if (total <= 0) return;
+        int last = gridView.getLastVisiblePosition();
+        if (last >= total - 2) {
+            loadMoreVideos();
         }
     }
 
@@ -172,7 +138,6 @@ public class PartitionPageFragment extends Fragment {
         super.onConfigurationChanged(newConfig);
         if (getActivity() == null) return;
         int numColumns = isTablet() ? (isLandscape() ? 4 : 3) : 2;
-        gridView.setNumColumns(numColumns);
         adapter.setNumColumns(numColumns);
     }
 
@@ -189,14 +154,18 @@ public class PartitionPageFragment extends Fragment {
     }
 
     private void showFooter() {
-        footerContainer.setVisibility(View.VISIBLE);
-        if (footerProgressBar != null) {
-            footerProgressBar.setVisibility(View.VISIBLE);
+        if (footerContainer != null) {
+            footerContainer.setVisibility(View.VISIBLE);
+            if (footerProgressBar != null) {
+                footerProgressBar.setVisibility(View.VISIBLE);
+            }
         }
     }
 
     private void hideFooter() {
-        footerContainer.setVisibility(View.GONE);
+        if (footerContainer != null) {
+            footerContainer.setVisibility(View.GONE);
+        }
     }
 
     private void loadVideos() {
@@ -239,6 +208,14 @@ public class PartitionPageFragment extends Fragment {
                             currentPage = 2;
                             hideFooter();
                             if (items.size() < 20) isEnd = true;
+
+                            // 内容不足一屏时自动补页
+                            gridView.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    checkScrollToBottom();
+                                }
+                            });
                         }
                     });
                 } catch (final Exception e) {
@@ -296,6 +273,13 @@ public class PartitionPageFragment extends Fragment {
                             adapter.notifyDataSetChanged();
                             currentPage = page + 1;
                             if (newItems.size() < 20) isEnd = true;
+
+                            gridView.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    checkScrollToBottom();
+                                }
+                            });
                         }
                     });
                 } catch (final Exception e) {

@@ -53,7 +53,7 @@ public class RelatedVideosAdapter extends BaseAdapter {
 
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        return maxMemory < 16384;
+        return maxMemory < 24576;
     }
 
     private int getConfiguredThreadCount() {
@@ -243,10 +243,10 @@ public class RelatedVideosAdapter extends BaseAdapter {
             if (!tempFile.exists() || tempFile.length() == 0) return null;
 
             int targetWidth = (int) (160 * context.getResources().getDisplayMetrics().density);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 23) {
                 targetWidth = (int)(targetWidth * 1.25f);
             }
-            int minScale = Build.VERSION.SDK_INT >= Build.VERSION_CODES.GINGERBREAD ? 2 : 4;
+            int minScale = tv.biliclassic.util.SdkHelper.getSdkInt() >= 9 ? 2 : 4;
             return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, 90, minScale);
         } catch (Exception e) {
             return null;

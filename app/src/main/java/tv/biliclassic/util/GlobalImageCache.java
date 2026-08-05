@@ -15,9 +15,10 @@ public class GlobalImageCache {
     private GlobalImageCache() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
         // Android 2.x 位图存放在独立的外部堆（约 13MB），且不支持 largeHeap。
-        // 按 Java 堆 1/8 设置缓存会把外部堆撑爆，这里对低内存设备进一步收紧。
+        // 按 Java 堆 1/8 设置缓存会把外部堆撑爆：32MB 堆以下用更保守的 1/16，
+        // 只有 32MB 堆以上的设备才用 1/8 的大缓存。
         int cacheSize;
-        if (maxMemory < 16384) {
+        if (maxMemory < 32768) {
             cacheSize = maxMemory / 16;
         } else {
             cacheSize = maxMemory / 8;
@@ -114,15 +115,17 @@ public class GlobalImageCache {
         }
         pendingRecycle.clear();
         refCounts.clear();
-        System.gc();
     }
 
-    /** 释放引用但不 recycle（避免 ImageView 正在绘制时崩溃），仅触发 GC */
+    /**
+     * 释放引用但不 recycle（避免 ImageView 正在绘制时崩溃），仅触发自然回收。
+     * Android 2.x 位图为 inPurgeable，像素由系统 GC 自动回收；
+     * 不显式 System.gc()——2.x 的 GC 是 stop-the-world，显式调用会冻结主线程数百毫秒。
+     */
     public synchronized void releaseMemory() {
         cache.evictAll();
         refCounts.clear();
         pendingRecycle.clear();
-        System.gc();
     }
 
     public synchronized void remove(String key) {
@@ -138,25 +141,22 @@ public class GlobalImageCache {
 
     /**
      * 内存不足时快速释放全部缓存引用（不 recycle，避免正在绘制的位图崩溃）。
-     * 清空缓存引用并触发 GC；位图像素在 Android 2.x 上由 inPurgeable + GC 回收。
+     * 清空缓存引用即可；像素由 inPurgeable + 系统 GC 回收，不显式 System.gc()（见 releaseMemory 注释）。
      */
     public synchronized void freeAllUnreferenced() {
         cache.evictAll();
         pendingRecycle.clear();
         refCounts.clear();
-        System.gc();
     }
 
     /**
      * 释放缓存引用但不 recycle（避免回收仍被 ImageView 绘制的位图导致崩溃）。
-     * Android 2.x 上依赖 inPurgeable + GC 由系统回收外部堆。
      * 与 releaseMemory 等价，供 inflate 布局前腾出引用空间使用。
      */
     public synchronized void forceClear() {
         cache.evictAll();
         pendingRecycle.clear();
         refCounts.clear();
-        System.gc();
     }
 
     /** 是否处于内存紧张状态（剩余可用堆很小） */
@@ -198,8 +198,10 @@ public class GlobalImageCache {
             scale = Math.max(widthRatio, heightRatio);
             if (scale < 1) scale = 1;
             if (scale > 8) scale = 8;
+            // 仅当确实在降采样时才强制最小采样率；
+            // 源图已 ≤ 目标尺寸时保持 scale=1，否则小图再按 minScale 降采样会糊
+            if (scale < minScale) scale = minScale;
         }
-        if (scale < minScale) scale = minScale;
 
         android.graphics.Bitmap bitmap = null;
         while (bitmap == null && scale <= 16) {
@@ -210,12 +212,19 @@ public class GlobalImageCache {
                 android.graphics.BitmapFactory.Options opts = new android.graphics.BitmapFactory.Options();
                 opts.inSampleSize = scale;
                 opts.inPreferredConfig = android.graphics.Bitmap.Config.RGB_565;
-                opts.inPurgeable = true;
-                opts.inInputShareable = true;
+                // inPurgeable/inInputShareable 用反射设置：某些早期设备或新 SDK 上字段可能缺失，
+                // 直接引用会被 verifier 在类加载时拒绝整类（同 UserProfileActivity 的写法）
+                try {
+                    android.graphics.BitmapFactory.Options.class.getField("inPurgeable").setBoolean(opts, true);
+                } catch (Throwable t) {
+                }
+                try {
+                    android.graphics.BitmapFactory.Options.class.getField("inInputShareable").setBoolean(opts, true);
+                } catch (Throwable t) {
+                }
                 bitmap = android.graphics.BitmapFactory.decodeFile(file.getAbsolutePath(), opts);
             } catch (OutOfMemoryError e) {
                 getInstance().freeAllUnreferenced();
-                System.gc();
                 scale *= 2;
             }
         }

@@ -120,38 +120,50 @@ public class TimelineFragment extends Fragment {
     private void doLoadtimeline() {
         showLoading();
 
-        // 先尝试加载缓存
-        List<timelineDay> cachedItems = loadLocalCache();
-        if (cachedItems != null && cachedItems.size() > 0) {
-            hideAllLoading();
-            timelineList.clear();
-            timelineList.addAll(cachedItems);
-            adapter.notifyDataSetChanged();
-            listView.setVisibility(View.VISIBLE);
-            listView.requestFocus();
-
-            if (isNetworkAvailable()) {
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        fetchTimelineFromNetwork();
-                    }
-                }).start();
-            }
-            return;
-        }
-
-        // 无缓存，检查网络
-        if (!isNetworkAvailable()) {
-            showNoNetwork();
-            return;
-        }
-
-        // 无缓存有网络，请求数据
+        // 缓存读取 + JSON 解析挪到后台线程（避免主线程同步卡顿）
         new Thread(new Runnable() {
             @Override
             public void run() {
-                fetchTimelineFromNetwork();
+                final List<timelineDay> cachedItems = loadLocalCache();
+                if (getActivity() == null) return;
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        // 先尝试加载缓存
+                        if (cachedItems != null && cachedItems.size() > 0) {
+                            hideAllLoading();
+                            timelineList.clear();
+                            timelineList.addAll(cachedItems);
+                            adapter.notifyDataSetChanged();
+                            listView.setVisibility(View.VISIBLE);
+                            listView.requestFocus();
+
+                            if (isNetworkAvailable()) {
+                                new Thread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        fetchTimelineFromNetwork();
+                                    }
+                                }).start();
+                            }
+                            return;
+                        }
+
+                        // 无缓存，检查网络
+                        if (!isNetworkAvailable()) {
+                            showNoNetwork();
+                            return;
+                        }
+
+                        // 无缓存有网络，请求数据
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                fetchTimelineFromNetwork();
+                            }
+                        }).start();
+                    }
+                });
             }
         }).start();
     }
@@ -160,54 +172,8 @@ public class TimelineFragment extends Fragment {
         try {
             String url = SettingsActivity.getTimelineApiUrl();
 
-            HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-            conn.setConnectTimeout(10000);
-            conn.setReadTimeout(10000);
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
-
-            File jsonFile = cacheDir != null ? new File(cacheDir, "data.json") : null;
-            long ifModifiedSince = 0;
-            if (jsonFile != null && jsonFile.exists()) {
-                ifModifiedSince = jsonFile.lastModified();
-                conn.setRequestProperty("If-Modified-Since", formatHttpDate(ifModifiedSince));
-            }
-
-            conn.connect();
-
-            final int responseCode = conn.getResponseCode();
-
-            if (ifModifiedSince > 0 && responseCode == 304) {
-                if (jsonFile != null && jsonFile.exists()) {
-                    jsonFile.setLastModified(System.currentTimeMillis());
-                }
-                conn.disconnect();
-                return;
-            }
-
-            if (responseCode != 200) {
-                conn.disconnect();
-                if (getActivity() == null) return;
-                getActivity().runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        showError("数据加载失败 (HTTP " + responseCode + ")");
-                    }
-                });
-                return;
-            }
-
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(conn.getInputStream(), "UTF-8"));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
-            }
-            reader.close();
-            conn.disconnect();
-
-            String jsonStr = sb.toString();
+            // 走 NetWorkUtil（带 1.6 兼容：重定向/响应读取）
+            String jsonStr = NetWorkUtil.get(url);
             if (jsonStr == null || jsonStr.length() == 0) {
                 if (getActivity() == null) return;
                 getActivity().runOnUiThread(new Runnable() {
@@ -325,12 +291,6 @@ public class TimelineFragment extends Fragment {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    private String formatHttpDate(long millis) {
-        SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
-        sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
-        return sdf.format(new Date(millis));
     }
 
     private List<timelineDay> parsetimeline(String jsonStr) throws Exception {

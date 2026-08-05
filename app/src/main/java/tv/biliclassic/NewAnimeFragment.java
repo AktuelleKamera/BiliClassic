@@ -1,5 +1,6 @@
 package tv.biliclassic;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
@@ -11,11 +12,14 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.AbsListView;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -44,6 +48,7 @@ import java.util.concurrent.TimeUnit;
 
 import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.MsgUtil;
+import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class NewAnimeFragment extends Fragment {
@@ -57,6 +62,9 @@ public class NewAnimeFragment extends Fragment {
     private View headerContainer;
     private ScrollView contentContainer;
     private LinearLayout gridContainer;
+    private ListView animeList;
+    private TextView emptyView;
+    private AnimeListAdapter animeListAdapter;
 
     private int screenWidth = 0;
     private int screenHeight = 0;
@@ -69,16 +77,35 @@ public class NewAnimeFragment extends Fragment {
     private static final int MAX_RETRY = 1;
     private int retryCount = 0;
 
+    // Android 2.x 上 setImageResource 每次可能重新解码资源图，缓存默认 Drawable 实例复用
+    private static android.graphics.drawable.Drawable sDefaultCoverDrawable;
+
+    // 分帧构建状态
+    private int buildIndex = 0;
+    private int buildLargeCardIndex = 0;
+
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        return maxMemory < 16384;
+        return maxMemory < 24576;
     }
 
     private void initExecutor() {
         if (executor != null && !executor.isShutdown()) {
             executor.shutdownNow();
         }
-        int threadCount = isLowMemoryDevice() ? 1 : 2;
+        int threadCount;
+        // 不按 API 一刀切：低内存设备（堆<16MB，如 N900）强制单线程；
+        // 堆充足的设备（如小米1，32MB 堆但 API10）可用多线程加速解码
+        if (tv.biliclassic.util.SdkHelper.isLowMemoryDevice()) {
+            threadCount = 1;
+        } else {
+            int savedThreads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
+            if (savedThreads > 0) {
+                threadCount = savedThreads;
+            } else {
+                threadCount = 2;
+            }
+        }
         executor = new ThreadPoolExecutor(threadCount, threadCount, 60L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<Runnable>());
     }
@@ -101,11 +128,38 @@ public class NewAnimeFragment extends Fragment {
         headerContainer = view.findViewById(R.id.header_container);
         contentContainer = (ScrollView) view.findViewById(R.id.content_container);
         gridContainer = (LinearLayout) view.findViewById(R.id.grid_container);
+        emptyView = (TextView) view.findViewById(R.id.empty_view);
 
         if (headerContainer != null) {
             headerContainer.setVisibility(View.GONE);
         }
         contentContainer.setVisibility(View.GONE);
+
+        if (!isTablet()) {
+            // 手机：用虚拟化 ListView，避免整页构建冻结
+            animeList = (ListView) view.findViewById(R.id.anime_list);
+            if (animeList != null) {
+                animeList.setDivider(new android.graphics.drawable.ColorDrawable(0x00000000));
+                animeList.setDividerHeight(dpToPx(4));
+                animeList.setVerticalFadingEdgeEnabled(false);
+                animeList.setHorizontalFadingEdgeEnabled(false);
+                if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
+                    tv.biliclassic.util.SdkHelper.setOverScrollNever(animeList);
+                }
+                animeList.setCacheColorHint(0x00000000);
+                animeList.setClipToPadding(false);
+                animeList.setFocusable(true);
+                animeList.setFocusableInTouchMode(true);
+                // 绘制缓存（仅 32MB+ 堆设备）：滑页转场命中缓存，避免每帧重绘全部行
+                if (tv.biliclassic.util.SdkHelper.isHighMemoryDevice()) {
+                    animeList.setDrawingCacheEnabled(true);
+                    animeList.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_AUTO);
+                }
+                animeList.setVisibility(View.VISIBLE);
+                animeListAdapter = new AnimeListAdapter(getActivity(), this);
+                animeList.setAdapter(animeListAdapter);
+            }
+        }
 
         return view;
     }
@@ -244,14 +298,23 @@ public class NewAnimeFragment extends Fragment {
         if (contentContainer != null) {
             contentContainer.setVisibility(View.GONE);
         }
+        if (animeList != null) {
+            animeList.setVisibility(View.GONE);
+        }
     }
 
     private void hideAllLoading() {
         if (headerContainer != null) {
             headerContainer.setVisibility(View.GONE);
         }
-        if (contentContainer != null) {
-            contentContainer.setVisibility(View.VISIBLE);
+        if (isTablet()) {
+            if (contentContainer != null) {
+                contentContainer.setVisibility(View.VISIBLE);
+            }
+        } else {
+            if (animeList != null) {
+                animeList.setVisibility(View.VISIBLE);
+            }
         }
     }
 
@@ -265,8 +328,14 @@ public class NewAnimeFragment extends Fragment {
                 textView.setText(getString(R.string.newanimefragment_settext_7f51));
             }
         }
-        if (contentContainer != null) {
-            contentContainer.setVisibility(View.VISIBLE);
+        if (isTablet()) {
+            if (contentContainer != null) {
+                contentContainer.setVisibility(View.VISIBLE);
+            }
+        } else {
+            if (animeList != null) {
+                animeList.setVisibility(View.VISIBLE);
+            }
         }
     }
 
@@ -276,7 +345,7 @@ public class NewAnimeFragment extends Fragment {
             @Override
             public void run() {
                 hideAllLoading();
-                if (gridContainer != null && gridContainer.getChildCount() == 0) {
+                if (!hasContent()) {
                     showErrorText(getString(R.string.emoticon__no_network));
                 } else {
                     // 有内容，只显示 header 提示
@@ -292,6 +361,13 @@ public class NewAnimeFragment extends Fragment {
         });
     }
 
+    private boolean hasContent() {
+        if (isTablet()) {
+            return gridContainer != null && gridContainer.getChildCount() > 0;
+        }
+        return animeListAdapter != null && animeListAdapter.getCount() > 0;
+    }
+
     private void showLoadError() {
         if (getActivity() == null) return;
         getActivity().runOnUiThread(new Runnable() {
@@ -305,15 +381,25 @@ public class NewAnimeFragment extends Fragment {
 
     private void showErrorText(String msg) {
         if (getActivity() == null) return;
-        if (gridContainer != null) {
-            gridContainer.removeAllViews();
-            TextView tv = new TextView(getActivity());
-            tv.setText(msg);
-            tv.setTextSize(16);
-            tv.setTextColor(0xFF999999);
-            tv.setGravity(android.view.Gravity.CENTER);
-            tv.setPadding(0, dpToPx(100), 0, 0);
-            gridContainer.addView(tv);
+        if (isTablet()) {
+            if (gridContainer != null) {
+                gridContainer.removeAllViews();
+                TextView tv = new TextView(getActivity());
+                tv.setText(msg);
+                tv.setTextSize(16);
+                tv.setTextColor(0xFF999999);
+                tv.setGravity(android.view.Gravity.CENTER);
+                tv.setPadding(0, dpToPx(100), 0, 0);
+                gridContainer.addView(tv);
+            }
+            return;
+        }
+        if (animeList != null) {
+            animeList.setVisibility(View.GONE);
+        }
+        if (emptyView != null) {
+            emptyView.setText(msg);
+            emptyView.setVisibility(View.VISIBLE);
         }
     }
 
@@ -434,14 +520,16 @@ public class NewAnimeFragment extends Fragment {
         }
     }
 
-    private Bitmap getBitmapFromCache(String url) {
+    private Bitmap getBitmapFromCache(String url, boolean isLarge) {
         if (cacheDir == null) return null;
         try {
             File coverDir = new File(cacheDir, "covers");
             String fileName = getCacheFileName(url);
             File cacheFile = new File(coverDir, fileName);
             if (cacheFile.exists()) {
-                return GlobalImageCache.decodeFileSafely(cacheFile, 200, 100, 2);
+                // 与 API 图片尺寸一致：大卡 480x240，小卡 240x120，避免降采样糊图
+                return GlobalImageCache.decodeFileSafely(cacheFile,
+                        isLarge ? 480 : 240, isLarge ? 240 : 120, 2);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -461,36 +549,51 @@ public class NewAnimeFragment extends Fragment {
 
         showLoading();
 
-        // 先尝试加载缓存
-        List<AnimeItem> cachedItems = loadLocalCache();
-        if (cachedItems != null && cachedItems.size() > 0) {
-            hideAllLoading();
-            displayAnimeList(cachedItems);
-
-            if (isNetworkAvailable()) {
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (isDestroyed) return;
-                        fetchAnimeDataFromNetwork();
-                    }
-                }).start();
-            }
-            return;
-        }
-
-        // 无缓存，检查网络
-        if (!isNetworkAvailable()) {
-            showNoNetwork();
-            return;
-        }
-
-        // 无缓存有网络，请求数据
+        // 缓存读取 + JSON 解析挪到后台线程（之前在主线程同步执行，N900 上造成 2s+ 冻结）
         new Thread(new Runnable() {
             @Override
             public void run() {
                 if (isDestroyed) return;
-                fetchAnimeDataFromNetwork();
+                final List<AnimeItem> cachedItems = loadLocalCache();
+                if (getActivity() == null || isDestroyed) return;
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isDestroyed) return;
+
+                        // 先尝试加载缓存
+                        if (cachedItems != null && cachedItems.size() > 0) {
+                            hideAllLoading();
+                            displayAnimeList(cachedItems);
+
+                            if (isNetworkAvailable()) {
+                                new Thread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (isDestroyed) return;
+                                        fetchAnimeDataFromNetwork();
+                                    }
+                                }).start();
+                            }
+                            return;
+                        }
+
+                        // 无缓存，检查网络
+                        if (!isNetworkAvailable()) {
+                            showNoNetwork();
+                            return;
+                        }
+
+                        // 无缓存有网络，请求数据
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (isDestroyed) return;
+                                fetchAnimeDataFromNetwork();
+                            }
+                        }).start();
+                    }
+                });
             }
         }).start();
     }
@@ -499,45 +602,18 @@ public class NewAnimeFragment extends Fragment {
         try {
             String url = SettingsActivity.getNewAnimeApiUrl();
 
-            HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-            conn.setConnectTimeout(12000);
-            conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-
-            File jsonFile = cacheDir != null ? new File(cacheDir, "data.json") : null;
-            long ifModifiedSince = 0;
-            if (jsonFile != null && jsonFile.exists()) {
-                ifModifiedSince = jsonFile.lastModified();
-                conn.setRequestProperty("If-Modified-Since", formatHttpDate(ifModifiedSince));
-            }
-
-            conn.connect();
-
-            int responseCode = conn.getResponseCode();
-
-            if (ifModifiedSince > 0 && responseCode == 304) {
-                if (jsonFile != null && jsonFile.exists()) {
-                    jsonFile.setLastModified(System.currentTimeMillis());
-                }
-                conn.disconnect();
+            // 走 NetWorkUtil：带 1.6 兼容（重定向/响应读取）
+            final String jsonStr = NetWorkUtil.get(url);
+            if (jsonStr == null || jsonStr.length() == 0) {
+                if (getActivity() == null || isDestroyed) return;
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        showLoadError();
+                    }
+                });
                 return;
             }
-
-            if (responseCode != 200) {
-                conn.disconnect();
-                throw new Exception("HTTP " + responseCode);
-            }
-
-            InputStream is = conn.getInputStream();
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            byte[] buffer = new byte[1024];
-            int len;
-            while ((len = is.read(buffer)) != -1) {
-                baos.write(buffer, 0, len);
-            }
-            final String jsonStr = baos.toString("UTF-8");
-            is.close();
-            conn.disconnect();
 
             try {
                 JSONObject root = new JSONObject(jsonStr);
@@ -601,12 +677,6 @@ public class NewAnimeFragment extends Fragment {
         }
     }
 
-    private String formatHttpDate(long millis) {
-        SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
-        sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
-        return sdf.format(new Date(millis));
-    }
-
     private void clearCache() {
         if (cacheDir == null) return;
         try {
@@ -662,113 +732,155 @@ public class NewAnimeFragment extends Fragment {
 
     // 显示方法
 
+    private void setDefaultCover(ImageView iv) {
+        if (sDefaultCoverDrawable == null) {
+            try {
+                sDefaultCoverDrawable = getResources().getDrawable(R.drawable.bili_default_image_tv_with_bg);
+            } catch (Throwable t) {
+                sDefaultCoverDrawable = null;
+            }
+        }
+        if (sDefaultCoverDrawable != null && iv.getDrawable() != sDefaultCoverDrawable) {
+            iv.setImageDrawable(sDefaultCoverDrawable);
+        }
+    }
+
     private void displayAnimeList(List<AnimeItem> items) {
-        if (isDestroyed || items == null || items.size() == 0 || gridContainer == null || getActivity() == null) {
+        if (isDestroyed || items == null || items.size() == 0 || getActivity() == null) {
             return;
         }
 
         animeItems = items;
-        gridContainer.removeAllViews();
 
-        boolean tabletMode = isTablet();
+        if (isTablet()) {
+            if (gridContainer == null) return;
+            gridContainer.removeAllViews();
+            buildIndex = 0;
+            buildLargeCardIndex = 0;
 
-        int index = 0;
-        int largeCardIndex = 0;
-        while (index < items.size()) {
-            if (index % 3 == 0) {
-                if (tabletMode && index + 2 < items.size()) {
-                    android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
-                    int displayWidth = dm.widthPixels;
-                    boolean isLandscape = displayWidth > dm.heightPixels;
-                    // 横屏大卡占 2/3，竖屏大卡占 3/5
-                    int largeWidth = isLandscape ? displayWidth * 2 / 3 : displayWidth * 3 / 5;
-                    int smallWidth = displayWidth - largeWidth - dpToPx(4);
-                    int smallHeight = smallWidth / 3;
-                    int rowHeight = smallHeight * 2 + dpToPx(4);
-
-                    // 偶数行：大卡左、小卡右竖排；奇数行：小卡左竖排、大卡右
-                    boolean isEven = (largeCardIndex % 2 == 0);
-
-                    // 两张小卡竖排容器
-                    LinearLayout smallColumn = new LinearLayout(getActivity());
-                    smallColumn.setOrientation(LinearLayout.VERTICAL);
-                    smallColumn.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, rowHeight));
-
-                    View sm1 = createSmallCard(items.get(index + 1), smallWidth, false);
-                    sm1.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, smallHeight));
-                    smallColumn.addView(sm1);
-
-                    View gap = new View(getActivity());
-                    gap.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, dpToPx(4)));
-                    smallColumn.addView(gap);
-
-                    View sm2 = createSmallCard(items.get(index + 2), smallWidth, false);
-                    sm2.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, smallHeight));
-                    smallColumn.addView(sm2);
-
-                    // 大卡
-                    View largeView = createLargeCardForRow(items.get(index), largeCardIndex == 0, largeWidth);
-                    largeView.setLayoutParams(new LinearLayout.LayoutParams(largeWidth, rowHeight));
-
-                    // 组装行
-                    LinearLayout row = new LinearLayout(getActivity());
-                    row.setOrientation(LinearLayout.HORIZONTAL);
-                    LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT, rowHeight);
-                    if (largeCardIndex == 0) {
-                        rowLp.setMargins(0, 0, 0, dpToPx(2));
-                    } else {
-                        rowLp.setMargins(0, dpToPx(2), 0, dpToPx(2));
-                    }
-                    row.setLayoutParams(rowLp);
-
-                    if (isEven) {
-                        row.addView(largeView);
-                        addRowDivider(row);
-                        row.addView(smallColumn);
-                    } else {
-                        row.addView(smallColumn);
-                        addRowDivider(row);
-                        row.addView(largeView);
-                    }
-                    gridContainer.addView(row);
-                    index += 3;
-                } else {
-                    boolean isFirstLarge = (largeCardIndex == 0);
-                    View largeView = createLargeCard(items.get(index), isFirstLarge);
-                    gridContainer.addView(largeView);
-                    index++;
+            // 分帧构建：每帧只建一行，避免整页一次性 inflate+布局卡死（3606ms 单帧冻结的来源）
+            final Runnable step = new Runnable() {
+                @Override
+                public void run() {
+                    if (isDestroyed) return;
+                    if (!buildNextAnimeRow()) return;
+                    delayHandler.postDelayed(this, 40);
                 }
-                largeCardIndex++;
-            } else {
-                LinearLayout row = new LinearLayout(getActivity());
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                row.setLayoutParams(new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT));
-
-                View leftView = createSmallCard(items.get(index));
-                row.addView(leftView);
-                index++;
-
-                View divider = new View(getActivity());
-                divider.setLayoutParams(new LinearLayout.LayoutParams(dpToPx(4), LinearLayout.LayoutParams.MATCH_PARENT));
-                row.addView(divider);
-
-                if (index < items.size()) {
-                    View rightView = createSmallCard(items.get(index));
-                    row.addView(rightView);
-                    index++;
-                } else {
-                    int itemWidth = screenWidth / 2;
-                    View emptyView = new View(getActivity());
-                    emptyView.setLayoutParams(new LinearLayout.LayoutParams(itemWidth, 1));
-                    row.addView(emptyView);
-                }
-
-                gridContainer.addView(row);
+            };
+            step.run();
+        } else {
+            if (emptyView != null) {
+                emptyView.setVisibility(View.GONE);
+            }
+            if (animeListAdapter != null) {
+                animeListAdapter.setData(items, screenWidth, screenHeight, false);
             }
         }
+    }
+
+    /** 构建一行，返回 true 表示还有更多行 */
+    private boolean buildNextAnimeRow() {
+        List<AnimeItem> items = animeItems;
+        if (items == null || getActivity() == null || isDestroyed) return false;
+        boolean tabletMode = isTablet();
+        int index = buildIndex;
+        if (index >= items.size()) return false;
+
+        if (index % 3 == 0) {
+            if (tabletMode && index + 2 < items.size()) {
+                android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+                int displayWidth = dm.widthPixels;
+                boolean isLandscape = displayWidth > dm.heightPixels;
+                // 横屏大卡占 2/3，竖屏大卡占 3/5
+                int largeWidth = isLandscape ? displayWidth * 2 / 3 : displayWidth * 3 / 5;
+                int smallWidth = displayWidth - largeWidth - dpToPx(4);
+                int smallHeight = smallWidth / 3;
+                int rowHeight = smallHeight * 2 + dpToPx(4);
+
+                // 偶数行：大卡左、小卡右竖排；奇数行：小卡左竖排、大卡右
+                boolean isEven = (buildLargeCardIndex % 2 == 0);
+
+                // 两张小卡竖排容器
+                LinearLayout smallColumn = new LinearLayout(getActivity());
+                smallColumn.setOrientation(LinearLayout.VERTICAL);
+                smallColumn.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, rowHeight));
+
+                View sm1 = createSmallCard(items.get(index + 1), smallWidth, false);
+                sm1.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, smallHeight));
+                smallColumn.addView(sm1);
+
+                View gap = new View(getActivity());
+                gap.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, dpToPx(4)));
+                smallColumn.addView(gap);
+
+                View sm2 = createSmallCard(items.get(index + 2), smallWidth, false);
+                sm2.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, smallHeight));
+                smallColumn.addView(sm2);
+
+                // 大卡
+                View largeView = createLargeCardForRow(items.get(index), buildLargeCardIndex == 0, largeWidth);
+                largeView.setLayoutParams(new LinearLayout.LayoutParams(largeWidth, rowHeight));
+
+                // 组装行
+                LinearLayout row = new LinearLayout(getActivity());
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, rowHeight);
+                if (buildLargeCardIndex == 0) {
+                    rowLp.setMargins(0, 0, 0, dpToPx(2));
+                } else {
+                    rowLp.setMargins(0, dpToPx(2), 0, dpToPx(2));
+                }
+                row.setLayoutParams(rowLp);
+
+                if (isEven) {
+                    row.addView(largeView);
+                    addRowDivider(row);
+                    row.addView(smallColumn);
+                } else {
+                    row.addView(smallColumn);
+                    addRowDivider(row);
+                    row.addView(largeView);
+                }
+                gridContainer.addView(row);
+                buildIndex = index + 3;
+            } else {
+                boolean isFirstLarge = (buildLargeCardIndex == 0);
+                View largeView = createLargeCard(items.get(index), isFirstLarge);
+                gridContainer.addView(largeView);
+                buildIndex = index + 1;
+            }
+            buildLargeCardIndex++;
+        } else {
+            LinearLayout row = new LinearLayout(getActivity());
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT));
+
+            View leftView = createSmallCard(items.get(index));
+            row.addView(leftView);
+            int next = index + 1;
+
+            View divider = new View(getActivity());
+            divider.setLayoutParams(new LinearLayout.LayoutParams(dpToPx(4), LinearLayout.LayoutParams.MATCH_PARENT));
+            row.addView(divider);
+
+            if (next < items.size()) {
+                View rightView = createSmallCard(items.get(next));
+                row.addView(rightView);
+                next++;
+            } else {
+                int itemWidth = screenWidth / 2;
+                View emptyView = new View(getActivity());
+                emptyView.setLayoutParams(new LinearLayout.LayoutParams(itemWidth, 1));
+                row.addView(emptyView);
+            }
+
+            gridContainer.addView(row);
+            buildIndex = next;
+        }
+        return buildIndex < items.size();
     }
 
     private View createLargeCard(final AnimeItem item, boolean isFirst) {
@@ -824,7 +936,7 @@ public class NewAnimeFragment extends Fragment {
 
         tvTitle.setText(item.title);
         try {
-            ivCover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+            setDefaultCover(ivCover);
         } catch (OutOfMemoryError e) {
             tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
             System.gc();
@@ -910,7 +1022,7 @@ public class NewAnimeFragment extends Fragment {
 
         tvTitle.setText(item.title);
         try {
-            ivCover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+            setDefaultCover(ivCover);
         } catch (OutOfMemoryError e) {
             tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
             System.gc();
@@ -967,19 +1079,12 @@ public class NewAnimeFragment extends Fragment {
             return;
         }
 
-        Bitmap localCached = getBitmapFromCache(urlStr);
-        if (localCached != null && !localCached.isRecycled()) {
-            GlobalImageCache.getInstance().put(urlStr, localCached);
-            imageView.setImageBitmap(localCached);
-            return;
-        }
-
         Boolean isLoading = loadingMap.get(urlStr);
         if (isLoading != null && isLoading) {
             return;
         }
 
-        imageView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+        setDefaultCover(imageView);
         loadingMap.put(urlStr, true);
 
         if (executor == null || executor.isShutdown()) {
@@ -992,23 +1097,30 @@ public class NewAnimeFragment extends Fragment {
             public void run() {
                 if (isDestroyed) return;
 
-                final Bitmap bitmap = downloadImage(urlStr, isLarge);
+                // 磁盘缓存解码放在后台线程，避免主线程文件解码卡顿（1.6 无 JIT 时更明显）
+                Bitmap bitmap = getBitmapFromCache(urlStr, isLarge);
+                boolean fromCache = (bitmap != null && !bitmap.isRecycled());
+                if (!fromCache) {
+                    bitmap = downloadImage(urlStr, isLarge);
+                    if (bitmap != null && !bitmap.isRecycled()) {
+                        saveCoverToCache(urlStr, bitmap);
+                    }
+                }
                 loadingMap.remove(urlStr);
 
                 if (bitmap != null && !bitmap.isRecycled()) {
-                    saveCoverToCache(urlStr, bitmap);
                     GlobalImageCache.getInstance().put(urlStr, bitmap);
-
+                    final Bitmap fbmp = bitmap;
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
                             if (isDestroyed) return;
                             Object tag = imageView.getTag();
                             if (tag != null && tag.equals(urlStr)) {
-                                if (bitmap != null && !bitmap.isRecycled()) {
-                                    imageView.setImageBitmap(bitmap);
+                                if (fbmp != null && !fbmp.isRecycled()) {
+                                    imageView.setImageBitmap(fbmp);
                                 } else {
-                                    imageView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+                                    setDefaultCover(imageView);
                                 }
                             }
                         }
@@ -1053,8 +1165,8 @@ public class NewAnimeFragment extends Fragment {
 
             if (!tempFile.exists() || tempFile.length() == 0) return null;
 
-            int targetWidth = isLarge ? 480 : 200;
-            int targetHeight = isLarge ? 240 : 100;
+            int targetWidth = isLarge ? 480 : 240;
+            int targetHeight = isLarge ? 240 : 120;
             return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, targetHeight, 2);
         } catch (Exception e) {
             return null;
@@ -1086,6 +1198,257 @@ public class NewAnimeFragment extends Fragment {
             this.title = title;
             this.coverUrl = coverUrl;
             this.isLarge = isLarge;
+        }
+    }
+
+    /**
+     * 虚拟化行适配器（手机用）：ListView 只构建可见行。
+     * 行型：大卡行 / 双小卡行 / 平板混合行（大卡+双小卡竖排）。
+     */
+    static class AnimeListAdapter extends BaseAdapter {
+
+        static final int TYPE_LARGE = 0;
+        static final int TYPE_SMALL = 1;
+        static final int TYPE_TABLET_MIXED = 2;
+
+        static class RowInfo {
+            int type;
+            int[] items;
+            boolean isEven;
+        }
+
+        private Context context;
+        private NewAnimeFragment fragment;
+        private List<AnimeItem> items;
+        private java.util.ArrayList<RowInfo> rows = new java.util.ArrayList<RowInfo>();
+        private int screenWidth;
+        private int screenHeight;
+        private boolean tabletMode;
+
+        AnimeListAdapter(Context context, NewAnimeFragment fragment) {
+            this.context = context;
+            this.fragment = fragment;
+        }
+
+        void setData(List<AnimeItem> items, int screenWidth, int screenHeight, boolean tabletMode) {
+            this.items = items;
+            this.screenWidth = screenWidth;
+            this.screenHeight = screenHeight;
+            this.tabletMode = tabletMode;
+            rebuildRows();
+            notifyDataSetChanged();
+        }
+
+        private void rebuildRows() {
+            rows.clear();
+            if (items == null || items.size() == 0) return;
+            int index = 0;
+            int largeCardIndex = 0;
+            while (index < items.size()) {
+                if (index % 3 == 0) {
+                    if (tabletMode && index + 2 < items.size()) {
+                        RowInfo r = new RowInfo();
+                        r.type = TYPE_TABLET_MIXED;
+                        r.items = new int[]{index, index + 1, index + 2};
+                        r.isEven = (largeCardIndex % 2 == 0);
+                        rows.add(r);
+                        index += 3;
+                    } else {
+                        RowInfo r = new RowInfo();
+                        r.type = TYPE_LARGE;
+                        r.items = new int[]{index};
+                        rows.add(r);
+                        index++;
+                    }
+                    largeCardIndex++;
+                } else {
+                    RowInfo r = new RowInfo();
+                    r.type = TYPE_SMALL;
+                    r.items = new int[]{index, (index + 1 < items.size()) ? index + 1 : -1};
+                    rows.add(r);
+                    index = (r.items[1] >= 0) ? index + 2 : index + 1;
+                }
+            }
+        }
+
+        @Override
+        public int getCount() {
+            return rows.size();
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return position < rows.size() ? rows.get(position) : null;
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @Override
+        public int getViewTypeCount() {
+            return 3;
+        }
+
+        @Override
+        public int getItemViewType(int position) {
+            if (position < rows.size()) return rows.get(position).type;
+            return TYPE_LARGE;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            if (position >= rows.size()) {
+                return convertView != null ? convertView : new View(context);
+            }
+            RowInfo row = rows.get(position);
+            if (row.type == TYPE_LARGE) {
+                return buildLargeCard(convertView, items.get(row.items[0]));
+            } else if (row.type == TYPE_SMALL) {
+                return buildSmallRow(convertView, row);
+            } else {
+                return buildTabletMixedRow(convertView, row);
+            }
+        }
+
+        private View buildLargeCard(View convertView, AnimeItem item) {
+            View card = convertView;
+            if (card == null) {
+                card = LayoutInflater.from(context).inflate(R.layout.item_anime_large, null);
+                int cardHeight = screenWidth / 2;
+                int maxHeight = (int) (screenHeight * 0.45f);
+                if (cardHeight > maxHeight) cardHeight = maxHeight;
+                if (cardHeight < 80) cardHeight = 80;
+                card.setLayoutParams(new AbsListView.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT, cardHeight));
+            }
+            bindCard(card, item, true);
+            return card;
+        }
+
+        private View buildSmallRow(View convertView, RowInfo row) {
+            LinearLayout container = (LinearLayout) convertView;
+            if (container == null) {
+                container = new LinearLayout(context);
+                container.setOrientation(LinearLayout.HORIZONTAL);
+                int smallHeight = computeSmallHeight();
+
+                View left = LayoutInflater.from(context).inflate(R.layout.item_anime_small, null);
+                left.setLayoutParams(new LinearLayout.LayoutParams(0, smallHeight, 1f));
+                container.addView(left);
+
+                View divider = new View(context);
+                divider.setLayoutParams(new LinearLayout.LayoutParams(dpToPx(4),
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+                container.addView(divider);
+
+                View right = LayoutInflater.from(context).inflate(R.layout.item_anime_small, null);
+                right.setLayoutParams(new LinearLayout.LayoutParams(0, smallHeight, 1f));
+                container.addView(right);
+
+                container.setLayoutParams(new AbsListView.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT, smallHeight));
+            }
+            bindCard(container.getChildAt(0), items.get(row.items[0]), false);
+            View right = container.getChildAt(2);
+            if (row.items.length > 1 && row.items[1] >= 0) {
+                right.setVisibility(View.VISIBLE);
+                bindCard(right, items.get(row.items[1]), false);
+            } else {
+                right.setVisibility(View.INVISIBLE);
+            }
+            return container;
+        }
+
+        private int computeSmallHeight() {
+            int smallWidth = (screenWidth - dpToPx(4)) / 2;
+            int smallHeight = smallWidth / 2;
+            int maxHeight = (int) (screenHeight * 0.4f);
+            if (smallHeight > maxHeight) smallHeight = maxHeight;
+            if (smallHeight < 60) smallHeight = 60;
+            return smallHeight;
+        }
+
+        private View buildTabletMixedRow(View convertView, RowInfo row) {
+            LinearLayout container = (LinearLayout) convertView;
+            if (container == null) {
+                container = new LinearLayout(context);
+                container.setOrientation(LinearLayout.HORIZONTAL);
+
+                int displayWidth = screenWidth;
+                boolean isLandscape = screenWidth > screenHeight;
+                int largeWidth = isLandscape ? displayWidth * 2 / 3 : displayWidth * 3 / 5;
+                int smallWidth = displayWidth - largeWidth - dpToPx(4);
+                int smallHeight = smallWidth / 3;
+                int rowHeight = smallHeight * 2 + dpToPx(4);
+
+                LinearLayout smallColumn = new LinearLayout(context);
+                smallColumn.setOrientation(LinearLayout.VERTICAL);
+                smallColumn.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, rowHeight));
+
+                View sm1 = LayoutInflater.from(context).inflate(R.layout.item_anime_small, null);
+                sm1.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, smallHeight));
+                smallColumn.addView(sm1);
+
+                View gap = new View(context);
+                gap.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, dpToPx(4)));
+                smallColumn.addView(gap);
+
+                View sm2 = LayoutInflater.from(context).inflate(R.layout.item_anime_small, null);
+                sm2.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, smallHeight));
+                smallColumn.addView(sm2);
+
+                View large = LayoutInflater.from(context).inflate(R.layout.item_anime_large, null);
+                large.setLayoutParams(new LinearLayout.LayoutParams(largeWidth, rowHeight));
+
+                if (row.isEven) {
+                    container.addView(large);
+                    container.addView(makeDivider(rowHeight));
+                    container.addView(smallColumn);
+                } else {
+                    container.addView(smallColumn);
+                    container.addView(makeDivider(rowHeight));
+                    container.addView(large);
+                }
+                container.setLayoutParams(new AbsListView.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT, rowHeight));
+            }
+
+            View large = row.isEven ? container.getChildAt(0) : container.getChildAt(2);
+            LinearLayout smallColumn = row.isEven
+                    ? (LinearLayout) container.getChildAt(2)
+                    : (LinearLayout) container.getChildAt(0);
+            bindCard(large, items.get(row.items[0]), true);
+            bindCard(smallColumn.getChildAt(0), items.get(row.items[1]), false);
+            bindCard(smallColumn.getChildAt(2), items.get(row.items[2]), false);
+            return container;
+        }
+
+        private View makeDivider(int height) {
+            View d = new View(context);
+            d.setLayoutParams(new LinearLayout.LayoutParams(dpToPx(4), height));
+            return d;
+        }
+
+        private void bindCard(View card, AnimeItem item, boolean isLarge) {
+            if (card == null || item == null) return;
+            TextView title = (TextView) card.findViewById(R.id.anime_title);
+            ImageView cover = (ImageView) card.findViewById(R.id.anime_cover);
+            if (title != null) {
+                title.setText(item.title != null ? item.title : "");
+            }
+            if (cover != null) {
+                cover.setTag(item.coverUrl);
+                if (item.coverUrl != null && item.coverUrl.length() > 0 && !fragment.isDestroyed) {
+                    fragment.loadImageLazy(cover, item.coverUrl, isLarge);
+                }
+            }
+        }
+
+        private int dpToPx(int dp) {
+            float density = context.getResources().getDisplayMetrics().density;
+            return (int) (dp * density + 0.5f);
         }
     }
 }

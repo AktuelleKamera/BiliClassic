@@ -298,11 +298,8 @@ public class MetroHomeActivity extends BaseActivity {
     }
 
     private int getSdkInt() {
-        try {
-            return android.os.Build.VERSION.class.getField("SDK_INT").getInt(null);
-        } catch (Exception e) {
-            return android.os.Build.VERSION.SDK_INT;
-        }
+        // Build.VERSION.SDK_INT 是 API 9+ 字段，直接引用会在 API<9 上被 verifier 拒绝整类，统一走反射
+        return tv.biliclassic.util.SdkHelper.getSdkInt();
     }
 
     private void clearRowAnimations() {

@@ -158,6 +158,8 @@ public class MainActivity extends BaseActivity {
         }
 
         setContentView(R.layout.activity_main);
+        tv.biliclassic.util.PerfLog.init();
+        tv.biliclassic.util.PerfLog.attachGlobalFrameWatcher(findViewById(android.R.id.content));
         checkLegacyVersionCompatibility();
         checkAndShowCrashDialog();
 
@@ -889,8 +891,8 @@ public class MainActivity extends BaseActivity {
 
         @Override
         public void destroyItem(ViewGroup container, int position, Object object) {
-            // 首页/番剧/时间线/推荐内容较重，保留不销毁，避免划回时重建卡顿
-            if (position == 1 || position == 2 || position == 3 || position == 4) {
+            // 首页/个人中心/番剧/时间线/推荐内容较重，保留不销毁，避免划回时重建卡顿
+            if (position == 0 || position == 1 || position == 2 || position == 3 || position == 4) {
                 return;
             }
             super.destroyItem(container, position, object);
@@ -901,6 +903,7 @@ public class MainActivity extends BaseActivity {
             super.setPrimaryItem(container, position, object);
             if (object instanceof Fragment) {
                 mCurrentFragment = (Fragment) object;
+                tv.biliclassic.util.PerfLog.setPage(getPageTitle(position).toString());
             }
         }
     }

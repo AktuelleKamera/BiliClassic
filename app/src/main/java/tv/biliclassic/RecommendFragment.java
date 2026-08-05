@@ -1,22 +1,18 @@
 package tv.biliclassic;
 
-import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.v4.app.Fragment;
-import android.view.KeyEvent;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.support.v4.widget.SwipeRefreshLayout;
-import android.widget.FrameLayout;
+import android.widget.AbsListView;
+import android.widget.ListView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -29,12 +25,11 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class RecommendFragment extends Fragment {
 
-    private ExpandableGridView gridView;
+    private ListView gridView;
     private ProgressBar progressBar;
     private TextView emptyView;
     private LinearLayout footerContainer;
     private ProgressBar footerProgressBar;
-    private ScrollView scrollView;
     private View headerContainer;
 
     private RecommendGridAdapter adapter;
@@ -45,9 +40,9 @@ public class RecommendFragment extends Fragment {
     private int currentPage = 1;
     private boolean isLoading = false;
     private boolean isEnd = false;
-    private int savedScrollY = -1;
+    private int savedGridPos = -1;
 
-    private static final String STATE_SCROLL_Y = "scroll_y";
+    private static final String STATE_GRID_POS = "grid_pos";
 
     private void showToast(String msg) {
         if (getActivity() != null) {
@@ -60,64 +55,73 @@ public class RecommendFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_recommend, container, false);
 
-        // API 3: 移除 SwipeRefreshLayout（引起 Layout.draw 递归），直接用 ScrollView
+        // API 3: 移除 SwipeRefreshLayout（引起 Layout.draw 递归），直接使用 ListView
         if (tv.biliclassic.util.SdkHelper.getSdkInt() < 4) {
             android.support.v4.widget.SwipeRefreshLayout srl = (android.support.v4.widget.SwipeRefreshLayout)
                     view.findViewById(R.id.swipe_refresh);
-            FrameLayout parent = (FrameLayout) view.findViewById(R.id.recommend_content);
-            scrollView = (ScrollView) view.findViewById(R.id.scroll_view);
-            if (srl != null && parent != null && scrollView != null) {
+            ViewGroup parent = (ViewGroup) view.findViewById(R.id.recommend_content);
+            ListView grid = (ListView) view.findViewById(R.id.recommend_grid);
+            if (srl != null && parent != null && grid != null) {
                 int idx = parent.indexOfChild(srl);
-                ViewGroup svParent = (ViewGroup) scrollView.getParent();
-                if (svParent != null) svParent.removeView(scrollView);
+                ViewGroup gParent = (ViewGroup) grid.getParent();
+                if (gParent != null) gParent.removeView(grid);
                 parent.removeView(srl);
-                parent.addView(scrollView, idx, srl.getLayoutParams());
+                parent.addView(grid, idx, srl.getLayoutParams());
             }
         }
 
-        gridView = (ExpandableGridView) view.findViewById(R.id.recommend_grid);
+        gridView = (ListView) view.findViewById(R.id.recommend_grid);
         progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
         emptyView = (TextView) view.findViewById(R.id.empty_view);
-        footerContainer = (LinearLayout) view.findViewById(R.id.footer_container);
-        footerProgressBar = (ProgressBar) view.findViewById(R.id.footer_progress);
-        scrollView = (ScrollView) view.findViewById(R.id.scroll_view);
         headerContainer = view.findViewById(R.id.header_container);
 
         if (headerContainer != null) {
             headerContainer.setVisibility(View.GONE);
         }
-        footerContainer.setVisibility(View.GONE);
+        hideFooter();
 
         int numColumns = isTablet() ? (isLandscape() ? 4 : 3) : 2;
-        gridView.setNumColumns(numColumns);
-        gridView.setVerticalSpacing(dpToPx(8));
-        gridView.setHorizontalSpacing(dpToPx(8));
         gridView.setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4));
+        gridView.setClipToPadding(false);
+        gridView.setVerticalFadingEdgeEnabled(false);
+        gridView.setHorizontalFadingEdgeEnabled(false);
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
+            tv.biliclassic.util.SdkHelper.setOverScrollNever(gridView);
+        }
+        // 绘制缓存（仅 32MB+ 堆设备）：滑页转场命中缓存，避免每帧重绘全部行
+        if (tv.biliclassic.util.SdkHelper.isHighMemoryDevice()) {
+            gridView.setDrawingCacheEnabled(true);
+            gridView.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_AUTO);
+        }
+
+        // footer 直接加在列表内容之后（addFooterView，随列表滚动）
+        View footer = inflater.inflate(R.layout.item_recommend_footer, gridView, false);
+        footerContainer = (LinearLayout) footer;
+        footerProgressBar = (ProgressBar) footer.findViewById(R.id.footer_progress);
+        gridView.addFooterView(footer);
 
         adapter = new RecommendGridAdapter(getActivity(), videoList);
         adapter.setNumColumns(numColumns);
         gridView.setAdapter(adapter);
 
-        gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        gridView.setFocusable(true);
+        gridView.setFocusableInTouchMode(true);
+
+        // 滚动停止时若接近底部则自动加载更多（GridView 自带虚拟化，只构建可见项）
+        gridView.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                if (position < 0 || position >= videoList.size()) return;
-                VideoCard item = videoList.get(position);
-                if (item == null || getActivity() == null) return;
-                Intent intent = new Intent(getActivity(), VideoDetailActivity.class);
-                if (item.aid != 0) {
-                    intent.putExtra("aid", item.aid);
-                } else if (item.bvid != null && item.bvid.length() > 0) {
-                    intent.putExtra("bvid", item.bvid);
-                } else {
-                    showToast("无法获取视频信息");
-                    return;
+            public void onScroll(AbsListView view, int firstVisibleItem,
+                                 int visibleItemCount, int totalItemCount) {
+            }
+
+            @Override
+            public void onScrollStateChanged(AbsListView view, int scrollState) {
+                if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_IDLE) {
+                    checkScrollToBottom();
                 }
-                startActivity(intent);
             }
         });
 
-        gridView.setFocusable(false);
         if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 4) {
             swipeRefreshLayout = (SwipeRefreshLayout) view.findViewById(R.id.swipe_refresh);
             if (swipeRefreshLayout != null) {
@@ -129,42 +133,10 @@ public class RecommendFragment extends Fragment {
                 });
             }
         }
-        scrollView.setFocusable(true);
-        scrollView.setFocusable(true);
-        scrollView.setFocusableInTouchMode(true);
-        scrollView.requestFocus();
 
-        scrollView.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_UP) {
-                    checkScrollToBottom();
-                }
-                return false;
-            }
-        });
-
-        scrollView.setOnKeyListener(new View.OnKeyListener() {
-            @Override
-            public boolean onKey(View v, int keyCode, KeyEvent event) {
-                if (event.getAction() == KeyEvent.ACTION_UP) {
-                    if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN ||
-                            keyCode == KeyEvent.KEYCODE_PAGE_DOWN) {
-                        new Handler().postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                checkScrollToBottom();
-                            }
-                        }, 150);
-                    }
-                }
-                return false;
-            }
-        });
-
-        // Restore scroll position from saved instance
+        // 恢复滚动位置
         if (savedInstanceState != null) {
-            savedScrollY = savedInstanceState.getInt(STATE_SCROLL_Y, -1);
+            savedGridPos = savedInstanceState.getInt(STATE_GRID_POS, -1);
         }
 
         loadRecommend();
@@ -177,7 +149,6 @@ public class RecommendFragment extends Fragment {
         super.onConfigurationChanged(newConfig);
         if (getActivity() == null) return;
         int numColumns = isTablet() ? (isLandscape() ? 4 : 3) : 2;
-        gridView.setNumColumns(numColumns);
         adapter.setNumColumns(numColumns);
         int remainder = videoList.size() % numColumns;
         if (remainder > 0) {
@@ -195,21 +166,18 @@ public class RecommendFragment extends Fragment {
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        if (scrollView != null) {
-            outState.putInt(STATE_SCROLL_Y, scrollView.getScrollY());
+        if (gridView != null) {
+            outState.putInt(STATE_GRID_POS, gridView.getFirstVisiblePosition());
         }
     }
 
     private void checkScrollToBottom() {
-        if (scrollView == null) return;
-        View child = scrollView.getChildAt(0);
-        if (child != null) {
-            int scrollY = scrollView.getScrollY();
-            int height = child.getHeight();
-            int scrollViewHeight = scrollView.getHeight();
-            if (scrollY + scrollViewHeight >= height - 30) {
-                loadMoreRecommend();
-            }
+        if (gridView == null) return;
+        int total = gridView.getCount();
+        if (total <= 0) return;
+        int last = gridView.getLastVisiblePosition();
+        if (last >= total - 2) {
+            loadMoreRecommend();
         }
     }
 
@@ -338,20 +306,33 @@ public class RecommendFragment extends Fragment {
                                 isEnd = true;
                             }
 
-                            if (savedScrollY >= 0) {
-                                final int restoreY = savedScrollY;
-                                savedScrollY = -1;
-                                scrollView.post(new Runnable() {
+                            if (savedGridPos >= 0) {
+                                final int restorePos = savedGridPos;
+                                savedGridPos = -1;
+                                gridView.post(new Runnable() {
                                     @Override
                                     public void run() {
-                                        scrollView.scrollTo(0, restoreY);
+                                        gridView.setSelection(restorePos);
                                     }
                                 });
                             } else {
-                                scrollView.smoothScrollTo(0, 0);
-                                scrollView.requestFocus();
+                                gridView.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        gridView.setSelection(0);
+                                        gridView.requestFocus();
+                                    }
+                                });
                             }
-                                        }
+
+                            // 首页内容不足一屏时自动补页
+                            gridView.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    checkScrollToBottom();
+                                }
+                            });
+                        }
                     });
                 } catch (final Exception e) {
                     android.util.Log.e("RecommendDiag", "推荐加载异常, 类型=" + e.getClass().getName()
@@ -450,6 +431,14 @@ public class RecommendFragment extends Fragment {
                                 isEnd = true;
                                 showToast("已经到底啦");
                             }
+
+                            // 追加后仍不满一屏则继续补页
+                            gridView.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    checkScrollToBottom();
+                                }
+                            });
                         }
                     });
                 } catch (final Exception e) {

@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/bili_texture_background">
+    android:layout_height="match_parent">
 
     <!-- 加载头部（同款） -->
     <FrameLayout
@@ -17,7 +16,7 @@
 
     </FrameLayout>
 
-    <!-- 内容容器 -->
+    <!-- 内容容器（平板：ScrollView 整页构建） -->
     <ScrollView
         android:id="@+id/content_container"
         android:layout_width="match_parent"
@@ -44,5 +43,28 @@
         </LinearLayout>
 
     </ScrollView>
+
+    <!-- 虚拟化列表（手机：ListView 只构建可见行） -->
+    <ListView
+        android:id="@+id/anime_list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:listSelector="@android:color/transparent"
+        android:divider="#00000000"
+        android:dividerHeight="0dp"
+        android:cacheColorHint="@android:color/transparent"
+        android:clipToPadding="false"
+        android:visibility="gone" />
+
+    <!-- 空/错误视图 -->
+    <TextView
+        android:id="@+id/empty_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="50dp"
+        android:textSize="14sp"
+        android:textColor="#999999"
+        android:visibility="gone" />
 
 </FrameLayout>
