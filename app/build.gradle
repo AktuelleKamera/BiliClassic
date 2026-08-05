@@ -5,8 +5,8 @@ android {
     buildToolsVersion '25.0.0'
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_5
-        targetCompatibility JavaVersion.VERSION_1_5
+        sourceCompatibility JavaVersion.VERSION_1_6
+        targetCompatibility JavaVersion.VERSION_1_6
     }
 
     defaultConfig {

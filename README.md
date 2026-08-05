@@ -57,9 +57,10 @@
 
 - 最低支持 API 3 (Android 1.5)，目标 API 26
 - 纯 Java 6 实现，兼容古早 Dalvik 虚拟机
-- 参考 Bilibili 官方 API 文档实现数据获取
-- WBI 签名算法已迫真适配
 - 二维码生成使用 SwetakeQRCode 魔改
+- 参考 Bilibili 官方 API 文档实现数据获取
+- 独家魔改support-v4库，支持安卓1.5
+- WBI 签名算法已迫真适配
 
 ---
 

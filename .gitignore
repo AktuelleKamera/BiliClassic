@@ -1,4 +1,6 @@
 *.iml
+*.log
+*.apk
 .gradle
 /local.properties
 /.idea/workspace.xml
@@ -8,4 +10,5 @@
 /captures
 .externalNativeBuild
 /DanmakuFlameMaster/build
+/app/build
 /player/build
