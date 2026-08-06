@@ -31,6 +31,18 @@ public class SdkHelper {
     }
 
     /**
+     * 图片加载线程数：优先用户设置值（IMAGE_LOAD_THREADS，>0 时用设置）；
+     * 未设置时按设备内存给默认值（低内存 1，否则 2）
+     */
+    public static int getImageLoadThreads() {
+        int saved = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
+        if (saved > 0) {
+            return saved;
+        }
+        return isLowMemoryDevice() ? 1 : 2;
+    }
+
+    /**
      * 关闭过度滚动（API 9+）。必须用反射：API<9 平台上没有 setOverScrollMode 方法，
      * 若在字节码里直接引用，verifier 会在类加载时因方法不存在而拒绝整个类（VerifyError）。
      * OVER_SCROLL_NEVER = 2。

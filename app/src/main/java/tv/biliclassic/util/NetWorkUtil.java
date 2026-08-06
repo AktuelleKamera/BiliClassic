@@ -261,6 +261,24 @@ public class NetWorkUtil {
         return null;
     }
 
+    /**
+     * 获取当前 csrf（bili_jct），供点赞/评论/关注/投币等 POST 使用。
+     * 优先已保存的 csrf key；为空时再从当前 Cookie 取 bili_jct，
+     * 兼容扫码登录凭证来自跨域 Set-Cookie（URL 里只有 ticket）的情况。
+     */
+    public static synchronized String getCsrf() {
+        String csrf = SharedPreferencesUtil.getString("csrf", "");
+        if (csrf != null && csrf.length() > 0) {
+            return csrf;
+        }
+        String cookie = getCookieString();
+        if (cookie == null || cookie.length() == 0) {
+            cookie = SharedPreferencesUtil.getString("cookies", "");
+        }
+        String fromCookie = getInfoFromCookie("bili_jct", cookie);
+        return fromCookie != null ? fromCookie : "";
+    }
+
     // SSL 相关
 
     private static final X509TrustManager TRUST_ALL_CERTS = new X509TrustManager() {
@@ -720,7 +738,16 @@ public class NetWorkUtil {
         try {
             Map<String, List<String>> headerFields = conn.getHeaderFields();
             if (headerFields == null) return null;
-            List<String> setCookies = headerFields.get("Set-Cookie");
+            // getHeaderFields() 的 key 大小写不保证，需大小写不敏感匹配，
+            // 否则服务器返回 "set-cookie"（小写）时会漏收集，导致登录 Cookie 不完整
+            List<String> setCookies = null;
+            for (Iterator it = headerFields.keySet().iterator(); it.hasNext(); ) {
+                String key = (String) it.next();
+                if (key != null && key.equalsIgnoreCase("Set-Cookie")) {
+                    setCookies = headerFields.get(key);
+                    break;
+                }
+            }
             if (setCookies == null) return null;
             StringBuffer sb = new StringBuffer();
             for (int i = 0; i < setCookies.size(); i++) {
@@ -753,6 +780,13 @@ public class NetWorkUtil {
             try {
                 SharedPreferencesUtil.putLong(SharedPreferencesUtil.mid, Long.parseLong(mid));
             } catch (NumberFormatException e) {}
+        }
+
+        // 现在的扫码登录凭证来自跨域 Set-Cookie（URL 里只有 ticket/gourl），
+        // 必须把 bili_jct 同步到 csrf key，否则点赞/评论/关注等 POST 用的 csrf 为空 → 操作失败
+        String csrf = getInfoFromCookie("bili_jct", merged);
+        if (csrf != null && csrf.length() > 0) {
+            SharedPreferencesUtil.putString("csrf", csrf);
         }
     }
 

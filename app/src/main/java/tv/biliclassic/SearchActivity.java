@@ -99,6 +99,10 @@ public class SearchActivity extends BaseActivity {
 
         resultList.addFooterView(footerView, null, false);
 
+        // 背景是平铺纹理位图：必须显式透明 cacheColorHint，否则 2.x 滚动/加载更多时
+        // 绘制缓存用默认颜色填充，透明的 footer 区域露出纯色底 → footer 背景闪烁
+        resultList.setCacheColorHint(0x00000000);
+
         adapter = new SearchResultAdapter(this, resultListData);
         resultList.setAdapter(adapter);
 
@@ -123,11 +127,14 @@ public class SearchActivity extends BaseActivity {
             @Override
             public void onScrollStateChanged(AbsListView view, int scrollState) {
                 if (scrollState == SCROLL_STATE_IDLE) {
+                    adapter.setScrolling(false);
                     int lastVisible = view.getLastVisiblePosition();
                     int totalCount = adapter.getCount();
                     if (hasSearched && lastVisible >= totalCount - 1 && !isLoading && !isEnd && totalCount > 0) {
                         loadMoreResults();
                     }
+                } else {
+                    adapter.setScrolling(true);
                 }
             }
 

@@ -94,11 +94,7 @@ public class ReplyListAdapter extends BaseAdapter {
     }
 
     private int getConfiguredThreadCount() {
-        int savedThreads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
-        if (savedThreads > 0) {
-            return savedThreads;
-        }
-        return isLowMemoryDevice() ? 1 : 2;
+        return tv.biliclassic.util.SdkHelper.getImageLoadThreads();
     }
 
     private void initExecutor() {

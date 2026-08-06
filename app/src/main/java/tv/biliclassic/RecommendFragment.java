@@ -117,7 +117,10 @@ public class RecommendFragment extends Fragment {
             @Override
             public void onScrollStateChanged(AbsListView view, int scrollState) {
                 if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_IDLE) {
+                    adapter.setScrolling(false);
                     checkScrollToBottom();
+                } else {
+                    adapter.setScrolling(true);
                 }
             }
         });

@@ -46,6 +46,11 @@ public class RecommendGridAdapter extends BaseAdapter {
     private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
+    // 滚动中暂缓应用新图，避免每张图到达都触发整屏软件重绘；
+    // 仅在主线程访问（mainHandler.post 与 setScrolling 都在主线程）
+    private volatile boolean mScrolling = false;
+    private final java.util.ArrayList<Runnable> pendingBitmapSets = new java.util.ArrayList<Runnable>();
+
     // Android 2.x 上 setImageResource 每次可能重新解码资源图，这里缓存默认 Drawable 实例复用
     private static Drawable sDefaultCoverDrawable;
 
@@ -61,16 +66,7 @@ public class RecommendGridAdapter extends BaseAdapter {
     }
 
     private int getConfiguredThreadCount() {
-        // 不按 API 一刀切：低内存设备（堆<16MB，如 N900）强制单线程；
-        // 堆充足的设备（如小米1，32MB 堆但 API10）可用多线程加速解码
-        if (tv.biliclassic.util.SdkHelper.isLowMemoryDevice()) {
-            return 1;
-        }
-        int savedThreads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
-        if (savedThreads > 0) {
-            return savedThreads;
-        }
-        return 2;
+        return tv.biliclassic.util.SdkHelper.getImageLoadThreads();
     }
 
     private void initExecutor() {
@@ -250,26 +246,24 @@ public class RecommendGridAdapter extends BaseAdapter {
                 return;
             }
 
+            final int targetW = cellWidth;
+            final int targetH = coverHeight;
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    final Bitmap bitmap = downloadImage(finalUrl);
+                    final Bitmap bitmap = downloadImage(finalUrl, targetW, targetH);
                     if (bitmap != null && !bitmap.isRecycled()) {
                         GlobalImageCache.getInstance().put(finalUrl, bitmap);
                         GlobalImageCache.getInstance().acquire(finalUrl);
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
-                                Object tag = coverView.getTag();
-                                if (tag != null && tag.equals(finalUrl)) {
-                                    coverView.setImageBitmap(bitmap);
-                                    CellHolder hh = (CellHolder) cell.getTag();
-                                    if (hh != null) {
-                                        hh.currentCoverUrl = finalUrl;
-                                    }
-                                } else {
-                                    GlobalImageCache.getInstance().release(finalUrl);
+                                if (mScrolling) {
+                                    // 滚动中不立即应用：每张图到达都会触发整屏软件重绘
+                                    pendingBitmapSets.add(this);
+                                    return;
                                 }
+                                applyBitmap(cell, coverView, finalUrl, bitmap);
                             }
                         });
                     }
@@ -278,7 +272,7 @@ public class RecommendGridAdapter extends BaseAdapter {
         }
     }
 
-    private Bitmap downloadImage(String urlStr) {
+    private Bitmap downloadImage(String urlStr, int targetWidth, int targetHeight) {
         if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
         HttpURLConnection conn = null;
         java.io.File tempFile = null;
@@ -304,12 +298,7 @@ public class RecommendGridAdapter extends BaseAdapter {
 
             if (!tempFile.exists() || tempFile.length() == 0) return null;
 
-            int targetWidth = 160;
-            int targetHeight = 90;
-            if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 23) {
-                targetWidth = (int)(targetWidth * 1.25f);
-                targetHeight = (int)(targetHeight * 1.25f);
-            }
+            // 按实际显示尺寸解码：1:1 绘制无需软件缩放滤镜（更省且更清晰）
             int minScale = tv.biliclassic.util.SdkHelper.getSdkInt() >= 9 ? 2 : 4;
             return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, targetHeight, minScale);
         } catch (Exception e) {
@@ -318,6 +307,39 @@ public class RecommendGridAdapter extends BaseAdapter {
         } finally {
             if (conn != null) conn.disconnect();
             if (tempFile != null && tempFile.exists()) tempFile.delete();
+        }
+    }
+
+    /** 滚动状态变化时由 ListView 的 OnScrollListener 调用 */
+    public void setScrolling(boolean scrolling) {
+        this.mScrolling = scrolling;
+        if (!scrolling) {
+            flushPendingBitmapSets();
+        }
+    }
+
+    private void flushPendingBitmapSets() {
+        if (pendingBitmapSets.isEmpty()) return;
+        java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
+        pendingBitmapSets.clear();
+        for (int i = 0; i < pending.size(); i++) {
+            try {
+                pending.get(i).run();
+            } catch (Throwable t) {
+            }
+        }
+    }
+
+    private void applyBitmap(View cell, ImageView coverView, String finalUrl, Bitmap bitmap) {
+        Object tag = coverView.getTag();
+        if (tag != null && tag.equals(finalUrl)) {
+            coverView.setImageBitmap(bitmap);
+            CellHolder hh = (CellHolder) cell.getTag();
+            if (hh != null) {
+                hh.currentCoverUrl = finalUrl;
+            }
+        } else {
+            GlobalImageCache.getInstance().release(finalUrl);
         }
     }
 
@@ -332,6 +354,7 @@ public class RecommendGridAdapter extends BaseAdapter {
     }
 
     public void clearCache() {
+        pendingBitmapSets.clear();
         executor.shutdownNow();
         GlobalImageCache.getInstance().clear();
     }

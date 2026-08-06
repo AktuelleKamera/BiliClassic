@@ -155,7 +155,7 @@ public class ReplyApi {
         String arg = "oid=" + oid + "&type=" + type
                 + (root == 0 ? "" : ("&root=" + root + "&parent=" + parent))
                 + "&message=" + text + "&jsonp=jsonp&csrf="
-                + SharedPreferencesUtil.getString("csrf", "");
+                + NetWorkUtil.getCsrf();
 
         String response = NetWorkUtil.post(url, arg, null);
         JSONObject result = new JSONObject(response);
@@ -180,7 +180,7 @@ public class ReplyApi {
      */
     public static String uploadReplyImage(long oid, byte[] imageData, String fileName) throws IOException, JSONException {
         String url = "https://api.bilibili.com/x/dynamic/feed/draw/upload_bfs";
-        String csrf = SharedPreferencesUtil.getString("csrf", "");
+        String csrf = NetWorkUtil.getCsrf();
         String cookies = SharedPreferencesUtil.getString("cookies", "");
 
         String boundary = "----WebKitFormBoundary" + Long.toHexString(System.currentTimeMillis());
@@ -276,7 +276,7 @@ public class ReplyApi {
 
     public static int likeComment(long oid, long rpid, int type) throws IOException, JSONException {
         String url = "https://api.bilibili.com/x/v2/reply/action";
-        String csrf = SharedPreferencesUtil.getString("csrf", "");
+        String csrf = NetWorkUtil.getCsrf();
         String arg = "type=" + type + "&oid=" + oid + "&rpid=" + rpid + "&action=1&csrf=" + csrf;
         String response = NetWorkUtil.post(url, arg, null);
         JSONObject json = new JSONObject(response);
@@ -285,7 +285,7 @@ public class ReplyApi {
 
     public static int unlikeComment(long oid, long rpid, int type) throws IOException, JSONException {
         String url = "https://api.bilibili.com/x/v2/reply/action";
-        String csrf = SharedPreferencesUtil.getString("csrf", "");
+        String csrf = NetWorkUtil.getCsrf();
         String arg = "type=" + type + "&oid=" + oid + "&rpid=" + rpid + "&action=0&csrf=" + csrf;
         String response = NetWorkUtil.post(url, arg, null);
         JSONObject json = new JSONObject(response);
@@ -294,7 +294,7 @@ public class ReplyApi {
 
     public static int deleteComment(long oid, long rpid, int type) throws IOException, JSONException {
         String url = "https://api.bilibili.com/x/v2/reply/del";
-        String csrf = SharedPreferencesUtil.getString("csrf", "");
+        String csrf = NetWorkUtil.getCsrf();
         String arg = "type=" + type + "&oid=" + oid + "&rpid=" + rpid + "&csrf=" + csrf;
         String response = NetWorkUtil.post(url, arg, null);
         JSONObject json = new JSONObject(response);

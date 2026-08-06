@@ -68,6 +68,11 @@ public class HomeFragment extends Fragment {
     private static final Drawable[] sCardForegrounds =
             new Drawable[CARD_FOREGROUNDS.length];
 
+    // Banner 是固定图：一次性缩放到屏幕宽后静态复用，绘制 1:1，
+    // 避免每帧把 224x150 源图软件上采样到全宽
+    private static android.graphics.Bitmap sBannerBitmap;
+    private static int sBannerBitmapWidth = 0;
+
     private Drawable getCachedCardDrawable(int resId, int slot, Drawable[] arr) {
         if (slot < 0 || slot >= arr.length) return null;
         if (arr[slot] == null) {
@@ -82,12 +87,17 @@ public class HomeFragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        // Android 2.x 堆很小，串行加载避免并发解码耗尽外部堆
-        imageExecutor = Executors.newSingleThreadExecutor();
+        // 统一走 SdkHelper：优先用户设置，未设置再按设备内存给默认值，不写死
+        int loadThreads = tv.biliclassic.util.SdkHelper.getImageLoadThreads();
+        if (loadThreads <= 1) {
+            imageExecutor = Executors.newSingleThreadExecutor();
+        } else {
+            imageExecutor = Executors.newFixedThreadPool(loadThreads);
+        }
 
         // 进入分区页前先释放全局图片缓存引用，为 inflate 布局腾出空间
         // （Android 2.x 上 bitmap 常驻外部堆，满时 inflate 任何 ImageView 都会 OOM）
-        // 不显式 System.gc()：2.x GC 是 stop-the-world，会冻结主线程数百毫秒
+        // 不显式 System.gc()
         try {
             GlobalImageCache.getInstance().releaseMemory();
         } catch (Throwable t) {
@@ -153,6 +163,7 @@ public class HomeFragment extends Fragment {
                 }
             } catch (Throwable t) {
             }
+            applyBannerBitmap(bannerImage);
         }
         homeList.addHeaderView(banner);
 
@@ -166,16 +177,74 @@ public class HomeFragment extends Fragment {
         adapter.setData(mainCategories, names);
         homeList.setAdapter(adapter);
 
+        // 滚动中暂缓封面应用：滑到新分区时封面一张张到达，避免每次触发整屏软件重绘
+        homeList.setOnScrollListener(new AbsListView.OnScrollListener() {
+            @Override
+            public void onScroll(AbsListView view, int firstVisibleItem,
+                                 int visibleItemCount, int totalItemCount) {
+            }
+
+            @Override
+            public void onScrollStateChanged(AbsListView view, int scrollState) {
+                if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_IDLE) {
+                    setScrolling(false);
+                } else {
+                    setScrolling(true);
+                }
+            }
+        });
+
         return view;
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        pendingBitmapSets.clear();
         if (imageExecutor != null) {
             imageExecutor.shutdownNow();
             imageExecutor = null;
         }
+    }
+
+    private void applyBannerBitmap(final ImageView bannerImage) {
+        final int screenW = getResources().getDisplayMetrics().widthPixels;
+        if (sBannerBitmap != null && !sBannerBitmap.isRecycled() && sBannerBitmapWidth == screenW) {
+            bannerImage.setImageBitmap(sBannerBitmap);
+            return;
+        }
+        if (imageExecutor == null) return;
+        imageExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    android.graphics.Bitmap src = android.graphics.BitmapFactory.decodeResource(
+                            getResources(), R.drawable.bili_main_banner);
+                    if (src == null) return;
+                    int h = src.getHeight() * screenW / src.getWidth();
+                    if (h < 1) h = 1;
+                    android.graphics.Bitmap scaled = android.graphics.Bitmap.createScaledBitmap(src, screenW, h, true);
+                    if (scaled == src) {
+                        scaled = src;
+                    } else {
+                        src.recycle();
+                    }
+                    final android.graphics.Bitmap fScaled = scaled;
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (getActivity() == null || fScaled.isRecycled()) return;
+                            sBannerBitmap = fScaled;
+                            sBannerBitmapWidth = screenW;
+                            if (bannerImage != null && !fScaled.isRecycled()) {
+                                bannerImage.setImageBitmap(fScaled);
+                            }
+                        }
+                    });
+                } catch (Throwable t) {
+                }
+            }
+        });
     }
 
     private void loadThumbnails(final View section, final int tid, final ImageView[] previews) {
@@ -316,6 +385,51 @@ public class HomeFragment extends Fragment {
         }
     }
 
+    // 滚动中暂缓应用新图，避免滑到时封面一张张到达触发整屏软件重绘（仅主线程访问）
+    private volatile boolean mScrolling = false;
+    private final java.util.ArrayList<Runnable> pendingBitmapSets = new java.util.ArrayList<Runnable>();
+
+    private void setScrolling(boolean scrolling) {
+        this.mScrolling = scrolling;
+        if (!scrolling) {
+            flushPendingBitmapSets();
+        }
+    }
+
+    private void flushPendingBitmapSets() {
+        if (pendingBitmapSets.isEmpty()) return;
+        java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
+        pendingBitmapSets.clear();
+        for (int i = 0; i < pending.size(); i++) {
+            try {
+                pending.get(i).run();
+            } catch (Throwable t) {
+            }
+        }
+    }
+
+    private void setCoverBitmap(final ImageView imageView, final String url, final Bitmap bitmap) {
+        if (mScrolling) {
+            // 滚动中暂缓应用，停下后统一补显示
+            pendingBitmapSets.add(new Runnable() {
+                @Override
+                public void run() {
+                    setCoverBitmap(imageView, url, bitmap);
+                }
+            });
+            return;
+        }
+        if (imageView.getTag() == null || !imageView.getTag().equals(url)) {
+            return;
+        }
+        android.graphics.drawable.Drawable cur = imageView.getDrawable();
+        if (cur instanceof android.graphics.drawable.BitmapDrawable
+                && ((android.graphics.drawable.BitmapDrawable) cur).getBitmap() == bitmap) {
+            return;
+        }
+        imageView.setImageBitmap(bitmap);
+    }
+
     private void loadCover(final ImageView imageView, final VideoCard card) {
         String coverUrl = card.cover;
         if (coverUrl == null || coverUrl.length() == 0) return;
@@ -324,18 +438,24 @@ public class HomeFragment extends Fragment {
         }
         final String url = coverUrl;
         imageView.setTag(url);
+        // 点击监听前置设置：即使封面未加载，点击预览区也能进详情
+        setupClickListener(imageView, card);
 
+        // 布局参数只在值变化时才设置：滚动中重复 setLayoutParams 会触发整表重排（requestLayout），
+        // 是首页滚动卡顿的主因之一
         imageView.post(new Runnable() {
             @Override
             public void run() {
                 ViewGroup.LayoutParams params = imageView.getLayoutParams();
-                if (params != null) {
-                    View parent = (View) imageView.getParent();
-                    if (parent != null) {
-                        int parentWidth = parent.getWidth();
-                        if (parentWidth > 0) {
+                if (params == null) return;
+                View parent = (View) imageView.getParent();
+                if (parent != null) {
+                    int parentWidth = parent.getWidth();
+                    if (parentWidth > 0) {
+                        int h = parentWidth * 3 / 4;
+                        if (params.width != parentWidth || params.height != h) {
                             params.width = parentWidth;
-                            params.height = parentWidth * 3 / 4;
+                            params.height = h;
                             imageView.setLayoutParams(params);
                         }
                     }
@@ -349,8 +469,7 @@ public class HomeFragment extends Fragment {
 
         Bitmap cached = GlobalImageCache.getInstance().get(url);
         if (cached != null && !cached.isRecycled()) {
-            imageView.setImageBitmap(cached);
-            setupClickListener(imageView, card);
+            setCoverBitmap(imageView, url, cached);
             return;
         }
 
@@ -366,11 +485,8 @@ public class HomeFragment extends Fragment {
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
-                                if (getActivity() != null
-                                        && imageView.getTag() != null
-                                        && imageView.getTag().equals(url)) {
-                                    imageView.setImageBitmap(bitmap);
-                                    setupClickListener(imageView, card);
+                                if (getActivity() != null) {
+                                    setCoverBitmap(imageView, url, bitmap);
                                 }
                             }
                         });
@@ -511,14 +627,14 @@ public class HomeFragment extends Fragment {
             if (cardBg != null) {
                 Drawable d = fragment.getCachedCardDrawable(
                         fragment.CARD_BACKGROUNDS[position % 2], position % 2, fragment.sCardBackgrounds);
-                if (d != null) cardBg.setImageDrawable(d);
+                if (d != null && cardBg.getDrawable() != d) cardBg.setImageDrawable(d);
             }
 
             ImageView cardFg = (ImageView) section.findViewById(R.id.card_foreground);
             if (cardFg != null) {
                 Drawable d = fragment.getCachedCardDrawable(
                         fragment.CARD_FOREGROUNDS[position], position, fragment.sCardForegrounds);
-                if (d != null) cardFg.setImageDrawable(d);
+                if (d != null && cardFg.getDrawable() != d) cardFg.setImageDrawable(d);
             }
 
             final View partitionCard = section.findViewById(R.id.partition_card);

@@ -18,6 +18,9 @@ import android.support.v4.app.Fragment;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -270,11 +273,21 @@ public class QRLoginFragment extends Fragment {
         cancelTimer();
 
         final String crossUrl = data.optString("url", "");
+
+        // 先解析 URL 中的登录凭证并保存：不依赖跨域请求是否成功。
+        // 之前 saveUserInfoFromUrl 在 NetWorkUtil.get() 之后同一 try 内，
+        // 跨域请求一异常（TLS/超时/重定向）就整段跳过，出现"登录成功但没保存"。
+        if (crossUrl != null && crossUrl.length() > 0) {
+            saveUserInfoFromUrl(crossUrl);
+        } else {
+            Log.e(TAG, "登录成功但未返回跨域 URL，无法保存登录信息");
+        }
+
+        // 跨域请求用于让服务器种下完整 Cookie，尽力而为，失败不影响已保存的凭证
         if (crossUrl != null && crossUrl.length() > 0) {
             try {
                 NetWorkUtil.get(crossUrl);
                 Log.e(TAG, "跨域请求成功");
-                saveUserInfoFromUrl(crossUrl);
             } catch (Exception e) {
                 Log.e(TAG, "请求跨域 URL 失败: " + e.getMessage());
             }
@@ -314,35 +327,80 @@ public class QRLoginFragment extends Fragment {
     // 用户信息保存
 
     private void saveUserInfoFromUrl(String url) {
-        String dedeUserID = extractQueryParam(url, "DedeUserID");
-        String sessData = extractQueryParam(url, "SESSDATA");
-        String biliJct = extractQueryParam(url, "bili_jct");
-
-        if (dedeUserID == null || dedeUserID.length() == 0) {
-            Log.e(TAG, "从 URL 解析用户信息失败");
+        Map<String, String> params = extractAllQueryParams(url);
+        if (params.isEmpty()) {
+            Log.e(TAG, "从 URL 解析用户信息失败（无任何凭证参数）");
             return;
         }
 
-        try {
-            SharedPreferencesUtil.putLong(SharedPreferencesUtil.mid, Long.parseLong(dedeUserID));
-        } catch (NumberFormatException e) {
-            Log.e(TAG, "解析 DedeUserID 失败: " + e.getMessage());
+        String dedeUserID = params.get("DedeUserID");
+        String biliJct = params.get("bili_jct");
+
+        if (dedeUserID != null && dedeUserID.length() > 0) {
+            try {
+                SharedPreferencesUtil.putLong(SharedPreferencesUtil.mid, Long.parseLong(dedeUserID));
+            } catch (NumberFormatException e) {
+                Log.e(TAG, "解析 DedeUserID 失败: " + e.getMessage());
+            }
         }
 
         if (biliJct != null && biliJct.length() > 0) {
-            SharedPreferencesUtil.putString("csrf", biliJct);
+            SharedPreferencesUtil.putString(SharedPreferencesUtil.csrf, biliJct);
             Log.e(TAG, "保存 csrf 成功: " + biliJct);
         }
 
-        String manualCookies = "DedeUserID=" + dedeUserID
-                + "; SESSDATA=" + sessData
-                + "; bili_jct=" + biliJct;
-        SharedPreferencesUtil.putString("cookies", manualCookies);
-        NetWorkUtil.setCookieString(manualCookies);
+        // 跨域 URL 的查询参数就是完整登录 Cookie 集合。
+        // 必须全部保存（含 DedeUserID__ckMd5、sid 等风控必需项），
+        // 只存 DedeUserID/SESSDATA/bili_jct 会被 B站风控判为未登录（登录不完整）。
+        StringBuffer sb = new StringBuffer();
+        for (Iterator it = params.keySet().iterator(); it.hasNext(); ) {
+            String key = (String) it.next();
+            if ("gourl".equals(key) || "go_url".equals(key) || "url".equals(key)) continue;
+            String value = params.get(key);
+            if (value == null || value.length() == 0) continue;
+            if (sb.length() > 0) sb.append("; ");
+            sb.append(key).append("=").append(value);
+        }
+
+        SharedPreferencesUtil.putString(SharedPreferencesUtil.cookies, sb.toString());
+        NetWorkUtil.setCookieString(sb.toString());
         NetWorkUtil.refreshHeaders();
 
-        Log.e(TAG, "保存用户信息成功，mid: " + dedeUserID);
+        Log.e(TAG, "保存用户信息成功，mid: " + dedeUserID + "，Cookie 数量: " + params.size());
         fetchUserNameWithRetry(0);
+    }
+
+    private Map<String, String> extractAllQueryParams(String url) {
+        Map<String, String> map = new HashMap<String, String>();
+        if (url == null || url.length() == 0) {
+            return map;
+        }
+        try {
+            String query = url;
+            int q = query.indexOf('?');
+            if (q >= 0 && q + 1 < query.length()) {
+                query = query.substring(q + 1);
+            } else {
+                return map;
+            }
+            String[] params = query.split("&");
+            for (int i = 0; i < params.length; i++) {
+                String pair = params[i];
+                int eq = pair.indexOf('=');
+                if (eq > 0) {
+                    String key = pair.substring(0, eq);
+                    String value = pair.substring(eq + 1);
+                    try {
+                        value = java.net.URLDecoder.decode(value, "UTF-8");
+                    } catch (Exception e) {
+                    }
+                    map.put(key, value);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "解析参数失败: " + e.getMessage());
+        }
+        return map;
     }
 
     // 获取用户名
@@ -402,30 +460,6 @@ public class QRLoginFragment extends Fragment {
     }
 
     // 工具方法
-
-    private String extractQueryParam(String url, String paramName) {
-        if (url == null || url.length() == 0) {
-            return null;
-        }
-
-        try {
-            String[] parts = url.split("\\?");
-            if (parts.length < 2) {
-                return null;
-            }
-
-            String[] params = parts[1].split("&");
-            for (int i = 0; i < params.length; i++) {
-                String[] kv = params[i].split("=");
-                if (kv.length == 2 && kv[0].equals(paramName)) {
-                    return kv[1];
-                }
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "解析参数失败: " + e.getMessage());
-        }
-        return null;
-    }
 
     private void updateStatus(final String text) {
         if (isDestroyed || getActivity() == null || scanStat == null) {

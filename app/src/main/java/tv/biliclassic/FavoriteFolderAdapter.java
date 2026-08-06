@@ -39,6 +39,8 @@ public class FavoriteFolderAdapter extends BaseAdapter {
     private Map<String, SoftReference<Bitmap>> imageCache = new HashMap<String, SoftReference<Bitmap>>();
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
     private boolean isLowMemory = false;
+    private volatile boolean mScrolling = false;
+    private final java.util.ArrayList<Runnable> pendingBitmapSets = new java.util.ArrayList<Runnable>();
 
     public FavoriteFolderAdapter(Context context, List<FavoriteFolder> list) {
         this.context = context;
@@ -56,11 +58,8 @@ public class FavoriteFolderAdapter extends BaseAdapter {
     }
 
     private int getConfiguredThreadCount() {
-        int savedThreads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
-        if (savedThreads > 0) {
-            return savedThreads;
-        }
-        return isLowMemory ? 1 : 2;
+        // 统一走 SdkHelper：优先用户设置，未设置再按设备内存给默认值，不写死
+        return tv.biliclassic.util.SdkHelper.getImageLoadThreads();
     }
 
     private void initExecutor() {
@@ -78,6 +77,26 @@ public class FavoriteFolderAdapter extends BaseAdapter {
 
     public void reloadExecutor() {
         initExecutor();
+    }
+
+    /** 滚动状态变化时由 ListView 的 OnScrollListener 调用 */
+    public void setScrolling(boolean scrolling) {
+        this.mScrolling = scrolling;
+        if (!scrolling) {
+            flushPendingBitmapSets();
+        }
+    }
+
+    private void flushPendingBitmapSets() {
+        if (pendingBitmapSets.isEmpty()) return;
+        java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
+        pendingBitmapSets.clear();
+        for (int i = 0; i < pending.size(); i++) {
+            try {
+                pending.get(i).run();
+            } catch (Throwable t) {
+            }
+        }
     }
 
     @Override
@@ -177,6 +196,11 @@ public class FavoriteFolderAdapter extends BaseAdapter {
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
+                                if (mScrolling) {
+                                    // 滚动中暂缓应用，避免每张图到达都整屏软件重绘
+                                    pendingBitmapSets.add(this);
+                                    return;
+                                }
                                 Object tag = coverView.getTag();
                                 if (tag != null && tag.equals(finalCoverUrl)) {
                                     coverView.setImageBitmap(bitmap);
@@ -247,10 +271,12 @@ public class FavoriteFolderAdapter extends BaseAdapter {
 
             if (!tempFile.exists() || tempFile.length() == 0) return null;
 
-            int targetWidth = (int) (120 * context.getResources().getDisplayMetrics().density);
-            return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, 90, 2);
+            // 按实际显示尺寸解码（封面 86x56dp），1:1 绘制无需软件缩放滤镜
+            float density = context.getResources().getDisplayMetrics().density;
+            return GlobalImageCache.decodeFileSafely(tempFile,
+                    (int) (86 * density + 0.5f), (int) (56 * density + 0.5f), 2);
         } catch (OutOfMemoryError e) {
-            System.gc();
+            // 不显式 System.gc()
             return null;
         } catch (Exception e) {
             return null;
@@ -278,6 +304,7 @@ public class FavoriteFolderAdapter extends BaseAdapter {
     }
 
     public void clearCache() {
+        pendingBitmapSets.clear();
         synchronized (imageCache) {
             for (SoftReference<Bitmap> ref : imageCache.values()) {
                 Bitmap bmp = ref.get();

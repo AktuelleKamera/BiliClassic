@@ -8,6 +8,7 @@ import android.content.IntentFilter;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ListView;
+import android.widget.AbsListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -57,6 +58,21 @@ public class FavoriteFolderListActivity extends BaseActivity {
 
         adapter = new FavoriteFolderAdapter(this, folderList);
         listView.setAdapter(adapter);
+
+        listView.setOnScrollListener(new AbsListView.OnScrollListener() {
+            @Override
+            public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+            }
+
+            @Override
+            public void onScrollStateChanged(AbsListView view, int scrollState) {
+                if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_IDLE) {
+                    adapter.setScrolling(false);
+                } else {
+                    adapter.setScrolling(true);
+                }
+            }
+        });
 
         findViewById(R.id.btn_back).setOnClickListener(new View.OnClickListener() {
             @Override

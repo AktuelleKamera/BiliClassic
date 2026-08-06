@@ -119,7 +119,7 @@ public class LoginApi {
      */
     public static void requestSSOs() throws JSONException, IOException {
         String listUrl = "https://passport.bilibili.com/x/passport-login/web/sso/list";
-        String csrf = SharedPreferencesUtil.getString(SharedPreferencesUtil.csrf, "");
+        String csrf = NetWorkUtil.getCsrf();
 
         NetWorkUtil.FormData formData = new NetWorkUtil.FormData();
         formData.put("csrf", csrf);

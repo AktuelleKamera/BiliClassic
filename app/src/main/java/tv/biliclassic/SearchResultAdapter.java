@@ -36,6 +36,8 @@ public class SearchResultAdapter extends BaseAdapter {
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Map<String, SoftReference<Bitmap>> imageCache = new HashMap<String, SoftReference<Bitmap>>();
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
+    private volatile boolean mScrolling = false;
+    private final java.util.ArrayList<Runnable> pendingBitmapSets = new java.util.ArrayList<Runnable>();
 
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
@@ -43,11 +45,8 @@ public class SearchResultAdapter extends BaseAdapter {
     }
 
     private int getConfiguredThreadCount() {
-        int savedThreads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
-        if (savedThreads > 0) {
-            return savedThreads;
-        }
-        return isLowMemoryDevice() ? 1 : 2;
+        // 统一走 SdkHelper：优先用户设置，未设置再按设备内存给默认值，不写死
+        return tv.biliclassic.util.SdkHelper.getImageLoadThreads();
     }
 
     private void initExecutor() {
@@ -67,6 +66,26 @@ public class SearchResultAdapter extends BaseAdapter {
         this.context = context;
         this.list = list;
         initExecutor();
+    }
+
+    /** 滚动状态变化时由 ListView 的 OnScrollListener 调用 */
+    public void setScrolling(boolean scrolling) {
+        this.mScrolling = scrolling;
+        if (!scrolling) {
+            flushPendingBitmapSets();
+        }
+    }
+
+    private void flushPendingBitmapSets() {
+        if (pendingBitmapSets.isEmpty()) return;
+        java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
+        pendingBitmapSets.clear();
+        for (int i = 0; i < pending.size(); i++) {
+            try {
+                pending.get(i).run();
+            } catch (Throwable t) {
+            }
+        }
     }
 
     @Override
@@ -120,39 +139,54 @@ public class SearchResultAdapter extends BaseAdapter {
             final ImageView coverView = holder.cover;
             coverView.setTag(finalCoverUrl);
 
+            boolean alreadySet = false;
             SoftReference<Bitmap> softBitmap = imageCache.get(finalCoverUrl);
             if (softBitmap != null) {
                 Bitmap cachedBitmap = softBitmap.get();
                 if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
-                    coverView.setImageBitmap(cachedBitmap);
+                    alreadySet = true;
+                    // 已是同一张位图则跳过，避免滚动中重复 invalidate
+                    android.graphics.drawable.Drawable cur = coverView.getDrawable();
+                    if (!(cur instanceof android.graphics.drawable.BitmapDrawable)
+                            || ((android.graphics.drawable.BitmapDrawable) cur).getBitmap() != cachedBitmap) {
+                        coverView.setImageBitmap(cachedBitmap);
+                    }
                 } else {
                     imageCache.remove(finalCoverUrl);
                 }
             }
 
-            Boolean isLoading = loadingMap.get(Integer.valueOf(currentPos));
-            if (isLoading == null || !isLoading.booleanValue()) {
-                loadingMap.put(Integer.valueOf(currentPos), Boolean.TRUE);
-                executor.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        final Bitmap bitmap = downloadImage(finalCoverUrl);
-                        loadingMap.remove(Integer.valueOf(currentPos));
+            // 命中缓存不再重新下载（原逻辑每 bind 都会重新下载，滚动时造成大量请求+回调）
+            if (!alreadySet) {
+                Boolean isLoading = loadingMap.get(Integer.valueOf(currentPos));
+                if (isLoading == null || !isLoading.booleanValue()) {
+                    loadingMap.put(Integer.valueOf(currentPos), Boolean.TRUE);
+                    executor.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            final Bitmap bitmap = downloadImage(finalCoverUrl);
+                            loadingMap.remove(Integer.valueOf(currentPos));
 
-                        if (bitmap != null && !bitmap.isRecycled()) {
-                            imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
-                            mainHandler.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    Object currentTag = coverView.getTag();
-                                    if (currentTag != null && currentTag.equals(finalCoverUrl)) {
-                                        coverView.setImageBitmap(bitmap);
+                            if (bitmap != null && !bitmap.isRecycled()) {
+                                imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
+                                mainHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (mScrolling) {
+                                            // 滚动中暂缓应用，避免每张图到达都整屏软件重绘
+                                            pendingBitmapSets.add(this);
+                                            return;
+                                        }
+                                        Object currentTag = coverView.getTag();
+                                        if (currentTag != null && currentTag.equals(finalCoverUrl)) {
+                                            coverView.setImageBitmap(bitmap);
+                                        }
                                     }
-                                }
-                            });
+                                });
+                            }
                         }
-                    }
-                });
+                    });
+                }
             }
         }
 
@@ -195,8 +229,10 @@ public class SearchResultAdapter extends BaseAdapter {
 
             if (!tempFile.exists() || tempFile.length() == 0) return null;
 
-            int targetWidth = (int) (160 * context.getResources().getDisplayMetrics().density);
-            return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, 90, 2);
+            // 按实际显示尺寸解码（封面 96x66dp），1:1 绘制无需软件缩放滤镜
+            float density = context.getResources().getDisplayMetrics().density;
+            return GlobalImageCache.decodeFileSafely(tempFile,
+                    (int) (96 * density + 0.5f), (int) (66 * density + 0.5f), 2);
         } catch (Exception e) {
             return null;
         } finally {
@@ -216,6 +252,7 @@ public class SearchResultAdapter extends BaseAdapter {
     }
 
     public void clearCache() {
+        pendingBitmapSets.clear();
         for (SoftReference<Bitmap> ref : imageCache.values()) {
             Bitmap bmp = ref.get();
             if (bmp != null && !bmp.isRecycled()) {

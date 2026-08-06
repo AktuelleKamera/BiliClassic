@@ -80,6 +80,10 @@ public class NewAnimeFragment extends Fragment {
     // Android 2.x 上 setImageResource 每次可能重新解码资源图，缓存默认 Drawable 实例复用
     private static android.graphics.drawable.Drawable sDefaultCoverDrawable;
 
+    // 滚动中暂缓应用新图，避免每张图到达都触发整屏软件重绘（仅主线程访问）
+    private volatile boolean mListScrolling = false;
+    private final ArrayList<Runnable> pendingBitmapSets = new ArrayList<Runnable>();
+
     // 分帧构建状态
     private int buildIndex = 0;
     private int buildLargeCardIndex = 0;
@@ -93,19 +97,7 @@ public class NewAnimeFragment extends Fragment {
         if (executor != null && !executor.isShutdown()) {
             executor.shutdownNow();
         }
-        int threadCount;
-        // 不按 API 一刀切：低内存设备（堆<16MB，如 N900）强制单线程；
-        // 堆充足的设备（如小米1，32MB 堆但 API10）可用多线程加速解码
-        if (tv.biliclassic.util.SdkHelper.isLowMemoryDevice()) {
-            threadCount = 1;
-        } else {
-            int savedThreads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
-            if (savedThreads > 0) {
-                threadCount = savedThreads;
-            } else {
-                threadCount = 2;
-            }
-        }
+        int threadCount = tv.biliclassic.util.SdkHelper.getImageLoadThreads();
         executor = new ThreadPoolExecutor(threadCount, threadCount, 60L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<Runnable>());
     }
@@ -158,6 +150,22 @@ public class NewAnimeFragment extends Fragment {
                 animeList.setVisibility(View.VISIBLE);
                 animeListAdapter = new AnimeListAdapter(getActivity(), this);
                 animeList.setAdapter(animeListAdapter);
+                animeList.setOnScrollListener(new AbsListView.OnScrollListener() {
+                    @Override
+                    public void onScroll(AbsListView view, int firstVisibleItem,
+                                         int visibleItemCount, int totalItemCount) {
+                    }
+
+                    @Override
+                    public void onScrollStateChanged(AbsListView view, int scrollState) {
+                        if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_IDLE) {
+                            mListScrolling = false;
+                            flushPendingBitmapSets();
+                        } else {
+                            mListScrolling = true;
+                        }
+                    }
+                });
             }
         }
 
@@ -539,6 +547,24 @@ public class NewAnimeFragment extends Fragment {
 
     // 网络加载
 
+    private void preloadCoverCache(List<AnimeItem> items) {
+        if (items == null || isDestroyed) return;
+        int loaded = 0;
+        for (int i = 0; i < items.size() && loaded < 8; i++) {
+            AnimeItem item = items.get(i);
+            if (item == null || item.coverUrl == null || item.coverUrl.length() == 0) continue;
+            try {
+                if (GlobalImageCache.getInstance().get(item.coverUrl) != null) continue;
+                Bitmap bmp = getBitmapFromCache(item.coverUrl, item.isLarge);
+                if (bmp != null && !bmp.isRecycled()) {
+                    GlobalImageCache.getInstance().put(item.coverUrl, bmp);
+                    loaded++;
+                }
+            } catch (Throwable t) {
+            }
+        }
+    }
+
     private void loadAnimeData() {
         retryCount = 0;
         doLoadAnimeData();
@@ -555,6 +581,9 @@ public class NewAnimeFragment extends Fragment {
             public void run() {
                 if (isDestroyed) return;
                 final List<AnimeItem> cachedItems = loadLocalCache();
+                // 预解码可见封面进内存缓存：fill 时 1:1 命中，
+                // 避免默认小图(220x165)放大绘制 + 逐张异步回填造成的重渲染冻结
+                preloadCoverCache(cachedItems);
                 if (getActivity() == null || isDestroyed) return;
                 getActivity().runOnUiThread(new Runnable() {
                     @Override
@@ -773,7 +802,15 @@ public class NewAnimeFragment extends Fragment {
                 emptyView.setVisibility(View.GONE);
             }
             if (animeListAdapter != null) {
-                animeListAdapter.setData(items, screenWidth, screenHeight, false);
+                // 延迟一帧再填充：列表刚可见那帧先画出，填充+首帧绘制不挤在同一帧（重渲染冻结来源）
+                final List<AnimeItem> finalItems = items;
+                animeList.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isDestroyed) return;
+                        animeListAdapter.setData(finalItems, screenWidth, screenHeight, false);
+                    }
+                });
             }
         }
     }
@@ -1115,19 +1152,41 @@ public class NewAnimeFragment extends Fragment {
                         @Override
                         public void run() {
                             if (isDestroyed) return;
-                            Object tag = imageView.getTag();
-                            if (tag != null && tag.equals(urlStr)) {
-                                if (fbmp != null && !fbmp.isRecycled()) {
-                                    imageView.setImageBitmap(fbmp);
-                                } else {
-                                    setDefaultCover(imageView);
-                                }
+                            if (mListScrolling) {
+                                // 滚动中不立即应用：每张图到达都会触发整屏软件重绘
+                                pendingBitmapSets.add(this);
+                                return;
                             }
+                            applyAnimeBitmap(imageView, urlStr, fbmp);
                         }
                     });
                 }
             }
         });
+    }
+
+    private void applyAnimeBitmap(ImageView imageView, String urlStr, Bitmap fbmp) {
+        if (isDestroyed) return;
+        Object tag = imageView.getTag();
+        if (tag != null && tag.equals(urlStr)) {
+            if (fbmp != null && !fbmp.isRecycled()) {
+                imageView.setImageBitmap(fbmp);
+            } else {
+                setDefaultCover(imageView);
+            }
+        }
+    }
+
+    private void flushPendingBitmapSets() {
+        if (pendingBitmapSets.isEmpty()) return;
+        ArrayList<Runnable> pending = new ArrayList<Runnable>(pendingBitmapSets);
+        pendingBitmapSets.clear();
+        for (int i = 0; i < pending.size(); i++) {
+            try {
+                pending.get(i).run();
+            } catch (Throwable t) {
+            }
+        }
     }
 
     private Bitmap downloadImage(String urlStr, boolean isLarge) {
@@ -1431,7 +1490,7 @@ public class NewAnimeFragment extends Fragment {
             return d;
         }
 
-        private void bindCard(View card, AnimeItem item, boolean isLarge) {
+        private void bindCard(View card, final AnimeItem item, boolean isLarge) {
             if (card == null || item == null) return;
             TextView title = (TextView) card.findViewById(R.id.anime_title);
             ImageView cover = (ImageView) card.findViewById(R.id.anime_cover);
@@ -1444,6 +1503,15 @@ public class NewAnimeFragment extends Fragment {
                     fragment.loadImageLazy(cover, item.coverUrl, isLarge);
                 }
             }
+            // 手机 ListView 路径的点击（平板 createLargeCard/createSmallCard 已有点击）
+            card.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (fragment != null) {
+                        fragment.openAnimeDetail(item);
+                    }
+                }
+            });
         }
 
         private int dpToPx(int dp) {

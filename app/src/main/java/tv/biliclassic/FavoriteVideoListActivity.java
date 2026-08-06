@@ -90,11 +90,14 @@ public class FavoriteVideoListActivity extends BaseActivity {
         listView.setOnScrollListener(new AbsListView.OnScrollListener() {
             public void onScrollStateChanged(AbsListView view, int scrollState) {
                 if (scrollState == SCROLL_STATE_IDLE) {
+                    adapter.setScrolling(false);
                     int lastVisible = view.getLastVisiblePosition();
                     int totalCount = adapter.getCount();
                     if (lastVisible >= totalCount - 1 && !isLoading && !isEnd && totalCount > 0 && totalCount >= 30) {
                         loadMoreVideos();
                     }
+                } else {
+                    adapter.setScrolling(true);
                 }
             }
 

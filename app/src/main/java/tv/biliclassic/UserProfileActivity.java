@@ -74,6 +74,30 @@ public class UserProfileActivity extends BaseActivity {
 
     private boolean isDestroyed = false;
 
+    // 滚动中暂缓应用新图，避免每张图到达都触发整屏软件重绘（仅主线程访问）
+    private volatile boolean mScrolling = false;
+    private final java.util.ArrayList<Runnable> pendingBitmapSets = new java.util.ArrayList<Runnable>();
+
+    /** 滚动状态变化时由 ListView 的 OnScrollListener 调用 */
+    private void setScrolling(boolean scrolling) {
+        this.mScrolling = scrolling;
+        if (!scrolling) {
+            flushPendingBitmapSets();
+        }
+    }
+
+    private void flushPendingBitmapSets() {
+        if (pendingBitmapSets.isEmpty()) return;
+        java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
+        pendingBitmapSets.clear();
+        for (int i = 0; i < pending.size(); i++) {
+            try {
+                pending.get(i).run();
+            } catch (Throwable t) {
+            }
+        }
+    }
+
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
         return maxMemory < 24576;
@@ -92,7 +116,8 @@ public class UserProfileActivity extends BaseActivity {
         if (executor != null && !executor.isShutdown()) {
             executor.shutdownNow();
         }
-        int threadCount = isLowMemoryDevice() ? 1 : 2;
+        // 统一走 SdkHelper：优先用户设置，未设置再按设备内存给默认值，不写死
+        int threadCount = tv.biliclassic.util.SdkHelper.getImageLoadThreads();
         executor = new ThreadPoolExecutor(threadCount, threadCount, 60L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<Runnable>());
     }
@@ -158,6 +183,7 @@ public class UserProfileActivity extends BaseActivity {
             @Override
             public void onScrollStateChanged(AbsListView view, int scrollState) {
                 if (scrollState == SCROLL_STATE_IDLE) {
+                    setScrolling(false);
                     if (!isLoadingMore && !isLoadingVideos && !isVideoEnd) {
                         int lastVisible = view.getLastVisiblePosition();
                         int totalCount = videoAdapter.getCount();
@@ -166,6 +192,8 @@ public class UserProfileActivity extends BaseActivity {
                             loadMoreVideos();
                         }
                     }
+                } else {
+                    setScrolling(true);
                 }
             }
 
@@ -365,8 +393,6 @@ public class UserProfileActivity extends BaseActivity {
 
     private Bitmap downloadImage(String urlStr, boolean isAvatar) {
         if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
-        // 每次下载前主动调用 GC，清理上一个 bitmap 的内存
-        System.gc();
         HttpURLConnection conn = null;
         InputStream is = null;
         try {
@@ -394,8 +420,10 @@ public class UserProfileActivity extends BaseActivity {
                 outHeight = 600;
             }
 
-            int targetWidth = isAvatar ? 64 : 160;
-            int targetHeight = isAvatar ? 64 : 90;
+            // 按实际显示尺寸解码（封面 116x71dp / 头像 64dp），1:1 绘制无需软件缩放滤镜
+            float density = getResources().getDisplayMetrics().density;
+            int targetWidth = isAvatar ? 64 : (int) (116 * density + 0.5f);
+            int targetHeight = isAvatar ? 64 : (int) (71 * density + 0.5f);
 
             // 计算缩放比例，确保为 2 的幂（低版本 Android 要求）
             int scale = 1;
@@ -416,11 +444,6 @@ public class UserProfileActivity extends BaseActivity {
             options = new BitmapFactory.Options();
             options.inSampleSize = scale;
             options.inPreferredConfig = Bitmap.Config.RGB_565;
-            try {
-                BitmapFactory.Options.class.getField("inPurgeable").setBoolean(options, true);
-                BitmapFactory.Options.class.getField("inInputShareable").setBoolean(options, true);
-            } catch (Exception ignored) {
-            }
 
             // 如果预计 bitmap 太大，主动跳过
             int estWidth = outWidth / scale;
@@ -719,42 +742,57 @@ public class UserProfileActivity extends BaseActivity {
                 final String finalUrl = coverUrl;
                 final ImageView coverView = holder.cover;
 
+                boolean alreadySet = false;
                 Bitmap cached = imageCache.get(finalUrl);
                 if (cached != null && !cached.isRecycled()) {
-                    coverView.setImageBitmap(cached);
+                    alreadySet = true;
+                    // 已是同一张位图则跳过，避免滚动中重复 invalidate
+                    android.graphics.drawable.Drawable cur = coverView.getDrawable();
+                    if (!(cur instanceof android.graphics.drawable.BitmapDrawable)
+                            || ((android.graphics.drawable.BitmapDrawable) cur).getBitmap() != cached) {
+                        coverView.setImageBitmap(cached);
+                    }
                 }
 
-                Boolean isLoading = loadingMap.get(position);
-                if (isLoading == null || !isLoading) {
-                    final int currentPos = position;
-                    loadingMap.put(currentPos, true);
-                    if (executor != null && !executor.isShutdown()) {
-                        executor.execute(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (isDestroyed) return;
-                                final Bitmap bitmap = downloadImage(finalUrl, false);
-                                loadingMap.remove(currentPos);
-                                if (bitmap != null && !bitmap.isRecycled()) {
-                                    imageCache.put(finalUrl, bitmap);
-                                    mainHandler.post(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            if (isDestroyed) return;
-                                            Object tag = coverView.getTag();
-                                            if (tag != null && tag.equals(finalUrl)) {
-                                                Bitmap bmp = imageCache.get(finalUrl);
-                                                if (bmp != null && !bmp.isRecycled()) {
-                                                    coverView.setImageBitmap(bmp);
-                                                } else {
-                                                    coverView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+                // 命中缓存不再重新下载（原逻辑每 bind 都会重新下载）
+                if (!alreadySet) {
+                    Boolean isLoading = loadingMap.get(position);
+                    if (isLoading == null || !isLoading) {
+                        final int currentPos = position;
+                        loadingMap.put(currentPos, true);
+                        if (executor != null && !executor.isShutdown()) {
+                            executor.execute(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (isDestroyed) return;
+                                    final Bitmap bitmap = downloadImage(finalUrl, false);
+                                    loadingMap.remove(currentPos);
+                                    if (bitmap != null && !bitmap.isRecycled()) {
+                                        imageCache.put(finalUrl, bitmap);
+                                        mainHandler.post(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                if (isDestroyed) return;
+                                                if (mScrolling) {
+                                                    // 滚动中暂缓应用，避免每张图到达都整屏软件重绘
+                                                    pendingBitmapSets.add(this);
+                                                    return;
+                                                }
+                                                Object tag = coverView.getTag();
+                                                if (tag != null && tag.equals(finalUrl)) {
+                                                    Bitmap bmp = imageCache.get(finalUrl);
+                                                    if (bmp != null && !bmp.isRecycled()) {
+                                                        coverView.setImageBitmap(bmp);
+                                                    } else {
+                                                        coverView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
+                                                    }
                                                 }
                                             }
-                                        }
-                                    });
+                                        });
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
                     }
                 }
             }

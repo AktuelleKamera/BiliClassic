@@ -14,7 +14,7 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 public class InteractionApi {
 
     public static int triple(long aid) throws IOException, JSONException {
-        String csrf = SharedPreferencesUtil.getString("csrf", "");
+        String csrf = NetWorkUtil.getCsrf();
         String arg = "aid=" + aid + "&csrf=" + csrf;
         String response = NetWorkUtil.post("https://api.bilibili.com/x/web-interface/archive/like/triple", arg, NetWorkUtil.webHeaders);
         JSONObject result = new JSONObject(response);
@@ -23,7 +23,7 @@ public class InteractionApi {
     }
 
     public static int like(long aid, int likeState) throws IOException, JSONException {
-        String csrf = SharedPreferencesUtil.getString("csrf", "");
+        String csrf = NetWorkUtil.getCsrf();
         String arg = "aid=" + aid + "&like=" + likeState + "&csrf=" + csrf;
         String response = NetWorkUtil.post("https://api.bilibili.com/x/web-interface/archive/like", arg, NetWorkUtil.webHeaders);
         JSONObject result = new JSONObject(response);
@@ -32,7 +32,7 @@ public class InteractionApi {
     }
 
     public static int coin(long aid, int multiply) throws IOException, JSONException {
-        String csrf = SharedPreferencesUtil.getString("csrf", "");
+        String csrf = NetWorkUtil.getCsrf();
         NetWorkUtil.fetchBuvid3();
         String arg = "aid=" + aid
             + "&multiply=" + multiply
@@ -57,7 +57,7 @@ public class InteractionApi {
     public static int favorite(long aid, long fid) throws IOException, JSONException {
         String strMid = String.valueOf(SharedPreferencesUtil.getLong("mid", 0));
         String addFid = fid + strMid.substring(strMid.length() - 2);
-        String csrf = SharedPreferencesUtil.getString("csrf", "");
+        String csrf = NetWorkUtil.getCsrf();
         String arg = "rid=" + aid + "&type=2&add_media_ids=" + addFid + "&del_media_ids=&csrf=" + csrf;
         String response = NetWorkUtil.post("https://api.bilibili.com/medialist/gateway/coll/resource/deal", arg, NetWorkUtil.webHeaders);
         JSONObject result = new JSONObject(response);

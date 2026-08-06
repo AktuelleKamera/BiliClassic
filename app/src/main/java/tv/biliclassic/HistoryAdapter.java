@@ -38,6 +38,7 @@ public class HistoryAdapter extends BaseAdapter {
 
     private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
     private boolean isScrolling = false;
+    private final java.util.ArrayList<Runnable> pendingBitmapSets = new java.util.ArrayList<Runnable>();
 
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
@@ -45,11 +46,7 @@ public class HistoryAdapter extends BaseAdapter {
     }
 
     private int getConfiguredThreadCount() {
-        int savedThreads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
-        if (savedThreads > 0) {
-            return savedThreads;
-        }
-        return isLowMemoryDevice() ? 1 : 3;
+        return tv.biliclassic.util.SdkHelper.getImageLoadThreads();
     }
 
     private void initExecutor() {
@@ -74,6 +71,21 @@ public class HistoryAdapter extends BaseAdapter {
 
     public void setScrolling(boolean scrolling) {
         this.isScrolling = scrolling;
+        if (!scrolling) {
+            flushPendingBitmapSets();
+        }
+    }
+
+    private void flushPendingBitmapSets() {
+        if (pendingBitmapSets.isEmpty()) return;
+        java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
+        pendingBitmapSets.clear();
+        for (int i = 0; i < pending.size(); i++) {
+            try {
+                pending.get(i).run();
+            } catch (Throwable t) {
+            }
+        }
     }
 
     public void reloadExecutor() {
@@ -148,6 +160,11 @@ public class HistoryAdapter extends BaseAdapter {
                                 mainHandler.post(new Runnable() {
                                     @Override
                                     public void run() {
+                                        if (isScrolling) {
+                                            // 滚动中暂缓应用，避免每张图到达都整屏软件重绘
+                                            pendingBitmapSets.add(this);
+                                            return;
+                                        }
                                         Object currentTag = coverView.getTag();
                                         if (currentTag != null && currentTag.equals(finalCoverUrl)) {
                                             coverView.setImageBitmap(bitmap);
@@ -207,9 +224,12 @@ public class HistoryAdapter extends BaseAdapter {
 
             if (!tempFile.exists() || tempFile.length() == 0) return null;
 
-            return GlobalImageCache.decodeFileSafely(tempFile, 200, 200, 2);
+            // 按实际显示尺寸解码（封面 76x56dp），1:1 绘制无需软件缩放滤镜
+            float density = context.getResources().getDisplayMetrics().density;
+            return GlobalImageCache.decodeFileSafely(tempFile,
+                    (int) (76 * density + 0.5f), (int) (56 * density + 0.5f), 2);
         } catch (OutOfMemoryError e) {
-            System.gc();
+            // 不显式 System.gc()
             return null;
         } catch (Exception e) {
             e.printStackTrace();
@@ -231,6 +251,7 @@ public class HistoryAdapter extends BaseAdapter {
     }
 
     public void clearCache() {
+        pendingBitmapSets.clear();
         loadingMap.clear();
     }
 

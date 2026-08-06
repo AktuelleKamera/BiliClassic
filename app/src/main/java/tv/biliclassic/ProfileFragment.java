@@ -94,8 +94,17 @@ public class ProfileFragment extends Fragment {
     private View itemSettings;
     private View itemRefresh;
 
-    private ExecutorService executor = Executors.newSingleThreadExecutor();
+    private ExecutorService executor = createImageExecutor();
     private Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    // 统一走 SdkHelper：优先用户设置，未设置再按设备内存给默认值，不写死
+    private static ExecutorService createImageExecutor() {
+        int threads = tv.biliclassic.util.SdkHelper.getImageLoadThreads();
+        if (threads <= 1) {
+            return Executors.newSingleThreadExecutor();
+        }
+        return Executors.newFixedThreadPool(threads);
+    }
 
     private long currentMid = 0;
     private int currentCoinValue = 0;
@@ -109,7 +118,7 @@ public class ProfileFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Android 2.x 外部堆小，inflate 布局可能 OOM，失败清缓存重试，仍失败返回空布局不崩溃
-        // 不显式 System.gc()：2.x GC 是 stop-the-world，会冻结主线程数百毫秒
+        // 不显式 System.gc()
         try {
             GlobalImageCache.getInstance().releaseMemory();
         } catch (Throwable t) {

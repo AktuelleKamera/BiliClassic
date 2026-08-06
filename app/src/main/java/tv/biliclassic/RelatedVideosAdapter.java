@@ -57,11 +57,8 @@ public class RelatedVideosAdapter extends BaseAdapter {
     }
 
     private int getConfiguredThreadCount() {
-        int savedThreads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
-        if (savedThreads > 0) {
-            return savedThreads;
-        }
-        return isLowMemoryDevice() ? 1 : 2;
+        // 统一走 SdkHelper：优先用户设置，未设置再按设备内存给默认值，不写死
+        return tv.biliclassic.util.SdkHelper.getImageLoadThreads();
     }
 
     private void initExecutor() {

@@ -212,16 +212,9 @@ public class GlobalImageCache {
                 android.graphics.BitmapFactory.Options opts = new android.graphics.BitmapFactory.Options();
                 opts.inSampleSize = scale;
                 opts.inPreferredConfig = android.graphics.Bitmap.Config.RGB_565;
-                // inPurgeable/inInputShareable 用反射设置：某些早期设备或新 SDK 上字段可能缺失，
-                // 直接引用会被 verifier 在类加载时拒绝整类（同 UserProfileActivity 的写法）
-                try {
-                    android.graphics.BitmapFactory.Options.class.getField("inPurgeable").setBoolean(opts, true);
-                } catch (Throwable t) {
-                }
-                try {
-                    android.graphics.BitmapFactory.Options.class.getField("inInputShareable").setBoolean(opts, true);
-                } catch (Throwable t) {
-                }
+                // 不用 inPurgeable/inInputShareable：2.x 内存吃紧时（如启动详情页）系统会 purge
+                // 可回收位图像素，过渡动画重绘时封面闪一下/变空白（新番页点击时"图片销毁"的根因）。
+                // 封面现已按 1:1 小尺寸解码，常驻像素的内存开销可接受。
                 bitmap = android.graphics.BitmapFactory.decodeFile(file.getAbsolutePath(), opts);
             } catch (OutOfMemoryError e) {
                 getInstance().freeAllUnreferenced();
