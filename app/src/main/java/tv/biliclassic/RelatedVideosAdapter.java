@@ -51,6 +51,10 @@ public class RelatedVideosAdapter extends BaseAdapter {
     private OnVideoClickListener mClickListener;
     private OnVideoLongClickListener mLongClickListener;
 
+    // 滚动中暂缓应用新图，避免每张图到达都触发整屏软件重绘（仅主线程访问）
+    private volatile boolean mScrolling = false;
+    private final java.util.ArrayList<Runnable> pendingBitmapSets = new java.util.ArrayList<Runnable>();
+
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
         return maxMemory < 24576;
@@ -90,6 +94,49 @@ public class RelatedVideosAdapter extends BaseAdapter {
 
     public void reloadExecutor() {
         initExecutor();
+    }
+
+    /** 滚动状态变化时由 ListView 的 OnScrollListener 调用 */
+    public void setScrolling(boolean scrolling) {
+        this.mScrolling = scrolling;
+        if (!scrolling) {
+            flushPendingBitmapSets();
+        }
+    }
+
+    private void flushPendingBitmapSets() {
+        if (pendingBitmapSets.isEmpty()) return;
+        java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
+        pendingBitmapSets.clear();
+        for (int i = 0; i < pending.size(); i++) {
+            try {
+                pending.get(i).run();
+            } catch (Throwable t) {
+            }
+        }
+    }
+
+    private void applyCover(final ImageView coverView, final String url, final Bitmap bitmap) {
+        if (mScrolling) {
+            // 滚动中暂缓应用，停下后统一补显示
+            pendingBitmapSets.add(new Runnable() {
+                @Override
+                public void run() {
+                    applyCover(coverView, url, bitmap);
+                }
+            });
+            return;
+        }
+        Object tag = coverView.getTag();
+        if (tag == null || !tag.equals(url)) {
+            return;
+        }
+        android.graphics.drawable.Drawable cur = coverView.getDrawable();
+        if (cur instanceof android.graphics.drawable.BitmapDrawable
+                && ((android.graphics.drawable.BitmapDrawable) cur).getBitmap() == bitmap) {
+            return;
+        }
+        coverView.setImageBitmap(bitmap);
     }
 
     @Override
@@ -143,6 +190,7 @@ public class RelatedVideosAdapter extends BaseAdapter {
             final ImageView coverView = holder.cover;
             coverView.setTag(finalCoverUrl);
 
+            boolean alreadySet = false;
             SoftReference<Bitmap> softBitmap;
             synchronized (imageCache) {
                 softBitmap = imageCache.get(finalCoverUrl);
@@ -150,7 +198,8 @@ public class RelatedVideosAdapter extends BaseAdapter {
             if (softBitmap != null) {
                 Bitmap cachedBitmap = softBitmap.get();
                 if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
-                    coverView.setImageBitmap(cachedBitmap);
+                    alreadySet = true;
+                    applyCover(coverView, finalCoverUrl, cachedBitmap);
                 } else {
                     synchronized (imageCache) {
                         imageCache.remove(finalCoverUrl);
@@ -158,31 +207,31 @@ public class RelatedVideosAdapter extends BaseAdapter {
                 }
             }
 
-            Boolean isLoading = loadingMap.get(currentPos);
-            if (isLoading == null || !isLoading) {
-                loadingMap.put(currentPos, true);
-                executor.execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        final Bitmap bitmap = downloadImage(finalCoverUrl);
-                        loadingMap.remove(currentPos);
+            // 命中缓存不再重新下载（原逻辑每 bind 都会重新下载）
+            if (!alreadySet) {
+                Boolean isLoading = loadingMap.get(currentPos);
+                if (isLoading == null || !isLoading) {
+                    loadingMap.put(currentPos, true);
+                    executor.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            final Bitmap bitmap = downloadImage(finalCoverUrl);
+                            loadingMap.remove(currentPos);
 
-                        if (bitmap != null && !bitmap.isRecycled()) {
-                            synchronized (imageCache) {
-                                imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
-                            }
-                            mainHandler.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    Object currentTag = coverView.getTag();
-                                    if (currentTag != null && currentTag.equals(finalCoverUrl)) {
-                                        coverView.setImageBitmap(bitmap);
-                                    }
+                            if (bitmap != null && !bitmap.isRecycled()) {
+                                synchronized (imageCache) {
+                                    imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
                                 }
-                            });
+                                mainHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        applyCover(coverView, finalCoverUrl, bitmap);
+                                    }
+                                });
+                            }
                         }
-                    }
-                });
+                    });
+                }
             }
         }
 
@@ -239,12 +288,11 @@ public class RelatedVideosAdapter extends BaseAdapter {
 
             if (!tempFile.exists() || tempFile.length() == 0) return null;
 
-            int targetWidth = (int) (160 * context.getResources().getDisplayMetrics().density);
-            if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 23) {
-                targetWidth = (int)(targetWidth * 1.25f);
-            }
+            // 按实际显示尺寸解码（封面 76x56dp），1:1 绘制无需软件缩放滤镜
+            float density = context.getResources().getDisplayMetrics().density;
             int minScale = tv.biliclassic.util.SdkHelper.getSdkInt() >= 9 ? 2 : 4;
-            return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, 90, minScale);
+            return GlobalImageCache.decodeFileSafely(tempFile,
+                    (int) (76 * density + 0.5f), (int) (56 * density + 0.5f), minScale);
         } catch (Exception e) {
             return null;
         } finally {
@@ -260,6 +308,7 @@ public class RelatedVideosAdapter extends BaseAdapter {
     }
 
     public void clearCache() {
+        pendingBitmapSets.clear();
         if (imageCache != null) {
             synchronized (imageCache) {
                 for (SoftReference<Bitmap> ref : imageCache.values()) {

@@ -44,6 +44,12 @@ public class RecommendFragment extends Fragment {
 
     private static final String STATE_GRID_POS = "grid_pos";
 
+    // 首次加载失败/返回空时自动重试
+    private static final int MAX_LOAD_RETRY = 3;
+    private static final long RETRY_DELAY_MS = 1500;
+    private int loadRetryCount = 0;
+    private Handler retryHandler = new Handler(Looper.getMainLooper());
+
     private void showToast(String msg) {
         if (getActivity() != null) {
             Toast.makeText(getActivity(), msg, Toast.LENGTH_SHORT).show();
@@ -240,7 +246,13 @@ public class RecommendFragment extends Fragment {
         }
     }
 
-    private void loadRecommend() {
+    /** 手动/下拉刷新触发：重置重试计数后重新加载 */
+    public void loadRecommend() {
+        loadRetryCount = 0;
+        doLoadRecommend();
+    }
+
+    private void doLoadRecommend() {
         if (isLoading) return;
         isLoading = true;
 
@@ -285,16 +297,25 @@ public class RecommendFragment extends Fragment {
                                 isLoading = false;
                                 return;
                             }
-                            hideAllLoading();
-                            stopRefreshing();
                             isLoading = false;
 
                             if (items == null || items.size() == 0) {
-                                android.util.Log.e("RecommendDiag", "推荐结果为空, 显示空视图");
+                                if (loadRetryCount < MAX_LOAD_RETRY) {
+                                    loadRetryCount++;
+                                    android.util.Log.e("RecommendDiag", "推荐结果为空, 第 "
+                                            + loadRetryCount + "/" + MAX_LOAD_RETRY + " 次重试");
+                                    retryLoad();
+                                    return;
+                                }
+                                android.util.Log.e("RecommendDiag", "推荐结果为空, 重试次数用尽, 显示空视图");
+                                hideAllLoading();
+                                stopRefreshing();
                                 if (emptyView != null) emptyView.setVisibility(View.VISIBLE);
                                 if (gridView != null) gridView.setVisibility(View.GONE);
                                 return;
                             }
+                            hideAllLoading();
+                            stopRefreshing();
                             videoList.clear();
                             videoList.addAll(items);
                             int cols = adapter.getNumColumns();
@@ -354,6 +375,14 @@ public class RecommendFragment extends Fragment {
                                 return;
                             }
                             isLoading = false;
+                            if (loadRetryCount < MAX_LOAD_RETRY) {
+                                loadRetryCount++;
+                                android.util.Log.e("RecommendDiag", "推荐加载异常, 第 "
+                                        + loadRetryCount + "/" + MAX_LOAD_RETRY + " 次重试: "
+                                        + (e.getMessage() == null ? e.getClass().getName() : e.getMessage()));
+                                retryLoad();
+                                return;
+                            }
                             hideAllLoading();
                             stopRefreshing();
                             String msg = e.getMessage();
@@ -469,9 +498,21 @@ public class RecommendFragment extends Fragment {
         }).start();
     }
 
+    private void retryLoad() {
+        if (getActivity() == null || getView() == null) return;
+        retryHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (getActivity() == null || getView() == null) return;
+                doLoadRecommend();
+            }
+        }, RETRY_DELAY_MS);
+    }
+
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        retryHandler.removeCallbacksAndMessages(null);
         if (adapter != null) {
             adapter.clearCache();
         }

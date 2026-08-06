@@ -8,6 +8,7 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -54,6 +55,23 @@ public class RelatedVideosFragment extends Fragment {
 
         adapter = new RelatedVideosAdapter(getActivity(), videoList);
         listView.setAdapter(adapter);
+
+        // 滚动中暂缓封面应用，避免滑到时封面一张张到达触发整屏重绘
+        listView.setOnScrollListener(new AbsListView.OnScrollListener() {
+            @Override
+            public void onScroll(AbsListView view, int firstVisibleItem,
+                                 int visibleItemCount, int totalItemCount) {
+            }
+
+            @Override
+            public void onScrollStateChanged(AbsListView view, int scrollState) {
+                if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_IDLE) {
+                    adapter.setScrolling(false);
+                } else {
+                    adapter.setScrolling(true);
+                }
+            }
+        });
 
         adapter.setOnVideoClickListener(new RelatedVideosAdapter.OnVideoClickListener() {
             @Override
