@@ -38,15 +38,22 @@ public class RecommendApi {
     /**
      * 获取推荐视频列表（携带Cookie，个性化推荐）
      * 直接使用 API 返回的 aid，不进行 BV 转换
+     *
+     * @param freshIdx 当前翻页号（以 1 开始，每次加载更多 +1，游客也能翻页）
+     * @param fetchRow 本次请求前已加载的条数
      */
-    public static void getRecommend(List<VideoCard> videoCardList) throws IOException, JSONException {
+    public static void getRecommend(List<VideoCard> videoCardList, int freshIdx, int fetchRow) throws IOException, JSONException {
         String url = "https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd";
         url += new NetWorkUtil.FormData().setUrlParam(true)
                 .put("web_location", 1430650)
                 .put("feed_version", "V8")
                 .put("homepage_ver", 1)
                 .put("uniq_id", UNIQ_ID)
-                .put("screen", "1100-2056");
+                .put("screen", "1100-2056")
+                .put("fresh_idx", freshIdx)
+                .put("fresh_idx_1h", freshIdx)
+                .put("brush", freshIdx)
+                .put("fetch_row", fetchRow);
 
         String cookies = SharedPreferencesUtil.getString("cookies", "");
         ArrayList<String> headers = buildHeaders(cookies);

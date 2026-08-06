@@ -282,7 +282,7 @@ public class RecommendFragment extends Fragment {
                     final List<VideoCard> items = new ArrayList<VideoCard>();
                     android.util.Log.d("RecommendDiag", "开始调用 RecommendApi.getRecommend");
                     long t0 = System.currentTimeMillis();
-                    RecommendApi.getRecommend(items);
+                    RecommendApi.getRecommend(items, currentPage, 0);
                     android.util.Log.d("RecommendDiag", "RecommendApi.getRecommend 返回, 耗时=" + (System.currentTimeMillis() - t0) + "ms, items=" + (items == null ? -1 : items.size()));
 
                     if (getActivity() == null) {
@@ -427,7 +427,7 @@ public class RecommendFragment extends Fragment {
             public void run() {
                 try {
                     final List<VideoCard> newItems = new ArrayList<VideoCard>();
-                    RecommendApi.getRecommend(newItems);
+                    RecommendApi.getRecommend(newItems, page, videoList.size());
 
                     if (getActivity() == null) {
                         hideFooter();
@@ -461,7 +461,7 @@ public class RecommendFragment extends Fragment {
 
                             if (newItems.size() < 20) {
                                 isEnd = true;
-                                showToast("已经到底啦");
+                                showToast(getString(R.string.emoticon__no_more_data));
                             }
 
                             // 追加后仍不满一屏则继续补页

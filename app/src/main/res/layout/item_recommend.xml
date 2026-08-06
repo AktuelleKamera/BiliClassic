@@ -36,81 +36,59 @@
             android:paddingLeft="6dp"
             android:paddingRight="6dp">
 
-            <LinearLayout
+            <ImageView
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:src="@drawable/ic_info_views"
+                android:contentDescription="@string/item_recommend_64ad" />
+
+            <TextView
+                android:id="@+id/view"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <ImageView
-                    android:layout_width="12dp"
-                    android:layout_height="12dp"
-                    android:src="@drawable/ic_info_views"
-                    android:contentDescription="@string/item_recommend_64ad" />
-
-                <TextView
-                    android:id="@+id/view"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginLeft="3dp"
-                    android:text="0"
-                    android:textSize="10sp"
-                    android:textColor="#FFFFFF" />
-
-            </LinearLayout>
+                android:layout_marginLeft="3dp"
+                android:text="0"
+                android:textSize="10sp"
+                android:textColor="#FFFFFF" />
 
             <View
                 android:layout_width="12dp"
-                android:layout_height="1dp" />
+                android:layout_height="1dp"
+                android:layout_marginLeft="8dp" />
 
-            <LinearLayout
+            <ImageView
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:src="@drawable/ic_info_danmakus"
+                android:contentDescription="@string/item_recommend_5f39" />
+
+            <TextView
+                android:id="@+id/danmaku"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="8dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <ImageView
-                    android:layout_width="12dp"
-                    android:layout_height="12dp"
-                    android:src="@drawable/ic_info_danmakus"
-                    android:contentDescription="@string/item_recommend_5f39" />
-
-                <TextView
-                    android:id="@+id/danmaku"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginLeft="3dp"
-                    android:text="0"
-                    android:textSize="10sp"
-                    android:textColor="#FFFFFF" />
-
-            </LinearLayout>
+                android:layout_marginLeft="3dp"
+                android:text="0"
+                android:textSize="10sp"
+                android:textColor="#FFFFFF" />
 
         </LinearLayout>
 
     </FrameLayout>
 
-    <!-- 标题区域（顶部对齐，固定高度 46dp） -->
-    <LinearLayout
+    <!-- 标题（固定高度 46dp，顶部对齐） -->
+    <TextView
+        android:id="@+id/title"
         android:layout_width="match_parent"
         android:layout_height="46dp"
-        android:orientation="vertical"
+        android:gravity="top"
         android:paddingLeft="4dp"
         android:paddingRight="4dp"
         android:paddingTop="4dp"
-        android:paddingBottom="4dp">
-
-        <TextView
-            android:id="@+id/title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/item_recommend_89c6"
-            android:textSize="12sp"
-            android:textColor="#333333"
-            android:maxLines="2"
-            android:ellipsize="end" />
-
-    </LinearLayout>
+        android:paddingBottom="4dp"
+        android:text="@string/item_recommend_89c6"
+        android:textSize="12sp"
+        android:textColor="#333333"
+        android:maxLines="2"
+        android:ellipsize="end" />
 
 </LinearLayout>

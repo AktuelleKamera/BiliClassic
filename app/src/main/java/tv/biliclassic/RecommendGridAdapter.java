@@ -51,6 +51,9 @@ public class RecommendGridAdapter extends BaseAdapter {
     private volatile boolean mScrolling = false;
     private final java.util.ArrayList<Runnable> pendingBitmapSets = new java.util.ArrayList<Runnable>();
 
+    // 正在下载的 URL（主线程访问）：快速滑动来回绑定同一封面时避免重复提交下载
+    private final java.util.HashSet<String> loadingUrls = new java.util.HashSet<String>();
+
     // Android 2.x 上 setImageResource 每次可能重新解码资源图，这里缓存默认 Drawable 实例复用
     private static Drawable sDefaultCoverDrawable;
 
@@ -190,21 +193,22 @@ public class RecommendGridAdapter extends BaseAdapter {
             }
         }
 
-        h.title.setText(item.title != null ? item.title : "");
-        h.view.setText(item.view != null ? item.view : "0");
-        h.danmaku.setText(item.danmaku > 0 ? String.valueOf(item.danmaku) : "0");
-
-        if (sDefaultCoverDrawable == null) {
-            try {
-                sDefaultCoverDrawable = context.getResources().getDrawable(R.drawable.bili_default_image_tv_with_bg);
-            } catch (Throwable t) {
-                sDefaultCoverDrawable = null;
-            }
+        // 文本没变就不重设：滚动复用行时避免每次 setText 都触发 invalidate/重排
+        String title = item.title != null ? item.title : "";
+        if (h.titleText == null || !h.titleText.equals(title)) {
+            h.titleText = title;
+            h.title.setText(title);
         }
-        if (sDefaultCoverDrawable != null && h.cover.getDrawable() != sDefaultCoverDrawable) {
-            h.cover.setImageDrawable(sDefaultCoverDrawable);
+        String viewStr = item.view != null ? item.view : "0";
+        if (h.viewText == null || !h.viewText.equals(viewStr)) {
+            h.viewText = viewStr;
+            h.view.setText(viewStr);
         }
-
+        String danmakuStr = item.danmaku > 0 ? String.valueOf(item.danmaku) : "0";
+        if (h.danmakuText == null || !h.danmakuText.equals(danmakuStr)) {
+            h.danmakuText = danmakuStr;
+            h.danmaku.setText(danmakuStr);
+        }
         // 点击：直接绑定当前视频
         cell.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -229,8 +233,17 @@ public class RecommendGridAdapter extends BaseAdapter {
             h.currentCoverUrl = null;
         }
 
-        if (item.cover != null && item.cover.length() > 0
-                && !SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) {
+        if (sDefaultCoverDrawable == null) {
+            try {
+                sDefaultCoverDrawable = context.getResources().getDrawable(R.drawable.bili_default_image_tv_with_bg);
+            } catch (Throwable t) {
+                sDefaultCoverDrawable = null;
+            }
+        }
+
+        final boolean hasCover = item.cover != null && item.cover.length() > 0
+                && !SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false);
+        if (hasCover) {
             String coverUrl = item.cover;
             if (coverUrl.startsWith("https://")) {
                 coverUrl = "http://" + coverUrl.substring(8);
@@ -241,13 +254,28 @@ public class RecommendGridAdapter extends BaseAdapter {
 
             Bitmap cached = GlobalImageCache.getInstance().getAndAcquire(finalUrl);
             if (cached != null && !cached.isRecycled()) {
-                coverView.setImageBitmap(cached);
+                // 已是同一张位图则跳过，避免滚动复用行时重复 invalidate
+                android.graphics.drawable.Drawable cur = coverView.getDrawable();
+                if (!(cur instanceof android.graphics.drawable.BitmapDrawable)
+                        || ((android.graphics.drawable.BitmapDrawable) cur).getBitmap() != cached) {
+                    coverView.setImageBitmap(cached);
+                }
                 h.currentCoverUrl = finalUrl;
                 return;
             }
 
+            // 未命中缓存：显示默认占位图（当前已是默认图则跳过），
+            // 避免"先设默认图再设缓存图"的两次 invalidate
+            if (sDefaultCoverDrawable != null && h.cover.getDrawable() != sDefaultCoverDrawable) {
+                h.cover.setImageDrawable(sDefaultCoverDrawable);
+            }
+
             final int targetW = cellWidth;
             final int targetH = coverHeight;
+            if (loadingUrls.contains(finalUrl)) {
+                return;
+            }
+            loadingUrls.add(finalUrl);
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
@@ -258,6 +286,7 @@ public class RecommendGridAdapter extends BaseAdapter {
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
+                                loadingUrls.remove(finalUrl);
                                 if (mScrolling) {
                                     // 滚动中不立即应用：每张图到达都会触发整屏软件重绘
                                     pendingBitmapSets.add(this);
@@ -266,9 +295,21 @@ public class RecommendGridAdapter extends BaseAdapter {
                                 applyBitmap(cell, coverView, finalUrl, bitmap);
                             }
                         });
+                    } else {
+                        mainHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                loadingUrls.remove(finalUrl);
+                            }
+                        });
                     }
                 }
             });
+        } else {
+            // 无封面：显示默认占位图
+            if (sDefaultCoverDrawable != null && h.cover.getDrawable() != sDefaultCoverDrawable) {
+                h.cover.setImageDrawable(sDefaultCoverDrawable);
+            }
         }
     }
 
@@ -320,14 +361,32 @@ public class RecommendGridAdapter extends BaseAdapter {
 
     private void flushPendingBitmapSets() {
         if (pendingBitmapSets.isEmpty()) return;
-        java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
+        final java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
         pendingBitmapSets.clear();
-        for (int i = 0; i < pending.size(); i++) {
-            try {
-                pending.get(i).run();
-            } catch (Throwable t) {
+        // 分批应用（每帧最多 2 张）：滑动中积攒的封面如果停下瞬间一次性 setImageBitmap，
+        // 会在同一帧连续整屏重绘造成明显卡顿；分帧补显示更顺
+        final int[] idx = {0};
+        final Runnable drain = new Runnable() {
+            @Override
+            public void run() {
+                if (executor == null || executor.isShutdown()) {
+                    return;
+                }
+                int applied = 0;
+                while (idx[0] < pending.size() && applied < 2) {
+                    try {
+                        pending.get(idx[0]).run();
+                    } catch (Throwable t) {
+                    }
+                    idx[0]++;
+                    applied++;
+                }
+                if (idx[0] < pending.size()) {
+                    mainHandler.postDelayed(this, 16);
+                }
             }
-        }
+        };
+        drain.run();
     }
 
     private void applyBitmap(View cell, ImageView coverView, String finalUrl, Bitmap bitmap) {
@@ -354,6 +413,7 @@ public class RecommendGridAdapter extends BaseAdapter {
     }
 
     public void clearCache() {
+        loadingUrls.clear();
         pendingBitmapSets.clear();
         executor.shutdownNow();
         GlobalImageCache.getInstance().clear();
@@ -366,5 +426,8 @@ public class RecommendGridAdapter extends BaseAdapter {
         TextView view;
         TextView danmaku;
         String currentCoverUrl;
+        String titleText;
+        String viewText;
+        String danmakuText;
     }
 }

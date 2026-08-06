@@ -49,6 +49,7 @@
         android:id="@+id/anime_list"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@android:color/transparent"
         android:listSelector="@android:color/transparent"
         android:divider="#00000000"
         android:dividerHeight="0dp"

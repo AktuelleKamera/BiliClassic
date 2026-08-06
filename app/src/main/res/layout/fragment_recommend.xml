@@ -57,6 +57,7 @@
                 android:clipToPadding="false"
                 android:fadingEdge="none"
                 android:overScrollMode="never"
+                android:background="@android:color/transparent"
                 android:cacheColorHint="@android:color/transparent"
                 android:listSelector="@android:color/transparent"
                 android:divider="#00000000"

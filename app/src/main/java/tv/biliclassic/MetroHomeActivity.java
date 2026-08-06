@@ -82,7 +82,7 @@ public class MetroHomeActivity extends BaseActivity {
             public void run() {
                 try {
                     final List<VideoCard> items = new ArrayList<VideoCard>();
-                    RecommendApi.getRecommend(items);
+                    RecommendApi.getRecommend(items, 1, 0);
                     mHandler.post(new Runnable() {
                         @Override
                         public void run() {

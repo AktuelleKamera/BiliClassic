@@ -78,14 +78,31 @@ public class SearchResultAdapter extends BaseAdapter {
 
     private void flushPendingBitmapSets() {
         if (pendingBitmapSets.isEmpty()) return;
-        java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
+        final java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
         pendingBitmapSets.clear();
-        for (int i = 0; i < pending.size(); i++) {
-            try {
-                pending.get(i).run();
-            } catch (Throwable t) {
+        // 分批应用（每帧最多 2 张），避免停下瞬间一次性 setImageBitmap 全部封面造成整帧卡顿
+        final int[] idx = {0};
+        final Runnable drain = new Runnable() {
+            @Override
+            public void run() {
+                if (executor == null || executor.isShutdown()) {
+                    return;
+                }
+                int applied = 0;
+                while (idx[0] < pending.size() && applied < 2) {
+                    try {
+                        pending.get(idx[0]).run();
+                    } catch (Throwable t) {
+                    }
+                    idx[0]++;
+                    applied++;
+                }
+                if (idx[0] < pending.size()) {
+                    mainHandler.postDelayed(this, 16);
+                }
             }
-        }
+        };
+        drain.run();
     }
 
     @Override

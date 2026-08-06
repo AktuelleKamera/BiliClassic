@@ -3,11 +3,11 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
+    android:background="@android:color/transparent"
     android:paddingLeft="4dp"
     android:paddingTop="4dp"
     android:paddingRight="4dp"
-    android:weightSum="7"
-    android:background="#F5F5F5">
+    android:weightSum="7">
 
     <LinearLayout
         android:id="@+id/video_area"
