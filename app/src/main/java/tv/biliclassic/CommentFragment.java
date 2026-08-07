@@ -3,11 +3,10 @@ package tv.biliclassic;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -34,6 +33,7 @@ import java.util.regex.Pattern;
 
 import tv.biliclassic.api.FavoriteApi;
 import tv.biliclassic.api.ReplyApi;
+import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.ReplyHelper;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.DialogUtil;
@@ -88,6 +88,9 @@ public class CommentFragment extends Fragment {
 
     // 排序控制
     private int currentSortMode = 0; // 0=时间,1=热度
+
+    // 方向键选中的评论位置（-1 表示未选中）
+    private int selectedCommentPosition = -1;
     private boolean sortExplicitlySet = false;
     private TextView sortTimeBtn, sortHotBtn;
 
@@ -161,6 +164,8 @@ public class CommentFragment extends Fragment {
 
         listView.setDivider(null);
         listView.setDividerHeight(0);
+        // 禁用原生 selector 选中高亮（触屏点击不再残留），键盘光标高亮由 adapter 的 selectedPosition 控制
+        listView.setSelector(new android.graphics.drawable.ColorDrawable(0x00000000));
 
         footerView = LayoutInflater.from(getActivity()).inflate(R.layout.list_footer, null);
         footerProgressBar = (ProgressBar) footerView.findViewById(R.id.footer_progress);
@@ -338,27 +343,21 @@ public class CommentFragment extends Fragment {
                             byte[] imageBytes = NetWorkUtil.readStream(is);
                             is.close();
 
-                            BitmapFactory.Options opts = new BitmapFactory.Options();
-                            opts.inJustDecodeBounds = true;
-                            BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, opts);
-
-                            int scale = 1;
-                            if (opts.outWidth > 1920 || opts.outHeight > 1080) {
-                                scale = Math.max(opts.outWidth / 1920, opts.outHeight / 1080);
+                            // 原图直传：不做尺寸缩放与质量压缩，保留原始图片数据
+                            String mimeType = activity.getContentResolver().getType(imageUri);
+                            String ext = "jpg";
+                            if (mimeType != null) {
+                                if (mimeType.contains("png")) {
+                                    ext = "png";
+                                } else if (mimeType.contains("gif")) {
+                                    ext = "gif";
+                                } else if (mimeType.contains("webp")) {
+                                    ext = "webp";
+                                }
                             }
 
-                            opts = new BitmapFactory.Options();
-                            opts.inSampleSize = scale;
-                            opts.inPreferredConfig = Bitmap.Config.RGB_565;
-                            Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, opts);
-
-                            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, baos);
-                            byte[] compressed = baos.toByteArray();
-                            if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
-
-                            final String fileName = "comment_" + System.currentTimeMillis() + ".jpg";
-                            final String resultJson = ReplyApi.uploadReplyImage(aid != 0 ? aid : 0, compressed, fileName);
+                            final String fileName = "comment_" + System.currentTimeMillis() + "." + ext;
+                            final String resultJson = ReplyApi.uploadReplyImage(aid != 0 ? aid : 0, imageBytes, fileName);
 
                             if (resultJson != null && pendingImageDataList.size() < MAX_COMMENT_IMAGES) {
                                 pendingImageDataList.add(resultJson);
@@ -1436,6 +1435,95 @@ public class CommentFragment extends Fragment {
             return item;
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /**
+     * 供 VideoDetailActivity.dispatchKeyEvent 调用：
+     * 方向键在评论列表内上下移动光标（一个评论为一个焦点），
+     * 确认键进入该评论的回复界面（有回复→回复列表；无回复→弹回复输入框）。
+     * 返回 true 表示事件已被消费。
+     */
+    public boolean handleRemoteKey(KeyEvent event) {
+        if (commentList == null || commentList.size() == 0 || listView == null) {
+            return false;
+        }
+        if (event.getAction() != KeyEvent.ACTION_DOWN) {
+            return false;
+        }
+        int action = KeyBindingUtil.classify(event.getKeyCode());
+        // 只处理 UP/DOWN/CONFIRM 与翻页键（2/8），其他键不消费（交给上层）
+        if (action != KeyBindingUtil.ACTION_UP
+                && action != KeyBindingUtil.ACTION_DOWN
+                && action != KeyBindingUtil.ACTION_CONFIRM
+                && action != KeyBindingUtil.ACTION_NUM_2
+                && action != KeyBindingUtil.ACTION_NUM_8) {
+            return false;
+        }
+        if (selectedCommentPosition < 0) {
+            selectedCommentPosition = 0;
+        }
+        // 首次按下才移动光标；长按 repeat 只消费不移动，防止 ListView 内置滚动干扰
+        if (event.getRepeatCount() == 0) {
+            int count = commentList.size();
+            if (action == KeyBindingUtil.ACTION_UP) {
+                selectedCommentPosition = Math.max(0, selectedCommentPosition - 1);
+            } else if (action == KeyBindingUtil.ACTION_DOWN) {
+                selectedCommentPosition = Math.min(count - 1, selectedCommentPosition + 1);
+            } else if (action == KeyBindingUtil.ACTION_NUM_2) {
+                selectedCommentPosition = pageMove(-1);
+            } else if (action == KeyBindingUtil.ACTION_NUM_8) {
+                selectedCommentPosition = pageMove(1);
+            } else if (action == KeyBindingUtil.ACTION_CONFIRM) {
+                CommentItem item = commentList.get(selectedCommentPosition);
+                openCommentReplies(item);
+                return true;
+            }
+            applyCommentSelection();
+        }
+        // 所有 DOWN 事件都消费（含长按 repeat），避免列表自身滚动导致"回顶"
+        return true;
+    }
+
+    /**
+     * 数字键 2/8：按一屏（当前可见项数）快速翻页。
+     * direction=-1 向上翻，+1 向下翻；返回新位置（已做边界钳制）。
+     */
+    private int pageMove(int direction) {
+        if (listView == null) {
+            return selectedCommentPosition;
+        }
+        int first = listView.getFirstVisiblePosition();
+        int last = listView.getLastVisiblePosition();
+        int visibleCount = Math.max(1, last - first + 1);
+        int newPos = selectedCommentPosition + direction * visibleCount;
+        int count = commentList.size();
+        if (newPos < 0) {
+            newPos = 0;
+        } else if (newPos >= count) {
+            newPos = count - 1;
+        }
+        return newPos;
+    }
+
+    private void applyCommentSelection() {
+        // 先刷新高亮，再立即定位到选中项（setSelection 无动画竞争，不会回顶）
+        if (adapter != null) {
+            adapter.setSelectedPosition(selectedCommentPosition);
+        }
+        if (listView != null) {
+            listView.setSelection(selectedCommentPosition);
+        }
+    }
+
+    private void openCommentReplies(CommentItem item) {
+        if (item == null) {
+            return;
+        }
+        if (item.replies != null && item.replies.size() > 0) {
+            showAllReplies(item);
+        } else {
+            showReplyDialog(item, null);
         }
     }
 

@@ -77,6 +77,18 @@ public class NewAnimeFragment extends Fragment {
     private static final int MAX_RETRY = 1;
     private int retryCount = 0;
 
+    // ===== 遥控器按键导航（新番专题） =====
+    private int mNavRow = 0;      // 当前选中行（ListView 行 / gridContainer 行）
+    private int mNavCol = 0;      // 当前选中行内的卡片列
+    private boolean mKeyNavActive = false; // 首次按键后才应用高亮（触屏机不高亮）
+    // 光标是否停留在顶部 PagerTabStrip 指示器层（默认位置）。在指示器层时左右键切 Tab，
+    // 下键/确认键进入列表后才行列导航；第一行再按上键回到指示器层。
+    private boolean mAtTabStrip = true;
+
+    public boolean isAtTabStrip() {
+        return mAtTabStrip;
+    }
+
     // Android 2.x 上 setImageResource 每次可能重新解码资源图，缓存默认 Drawable 实例复用
     private static android.graphics.drawable.Drawable sDefaultCoverDrawable;
 
@@ -1081,6 +1093,150 @@ public class NewAnimeFragment extends Fragment {
         return card;
     }
 
+    /**
+     * 供 MainActivity.dispatchKeyEvent 调用：遥控器方向键/确认键导航新番专题。
+     * UP/DOWN 移动行，LEFT/RIGHT 切换行内卡片，确认键打开，数字键 2/8 翻页。
+     */
+    public boolean handleRemoteKey(android.view.KeyEvent event) {
+        if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) {
+            return false;
+        }
+        int action = tv.biliclassic.util.KeyBindingUtil.classify(event.getKeyCode());
+
+        // 指示器层：光标停在顶部 PagerTabStrip，左右键让 MainActivity 切 Tab，
+        // 下键/确认键进入列表（此时才启用卡片高亮）。
+        if (mAtTabStrip) {
+            if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT
+                    || action == tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT) {
+                // 不消费：返回 false，MainActivity 负责切换 Tab
+                return false;
+            }
+            if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
+                    || action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+                if (event.getRepeatCount() == 0) {
+                    enterAnimeGrid();
+                }
+                return true;
+            }
+            return false;
+        }
+
+        int rowCount = animeListAdapter != null ? animeListAdapter.getRowCount() : 0;
+        if (rowCount == 0) {
+            return false;
+        }
+        if (action != tv.biliclassic.util.KeyBindingUtil.ACTION_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+            return false;
+        }
+        // 首次按键启用高亮
+        if (!mKeyNavActive) {
+            mKeyNavActive = true;
+        }
+        if (mNavRow < 0 || mNavRow >= rowCount) {
+            mNavRow = 0;
+        }
+        // 翻页键
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2
+                || action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+            if (event.getRepeatCount() == 0) {
+                pageMoveAnime(action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2 ? -1 : 1);
+            }
+            return true;
+        }
+        // 首次按下才移动；长按 repeat 只消费不移动
+        if (event.getRepeatCount() != 0) {
+            return true;
+        }
+        int cardCount = animeListAdapter.getRowCardCount(mNavRow);
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP) {
+            if (mNavRow > 0) {
+                mNavRow--;
+                if (mNavCol >= animeListAdapter.getRowCardCount(mNavRow)) {
+                    mNavCol = animeListAdapter.getRowCardCount(mNavRow) - 1;
+                }
+                applyAnimeSelection();
+            } else {
+                // 已在第一行：回到顶部指示器层，取消列表高亮
+                backToAnimeTabStrip();
+            }
+        } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
+            if (mNavRow < rowCount - 1) {
+                mNavRow++;
+                if (mNavCol >= animeListAdapter.getRowCardCount(mNavRow)) {
+                    mNavCol = animeListAdapter.getRowCardCount(mNavRow) - 1;
+                }
+                applyAnimeSelection();
+            }
+        } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT) {
+            if (mNavCol > 0) {
+                mNavCol--;
+                applyAnimeSelection();
+            }
+        } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT) {
+            if (mNavCol < cardCount - 1) {
+                mNavCol++;
+                applyAnimeSelection();
+            }
+        } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+            AnimeItem item = animeListAdapter.getItemAt(mNavRow, mNavCol);
+            if (item != null) {
+                openAnimeDetail(item);
+            }
+            return true;
+        }
+        return true;
+    }
+
+    /** 下键/确认键从指示器层进入列表：选中第一行第一列并显示高亮。 */
+    private void enterAnimeGrid() {
+        mAtTabStrip = false;
+        mKeyNavActive = true;
+        mNavRow = 0;
+        mNavCol = 0;
+        applyAnimeSelection();
+    }
+
+    /** 列表层第一行再按上键：回到顶部指示器层，取消高亮。 */
+    private void backToAnimeTabStrip() {
+        mAtTabStrip = true;
+        if (animeListAdapter != null) {
+            animeListAdapter.setSelected(-1, -1);
+        }
+    }
+
+    /** 数字键 2/8 按一屏翻页：direction=-1 上翻，+1 下翻。 */
+    private void pageMoveAnime(int direction) {
+        if (animeList == null || animeListAdapter == null) return;
+        int first = animeList.getFirstVisiblePosition();
+        int last = animeList.getLastVisiblePosition();
+        int visible = Math.max(1, last - first + 1);
+        int rowCount = animeListAdapter.getRowCount();
+        int newRow = mNavRow + direction * visible;
+        if (newRow < 0) newRow = 0;
+        else if (newRow >= rowCount) newRow = rowCount - 1;
+        mNavRow = newRow;
+        if (mNavCol >= animeListAdapter.getRowCardCount(mNavRow)) {
+            mNavCol = animeListAdapter.getRowCardCount(mNavRow) - 1;
+        }
+        applyAnimeSelection();
+    }
+
+    /** 刷新选中行/列高亮并滚动到可见。 */
+    private void applyAnimeSelection() {
+        if (animeList != null && animeListAdapter != null) {
+            // 先刷新高亮（adapter 记录选中行列，getView 应用），再滚动定位
+            animeListAdapter.setSelected(mKeyNavActive ? mNavRow : -1, mNavCol);
+            // setSelection 为 API 1，兼容 Android 2.x；smoothScrollToPosition 需 API 8
+            animeList.setSelection(mNavRow);
+        }
+    }
+
     private void openAnimeDetail(AnimeItem item) {
         if (getActivity() == null) return;
 
@@ -1301,6 +1457,16 @@ public class NewAnimeFragment extends Fragment {
         private int screenHeight;
         private boolean tabletMode;
 
+        // 按键导航选中：行/列（-1 = 不高亮）
+        private int mSelectedRow = -1;
+        private int mSelectedCol = -1;
+
+        void setSelected(int row, int col) {
+            mSelectedRow = row;
+            mSelectedCol = col;
+            notifyDataSetChanged();
+        }
+
         AnimeListAdapter(Context context, NewAnimeFragment fragment) {
             this.context = context;
             this.fragment = fragment;
@@ -1379,13 +1545,62 @@ public class NewAnimeFragment extends Fragment {
                 return convertView != null ? convertView : new View(context);
             }
             RowInfo row = rows.get(position);
+            View result;
             if (row.type == TYPE_LARGE) {
-                return buildLargeCard(convertView, items.get(row.items[0]));
+                result = buildLargeCard(convertView, items.get(row.items[0]));
+                applyRowHighlight(result, position, 0);
             } else if (row.type == TYPE_SMALL) {
-                return buildSmallRow(convertView, row);
+                result = buildSmallRow(convertView, row);
+                applySmallRowHighlight(result, position, row);
             } else {
-                return buildTabletMixedRow(convertView, row);
+                result = buildTabletMixedRow(convertView, row);
+                applyTabletRowHighlight(result, position, row);
             }
+            return result;
+        }
+
+        // 行高亮辅助：大卡（单卡）行
+        private void applyRowHighlight(View card, int row, int col) {
+            if (mSelectedRow == row && mSelectedCol == col) {
+                card.setBackgroundColor(0x66D86DA5);
+            } else {
+                card.setBackgroundDrawable(null);
+            }
+        }
+
+        // small 行：两个卡片（child 0 和 child 2，中间是 divider）
+        private void applySmallRowHighlight(View container, int row, RowInfo rowInfo) {
+            if (!(container instanceof LinearLayout)) return;
+            LinearLayout rowView = (LinearLayout) container;
+            View left = rowView.getChildAt(0);
+            View right = rowView.getChildAt(2);
+            boolean leftSel = (mSelectedRow == row && mSelectedCol == 0);
+            boolean rightSel = (mSelectedRow == row && mSelectedCol == 1);
+            if (leftSel) left.setBackgroundColor(0x66D86DA5);
+            else left.setBackgroundDrawable(null);
+            if (rightSel) right.setBackgroundColor(0x66D86DA5);
+            else right.setBackgroundDrawable(null);
+        }
+
+        // tablet mixed 行：大卡 + 两小卡（取决于 isEven 布局）
+        private void applyTabletRowHighlight(View container, int row, RowInfo rowInfo) {
+            if (!(container instanceof LinearLayout)) return;
+            LinearLayout rowView = (LinearLayout) container;
+            View large = rowInfo.isEven ? rowView.getChildAt(0) : rowView.getChildAt(2);
+            LinearLayout smallColumn = rowInfo.isEven
+                    ? (LinearLayout) rowView.getChildAt(2)
+                    : (LinearLayout) rowView.getChildAt(0);
+            boolean largeSel = (mSelectedRow == row && mSelectedCol == 0);
+            boolean sm1Sel = (mSelectedRow == row && mSelectedCol == 1);
+            boolean sm2Sel = (mSelectedRow == row && mSelectedCol == 2);
+            if (largeSel) large.setBackgroundColor(0x66D86DA5);
+            else large.setBackgroundDrawable(null);
+            View sm1 = smallColumn.getChildAt(0);
+            View sm2 = smallColumn.getChildAt(2);
+            if (sm1Sel) sm1.setBackgroundColor(0x66D86DA5);
+            else sm1.setBackgroundDrawable(null);
+            if (sm2Sel) sm2.setBackgroundColor(0x66D86DA5);
+            else sm2.setBackgroundDrawable(null);
         }
 
         private View buildLargeCard(View convertView, AnimeItem item) {
@@ -1534,6 +1749,32 @@ public class NewAnimeFragment extends Fragment {
         private int dpToPx(int dp) {
             float density = context.getResources().getDisplayMetrics().density;
             return (int) (dp * density + 0.5f);
+        }
+
+        // ===== 按键导航辅助 =====
+        int getRowCount() {
+            return rows.size();
+        }
+
+        // 该行包含几张卡片（large=1, small=2, tabletMixed=3；最后行可能不完整）
+        int getRowCardCount(int row) {
+            if (row < 0 || row >= rows.size()) return 0;
+            RowInfo r = rows.get(row);
+            int n = r.items.length;
+            int count = 0;
+            for (int i = 0; i < n; i++) {
+                if (r.items[i] >= 0) count++;
+            }
+            return count;
+        }
+
+        AnimeItem getItemAt(int row, int col) {
+            if (row < 0 || row >= rows.size()) return null;
+            RowInfo r = rows.get(row);
+            if (col < 0 || col >= r.items.length) return null;
+            int idx = r.items[col];
+            if (idx < 0 || idx >= items.size()) return null;
+            return items.get(idx);
         }
     }
 }

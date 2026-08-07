@@ -3734,6 +3734,13 @@ public class BiliPlayerActivity extends Activity implements
         if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER
                 && event.getAction() == KeyEvent.ACTION_DOWN) {
             if (!isPrepared) return true;
+            // 控制栏有聚焦按钮时，确认键触发该按钮（高亮项点击有效），否则切换播放/暂停
+            View focused = getCurrentFocus();
+            if (focused != null && focused.isFocusable()
+                    && focused.isShown() && focused.hasOnClickListeners()) {
+                focused.performClick();
+                return true;
+            }
             if (mOkHandler.hasMessages(0)) {
                 mOkHandler.removeMessages(0);
                 togglePlayPause();

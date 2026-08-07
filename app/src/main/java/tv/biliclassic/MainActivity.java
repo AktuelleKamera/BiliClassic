@@ -47,6 +47,11 @@ public class MainActivity extends BaseActivity {
     private List<FragmentInfo> mFragments = new ArrayList<FragmentInfo>();
     private Handler mHandler = new Handler();
 
+    // 当前可见（前台）的 Fragment，用于把方向键事件派发给它处理
+    private Fragment mActiveFragment;
+    // 选项菜单是否打开，打开时放行方向键给菜单自身导航
+    private boolean mOptionsMenuOpen = false;
+
     private int currentVersionCode = -1;
     private String currentVersionName = "";
 
@@ -737,6 +742,135 @@ public class MainActivity extends BaseActivity {
         logoClickHandler.removeCallbacksAndMessages(null);
     }
 
+    /**
+     * 遥控器 / 方向键支持：在事件分发给 ScrollView / ViewPager 之前，
+     * 先把方向键与确认键派发给当前可见 Fragment（如推荐页），
+     * 由其自身维护选中卡片并消费事件，避免被 ScrollView 滚动或 ViewPager 切 Tab 吞掉。
+     *
+     * Tab 切换规则：
+     * - 左右方向键不再切换 Tab（推荐页内用于移动卡片光标，其他页面直接消费掉，防止 ViewPager 切页）；
+     * - Tab 切换改用数字键 1（上一个）和 3（下一个）。
+     */
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        if (!mOptionsMenuOpen) {
+            if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+                boolean firstPress = (event.getRepeatCount() == 0);
+                int action = tv.biliclassic.util.KeyBindingUtil.classify(event.getKeyCode());
+                // 放送时间表：方向键/数字键 2/8 滚动列表
+                if (mActiveFragment instanceof TimelineFragment) {
+                    TimelineFragment tf = (TimelineFragment) mActiveFragment;
+                    if (tf.handleRemoteKey(event)) {
+                        return true;
+                    }
+                }
+                // 个人中心：方向键/确认键导航菜单
+                if (mActiveFragment instanceof ProfileFragment) {
+                    ProfileFragment pf = (ProfileFragment) mActiveFragment;
+                    if (pf.handleRemoteKey(event)) {
+                        return true;
+                    }
+                }
+                // 关于我们：方向键/确认键在链接间导航
+                if (mActiveFragment instanceof AboutFragment) {
+                    AboutFragment af = (AboutFragment) mActiveFragment;
+                    if (af.handleRemoteKey(event)) {
+                        return true;
+                    }
+                }
+                // 新番专题：方向键行列导航卡片，确认键打开；
+                // 光标在顶部指示器层时左右键切换 Tab
+                if (mActiveFragment instanceof NewAnimeFragment) {
+                    NewAnimeFragment naf = (NewAnimeFragment) mActiveFragment;
+                    if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT
+                            || action == tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT) {
+                        if (firstPress && naf.isAtTabStrip()) {
+                            if (switchTab(action)) {
+                                return true;
+                            }
+                        }
+                    }
+                    if (naf.handleRemoteKey(event)) {
+                        return true;
+                    }
+                }
+                // 推荐页：方向键/确认键/数字键 2/8 移动光标与翻页
+                // （所有 DOWN 都消费，含长按 repeat，防止 ScrollView 内置长按滚动干扰）
+                RecommendFragment rf = getCurrentRecommendFragment();
+                if (rf != null) {
+                    if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT
+                            || action == tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT) {
+                        if (firstPress && rf.isAtTabStrip()) {
+                            // 推荐页光标在顶部指示器层：左右键切换 Tab
+                            if (switchTab(action)) {
+                                return true;
+                            }
+                        }
+                    }
+                    if (rf.handleRemoteKey(event)) {
+                        return true;
+                    }
+                }
+                // 其他页面：左右方向键切换 Tab
+                if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT
+                        || action == tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT) {
+                    if (firstPress && switchTab(action)) {
+                        return true;
+                    }
+                    return true;
+                }
+            }
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    /**
+     * 左右方向键切换 Tab：LEFT 上一个，RIGHT 下一个。
+     * 返回 true 表示已切换（含已到边界无需切换）。
+     */
+    private boolean switchTab(int action) {
+        if (mPager == null) {
+            return false;
+        }
+        int cur = mPager.getCurrentItem();
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT) {
+            if (cur > 0) {
+                mPager.setCurrentItem(cur - 1);
+            }
+            return true;
+        } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT) {
+            if (mFragments != null && cur < mFragments.size() - 1) {
+                mPager.setCurrentItem(cur + 1);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 根据 ViewPager 当前页定位 RecommendFragment 实例。
+     * 使用 setPrimaryItem 维护的 mActiveFragment（始终指向当前页），
+     * 避免 ViewPager 预加载的相邻页 isVisible() 为 true 导致事件被错误消费。
+     */
+    private RecommendFragment getCurrentRecommendFragment() {
+        if (mActiveFragment instanceof RecommendFragment) {
+            return (RecommendFragment) mActiveFragment;
+        }
+        return null;
+    }
+
+    @Override
+    public boolean onMenuOpened(int featureId, Menu menu) {
+        mOptionsMenuOpen = true;
+        return super.onMenuOpened(featureId, menu);
+    }
+
+    @Override
+    public void onPanelClosed(int featureId, Menu menu) {
+        mOptionsMenuOpen = false;
+        super.onPanelClosed(featureId, menu);
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -903,6 +1037,7 @@ public class MainActivity extends BaseActivity {
             super.setPrimaryItem(container, position, object);
             if (object instanceof Fragment) {
                 mCurrentFragment = (Fragment) object;
+                mActiveFragment = (Fragment) object;
                 tv.biliclassic.util.PerfLog.setPage(getPageTitle(position).toString());
             }
         }

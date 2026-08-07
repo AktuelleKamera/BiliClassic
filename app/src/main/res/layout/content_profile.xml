@@ -47,8 +47,7 @@
                     android:textSize="14sp"
                     android:paddingLeft="24dp"
                     android:paddingRight="24dp"
-                    android:focusable="true"
-                    android:focusableInTouchMode="true" />
+                    android:focusable="false" />
 
             </LinearLayout>
 
@@ -168,6 +167,7 @@
                         android:textSize="12sp"
                         android:paddingLeft="12dp"
                         android:paddingRight="12dp"
+                        android:focusable="false"
                         android:layout_marginBottom="8dp" />
 
                     <Button
@@ -179,7 +179,8 @@
                         android:textColor="#666666"
                         android:textSize="12sp"
                         android:paddingLeft="12dp"
-                        android:paddingRight="12dp" />
+                        android:paddingRight="12dp"
+                        android:focusable="false" />
 
                 </LinearLayout>
 

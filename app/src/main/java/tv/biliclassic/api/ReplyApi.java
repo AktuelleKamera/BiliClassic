@@ -186,12 +186,23 @@ public class ReplyApi {
         String boundary = "----WebKitFormBoundary" + Long.toHexString(System.currentTimeMillis());
         String lineEnd = "\r\n";
 
+        // 按文件扩展名推断真实图片格式（原图直传，不做质量压缩）
+        String contentType = "image/jpeg";
+        int dot = fileName.lastIndexOf('.');
+        String ext = dot >= 0 ? fileName.substring(dot + 1).toLowerCase() : "";
+        if (ext.length() > 0) {
+            String mimeFromExt = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext);
+            if (mimeFromExt != null) {
+                contentType = mimeFromExt;
+            }
+        }
+
         java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
         try {
             // file_up
             baos.write(("--" + boundary + lineEnd).getBytes("UTF-8"));
             baos.write(("Content-Disposition: form-data; name=\"file_up\"; filename=\"" + fileName + "\"" + lineEnd).getBytes("UTF-8"));
-            baos.write(("Content-Type: image/jpeg" + lineEnd + lineEnd).getBytes("UTF-8"));
+            baos.write(("Content-Type: " + contentType + lineEnd + lineEnd).getBytes("UTF-8"));
             baos.write(imageData);
             baos.write(lineEnd.getBytes("UTF-8"));
 

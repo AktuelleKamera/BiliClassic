@@ -46,6 +46,20 @@ public class RecommendGridAdapter extends BaseAdapter {
     private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
+    // 方向键选中的视频卡索引（-1 = 未选中），用于整卡高亮
+    private int selectedPosition = -1;
+
+    // 触摸滑动中是否隐藏光标高亮（滑动时隐藏，再次按键时恢复）
+    private boolean mHideHighlight = false;
+
+    public void setHideHighlight(boolean hide) {
+        if (this.mHideHighlight == hide) {
+            return;
+        }
+        this.mHideHighlight = hide;
+        notifyDataSetChanged();
+    }
+
     // 滚动中暂缓应用新图，避免每张图到达都触发整屏软件重绘；
     // 仅在主线程访问（mainHandler.post 与 setScrolling 都在主线程）
     private volatile boolean mScrolling = false;
@@ -158,6 +172,12 @@ public class RecommendGridAdapter extends BaseAdapter {
             if (index < list.size()) {
                 cell.setVisibility(View.VISIBLE);
                 bindCell(cell, list.get(index), cellWidth);
+                // 方向键选中高亮：直接切换 background drawable，不依赖 selector 状态
+                // 触摸滑动时隐藏高亮（mHideHighlight），避免光标与手指位置混淆
+                boolean isSelected = index == selectedPosition && !mHideHighlight;
+                cell.setBackgroundResource(isSelected
+                        ? R.drawable.recommend_item_selected
+                        : R.drawable.item_click_effect_white);
             } else {
                 cell.setVisibility(View.INVISIBLE);
             }
@@ -227,10 +247,31 @@ public class RecommendGridAdapter extends BaseAdapter {
             }
         });
 
-        // 释放上一个封面引用
-        if (h.currentCoverUrl != null) {
+        final boolean hasCover = item.cover != null && item.cover.length() > 0
+                && !SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false);
+        String newCoverUrl = null;
+        if (hasCover) {
+            String coverUrl = item.cover;
+            if (coverUrl.startsWith("https://")) {
+                coverUrl = "http://" + coverUrl.substring(8);
+            }
+            newCoverUrl = coverUrl;
+        }
+
+        // 封面 URL 变化才释放上一张引用；同一 URL（按键高亮/滚动重绘）不 release 不 acquire，
+        // 避免 getAndAcquire 与 release 之间的窗口期把仍被绘制的位图回收（封面销毁/崩溃）。
+        if (h.currentCoverUrl != null && !h.currentCoverUrl.equals(newCoverUrl)) {
             GlobalImageCache.getInstance().release(h.currentCoverUrl);
             h.currentCoverUrl = null;
+        }
+        if (h.currentCoverUrl == null && newCoverUrl != null) {
+            // 新 URL：先取缓存并持有引用
+            Bitmap cached = GlobalImageCache.getInstance().getAndAcquire(newCoverUrl);
+            if (cached != null && !cached.isRecycled()) {
+                h.currentCoverUrl = newCoverUrl;
+            } else {
+                // 未命中缓存：不占用引用，下载完成后由 applyBitmap 再 acquire
+            }
         }
 
         if (sDefaultCoverDrawable == null) {
@@ -241,18 +282,12 @@ public class RecommendGridAdapter extends BaseAdapter {
             }
         }
 
-        final boolean hasCover = item.cover != null && item.cover.length() > 0
-                && !SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false);
-        if (hasCover) {
-            String coverUrl = item.cover;
-            if (coverUrl.startsWith("https://")) {
-                coverUrl = "http://" + coverUrl.substring(8);
-            }
-            final String finalUrl = coverUrl;
+        if (newCoverUrl != null) {
+            final String finalUrl = newCoverUrl;
             final ImageView coverView = h.cover;
             coverView.setTag(finalUrl);
 
-            Bitmap cached = GlobalImageCache.getInstance().getAndAcquire(finalUrl);
+            Bitmap cached = GlobalImageCache.getInstance().get(newCoverUrl);
             if (cached != null && !cached.isRecycled()) {
                 // 已是同一张位图则跳过，避免滚动复用行时重复 invalidate
                 android.graphics.drawable.Drawable cur = coverView.getDrawable();
@@ -260,7 +295,6 @@ public class RecommendGridAdapter extends BaseAdapter {
                         || ((android.graphics.drawable.BitmapDrawable) cur).getBitmap() != cached) {
                     coverView.setImageBitmap(cached);
                 }
-                h.currentCoverUrl = finalUrl;
                 return;
             }
 
@@ -410,6 +444,21 @@ public class RecommendGridAdapter extends BaseAdapter {
     public void updateData(List<VideoCard> newList) {
         this.list = newList;
         notifyDataSetChanged();
+    }
+
+    /**
+     * 设置方向键选中的视频卡索引，触发高亮更新（不触发时直接返回）。
+     */
+    public void setSelectedPosition(int position) {
+        if (selectedPosition == position) {
+            return;
+        }
+        selectedPosition = position;
+        notifyDataSetChanged();
+    }
+
+    public int getSelectedPosition() {
+        return selectedPosition;
     }
 
     public void clearCache() {

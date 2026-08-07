@@ -79,6 +79,14 @@ public class CommentAdapter extends BaseAdapter {
     private boolean isScrolling = false;
     private float mDensity;
 
+    // 键盘光标选中的项，-1 表示无选中
+    private int selectedPosition = -1;
+
+    public void setSelectedPosition(int position) {
+        this.selectedPosition = position;
+        notifyDataSetChanged();
+    }
+
     public interface OnUserClickListener {
         void onUserClick(long mid, String userName);
     }
@@ -226,7 +234,12 @@ public class CommentAdapter extends BaseAdapter {
                             if (h.longPressRunnable != null) {
                                 mainHandler.removeCallbacks(h.longPressRunnable);
                             }
-                            v.setBackgroundResource(R.drawable.item_click_effect_white);
+                            // 触屏结束：恢复背景。若是键盘光标选中项则保留粉色高亮
+                            if (position == selectedPosition) {
+                                v.setBackgroundColor(0x66D86DA5);
+                            } else {
+                                v.setBackgroundResource(R.drawable.item_click_effect_white);
+                            }
                             break;
                     }
                     return false;
@@ -235,6 +248,18 @@ public class CommentAdapter extends BaseAdapter {
         } else {
             holder = (ViewHolder) convertView.getTag();
             convertView.setBackgroundResource(R.drawable.item_click_effect_white);
+        }
+
+        // 键盘光标高亮（选中：半透明粉色；未选中：恢复原点击效果背景）
+        if (position == selectedPosition) {
+            convertView.setBackgroundColor(0x66D86DA5);
+        } else {
+            try {
+                convertView.setBackgroundDrawable(
+                        convertView.getResources().getDrawable(R.drawable.item_click_effect_white));
+            } catch (Exception e) {
+                convertView.setBackgroundColor(0xFFFFFFFF);
+            }
         }
 
         final CommentFragment.CommentItem item = list.get(position);

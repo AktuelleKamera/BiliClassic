@@ -104,6 +104,23 @@ public class FavoriteVideoAdapter extends BaseAdapter {
         }
     }
 
+    // ===== 遥控器方向键选中的条目（-1 = 未选中），用于整行高亮 =====
+    private int selectedPosition = -1;
+    private boolean mHideHighlight = false;
+
+    public void setSelectedPosition(int position) {
+        this.selectedPosition = position;
+        notifyDataSetChanged();
+    }
+
+    public void setHideHighlight(boolean hide) {
+        if (this.mHideHighlight == hide) {
+            return;
+        }
+        this.mHideHighlight = hide;
+        notifyDataSetChanged();
+    }
+
     private void flushPendingBitmapSets() {
         if (pendingBitmapSets.isEmpty()) return;
         final java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
@@ -176,6 +193,18 @@ public class FavoriteVideoAdapter extends BaseAdapter {
         if (item == null) {
             holder.title.setText("视频信息错误");
             return convertView;
+        }
+
+        // 遥控器光标高亮（选中：半透明粉色；未选中：恢复原点击效果背景）
+        if (position == selectedPosition && !mHideHighlight) {
+            convertView.setBackgroundColor(0x66D86DA5);
+        } else {
+            try {
+                convertView.setBackgroundDrawable(
+                        convertView.getResources().getDrawable(R.drawable.item_click_effect_white));
+            } catch (Exception e) {
+                convertView.setBackgroundColor(0xFFFFFFFF);
+            }
         }
 
         holder.title.setText(item.title != null ? item.title : "无标题");

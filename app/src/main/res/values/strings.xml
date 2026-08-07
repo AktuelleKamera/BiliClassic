@@ -781,6 +781,7 @@
     <string name="videodetail_like">点赞</string>
     <string name="videodetail_coin">投币</string>
     <string name="videodetail_favorite">收藏</string>
+    <string name="videodetail_share">分享</string>
     <string name="videodetail_triple">三连</string>
     <string name="videodetail_copy_link">复制链接</string>
     <string name="videodetail_share_to">分享到...</string>
@@ -790,6 +791,8 @@
     <string name="videodetail_download">下载</string>
     <string name="videodetail_delete">删除</string>
     <string name="videodetail_cancel">取消</string>
+    <string name="videodetail_action_menu">操作</string>
+    <string name="videodetail_tag_choice">标签</string>
     <string name="videodetail_q_360p">360P 流畅</string>
     <string name="videodetail_q_480p">480P 清晰</string>
     <string name="videodetail_q_720p">720P 高清</string>
@@ -840,4 +843,22 @@
     <!-- 桌面搜索小工具 -->
     <string name="search_widget_hint">搜索B站视频...</string>
     <string name="search_widget_desc">搜索</string>
+
+    <!-- 按键绑定 -->
+    <string name="keybinding_title">按键绑定</string>
+    <string name="keybinding_ask_title">是否绑定按键</string>
+    <string name="keybinding_ask_message">你的设备带有物理按键。是否现在为应用绑定按键？\n\n（也可以稍后在设置中重新绑定）</string>
+    <string name="keybinding_yes">是，开始绑定</string>
+    <string name="keybinding_no">否，跳过</string>
+    <string name="keybinding_prompt_prefix">请按下</string>
+    <string name="keybinding_progress">（%1$d / %2$d）</string>
+    <string name="keybinding_recording_hint">每次只录一个键，按下后请间隔 1 秒再按下一个</string>
+    <string name="keybinding_done">绑定完成！</string>
+    <string name="keybinding_exit">退出</string>
+    <string name="keybinding_exit_hint">点击退出（本页仅支持触摸操作）</string>
+    <string name="keybinding_restart_setting">按键绑定</string>
+    <string name="keybinding_restart_setting_desc">重新绑定物理按键</string>
+    <string name="keybinding_toast_done">按键绑定完成</string>
+    <string name="keybinding_toast_skip">已跳过按键绑定</string>
+    <string name="keybinding_toast_exit">已退出按键绑定</string>
 </resources>

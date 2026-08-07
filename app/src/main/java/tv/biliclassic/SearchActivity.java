@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
 
 import tv.biliclassic.api.ConfInfoApi;
 import tv.biliclassic.api.BilibiliIDConverter;
+import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
@@ -55,6 +56,9 @@ public class SearchActivity extends BaseActivity {
 
     private SearchResultAdapter adapter;
     private List<SearchResultItem> resultListData = new ArrayList<SearchResultItem>();
+
+    // 键盘光标选中的项，-1 表示无选中
+    private int selectedPosition = -1;
 
     private String currentKeyword = "";
     private int currentPage = 1;
@@ -128,6 +132,7 @@ public class SearchActivity extends BaseActivity {
             public void onScrollStateChanged(AbsListView view, int scrollState) {
                 if (scrollState == SCROLL_STATE_IDLE) {
                     adapter.setScrolling(false);
+                    // 滚动结束：仍保持高亮隐藏，等待再次按键恢复（避免光标跳到触摸滚动到的位置）
                     int lastVisible = view.getLastVisiblePosition();
                     int totalCount = adapter.getCount();
                     if (hasSearched && lastVisible >= totalCount - 1 && !isLoading && !isEnd && totalCount > 0) {
@@ -135,6 +140,8 @@ public class SearchActivity extends BaseActivity {
                     }
                 } else {
                     adapter.setScrolling(true);
+                    // 开始触摸滚动/甩动：隐藏光标高亮
+                    adapter.setHideHighlight(true);
                 }
             }
 
@@ -941,6 +948,129 @@ public class SearchActivity extends BaseActivity {
         }
 
         return headers;
+    }
+
+    /**
+     * 遥控器方向键在搜索结果列表内移动光标（选中高亮），确认键打开视频。
+     * 返回 true 表示事件已被消费。
+     */
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (handleRemoteKey(event)) {
+            return true;
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    /**
+     * 方向键上下移动光标、数字键 2/8 翻页、确认键打开视频。
+     * 仅在已有搜索结果且焦点不在输入框时生效。
+     */
+    public boolean handleRemoteKey(KeyEvent event) {
+        if (resultList == null || adapter == null || resultListData.size() == 0) {
+            return false;
+        }
+        if (event.getAction() != KeyEvent.ACTION_DOWN) {
+            return false;
+        }
+        // 数字键在输入框聚焦时保留给输入法（避免输入数字被拦截），
+        // 方向键/OK 始终用于列表导航
+        int action = KeyBindingUtil.classify(event.getKeyCode());
+        if (searchEdit != null && searchEdit.hasFocus()) {
+            if (action == KeyBindingUtil.ACTION_UP
+                    || action == KeyBindingUtil.ACTION_DOWN
+                    || action == KeyBindingUtil.ACTION_CONFIRM) {
+                // 放行：在输入框聚焦时也能用方向键/OK 操作列表
+            } else {
+                return false;
+            }
+        }
+        if (action != KeyBindingUtil.ACTION_UP
+                && action != KeyBindingUtil.ACTION_DOWN
+                && action != KeyBindingUtil.ACTION_CONFIRM
+                && action != KeyBindingUtil.ACTION_NUM_2
+                && action != KeyBindingUtil.ACTION_NUM_8) {
+            return false;
+        }
+        if (selectedPosition < 0) {
+            selectedPosition = 0;
+        }
+        // 按键恢复：先取消触摸滑动时的隐藏，重新显示光标并滚回选中项，
+        // 让"焦点"回到遥控器接管的位置
+        if (adapter != null) {
+            adapter.setHideHighlight(false);
+        }
+        // 首次按下才移动光标；长按 repeat 只消费不移动，防止 ListView 内置滚动干扰
+        if (event.getRepeatCount() == 0) {
+            int count = resultListData.size();
+            if (action == KeyBindingUtil.ACTION_UP) {
+                selectedPosition = Math.max(0, selectedPosition - 1);
+            } else if (action == KeyBindingUtil.ACTION_DOWN) {
+                selectedPosition = Math.min(count - 1, selectedPosition + 1);
+            } else if (action == KeyBindingUtil.ACTION_NUM_2) {
+                selectedPosition = pageMove(-1);
+            } else if (action == KeyBindingUtil.ACTION_NUM_8) {
+                selectedPosition = pageMove(1);
+                if (selectedPosition >= count - 1) {
+                    loadMoreResults();
+                }
+            } else if (action == KeyBindingUtil.ACTION_CONFIRM) {
+                openResult(selectedPosition);
+                return true;
+            }
+            applySelection();
+        }
+        // 所有 DOWN 事件都消费（含长按 repeat），避免列表自身滚动导致"回顶"
+        return true;
+    }
+
+    /** 数字键 2/8：按一屏（当前可见项数）快速翻页。 */
+    private int pageMove(int direction) {
+        if (resultList == null) {
+            return selectedPosition;
+        }
+        int first = resultList.getFirstVisiblePosition();
+        int last = resultList.getLastVisiblePosition();
+        int visibleCount = Math.max(1, last - first + 1);
+        int newPos = selectedPosition + direction * visibleCount;
+        int count = resultListData.size();
+        if (newPos < 0) {
+            newPos = 0;
+        } else if (newPos >= count) {
+            newPos = count - 1;
+        }
+        return newPos;
+    }
+
+    private void applySelection() {
+        if (adapter != null) {
+            adapter.setSelectedPosition(selectedPosition);
+        }
+        if (resultList != null) {
+            resultList.setSelection(selectedPosition);
+        }
+    }
+
+    /** 打开搜索结果列表第 position 项的视频详情。 */
+    private void openResult(int position) {
+        if (position < 0 || position >= resultListData.size()) {
+            return;
+        }
+        SearchResultItem item = resultListData.get(position);
+        if (item == null) {
+            return;
+        }
+        Intent intent = new Intent(SearchActivity.this, VideoDetailActivity.class);
+        if (item.aid != 0) {
+            intent.putExtra("aid", item.aid);
+        } else if (item.bvid != null && item.bvid.length() > 0) {
+            intent.putExtra("bvid", item.bvid);
+        } else {
+            Toast.makeText(SearchActivity.this,
+                    getString(R.string.searchactivity_toast_65e0), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        startActivity(intent);
     }
 
     public static class SearchResultItem {

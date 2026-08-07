@@ -10,6 +10,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -34,6 +35,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import tv.biliclassic.util.GlobalImageCache;
+import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.PermissionUtil;
@@ -93,6 +95,13 @@ public class ProfileFragment extends Fragment {
     private View itemOffline;
     private View itemSettings;
     private View itemRefresh;
+
+    // 遥控器按键导航：可聚焦条目集合 + 当前选中下标
+    private final ArrayList<View> mKeyNavItems = new ArrayList<View>();
+    private int mKeyNavIndex = -1;
+    // 高亮覆盖前的原始背景（仅按键导航实际高亮过才记录，避免改动普通界面外观）
+    private final java.util.Map<View, android.graphics.drawable.Drawable> mNavOriginalBg =
+            new HashMap<View, android.graphics.drawable.Drawable>();
 
     private ExecutorService executor = createImageExecutor();
     private Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -300,6 +309,201 @@ public class ProfileFragment extends Fragment {
         super.onResume();
         if (mInflateFailed) return;
         updateLoginStatus();
+        // 回到页面时重建按键导航（登录态切换会改变可见条目）。
+        // 不在此处应用高亮：避免普通（触摸）界面被无端改变外观。
+        buildKeyNavItems();
+        if (mKeyNavIndex < 0 && mKeyNavItems.size() > 0) {
+            mKeyNavIndex = 0;
+        }
+    }
+
+    /**
+     * 收集个人中心所有可见可交互条目（登录按钮/头像+切号+退出/功能列表），
+     * 供遥控器方向键/确认键导航。条目可见性随登录状态变化，故每次重建。
+     */
+    private void buildKeyNavItems() {
+        // 先恢复所有被按键导航高亮覆盖过的条目背景（如登录按钮选中后切 Tab 再回来，
+        // 之前的高亮色会残留；这里在重建列表时统一恢复原始背景）。
+        if (mNavOriginalBg.size() > 0) {
+            for (java.util.Map.Entry<View, android.graphics.drawable.Drawable> e
+                    : mNavOriginalBg.entrySet()) {
+                View v = e.getKey();
+                if (v != null && e.getValue() != null) {
+                    v.setBackgroundDrawable(e.getValue());
+                }
+            }
+            mNavOriginalBg.clear();
+        }
+        // 按钮类确定性恢复布局背景色（不依赖保存的 drawable）
+        if (btnLogin != null) btnLogin.setBackgroundColor(0xFFD86DA5);
+        if (btnSwitchAccount != null) btnSwitchAccount.setBackgroundColor(0xFFDDDDDD);
+        if (btnLogout != null) btnLogout.setBackgroundColor(0xFFDDDDDD);
+        // 功能列表项确定性恢复原 selector 背景，确保高亮色不残留
+        restoreFeatureItemBg(itemRefresh);
+        restoreFeatureItemBg(itemFavorites);
+        restoreFeatureItemBg(itemHistory);
+        restoreFeatureItemBg(itemOffline);
+        restoreFeatureItemBg(itemSettings);
+        mKeyNavItems.clear();
+        if (mInflateFailed || getView() == null) return;
+        View loginContainer = getView().findViewById(R.id.login_container);
+        if (loginContainer != null && loginContainer.getVisibility() == View.VISIBLE) {
+            if (btnLogin != null && btnLogin.getVisibility() == View.VISIBLE) {
+                mKeyNavItems.add(btnLogin);
+            }
+        }
+        View userCard = getView().findViewById(R.id.user_card);
+        if (userCard != null && userCard.getVisibility() == View.VISIBLE) {
+            if (ivAvatar != null && ivAvatar.getVisibility() == View.VISIBLE) {
+                mKeyNavItems.add(ivAvatar);
+            }
+            if (btnSwitchAccount != null && btnSwitchAccount.getVisibility() == View.VISIBLE) {
+                mKeyNavItems.add(btnSwitchAccount);
+            }
+            if (btnLogout != null && btnLogout.getVisibility() == View.VISIBLE) {
+                mKeyNavItems.add(btnLogout);
+            }
+        }
+        addNavItem(itemRefresh);
+        addNavItem(itemFavorites);
+        addNavItem(itemHistory);
+        addNavItem(itemOffline);
+        addNavItem(itemSettings);
+    }
+
+    private void addNavItem(View v) {
+        if (v != null && v.getVisibility() == View.VISIBLE) {
+            mKeyNavItems.add(v);
+        }
+    }
+
+    /** 功能列表项恢复原始点击效果背景（透明 selector），清除可能的残留高亮色。 */
+    private void restoreFeatureItemBg(View v) {
+        if (v == null) return;
+        try {
+            v.setBackgroundDrawable(v.getResources().getDrawable(R.drawable.item_click_effect));
+        } catch (Exception e) {
+            v.setBackgroundColor(0xFFFFFFFF);
+        }
+    }
+
+    /**
+     * 刷新按键导航高亮：选中条目叠粉色背景，其余恢复原始背景。
+     * 仅按键导航激活时调用（首次方向键/确认键按下后），
+     * 且只在第一次覆盖前保存原始背景，之后始终恢复原样，不影响触摸界面。
+     */
+    private void applyKeyNavHighlight() {
+        for (int i = 0; i < mKeyNavItems.size(); i++) {
+            View v = mKeyNavItems.get(i);
+            if (v == null) {
+                continue;
+            }
+            if (i == mKeyNavIndex) {
+                // 选中：登录按钮本身是粉色 #D86DA5，选中时用深粉强调；其他条目用浅粉半透明
+                if (v.getId() == R.id.btn_login) {
+                    v.setBackgroundColor(0xFFC06090);
+                } else {
+                    v.setBackgroundColor(0x66D86DA5);
+                }
+            } else {
+                // 未选中：确定性恢复布局背景色（不依赖 getBackground 保存，
+                // 避免 Android 2.x Button 背景为 null、或已保存高亮色导致无法恢复）
+                if (v.getId() == R.id.btn_login) {
+                    v.setBackgroundColor(0xFFD86DA5);
+                } else if (v.getId() == R.id.btn_switch_account
+                        || v.getId() == R.id.btn_logout) {
+                    v.setBackgroundColor(0xFFDDDDDD);
+                } else {
+                    // 功能列表项：直接恢复原始 item_click_effect 背景
+                    restoreFeatureItemBg(v);
+                }
+            }
+        }
+    }
+
+    /**
+     * 移动按键导航光标（方向：-1 上，+1 下）并滚动到可见。
+     */
+    private void moveKeyNav(int direction) {
+        if (mKeyNavItems.size() == 0) {
+            return;
+        }
+        int next = mKeyNavIndex + direction;
+        if (next < 0) {
+            next = 0;
+        } else if (next >= mKeyNavItems.size()) {
+            next = mKeyNavItems.size() - 1;
+        }
+        if (next != mKeyNavIndex) {
+            mKeyNavIndex = next;
+            applyKeyNavHighlight();
+            scrollKeyNavToVisible(mKeyNavItems.get(mKeyNavIndex));
+        }
+    }
+
+    /** 滚动 ScrollView 让选中条目完整可见（用绝对位置，条目可能嵌套多层）。 */
+    private void scrollKeyNavToVisible(View item) {
+        View root = getView();
+        if (!(root instanceof android.widget.ScrollView) || item == null) {
+            return;
+        }
+        android.widget.ScrollView scrollView = (android.widget.ScrollView) root;
+        // 从条目向上累加各层 getTop()，得到相对 ScrollView 内容的绝对位置
+        int top = 0;
+        View p = item;
+        while (p != null && p != scrollView) {
+            top += p.getTop();
+            p = (View) p.getParent();
+        }
+        int bottom = top + item.getHeight();
+        int scrollY = scrollView.getScrollY();
+        int height = scrollView.getHeight();
+        if (top < scrollY) {
+            scrollView.smoothScrollTo(0, Math.max(0, top));
+        } else if (bottom > scrollY + height) {
+            scrollView.smoothScrollTo(0, bottom - height);
+        }
+    }
+
+    /**
+     * 供 MainActivity.dispatchKeyEvent 调用：
+     * 方向键上下移动光标，确认键触发选中条目点击。
+     */
+    public boolean handleRemoteKey(KeyEvent event) {
+        if (event.getAction() != KeyEvent.ACTION_DOWN) {
+            return false;
+        }
+        int action = KeyBindingUtil.classify(event.getKeyCode());
+        if (action != KeyBindingUtil.ACTION_UP
+                && action != KeyBindingUtil.ACTION_DOWN
+                && action != KeyBindingUtil.ACTION_CONFIRM) {
+            return false;
+        }
+        if (mKeyNavItems.size() == 0) {
+            buildKeyNavItems();
+        }
+        if (mKeyNavItems.size() == 0) {
+            return false;
+        }
+        if (mKeyNavIndex < 0 || mKeyNavIndex >= mKeyNavItems.size()) {
+            mKeyNavIndex = 0;
+        }
+        if (event.getRepeatCount() == 0) {
+            if (action == KeyBindingUtil.ACTION_UP) {
+                moveKeyNav(-1);
+            } else if (action == KeyBindingUtil.ACTION_DOWN) {
+                moveKeyNav(1);
+            } else if (action == KeyBindingUtil.ACTION_CONFIRM) {
+                // 首次确认时先应用高亮（若此前从未按键），保证选中态可见
+                applyKeyNavHighlight();
+                View v = mKeyNavItems.get(mKeyNavIndex);
+                if (v != null) {
+                    v.performClick();
+                }
+                return true;
+            }
+        }
+        return true;
     }
 
     // 检查更新（使用 UpdateUtil）

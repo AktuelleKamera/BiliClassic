@@ -13,6 +13,8 @@ import android.widget.Toast;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.CookieHelper;
@@ -197,5 +199,83 @@ public class SpecialLoginActivity extends BaseActivity {
                 }
             }
         }).start();
+    }
+
+    // ===== 遥控器按键导航：方向键在按钮间移动（选中变暗），确认键触发 =====
+    private final java.util.List<View> mNavButtons = new java.util.ArrayList<View>();
+    private int mNavIndex = -1;
+
+    private void rebuildNavButtons() {
+        mNavButtons.clear();
+        if (confirmBtn != null && confirmBtn.getVisibility() == View.VISIBLE) mNavButtons.add(confirmBtn);
+        if (refuseBtn != null && refuseBtn.getVisibility() == View.VISIBLE) mNavButtons.add(refuseBtn);
+        if (copyBtn != null && copyBtn.getVisibility() == View.VISIBLE) mNavButtons.add(copyBtn);
+        if (mNavButtons.size() > 0 && mNavIndex < 0) {
+            mNavIndex = 0;
+        }
+        if (mNavIndex >= mNavButtons.size()) {
+            mNavIndex = mNavButtons.size() - 1;
+        }
+    }
+
+    /** 按钮选中变暗：选中深粉，未选中恢复原背景色。 */
+    private void applyNavHighlight() {
+        for (int i = 0; i < mNavButtons.size(); i++) {
+            View v = mNavButtons.get(i);
+            if (v == null) continue;
+            if (i == mNavIndex) {
+                if (v.getId() == R.id.refuse) {
+                    v.setBackgroundColor(0xFF6B6B6B);
+                } else {
+                    v.setBackgroundColor(0xFFC06090);
+                }
+            } else {
+                if (v.getId() == R.id.refuse) {
+                    v.setBackgroundColor(0xFF999999);
+                } else {
+                    v.setBackgroundColor(0xFFD86DA5);
+                }
+            }
+        }
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        if (event.getAction() == android.view.KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+            int action = tv.biliclassic.util.KeyBindingUtil.classify(event.getKeyCode());
+            if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP
+                    || action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
+                    || action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT
+                    || action == tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT
+                    || action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+                if (mNavButtons.size() == 0) {
+                    rebuildNavButtons();
+                }
+                if (mNavButtons.size() == 0) {
+                    return super.dispatchKeyEvent(event);
+                }
+                if (mNavIndex < 0 || mNavIndex >= mNavButtons.size()) {
+                    mNavIndex = 0;
+                }
+                if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP
+                        || action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT) {
+                    mNavIndex = Math.max(0, mNavIndex - 1);
+                    applyNavHighlight();
+                    return true;
+                } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
+                        || action == tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT) {
+                    mNavIndex = Math.min(mNavButtons.size() - 1, mNavIndex + 1);
+                    applyNavHighlight();
+                    return true;
+                } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+                    View v = mNavButtons.get(mNavIndex);
+                    if (v != null) {
+                        v.performClick();
+                    }
+                    return true;
+                }
+            }
+        }
+        return super.dispatchKeyEvent(event);
     }
 }

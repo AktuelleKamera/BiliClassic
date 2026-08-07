@@ -40,6 +40,24 @@ public class HistoryAdapter extends BaseAdapter {
     private boolean isScrolling = false;
     private final java.util.ArrayList<Runnable> pendingBitmapSets = new java.util.ArrayList<Runnable>();
 
+    // 遥控器方向键选中的条目（-1 = 未选中），用于整行高亮
+    private int selectedPosition = -1;
+    // 触摸滑动中是否隐藏光标高亮（滑动时隐藏，再次按键时恢复）
+    private boolean mHideHighlight = false;
+
+    public void setSelectedPosition(int position) {
+        this.selectedPosition = position;
+        notifyDataSetChanged();
+    }
+
+    public void setHideHighlight(boolean hide) {
+        if (this.mHideHighlight == hide) {
+            return;
+        }
+        this.mHideHighlight = hide;
+        notifyDataSetChanged();
+    }
+
     private boolean isLowMemoryDevice() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
         return maxMemory < 24576;
@@ -142,6 +160,19 @@ public class HistoryAdapter extends BaseAdapter {
 
         final VideoCard item = list.get(position);
         final int currentPos = position;
+
+        // 遥控器光标高亮（选中：半透明粉色；未选中：恢复原点击效果背景）
+        // 触摸滑动时隐藏高亮（mHideHighlight），避免光标与手指位置混淆
+        if (position == selectedPosition && !mHideHighlight) {
+            convertView.setBackgroundColor(0x66D86DA5);
+        } else {
+            try {
+                convertView.setBackgroundDrawable(
+                        convertView.getResources().getDrawable(R.drawable.item_click_effect_white));
+            } catch (Exception e) {
+                convertView.setBackgroundColor(0xFFFFFFFF);
+            }
+        }
 
         holder.title.setText(item.title);
         holder.upName.setText(item.upName);

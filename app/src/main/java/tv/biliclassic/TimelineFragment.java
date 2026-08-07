@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.v4.app.Fragment;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.NetWorkUtil;
 
 public class TimelineFragment extends Fragment {
@@ -89,6 +91,61 @@ public class TimelineFragment extends Fragment {
         if (listView != null && listView.getVisibility() == View.VISIBLE) {
             listView.requestFocus();
         }
+    }
+
+    /**
+     * 放送时间表按键滚动：方向键上/下滚动列表，数字键 2/8 整屏翻页。
+     * 仅处理 ACTION_DOWN，长按 repeat 不额外加速。
+     * 兼容 Android 2.x：不调用 API 8 的 smoothScrollBy，改用 setSelectionFromTop（API 1）。
+     */
+    public boolean handleRemoteKey(KeyEvent event) {
+        if (event.getAction() != KeyEvent.ACTION_DOWN) {
+            return false;
+        }
+        if (listView == null || listView.getVisibility() != View.VISIBLE
+                || listView.getCount() == 0) {
+            return false;
+        }
+        int action = KeyBindingUtil.classify(event.getKeyCode());
+        if (action == KeyBindingUtil.ACTION_UP) {
+            scrollByLines(-1);
+            return true;
+        } else if (action == KeyBindingUtil.ACTION_DOWN) {
+            scrollByLines(1);
+            return true;
+        } else if (action == KeyBindingUtil.ACTION_NUM_2) {
+            scrollByLines(-getVisibleLineCount());
+            return true;
+        } else if (action == KeyBindingUtil.ACTION_NUM_8) {
+            scrollByLines(getVisibleLineCount());
+            return true;
+        }
+        return false;
+    }
+
+    /** 以当前首可见行为基准滚动若干行（方向：-1 上，+1 下），并做边界钳制。 */
+    private void scrollByLines(int delta) {
+        if (listView == null) {
+            return;
+        }
+        int target = listView.getFirstVisiblePosition() + delta;
+        if (target < 0) {
+            target = 0;
+        } else if (target >= listView.getCount()) {
+            target = listView.getCount() - 1;
+        }
+        listView.setSelectionFromTop(target, 0);
+    }
+
+    /** 估算一屏能显示多少行（至少 1 行）。 */
+    private int getVisibleLineCount() {
+        if (listView == null) {
+            return 1;
+        }
+        int first = listView.getFirstVisiblePosition();
+        int last = listView.getLastVisiblePosition();
+        int count = last - first + 1;
+        return count > 0 ? count : 1;
     }
 
     private void showLoading() {

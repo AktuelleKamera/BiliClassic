@@ -5,6 +5,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,6 +25,7 @@ import tv.biliclassic.api.FavoriteApi;
 import tv.biliclassic.model.FavoriteFolder;
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.BroadcastConstants;
+import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.DialogUtil;
@@ -44,6 +46,95 @@ public class RelatedVideosFragment extends Fragment {
     // 收藏防连点
     private boolean mIsFavoriteUpdating = false;
 
+    // 键盘光标选中的项，-1 表示无选中
+    private int selectedPosition = -1;
+
+    /**
+     * 供 VideoDetailActivity.dispatchKeyEvent 调用：
+     * 方向键在相关视频列表内上下移动光标（选中高亮），确认键打开视频。
+     * 返回 true 表示事件已被消费。
+     */
+    public boolean handleRemoteKey(KeyEvent event) {
+        if (videoList == null || videoList.size() == 0 || listView == null) {
+            return false;
+        }
+        if (event.getAction() != KeyEvent.ACTION_DOWN) {
+            return false;
+        }
+        int action = KeyBindingUtil.classify(event.getKeyCode());
+        // 只处理 UP/DOWN/CONFIRM 与翻页键（2/8），其他键不消费（交给上层）
+        if (action != KeyBindingUtil.ACTION_UP
+                && action != KeyBindingUtil.ACTION_DOWN
+                && action != KeyBindingUtil.ACTION_CONFIRM
+                && action != KeyBindingUtil.ACTION_NUM_2
+                && action != KeyBindingUtil.ACTION_NUM_8) {
+            return false;
+        }
+        if (selectedPosition < 0) {
+            selectedPosition = 0;
+        }
+        // 按键恢复：取消触摸滑动时的隐藏，重新显示光标并滚回选中项
+        if (adapter != null) {
+            adapter.setHideHighlight(false);
+        }
+        // 首次按下才移动光标；长按 repeat 只消费不移动，防止 ListView 内置滚动干扰
+        if (event.getRepeatCount() == 0) {
+            int count = videoList.size();
+            if (action == KeyBindingUtil.ACTION_UP) {
+                selectedPosition = Math.max(0, selectedPosition - 1);
+            } else if (action == KeyBindingUtil.ACTION_DOWN) {
+                selectedPosition = Math.min(count - 1, selectedPosition + 1);
+            } else if (action == KeyBindingUtil.ACTION_NUM_2) {
+                selectedPosition = pageMove(-1);
+            } else if (action == KeyBindingUtil.ACTION_NUM_8) {
+                selectedPosition = pageMove(1);
+            } else if (action == KeyBindingUtil.ACTION_CONFIRM) {
+                VideoCard video = videoList.get(selectedPosition);
+                if (video != null) {
+                    Intent intent = new Intent(getActivity(), VideoDetailActivity.class);
+                    intent.putExtra("aid", video.aid);
+                    intent.putExtra("bvid", video.bvid);
+                    startActivity(intent);
+                }
+                return true;
+            }
+            applySelection();
+        }
+        // 所有 DOWN 事件都消费（含长按 repeat），避免列表自身滚动导致"回顶"
+        return true;
+    }
+
+    /**
+     * 数字键 2/8：按一屏（当前可见项数）快速翻页。
+     * direction=-1 向上翻，+1 向下翻；返回新位置（已做边界钳制）。
+     */
+    private int pageMove(int direction) {
+        if (listView == null) {
+            return selectedPosition;
+        }
+        int first = listView.getFirstVisiblePosition();
+        int last = listView.getLastVisiblePosition();
+        int visibleCount = Math.max(1, last - first + 1);
+        int newPos = selectedPosition + direction * visibleCount;
+        int count = videoList.size();
+        if (newPos < 0) {
+            newPos = 0;
+        } else if (newPos >= count) {
+            newPos = count - 1;
+        }
+        return newPos;
+    }
+
+    private void applySelection() {
+        // 先刷新高亮，再立即定位到选中项（setSelection 无动画竞争，不会回顶）
+        if (adapter != null) {
+            adapter.setSelectedPosition(selectedPosition);
+        }
+        if (listView != null) {
+            listView.setSelection(selectedPosition);
+        }
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -56,6 +147,10 @@ public class RelatedVideosFragment extends Fragment {
         adapter = new RelatedVideosAdapter(getActivity(), videoList);
         listView.setAdapter(adapter);
 
+        // 隐藏原生 selector，避免覆盖自定义光标高亮（粉色）
+        listView.setSelector(android.R.color.transparent);
+        listView.setCacheColorHint(0x00000000);
+
         // 滚动中暂缓封面应用，避免滑到时封面一张张到达触发整屏重绘
         listView.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
@@ -67,8 +162,11 @@ public class RelatedVideosFragment extends Fragment {
             public void onScrollStateChanged(AbsListView view, int scrollState) {
                 if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_IDLE) {
                     adapter.setScrolling(false);
+                    // 滚动结束：保持高亮隐藏，等待再次按键恢复
                 } else {
                     adapter.setScrolling(true);
+                    // 开始触摸滚动/甩动：隐藏光标高亮
+                    adapter.setHideHighlight(true);
                 }
             }
         });

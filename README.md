@@ -100,7 +100,7 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 #### 最低配置
 - 系统: Android 1.5 (Donut) 及以上
 - 处理器: ARMv5TE
-- 物理内存: 96 MB
+- 物理内存: 64 MB
 
 以及其他搭载 ARMv5TE / ARMv6 / ARMv7-A / ARMv8-A / x86 / MIPS 处理器、运行 Android 1.5+ 系统的设备。
 

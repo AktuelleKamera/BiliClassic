@@ -69,6 +69,23 @@ public class ReplyListAdapter extends BaseAdapter {
     private int mReplyType = 1;
     private long mMid;
 
+    // 键盘光标高亮
+    private int selectedPosition = -1;
+    private boolean hideHighlight = false;
+
+    public void setSelectedPosition(int position) {
+        this.selectedPosition = position;
+    }
+
+    public void setHideHighlight(boolean hide) {
+        this.hideHighlight = hide;
+    }
+
+    public void setScrolling(boolean scrolling) {
+        this.isScrolling = scrolling;
+        this.hideHighlight = scrolling;
+    }
+
     public void setOid(long oid) { mOid = oid; }
     public void setReplyType(int type) { mReplyType = type; }
     public void setMid(long mid) { mMid = mid; }
@@ -180,7 +197,12 @@ public class ReplyListAdapter extends BaseAdapter {
                             if (h.longPressRunnable != null) {
                                 mainHandler.removeCallbacks(h.longPressRunnable);
                             }
-                            v.setBackgroundResource(R.drawable.item_click_effect_white);
+                            // 触屏结束：恢复背景。若是键盘光标选中项则保留粉色高亮
+                            if (!hideHighlight && position == selectedPosition) {
+                                v.setBackgroundColor(0x66D86DA5);
+                            } else {
+                                v.setBackgroundResource(R.drawable.item_click_effect_white);
+                            }
                             break;
                     }
                     return false;
@@ -460,6 +482,15 @@ public class ReplyListAdapter extends BaseAdapter {
             };
             holder.avatar.setOnClickListener(clickListener);
             holder.userName.setOnClickListener(clickListener);
+        }
+
+        // 键盘光标高亮（选中：半透明粉色；未选中/滚动中：恢复原点击效果背景）
+        if (hideHighlight) {
+            convertView.setBackgroundResource(R.drawable.item_click_effect_white);
+        } else if (position == selectedPosition) {
+            convertView.setBackgroundColor(0x66D86DA5);
+        } else {
+            convertView.setBackgroundResource(R.drawable.item_click_effect_white);
         }
 
         return convertView;

@@ -22,11 +22,16 @@ public class TvUtil {
     }
 
     public static boolean isTv(Context context) {
-        if (isForceTvModeEnabled()) {
-            Log.d(TAG, "isTv: 强制 TV 模式开启");
-            return true;
+        // 用户显式设置过"TV模式强制开关"时，完全按其意愿：
+        //   true  → 强制进入 TV 模式
+        //   false → 明确退出 TV 模式（即使设备自动识别为电视也不再进入）
+        if (SharedPreferencesUtil.contains(KEY_FORCE_TV_MODE)) {
+            boolean force = SharedPreferencesUtil.getBoolean(KEY_FORCE_TV_MODE, false);
+            Log.d(TAG, "isTv: 用户已设置强制开关=" + force);
+            return force;
         }
 
+        // 首次（未设置）：自动识别电视设备
         // 检测 Android 版本
         int sdkInt = getSdkInt();
         Log.d(TAG, "SDK_INT: " + sdkInt);

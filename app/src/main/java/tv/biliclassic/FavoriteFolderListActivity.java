@@ -59,6 +59,10 @@ public class FavoriteFolderListActivity extends BaseActivity {
         adapter = new FavoriteFolderAdapter(this, folderList);
         listView.setAdapter(adapter);
 
+        // 隐藏原生 selector，避免覆盖自定义光标高亮（粉色）
+        listView.setSelector(android.R.color.transparent);
+        listView.setCacheColorHint(0x00000000);
+
         listView.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
             public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
@@ -68,8 +72,11 @@ public class FavoriteFolderListActivity extends BaseActivity {
             public void onScrollStateChanged(AbsListView view, int scrollState) {
                 if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_IDLE) {
                     adapter.setScrolling(false);
+                    // 滚动结束：保持高亮隐藏，等待再次按键恢复
                 } else {
                     adapter.setScrolling(true);
+                    // 开始触摸滚动/甩动：隐藏光标高亮
+                    adapter.setHideHighlight(true);
                 }
             }
         });
@@ -119,6 +126,82 @@ public class FavoriteFolderListActivity extends BaseActivity {
         intent.putExtra("fid", folder.fid);
         intent.putExtra("name", folder.name);
         startActivityForResult(intent, REQUEST_VIDEO_LIST);
+    }
+
+    // ===== 遥控器按键导航（模仿 RelatedVideosFragment） =====
+    private int selectedPosition = -1;
+
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        if (folderList == null || folderList.size() == 0 || listView == null) {
+            return super.dispatchKeyEvent(event);
+        }
+        if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) {
+            return super.dispatchKeyEvent(event);
+        }
+        int action = tv.biliclassic.util.KeyBindingUtil.classify(event.getKeyCode());
+        if (action != tv.biliclassic.util.KeyBindingUtil.ACTION_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+            return super.dispatchKeyEvent(event);
+        }
+        if (selectedPosition < 0) {
+            selectedPosition = 0;
+        }
+        // 按键恢复：取消触摸滑动时的隐藏，重新显示光标
+        if (adapter != null) {
+            adapter.setHideHighlight(false);
+        }
+        // 首次按下才移动光标；长按 repeat 只消费不移动
+        if (event.getRepeatCount() == 0) {
+            int count = folderList.size();
+            if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP) {
+                selectedPosition = Math.max(0, selectedPosition - 1);
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
+                selectedPosition = Math.min(count - 1, selectedPosition + 1);
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2) {
+                selectedPosition = pageMove(-1);
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+                selectedPosition = pageMove(1);
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+                FavoriteFolder folder = folderList.get(selectedPosition);
+                if (folder != null) {
+                    onFolderClick(folder, selectedPosition);
+                }
+                return true;
+            }
+            applySelection();
+        }
+        return true;
+    }
+
+    private int pageMove(int direction) {
+        if (listView == null) {
+            return selectedPosition;
+        }
+        int first = listView.getFirstVisiblePosition();
+        int last = listView.getLastVisiblePosition();
+        int visibleCount = Math.max(1, last - first + 1);
+        int newPos = selectedPosition + direction * visibleCount;
+        int count = folderList.size();
+        if (newPos < 0) {
+            newPos = 0;
+        } else if (newPos >= count) {
+            newPos = count - 1;
+        }
+        return newPos;
+    }
+
+    private void applySelection() {
+        if (adapter != null) {
+            adapter.setSelectedPosition(selectedPosition);
+        }
+        if (listView != null) {
+            // setSelection 为 API 1，兼容 Android 2.x；smoothScrollToPosition 需 API 8
+            listView.setSelection(selectedPosition);
+        }
     }
 
     @Override

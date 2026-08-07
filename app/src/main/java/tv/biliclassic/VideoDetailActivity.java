@@ -4,8 +4,10 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -21,12 +23,14 @@ import android.view.ViewGroup;
 import android.view.Gravity;
 import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.RadioGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.util.Log;
@@ -52,6 +56,7 @@ import tv.biliclassic.model.FavoriteFolder;
 import tv.biliclassic.model.VideoInfo;
 import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.DialogUtil;
+import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class VideoDetailActivity extends BaseActivity {
@@ -99,6 +104,22 @@ public class VideoDetailActivity extends BaseActivity {
     private static final int MAX_COMMENT_IMAGES = 9;
     private TextView dialogImageBtn = null;
     private static final int REQUEST_PICK_COMMENT_IMAGE = 2001;
+
+    // ===== 焦点光标系统 =====
+    // 视频详情页按键交互模型（Nokia 功能机范式）：
+    //   方向键循环：返回 → 播放 → UP主 → 标签 → 分P（内容区操作）；
+    //   左软键：呼出"操作菜单"（下载/评论/收藏/分享/三连）；
+    //   右软键：返回（finish）；
+    //   数字键 1：上一个 Tab；数字键 3：下一个 Tab；
+    //   确认键：触发当前焦点项（标签→列表对话框；分P→进入分P浏览模式）；
+    // 通过 dispatchKeyEvent 在事件分发给 ViewPager/View 树之前处理。
+    private final java.util.List<View> mFocusableViews = new java.util.ArrayList<View>();
+    private final java.util.HashMap<View, Drawable> mOriginalBackgrounds =
+            new java.util.HashMap<View, Drawable>();
+    private int mFocusIndex = -1;
+    private boolean mPartBrowsing = false; // 分P浏览模式
+    // 是否已用遥控器按键导航过（触屏用户未按键时不高亮任何焦点项，避免按钮外观被改写）
+    private boolean mKeyNavActive = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -214,7 +235,7 @@ public class VideoDetailActivity extends BaseActivity {
             return;
         }
 
-        // 普通视频（离线模式兜底）
+        // 普通视频（离线模式）
         updateAvidDisplay();
         initNormalVideo();
         initBottomButtons();
@@ -422,6 +443,540 @@ public class VideoDetailActivity extends BaseActivity {
             return true;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    private void addFocusable(View v) {
+        if (v == null) {
+            return;
+        }
+        v.setFocusable(true);
+        v.setFocusableInTouchMode(true);
+        mFocusableViews.add(v);
+    }
+
+    public void rebuildFocusableViews() {
+        mFocusableViews.clear();
+        mOriginalBackgrounds.clear();
+
+        // 焦点列表：播放 → UP主 → 标签 → 分P
+        // 返回由 BACK / 右软键，不占用焦点项
+
+        // 1. 播放按钮（fragment 中的核心操作）
+        View btnPlay = findViewById(R.id.btn_play);
+        addFocusable(btnPlay);
+
+        // 2. UP主（有文本才可聚焦，点击跳 UP 主页）
+        TextView upName = (TextView) findViewById(R.id.tv_up_name_new);
+        if (upName != null && upName.getText() != null
+                && upName.getText().length() > 0) {
+            addFocusable(upName);
+        }
+
+        // 3. 标签区（有标签才可聚焦，确认键弹标签列表）
+        View tags = findViewById(R.id.tags_container);
+        if (videoDetailFragment != null
+                && videoDetailFragment.getValidTags() != null
+                && videoDetailFragment.getValidTags().size() > 0) {
+            addFocusable(tags);
+        }
+
+        // 4. 分P列表（有分P才可聚焦，确认键进入分P浏览）
+        View parts = findViewById(R.id.lv_parts);
+        if (videoDetailFragment != null
+                && videoDetailFragment.getPartCount() > 0) {
+            addFocusable(parts);
+        }
+
+        // 默认焦点：优先定位到播放按钮（最重要），否则第一个
+        int target = -1;
+        if (btnPlay != null) {
+            target = mFocusableViews.indexOf(btnPlay);
+        }
+        if (target < 0 && !mFocusableViews.isEmpty()) {
+            target = 0;
+        }
+        mFocusIndex = target;
+        applyFocusHighlight();
+        ensureFocusVisible(getCurrentFocusView());
+    }
+
+    private View getCurrentFocusView() {
+        if (mFocusIndex >= 0 && mFocusIndex < mFocusableViews.size()) {
+            return mFocusableViews.get(mFocusIndex);
+        }
+        return null;
+    }
+
+    private void moveFocus(int delta) {
+        int n = mFocusableViews.size();
+        if (n == 0) {
+            return;
+        }
+        int cur = mFocusIndex < 0 ? 0 : mFocusIndex;
+        int next = cur + delta;
+        if (next < 0) {
+            // 顶部边界：不循环到底部，而是滚动到 ScrollView 顶部（封面标题可见），
+            // 焦点保持当前（播放按钮），让用户可以"回到顶部"看到封面。
+            scrollToTop();
+            return;
+        }
+        if (next >= n) {
+            // 底部边界：滚动到 ScrollView 底部，焦点保持当前
+            scrollToBottom();
+            return;
+        }
+        if (next == cur) {
+            return;
+        }
+        mFocusIndex = next;
+        applyFocusHighlight();
+        ensureFocusVisible(getCurrentFocusView());
+        vibrateFeedback();
+    }
+
+    private void scrollToTop() {
+        ScrollView sv = videoDetailFragment != null
+                ? videoDetailFragment.getScrollView() : null;
+        if (sv != null) {
+            sv.smoothScrollTo(0, 0);
+        }
+    }
+
+    private void scrollToBottom() {
+        ScrollView sv = videoDetailFragment != null
+                ? videoDetailFragment.getScrollView() : null;
+        if (sv != null && sv.getChildCount() > 0) {
+            View content = sv.getChildAt(0);
+            int bottom = content.getHeight() - sv.getHeight();
+            if (bottom < 0) {
+                bottom = 0;
+            }
+            sv.smoothScrollTo(0, bottom);
+        }
+    }
+
+    /**
+     * 让焦点 view 在 ScrollView 内可见：焦点移动时联动滚动画面，
+     * 避免光标跑到屏幕外看不见。
+     */
+    private void ensureFocusVisible(View v) {
+        if (v == null) {
+            return;
+        }
+        ScrollView sv = null;
+        if (videoDetailFragment != null) {
+            sv = videoDetailFragment.getScrollView();
+        }
+        if (sv == null) {
+            return;
+        }
+        // 累加父级 getTop 得到 v 相对 ScrollView 内容顶部的 y
+        int top = 0;
+        View cur = v;
+        while (cur != null && cur != sv) {
+            top += cur.getTop();
+            cur = (View) cur.getParent();
+        }
+        if (cur == null) {
+            // 不在 ScrollView 内（如顶栏元素），无需滚动
+            return;
+        }
+        int bottom = top + v.getHeight();
+        int scrollY = sv.getScrollY();
+        int height = sv.getHeight();
+        int target = scrollY;
+        if (top < scrollY) {
+            // 焦点在可视区上方：向上滚
+            target = Math.max(0, top - 20);
+        } else if (bottom > scrollY + height) {
+            // 焦点在可视区下方：向下滚
+            target = bottom - height + 20;
+        }
+        if (target != scrollY) {
+            sv.smoothScrollTo(0, target);
+        }
+    }
+
+    // 焦点高亮颜色：深红（与播放按钮浅粉色 #D86DA5 对比强烈，选中状态一目了然）
+    private static final int FOCUS_COLOR = 0xFF8A1E48;
+
+    private void applyFocusHighlight() {
+        // 触屏用户未按键时不做任何样式修改，避免默认高亮第一项/改写按钮外观
+        if (!mKeyNavActive) {
+            return;
+        }
+        int n = mFocusableViews.size();
+        for (int i = 0; i < n; i++) {
+            View v = mFocusableViews.get(i);
+            if (v == null) {
+                continue;
+            }
+            if (i == mFocusIndex) {
+                // 保存原 background（仅保存一次）
+                if (!mOriginalBackgrounds.containsKey(v)) {
+                    mOriginalBackgrounds.put(v, v.getBackground());
+                }
+                // 选中效果：
+                // 播放按钮本身是粉色 #D86DA5，选中时保持粉色不变，
+                // 仅加粗文字 + 白色光晕表示选中（不再替换为深红高亮色）。
+                // 其他焦点项叠加深红色粗边框（同圆角）作为选中标识。
+                int corner = dpToPx(2);
+                Drawable bg = v.getBackground();
+                if (v.getId() == R.id.btn_play) {
+                    try {
+                        Button b = (Button) v;
+                        b.setTypeface(null, android.graphics.Typeface.BOLD);
+                        b.getPaint().setShadowLayer(8, 0, 0, 0xFFFFFFFF);
+                        b.invalidate();
+                    } catch (Exception e) {
+                        // 忽略样式异常
+                    }
+                    v.setBackgroundDrawable(bg);
+                } else {
+                    // 叠加深红色粗边框（与播放按钮同圆角）
+                    GradientDrawable border = new GradientDrawable();
+                    border.setShape(GradientDrawable.RECTANGLE);
+                    border.setCornerRadius(corner);
+                    border.setStroke(dpToPx(5), FOCUS_COLOR);
+                    border.setColor(0x00000000);
+                    Drawable[] layers;
+                    if (bg != null) {
+                        layers = new Drawable[]{bg, border};
+                    } else {
+                        layers = new Drawable[]{new ColorDrawable(0x00000000), border};
+                    }
+                    v.setBackgroundDrawable(new LayerDrawable(layers));
+                }
+            } else {
+                // 恢复播放按钮文字样式（常规字重、无阴影）
+                if (v.getId() == R.id.btn_play) {
+                    try {
+                        Button b = (Button) v;
+                        b.setTypeface(null, android.graphics.Typeface.NORMAL);
+                        b.getPaint().setShadowLayer(0, 0, 0, 0);
+                        b.invalidate();
+                    } catch (Exception e) {
+                        // 忽略样式异常
+                    }
+                }
+                // 恢复原 background（仅恢复被高亮覆盖过的；从未选中的项保持初始背景）
+                if (mOriginalBackgrounds.containsKey(v)) {
+                    v.setBackgroundDrawable(mOriginalBackgrounds.get(v));
+                }
+            }
+        }
+    }
+
+    // 焦点移动 / 确认时的短震动反馈，让按键手机有"到选中"手感。
+    // 注意：Vibrator.vibrate(long) 是 API 1+，不调用 hasVibrator()（API 11+），
+    // 用 catch(Throwable) （无震动马达/老系统 NoSuchMethodError 都静默忽略）。
+    private void vibrateFeedback() {
+        try {
+            android.os.Vibrator vibrator =
+                    (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null) {
+                vibrator.vibrate(30);
+            }
+        } catch (Throwable t) {
+            // 无震动能力时静默忽略
+        }
+    }
+
+    /**
+     * 确认键触发当前焦点项：标签→弹标签列表；分P→进入分P浏览；其余→performClick。
+     */
+    private void triggerFocus() {
+        if (mFocusIndex < 0 || mFocusIndex >= mFocusableViews.size()) {
+            return;
+        }
+        View v = mFocusableViews.get(mFocusIndex);
+        if (v == null) {
+            return;
+        }
+        vibrateFeedback();
+        int id = v.getId();
+        if (id == R.id.tags_container) {
+            showTagChoiceDialog();
+        } else if (id == R.id.lv_parts) {
+            enterPartBrowsing();
+        } else {
+            v.performClick();
+        }
+    }
+
+    /**
+     * 左软键：呼出操作菜单（下载/评论/收藏/分享/三连）。
+     * 由 AlertDialog.setItems，Android 系统原生支持方向键/确认键导航。
+     */
+    private void showActionMenu() {
+        final String[] items = {
+                getString(R.string.videodetail_download),
+                getString(R.string.videodetail_tab_comment),
+                getString(R.string.videodetail_favorite),
+                getString(R.string.videodetail_share),
+                getString(R.string.videodetail_triple)
+        };
+        new AlertDialog.Builder(DialogUtil.wrap(this))
+                .setTitle(getString(R.string.videodetail_action_menu))
+                .setItems(items, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (which == 0) {
+                            showDownloadChoiceDialog();
+                        } else if (which == 1) {
+                            showSendCommentDialog();
+                        } else if (which == 2) {
+                            showFavoriteDialog();
+                        } else if (which == 3) {
+                            shareVideo();
+                        } else if (which == 4) {
+                            showInteractionMenu();
+                        }
+                    }
+                })
+                .setNegativeButton(getString(R.string.videodetail_cancel), null)
+                .show();
+    }
+
+    /**
+     * 标签焦点项确认：弹标签列表对话框（系统原生按键导航）。
+     */
+    private void showTagChoiceDialog() {
+        if (videoDetailFragment == null) {
+            return;
+        }
+        java.util.ArrayList<String> tags = videoDetailFragment.getValidTags();
+        if (tags == null || tags.size() == 0) {
+            Toast.makeText(this, getString(R.string.videodetailactivity_toast_65e0_1), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final String[] arr = new String[tags.size()];
+        for (int i = 0; i < tags.size(); i++) {
+            arr[i] = tags.get(i);
+        }
+        new AlertDialog.Builder(DialogUtil.wrap(this))
+                .setTitle(getString(R.string.videodetail_tag_choice))
+                .setItems(arr, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (videoDetailFragment != null) {
+                            videoDetailFragment.searchTag(arr[which]);
+                        }
+                    }
+                })
+                .setNegativeButton(getString(R.string.videodetail_cancel), null)
+                .show();
+    }
+
+    // ===== 分P浏览模式 =====
+    // 焦点在"分P列表"上按确认键进入：上下方向键翻分P（选中高亮），
+    // 确认键播放当前分P，左/右软键或 BACK 退出浏览回到内容区焦点。
+    private void enterPartBrowsing() {
+        if (videoDetailFragment == null || videoDetailFragment.getPartCount() <= 0) {
+            return;
+        }
+        mPartBrowsing = true;
+        // 高亮分P列表容器
+        View parts = findViewById(R.id.lv_parts);
+        if (parts != null) {
+            if (!mOriginalBackgrounds.containsKey(parts)) {
+                mOriginalBackgrounds.put(parts, parts.getBackground());
+            }
+            parts.setBackgroundResource(R.drawable.focus_overlay);
+        }
+        videoDetailFragment.selectPart(videoDetailFragment.getCurrentPartIndex());
+    }
+
+    private void movePart(int delta) {
+        if (videoDetailFragment == null) {
+            return;
+        }
+        int total = videoDetailFragment.getPartCount();
+        if (total <= 0) {
+            return;
+        }
+        int cur = videoDetailFragment.getCurrentPartIndex();
+        int next = cur + delta;
+        // 分P浏览：到两端停在原地（不循环）
+        if (next < 0) {
+            next = 0;
+        } else if (next >= total) {
+            next = total - 1;
+        }
+        if (next == cur) {
+            return;
+        }
+        videoDetailFragment.selectPart(next);
+    }
+
+    private void playCurrentPart() {
+        if (videoDetailFragment != null) {
+            videoDetailFragment.playPart(videoDetailFragment.getCurrentPartIndex());
+        }
+    }
+
+    private void exitPartBrowsing() {
+        if (!mPartBrowsing) {
+            return;
+        }
+        mPartBrowsing = false;
+        // 恢复内容区焦点（rebuild 会重新 applyFocusHighlight）
+        rebuildFocusableViews();
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            int action = KeyBindingUtil.classify(event.getKeyCode());
+            // 首次按下才执行动作；长按 repeat 事件一律消费，
+            // 防止 ListView/ScrollView 的内置"长按持续滚动"干扰光标系统
+            boolean firstPress = (event.getRepeatCount() == 0);
+
+            // 分P浏览模式：方向键翻分P、确认播放、左/右软键或 BACK 退出
+            if (mPartBrowsing) {
+                if (firstPress) {
+                    if (action == KeyBindingUtil.ACTION_UP) {
+                        movePart(-1);
+                    } else if (action == KeyBindingUtil.ACTION_DOWN) {
+                        movePart(1);
+                    } else if (action == KeyBindingUtil.ACTION_CONFIRM) {
+                        playCurrentPart();
+                    } else if (action == KeyBindingUtil.ACTION_SOFT_LEFT
+                            || action == KeyBindingUtil.ACTION_SOFT_RIGHT) {
+                        exitPartBrowsing();
+                    } else if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+                        exitPartBrowsing();
+                    }
+                }
+                // 分P浏览中所有 DOWN（含 repeat）一律消费，避免误操作
+                return true;
+            }
+
+            // 左右方向键切换 ViewPager Tab（与 MainActivity 一致）
+            if (firstPress) {
+                if (action == KeyBindingUtil.ACTION_LEFT) {
+                    if (viewPager != null && viewPager.getCurrentItem() > 0) {
+                        viewPager.setCurrentItem(viewPager.getCurrentItem() - 1);
+                    }
+                    return true;
+                }
+                if (action == KeyBindingUtil.ACTION_RIGHT) {
+                    if (viewPager != null && viewPager.getAdapter() != null) {
+                        int cur = viewPager.getCurrentItem();
+                        int total = viewPager.getAdapter().getCount();
+                        if (cur < total - 1) {
+                            viewPager.setCurrentItem(cur + 1);
+                        }
+                    }
+                    return true;
+                }
+
+                // 左软键：呼出操作菜单
+                if (action == KeyBindingUtil.ACTION_SOFT_LEFT) {
+                    showActionMenu();
+                    return true;
+                }
+                // 右软键：返回
+                if (action == KeyBindingUtil.ACTION_SOFT_RIGHT) {
+                    finish();
+                    return true;
+                }
+            }
+
+            // 按当前 Tab 分发方向键/确认键（所有 DOWN 都消费，含长按 repeat）：
+            //   视频详情 → Activity 焦点系统；相关视频 → 列表光标；评论 → 评论光标
+            int current = viewPager != null ? viewPager.getCurrentItem() : 0;
+            Fragment f = getFragmentByPosition(current);
+            if (f instanceof RelatedVideosFragment) {
+                if (((RelatedVideosFragment) f).handleRemoteKey(event)) {
+                    return true;
+                }
+            } else if (f instanceof CommentFragment) {
+                if (((CommentFragment) f).handleRemoteKey(event)) {
+                    return true;
+                }
+            } else if (f instanceof VideoDetailFragment) {
+                // 视频详情 Tab：Activity 层焦点系统
+                if (handleDetailKey(event)) {
+                    return true;
+                }
+            } else {
+                // 其他（番剧详情等）：只消费方向键/确认键，数字翻页键不消费（不在列表页时无意义）
+                if (action == KeyBindingUtil.ACTION_UP
+                        || action == KeyBindingUtil.ACTION_DOWN
+                        || action == KeyBindingUtil.ACTION_LEFT
+                        || action == KeyBindingUtil.ACTION_RIGHT
+                        || action == KeyBindingUtil.ACTION_CONFIRM) {
+                    return true;
+                }
+            }
+
+            // 左右方向键：不切 Tab
+            if (action == KeyBindingUtil.ACTION_LEFT
+                    || action == KeyBindingUtil.ACTION_RIGHT) {
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    /**
+     * 视频详情 Tab 的方向键/确认键处理（Activity 层焦点光标系统）。
+     * 所有 DOWN（含长按 repeat）都消费，防止 ScrollView 内置长按滚动；动作仅在首次按下时执行。
+     */
+    private boolean handleDetailKey(KeyEvent event) {
+        if (event.getAction() != KeyEvent.ACTION_DOWN) {
+            return false;
+        }
+        int action = KeyBindingUtil.classify(event.getKeyCode());
+        if (action == KeyBindingUtil.ACTION_UP
+                || action == KeyBindingUtil.ACTION_DOWN
+                || action == KeyBindingUtil.ACTION_LEFT
+                || action == KeyBindingUtil.ACTION_RIGHT
+                || action == KeyBindingUtil.ACTION_CONFIRM) {
+            // 真实遥控器按键：启用光标高亮（首次按键立即显示当前位置）
+            if (!mKeyNavActive) {
+                mKeyNavActive = true;
+                applyFocusHighlight();
+            }
+            if (event.getRepeatCount() == 0) {
+                if (action == KeyBindingUtil.ACTION_UP) {
+                    moveFocus(-1);
+                } else if (action == KeyBindingUtil.ACTION_DOWN) {
+                    moveFocus(1);
+                } else if (action == KeyBindingUtil.ACTION_CONFIRM) {
+                    triggerFocus();
+                }
+            }
+            // 所有方向/确认 DOWN 都消费（含长按 repeat），避免 ScrollView 内置滚动
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 根据 ViewPager 位置获取对应 Fragment 实例（通过 FragmentManager tag）。
+     */
+    private Fragment getFragmentByPosition(int position) {
+        try {
+            return getSupportFragmentManager().findFragmentByTag(
+                    "android:switcher:" + R.id.viewpager + ":" + position);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 标签/分P 内容加载完成后通知 Activity 重建焦点列表。
+     */
+    public void notifyTagsUpdated() {
+        if (!fragmentReady || videoDetailFragment == null) return;
+        videoDetailFragment.getView().post(new Runnable() {
+            @Override
+            public void run() {
+                rebuildFocusableViews();
+            }
+        });
     }
 
     private void initBottomButtons() {
@@ -876,28 +1431,22 @@ public class VideoDetailActivity extends BaseActivity {
                             byte[] imageBytes = NetWorkUtil.readStream(is);
                             is.close();
 
-                            BitmapFactory.Options opts = new BitmapFactory.Options();
-                            opts.inJustDecodeBounds = true;
-                            BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, opts);
-
-                            int scale = 1;
-                            if (opts.outWidth > 1920 || opts.outHeight > 1080) {
-                                scale = Math.max(opts.outWidth / 1920, opts.outHeight / 1080);
+                            // 原图直传：不做尺寸缩放与质量压缩，保留原始图片数据
+                            String mimeType = getContentResolver().getType(imageUri);
+                            String ext = "jpg";
+                            if (mimeType != null) {
+                                if (mimeType.contains("png")) {
+                                    ext = "png";
+                                } else if (mimeType.contains("gif")) {
+                                    ext = "gif";
+                                } else if (mimeType.contains("webp")) {
+                                    ext = "webp";
+                                }
                             }
 
-                            opts = new BitmapFactory.Options();
-                            opts.inSampleSize = scale;
-                            opts.inPreferredConfig = Bitmap.Config.RGB_565;
-                            Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length, opts);
-
-                            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, baos);
-                            byte[] compressed = baos.toByteArray();
-                            if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
-
                             final long finalAid = getCorrectAid();
-                            final String fileName = "comment_" + System.currentTimeMillis() + ".jpg";
-                            final String resultJson = ReplyApi.uploadReplyImage(finalAid, compressed, fileName);
+                            final String fileName = "comment_" + System.currentTimeMillis() + "." + ext;
+                            final String resultJson = ReplyApi.uploadReplyImage(finalAid, imageBytes, fileName);
 
                             if (resultJson != null && pendingImageDataList.size() < MAX_COMMENT_IMAGES) {
                                 pendingImageDataList.add(resultJson);
@@ -1709,6 +2258,16 @@ public class VideoDetailActivity extends BaseActivity {
     public void setVideoDetailFragment(Fragment fragment) {
         this.videoDetailFragment = (VideoDetailFragment) fragment;
         this.fragmentReady = true;
+        // 等 fragment 的 view 布局完成后重建焦点列表（此时标签/分P 可能尚未加载，
+        // 后续内容就绪时 updateTags → notifyTagsUpdated 会再次重建）
+        if (fragment != null && fragment.getView() != null) {
+            fragment.getView().post(new Runnable() {
+                @Override
+                public void run() {
+                    rebuildFocusableViews();
+                }
+            });
+        }
     }
 
     private void parseExternalUri(Uri data) {

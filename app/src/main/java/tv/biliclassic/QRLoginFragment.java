@@ -48,6 +48,13 @@ public class QRLoginFragment extends Fragment {
     // UI组件
     private ImageView qrImageView;
     private TextView scanStat;
+    private Button btnManualLogin;
+    private Button btnBack;
+
+    // ===== 遥控器按键导航 =====
+    private final java.util.ArrayList<View> mNavViews = new java.util.ArrayList<View>();
+    private int mNavIndex = -1;
+    private boolean mKeyNavActive = false;
 
     // 状态
     private Timer timer;
@@ -86,8 +93,10 @@ public class QRLoginFragment extends Fragment {
 
         qrImageView = (ImageView) view.findViewById(R.id.qrImage);
         scanStat = (TextView) view.findViewById(R.id.scanStat);
-        Button btnBack = (Button) view.findViewById(R.id.btn_back);
-        Button btnManualLogin = (Button) view.findViewById(R.id.btn_manual_login);
+        btnManualLogin = (Button) view.findViewById(R.id.btn_manual_login);
+        btnBack = (Button) view.findViewById(R.id.btn_back);
+
+        rebuildNavViews();
 
         btnBack.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -480,6 +489,94 @@ public class QRLoginFragment extends Fragment {
         if (timer != null) {
             timer.cancel();
             timer = null;
+        }
+    }
+
+    // ===== 遥控器按键导航 =====
+
+    private void rebuildNavViews() {
+        mNavViews.clear();
+        if (qrImageView != null) mNavViews.add(qrImageView);
+        if (btnManualLogin != null) mNavViews.add(btnManualLogin);
+        if (btnBack != null) mNavViews.add(btnBack);
+        if (mNavViews.size() > 0 && mNavIndex < 0) {
+            mNavIndex = 0;
+        }
+        if (mNavIndex >= mNavViews.size()) {
+            mNavIndex = mNavViews.size() - 1;
+        }
+    }
+
+    /** 供 LoginActivity.dispatchKeyEvent 调用：方向键移动光标，确认键触发。 */
+    public boolean handleRemoteKey(android.view.KeyEvent event) {
+        if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) {
+            return false;
+        }
+        int action = tv.biliclassic.util.KeyBindingUtil.classify(event.getKeyCode());
+        if (action != tv.biliclassic.util.KeyBindingUtil.ACTION_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+            return false;
+        }
+        if (mNavViews.size() == 0) {
+            rebuildNavViews();
+        }
+        if (mNavViews.size() == 0) {
+            return false;
+        }
+        if (mNavIndex < 0 || mNavIndex >= mNavViews.size()) {
+            mNavIndex = 0;
+        }
+        // 首次按键启用高亮（触屏机不按键不高亮）
+        if (!mKeyNavActive) {
+            mKeyNavActive = true;
+            applyNavHighlight();
+        }
+        if (event.getRepeatCount() != 0) {
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP
+                || action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT) {
+            mNavIndex = Math.max(0, mNavIndex - 1);
+            applyNavHighlight();
+            return true;
+        } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
+                || action == tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT) {
+            mNavIndex = Math.min(mNavViews.size() - 1, mNavIndex + 1);
+            applyNavHighlight();
+            return true;
+        } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+            View v = mNavViews.get(mNavIndex);
+            if (v != null) {
+                v.performClick();
+            }
+            return true;
+        }
+        return true;
+    }
+
+    /** 选中变暗：qrImage 加粉色边框提示，按钮变深粉，未选中恢复。 */
+    private void applyNavHighlight() {
+        for (int i = 0; i < mNavViews.size(); i++) {
+            View v = mNavViews.get(i);
+            if (v == null) continue;
+            if (v == btnManualLogin || v == btnBack) {
+                // 按钮：选中深粉，未选中原粉 #D86DA5
+                if (i == mNavIndex) {
+                    ((Button) v).setBackgroundColor(0xFFC06090);
+                } else {
+                    ((Button) v).setBackgroundColor(0xFFD86DA5);
+                }
+            } else if (v == qrImageView) {
+                // QR 图：选中叠深粉边框，未选中移除
+                if (i == mNavIndex) {
+                    v.setBackgroundColor(0x66D86DA5);
+                } else {
+                    v.setBackgroundDrawable(null);
+                }
+            }
         }
     }
 }

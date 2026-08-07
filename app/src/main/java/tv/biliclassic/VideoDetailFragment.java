@@ -82,6 +82,8 @@ public class VideoDetailFragment extends Fragment {
     public VideoInfo videoInfo;
     private int currentPartIndex = 0;
     private String[] tags = {"", "", "", "", "", "", "", "", ""};
+    // 保存有效标签列表，供 Activity 焦点系统弹标签选择对话框
+    private ArrayList<String> mValidTags = new ArrayList<String>();
 
     private boolean mOfflineMode;
 
@@ -257,12 +259,68 @@ public class VideoDetailFragment extends Fragment {
         return tagView;
     }
 
-    private void searchTag(String keyword) {
+    public void searchTag(String keyword) {
         if (!isAdded() || getActivity() == null) return;
         if (keyword == null || keyword.length() == 0) return;
         Intent intent = new Intent(getActivity(), SearchActivity.class);
         intent.putExtra("keyword", keyword);
         startActivity(intent);
+    }
+
+    // ===== 供 Activity 焦点系统调用的接口 =====
+
+    public ArrayList<String> getValidTags() {
+        return mValidTags;
+    }
+
+    public int getPartCount() {
+        return partList != null ? partList.size() : 0;
+    }
+
+    public int getCurrentPartIndex() {
+        return currentPartIndex;
+    }
+
+    /**
+     * 选中某个分P（高亮 + 滚动可见），不触发播放。
+     */
+    public void selectPart(int position) {
+        if (partList == null || position < 0 || position >= partList.size()) {
+            return;
+        }
+        currentPartIndex = position;
+        if (partAdapter != null) {
+            partAdapter.setSelectedPosition(position);
+        }
+        if (lvParts != null) {
+            // setSelection 为 API 1，兼容 Android 2.x；smoothScrollToPosition 需 API 8
+            lvParts.setSelection(position);
+        }
+    }
+
+    /**
+     * 选中并播放某个分P。
+     */
+    public void playPart(int position) {
+        if (partList == null || position < 0 || position >= partList.size()) {
+            return;
+        }
+        currentPartIndex = position;
+        if (partAdapter != null) {
+            partAdapter.setSelectedPosition(position);
+        }
+        playVideo();
+    }
+
+    /**
+     * 返回本 Fragment 的根 ScrollView，供 Activity 焦点移动时联动滚动。
+     */
+    public ScrollView getScrollView() {
+        View v = getView();
+        if (v != null) {
+            return (ScrollView) v.findViewById(R.id.scroll_view);
+        }
+        return null;
     }
 
     public List<VideoPage> getVideoPages() {
@@ -591,6 +649,11 @@ public class VideoDetailFragment extends Fragment {
         for (int i = 0; i < tags.length; i++) {
             String tagText = tags[i];
             if (tagText != null && tagText.length() > 0) validTags.add(tagText);
+        }
+        mValidTags.clear();
+        mValidTags.addAll(validTags);
+        if (getActivity() instanceof VideoDetailActivity) {
+            ((VideoDetailActivity) getActivity()).notifyTagsUpdated();
         }
 
         if (validTags.size() == 0) {

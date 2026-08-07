@@ -96,7 +96,106 @@ public class ReplyListActivity extends BaseActivity {
     private String pendingImageDataJson = null;
     private static final int REQUEST_PICK_COMMENT_IMAGE = 2001;
 
+    // ===== 按键机导航：0=根评论，1..N=回复列表项 =====
+    private int mNavIndex = -1;
+    private boolean mKeyNavActive = false;
+    private boolean mNavOnRoot = false;
 
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) {
+            return super.dispatchKeyEvent(event);
+        }
+        int action = tv.biliclassic.util.KeyBindingUtil.classify(event.getKeyCode());
+        if (action != tv.biliclassic.util.KeyBindingUtil.ACTION_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+            return super.dispatchKeyEvent(event);
+        }
+        if (event.getRepeatCount() != 0) {
+            return true;
+        }
+        if (lv == null || lv.getVisibility() != View.VISIBLE || allReplies.size() == 0) {
+            return super.dispatchKeyEvent(event);
+        }
+        if (!mKeyNavActive) {
+            mKeyNavActive = true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP) {
+            if (mNavOnRoot) {
+                return true;
+            }
+            if (mNavIndex <= 0) {
+                mNavOnRoot = true;
+                mNavIndex = 0;
+            } else {
+                mNavIndex--;
+            }
+            applyNavHighlight();
+            lv.setSelection(Math.max(0, mNavIndex - 1));
+            return true;
+        } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
+            if (mNavOnRoot) {
+                mNavOnRoot = false;
+                mNavIndex = 0;
+            } else if (mNavIndex < allReplies.size() - 1) {
+                mNavIndex++;
+            } else {
+                // 已在最后一项：到底加载更多
+                if (!isLoading && !isEnd) {
+                    loadReplies();
+                }
+                return true;
+            }
+            applyNavHighlight();
+            lv.setSelection(Math.max(0, mNavIndex));
+            return true;
+        } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+            if (mNavOnRoot) {
+                onRootConfirm();
+            } else if (mNavIndex >= 0 && mNavIndex < allReplies.size()) {
+                ReplyData rd = allReplies.get(mNavIndex);
+                if (rd != null && rd.mid != 0) {
+                    Intent intent = new Intent(ReplyListActivity.this, UserProfileActivity.class);
+                    intent.putExtra("mid", rd.mid);
+                    startActivity(intent);
+                }
+            }
+            return true;
+        }
+        return true;
+    }
+
+    /** 键盘光标高亮：根评论选中时粉高亮，回复项选中时由 adapter 高亮。 */
+    private void applyNavHighlight() {
+        if (rootCommentView != null) {
+            if (mNavOnRoot) {
+                rootCommentView.setBackgroundColor(0x66D86DA5);
+            } else {
+                rootCommentView.setBackgroundResource(R.drawable.item_click_effect_white);
+            }
+        }
+        if (adapter != null) {
+            adapter.setHideHighlight(false);
+            adapter.setSelectedPosition(mNavOnRoot ? -1 : mNavIndex);
+        }
+        if (lv != null) {
+            lv.setSelector(new android.graphics.drawable.ColorDrawable(0x00000000));
+        }
+    }
+
+    /** 根评论确认：弹出回复对话框或展开全部回复。 */
+    private void onRootConfirm() {
+        if (rootUserName == null || rootCommentMessage == null) return;
+        if (allReplies.size() > 0) {
+            ReplyData first = allReplies.get(0);
+            if (first != null) {
+                showReplyDialog(first);
+            }
+        } else {
+            showReplyDialog(null);
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -336,7 +435,12 @@ public class ReplyListActivity extends BaseActivity {
                             if (mLongPressRunnable != null) {
                                 mainHandler.removeCallbacks(mLongPressRunnable);
                             }
-                            v.setBackgroundResource(R.drawable.item_click_effect_white);
+                            // 触屏结束：恢复背景。若是按键光标选中则保留粉色高亮
+                            if (mNavOnRoot && mKeyNavActive) {
+                                v.setBackgroundColor(0x66D86DA5);
+                            } else {
+                                v.setBackgroundResource(R.drawable.item_click_effect_white);
+                            }
                             break;
                     }
                     return false;
@@ -478,6 +582,8 @@ public class ReplyListActivity extends BaseActivity {
             }
         });
         lv.setAdapter(adapter);
+        // 禁用原生 selector 选中高亮（触屏点击不再残留），键盘光标高亮由 adapter 的 selectedPosition 控制
+        lv.setSelector(new android.graphics.drawable.ColorDrawable(0x00000000));
 
         lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -507,10 +613,20 @@ public class ReplyListActivity extends BaseActivity {
             @Override
             public void onScrollStateChanged(AbsListView view, int scrollState) {
                 if (scrollState == SCROLL_STATE_IDLE) {
+                    if (adapter != null) {
+                        adapter.setScrolling(false);
+                        // 滚动结束：保持高亮隐藏，等待再次按键恢复
+                    }
                     int lastVisible = view.getLastVisiblePosition();
                     int dataCount = adapter.getCount();
                     if (lastVisible >= dataCount - 1 && !isLoading && !isEnd && dataCount > 0) {
                         loadReplies();
+                    }
+                } else {
+                    if (adapter != null) {
+                        adapter.setScrolling(true);
+                        // 开始触摸滚动/甩动：隐藏光标高亮
+                        adapter.setHideHighlight(true);
                     }
                 }
             }
@@ -706,6 +822,14 @@ public class ReplyListActivity extends BaseActivity {
 
                             isEnd = isEndNow;
                             pagination = nextPagination;
+
+                            // 首次加载完成：聚焦第一个回复，暂不自动加载更多（防止不足一屏立即翻页触发风控）
+                            if (allReplies.size() > 0 && mNavIndex < 0) {
+                                mNavIndex = 0;
+                                mNavOnRoot = false;
+                                adapter.setSelectedPosition(0);
+                                lv.setSelection(0);
+                            }
 
                             if (isEnd || newCount == 0) {
                                 footerView.setVisibility(View.GONE);

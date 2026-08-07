@@ -10,11 +10,13 @@ import android.os.Environment;
 import android.os.Handler;
 import android.text.ClipboardManager;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -29,6 +31,7 @@ import java.net.URL;
 import java.util.ArrayList;
 
 import tv.biliclassic.subsettings.DecoderSettingsActivity;
+import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.LocaleHelper;
 import tv.biliclassic.util.PermissionUtil;
@@ -129,6 +132,13 @@ public class SettingsActivity extends BaseActivity {
 
     private Handler mainHandler = new Handler();
 
+    // 按键导航：设置页可交互条目（方向键上下移动光标，确认键触发点击）
+    private java.util.List<View> mKeyNavItems = new java.util.ArrayList<View>();
+    private int mKeyNavIndex = -1;
+
+    // 是否已用遥控器按键导航过（触屏用户未按键时不高亮第一项）
+    private boolean mKeyNavActive = false;
+
     private int currentVersionCode = -1;
     private String currentVersionName = "";
 
@@ -151,6 +161,19 @@ public class SettingsActivity extends BaseActivity {
                 @Override
                 public void onClick(View v) {
                     finish();
+                }
+            });
+        }
+
+        // 按键绑定入口
+        LinearLayout keyBindingItem = (LinearLayout) findViewById(R.id.key_binding_item);
+        if (keyBindingItem != null) {
+            keyBindingItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent intent = new Intent(SettingsActivity.this, KeyBindingSetupActivity.class);
+                    intent.putExtra("mode", "rebind");
+                    startActivity(intent);
                 }
             });
         }
@@ -688,7 +711,124 @@ public class SettingsActivity extends BaseActivity {
                 });
             }
         }
+
+        initKeyNavigation();
     }
+
+    /**
+     * 收集设置页所有可交互条目（id 以 _item 结尾的 LinearLayout），
+     * 供遥控器方向键/确认键导航。
+     */
+    private void initKeyNavigation() {
+        mKeyNavItems.clear();
+        ScrollView scrollView = (ScrollView) findViewById(R.id.settings_scroll);
+        if (scrollView == null || scrollView.getChildCount() == 0) {
+            return;
+        }
+        ViewGroup container = (ViewGroup) scrollView.getChildAt(0);
+        if (container == null) {
+            return;
+        }
+        for (int i = 0; i < container.getChildCount(); i++) {
+            View child = container.getChildAt(i);
+            if (child instanceof LinearLayout
+                    && child.getVisibility() == View.VISIBLE
+                    && child.getId() != View.NO_ID) {
+                String name = getResources().getResourceEntryName(child.getId());
+                if (name != null && name.endsWith("_item")) {
+                    mKeyNavItems.add(child);
+                }
+            }
+        }
+        if (mKeyNavItems.size() > 0) {
+            mKeyNavIndex = 0;
+            // 触屏用户未按键时不高亮第一项，等首次按键再显示
+            applyKeyNavHighlight();
+        }
+    }
+
+    /**
+     * 刷新按键导航高亮：只有当前选中条目显示粉色边框背景，
+     * 其余条目恢复白色背景。Android 2.x 无 getBackground 便捷处理，直接设色。
+     * 触屏用户未按键时（mKeyNavActive=false）不做任何修改，避免误高亮第一项。
+     */
+    private void applyKeyNavHighlight() {
+        if (!mKeyNavActive) {
+            return;
+        }
+        for (int i = 0; i < mKeyNavItems.size(); i++) {
+            View v = mKeyNavItems.get(i);
+            v.setBackgroundColor(i == mKeyNavIndex ? 0x66D86DA5 : 0xFFFFFFFF);
+        }
+    }
+
+    /**
+     * 移动按键导航光标并滚动到可见。方向：-1 上，+1 下。
+     */
+    private void moveKeyNav(int direction) {
+        if (mKeyNavItems.size() == 0) {
+            return;
+        }
+        int next = mKeyNavIndex + direction;
+        if (next < 0) {
+            next = 0;
+        } else if (next >= mKeyNavItems.size()) {
+            next = mKeyNavItems.size() - 1;
+        }
+        if (next != mKeyNavIndex) {
+            mKeyNavIndex = next;
+            applyKeyNavHighlight();
+            scrollKeyNavToVisible(mKeyNavItems.get(mKeyNavIndex));
+        }
+    }
+
+    /** 滚动 ScrollView 让选中条目完整可见。 */
+    private void scrollKeyNavToVisible(View item) {
+        ScrollView scrollView = (ScrollView) findViewById(R.id.settings_scroll);
+        if (scrollView == null || item == null) {
+            return;
+        }
+        int top = item.getTop();
+        int bottom = item.getBottom();
+        int scrollY = scrollView.getScrollY();
+        int height = scrollView.getHeight();
+        if (top < scrollY) {
+            scrollView.smoothScrollTo(0, Math.max(0, top));
+        } else if (bottom > scrollY + height) {
+            scrollView.smoothScrollTo(0, bottom - height);
+        }
+    }
+
+    /**
+     * 遥控器方向键：上下移动光标，确认键触发选中条目点击。
+     * 仅在没有任何子 View 获得焦点（弹窗未打开）时生效。
+     */
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        if (mKeyNavItems.size() > 0
+                && event.getAction() == android.view.KeyEvent.ACTION_DOWN
+                && event.getRepeatCount() == 0) {
+            int action = KeyBindingUtil.classify(event.getKeyCode());
+            if (action == KeyBindingUtil.ACTION_UP) {
+                mKeyNavActive = true;
+                moveKeyNav(-1);
+                return true;
+            } else if (action == KeyBindingUtil.ACTION_DOWN) {
+                mKeyNavActive = true;
+                moveKeyNav(1);
+                return true;
+            } else if (action == KeyBindingUtil.ACTION_CONFIRM) {
+                if (mKeyNavIndex >= 0 && mKeyNavIndex < mKeyNavItems.size()) {
+                    mKeyNavActive = true;
+                    applyKeyNavHighlight();
+                    mKeyNavItems.get(mKeyNavIndex).performClick();
+                }
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
 
     // 判断是否支持 IJK 硬解 (Android 4.1+)
     private static boolean isIjkHardwareSupported() {

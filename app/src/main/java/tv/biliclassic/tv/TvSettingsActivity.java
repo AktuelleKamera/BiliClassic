@@ -160,10 +160,10 @@ public class TvSettingsActivity extends FragmentActivity {
             }
         });
 
-        // TV模式强制开关
+        // TV模式开关
+        // 在 TV 设置页即处于 TV 模式，开关显示勾选；取消勾选 = 退出 TV 模式（回普通手机界面）
         if (checkboxForceTvMode != null) {
-            boolean forceTvMode = SharedPreferencesUtil.getBoolean("force_tv_mode", false);
-            checkboxForceTvMode.setChecked(forceTvMode);
+            checkboxForceTvMode.setChecked(true);
             if (forceTvModeItem != null) {
                 forceTvModeItem.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -172,8 +172,15 @@ public class TvSettingsActivity extends FragmentActivity {
                         boolean checked = checkboxForceTvMode.isChecked();
                         SharedPreferencesUtil.putBoolean("force_tv_mode", checked);
                         Toast.makeText(TvSettingsActivity.this,
-                                checked ? "已开启TV模式强制开关，重启后生效" : "已关闭TV模式强制开关，重启后生效",
+                                checked ? "已开启TV模式" : "已关闭TV模式，即将退出",
                                 Toast.LENGTH_SHORT).show();
+                        if (!checked) {
+                            // 关闭 TV 模式：立即退出，回到普通手机界面
+                            Intent intent = new Intent(TvSettingsActivity.this, tv.biliclassic.MainActivity.class);
+                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                            startActivity(intent);
+                            finish();
+                        }
                     }
                 });
             }

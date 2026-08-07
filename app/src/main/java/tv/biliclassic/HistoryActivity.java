@@ -44,6 +44,9 @@ public class HistoryActivity extends BaseActivity {
 
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
+    // 用户是否已主动滚动过（首次加载后不自动触发加载更多，避免不足一屏时立即翻页导致风控）
+    private boolean mUserScrolled = false;
+
     // 网络检查
     private boolean isNetworkAvailable() {
         try {
@@ -73,6 +76,10 @@ public class HistoryActivity extends BaseActivity {
 
         adapter = new HistoryAdapter(this, videoList);
         historyList.setAdapter(adapter);
+
+        // 隐藏原生 selector，避免覆盖自定义光标高亮（粉色）
+        historyList.setSelector(android.R.color.transparent);
+        historyList.setCacheColorHint(0x00000000);
 
         backBtn.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -115,21 +122,26 @@ public class HistoryActivity extends BaseActivity {
                 if (scrollState == SCROLL_STATE_IDLE) {
                     if (adapter != null) {
                         adapter.setScrolling(false);
+                        // 滚动结束：保持高亮隐藏，等待再次按键恢复
                     }
                     int lastVisible = view.getLastVisiblePosition();
                     int totalCount = adapter.getCount();
-                    if (lastVisible >= totalCount - 1 && !isLoading && !isEnd && totalCount > 0) {
+                    if (mUserScrolled && lastVisible >= totalCount - 1 && !isLoading && !isEnd && totalCount > 0) {
                         loadMoreHistory();
                     }
                 } else {
+                    // 用户开始滚动：之后才允许滚动到底部时加载更多
+                    mUserScrolled = true;
                     if (adapter != null) {
                         adapter.setScrolling(true);
+                        // 开始触摸滚动/甩动：隐藏光标高亮
+                        adapter.setHideHighlight(true);
                     }
                 }
             }
 
             public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
-                if (!isLoading && !isEnd && totalItemCount > 0) {
+                if (mUserScrolled && !isLoading && !isEnd && totalItemCount > 0) {
                     if (firstVisibleItem + visibleItemCount >= totalItemCount - 3) {
                         loadMoreHistory();
                     }
@@ -144,6 +156,82 @@ public class HistoryActivity extends BaseActivity {
         super.onDestroy();
         if (adapter != null) {
             adapter.clearCache();
+        }
+    }
+
+    // ===== 遥控器按键导航（模仿 RelatedVideosFragment） =====
+    private int selectedPosition = -1;
+
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        if (videoList == null || videoList.size() == 0 || historyList == null) {
+            return super.dispatchKeyEvent(event);
+        }
+        if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) {
+            return super.dispatchKeyEvent(event);
+        }
+        int action = tv.biliclassic.util.KeyBindingUtil.classify(event.getKeyCode());
+        if (action != tv.biliclassic.util.KeyBindingUtil.ACTION_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+            return super.dispatchKeyEvent(event);
+        }
+        if (selectedPosition < 0) {
+            selectedPosition = 0;
+        }
+        // 按键恢复：取消触摸滑动时的隐藏，重新显示光标
+        if (adapter != null) {
+            adapter.setHideHighlight(false);
+        }
+        // 首次按下才移动光标；长按 repeat 只消费不移动
+        if (event.getRepeatCount() == 0) {
+            int count = videoList.size();
+            if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP) {
+                selectedPosition = Math.max(0, selectedPosition - 1);
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
+                selectedPosition = Math.min(count - 1, selectedPosition + 1);
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2) {
+                selectedPosition = pageMove(-1);
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+                selectedPosition = pageMove(1);
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+                VideoCard item = videoList.get(selectedPosition);
+                if (item != null) {
+                    onHistoryClick(item, selectedPosition);
+                }
+                return true;
+            }
+            applySelection();
+        }
+        return true;
+    }
+
+    private int pageMove(int direction) {
+        if (historyList == null) {
+            return selectedPosition;
+        }
+        int first = historyList.getFirstVisiblePosition();
+        int last = historyList.getLastVisiblePosition();
+        int visibleCount = Math.max(1, last - first + 1);
+        int newPos = selectedPosition + direction * visibleCount;
+        int count = videoList.size();
+        if (newPos < 0) {
+            newPos = 0;
+        } else if (newPos >= count) {
+            newPos = count - 1;
+        }
+        return newPos;
+    }
+
+    private void applySelection() {
+        if (adapter != null) {
+            adapter.setSelectedPosition(selectedPosition);
+        }
+        if (historyList != null) {
+            // setSelection 为 API 1，兼容 Android 2.x；smoothScrollToPosition 需 API 8
+            historyList.setSelection(selectedPosition);
         }
     }
 
@@ -246,6 +334,7 @@ public class HistoryActivity extends BaseActivity {
 
                             if (result.code == 0) {
                                 lastResult = result;
+                                videoList.addAll(newItems);
                                 adapter.notifyDataSetChanged();
                                 mHasError = false;
 
@@ -263,6 +352,9 @@ public class HistoryActivity extends BaseActivity {
                                 } else {
                                     emptyView.setVisibility(View.GONE);
                                     historyList.setVisibility(View.VISIBLE);
+                                    // 首次加载完成：聚焦第一个视频，暂不自动加载更多（防止不足一屏立即翻页触发风控）
+                                    mUserScrolled = false;
+                                    historyList.setSelection(0);
                                 }
                             } else {
                                 String msg = result.message;

@@ -69,4 +69,15 @@ public class LoginActivity extends BaseActivity {
         super.onDestroy();
         handler.removeCallbacksAndMessages(null);
     }
+
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (f instanceof QRLoginFragment) {
+            if (((QRLoginFragment) f).handleRemoteKey(event)) {
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
+    }
 }

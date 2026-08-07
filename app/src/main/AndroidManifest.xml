@@ -50,6 +50,10 @@
             android:screenOrientation="portrait"/>
 
         <activity
+            android:name=".KeyBindingSetupActivity"
+            android:screenOrientation="portrait"/>
+
+        <activity
             android:name=".WebViewActivity"
             android:screenOrientation="portrait"/>
 

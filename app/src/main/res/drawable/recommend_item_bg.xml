@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 普通卡片背景：纯静态灰色圆角，不响应任何选中/焦点状态。
+     选中高亮完全由代码手动切换 recommend_item_selected 控制，
+     避免 selector 的 state_selected / state_focused 造成残留高亮。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#F5F5F5" />
+    <corners android:radius="4dp" />
+</shape>

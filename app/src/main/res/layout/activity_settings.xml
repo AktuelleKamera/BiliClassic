@@ -45,6 +45,7 @@
         android:contentDescription="@null" />
 
     <ScrollView
+        android:id="@+id/settings_scroll"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scrollbars="none">
@@ -54,6 +55,49 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="12dp">
+
+            <!-- 按键绑定入口 -->
+            <LinearLayout
+                android:id="@+id/key_binding_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:background="#FFFFFF"
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/keybinding_restart_setting"
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/keybinding_restart_setting_desc"
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center_vertical"
+                    android:contentDescription="@string/activity_settings_df3d58c7d84b"
+                    android:src="@android:drawable/ic_menu_edit" />
+
+            </LinearLayout>
 
             <!-- 图片加载设置 -->
             <TextView

@@ -54,4 +54,24 @@ public class SdkHelper {
         } catch (Throwable t) {
         }
     }
+
+    /**
+     * 设备是否有物理按键（硬件键盘 / 方向键）。用于判断是否需要引导按键绑定：
+     * 纯触屏机（无键盘、无方向键）直接跳过绑定流程。
+     * Configuration.keyboard / navigation 均为 API 1，Android 1.5 可用。
+     */
+    public static boolean hasHardwareKeys(android.content.Context context) {
+        try {
+            android.content.res.Configuration cfg = context.getResources().getConfiguration();
+            if (cfg.keyboard != android.content.res.Configuration.KEYBOARD_NOKEYS) {
+                return true;
+            }
+            if (cfg.navigation == android.content.res.Configuration.NAVIGATION_DPAD
+                    || cfg.navigation == android.content.res.Configuration.NAVIGATION_WHEEL) {
+                return true;
+            }
+        } catch (Throwable t) {
+        }
+        return false;
+    }
 }

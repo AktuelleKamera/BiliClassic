@@ -141,4 +141,192 @@
 
     </LinearLayout>
 
+    <!-- Page 3: 按键绑定（首启有物理按键设备，磁贴页点"开始"后滑入） -->
+    <LinearLayout
+        android:id="@+id/page_binding"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- 询问页 -->
+        <LinearLayout
+            android:id="@+id/page_ask"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/binding_ask_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/keybinding_title"
+                    android:textSize="40sp"
+                    android:textColor="#D86DA5" />
+
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:background="#D86DA5" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <TextView
+                    android:id="@+id/binding_ask_message"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:paddingLeft="24dp"
+                    android:paddingRight="24dp"
+                    android:text="@string/keybinding_ask_message"
+                    android:textSize="18sp"
+                    android:textColor="#666666" />
+
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:id="@+id/btn_yes"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/keybinding_yes"
+                    android:textSize="18sp"
+                    android:textColor="#FFFFFF"
+                    android:background="@drawable/setup_ask_yes_bg"
+                    android:padding="12dp"
+                    android:layout_marginRight="16dp"
+                    android:clickable="true"
+                    android:focusable="false" />
+
+                <TextView
+                    android:id="@+id/btn_no"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/keybinding_no"
+                    android:textSize="18sp"
+                    android:textColor="#D86DA5"
+                    android:background="@drawable/setup_ask_no_bg"
+                    android:padding="12dp"
+                    android:clickable="true"
+                    android:focusable="false" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- 录制页 -->
+        <LinearLayout
+            android:id="@+id/page_record"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/record_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/keybinding_title"
+                    android:textSize="40sp"
+                    android:textColor="#D86DA5" />
+
+                <TextView
+                    android:id="@+id/btn_exit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/keybinding_exit"
+                    android:textSize="18sp"
+                    android:textColor="#D86DA5"
+                    android:background="#FFFFFF"
+                    android:padding="8dp"
+                    android:clickable="true"
+                    android:focusable="false" />
+
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:background="#D86DA5" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <TextView
+                    android:id="@+id/prompt_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="@string/keybinding_prompt_prefix"
+                    android:textSize="32sp"
+                    android:textColor="#333333" />
+
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/progress_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingLeft="24dp"
+                android:paddingRight="24dp"
+                android:textSize="16sp"
+                android:textColor="#666666" />
+
+            <TextView
+                android:id="@+id/record_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingLeft="24dp"
+                android:paddingRight="24dp"
+                android:text="@string/keybinding_recording_hint"
+                android:textSize="13sp"
+                android:textColor="#999999"
+                android:paddingBottom="8dp" />
+
+            <TextView
+                android:id="@+id/exit_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingLeft="24dp"
+                android:paddingRight="24dp"
+                android:text="@string/keybinding_exit_hint"
+                android:textSize="13sp"
+                android:textColor="#999999"
+                android:layout_marginBottom="16dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
 </FrameLayout>

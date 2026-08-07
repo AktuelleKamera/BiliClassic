@@ -782,6 +782,7 @@
     <string name="videodetail_like">點讚</string>
     <string name="videodetail_coin">投幣</string>
     <string name="videodetail_favorite">收藏</string>
+    <string name="videodetail_share">分享</string>
     <string name="videodetail_triple">三連</string>
     <string name="videodetail_copy_link">複製鏈接</string>
     <string name="videodetail_share_to">分享到...</string>
@@ -791,6 +792,8 @@
     <string name="videodetail_download">下載</string>
     <string name="videodetail_delete">刪除</string>
     <string name="videodetail_cancel">取消</string>
+    <string name="videodetail_action_menu">操作</string>
+    <string name="videodetail_tag_choice">標籤</string>
     <string name="videodetail_q_360p">360P 流暢</string>
     <string name="videodetail_q_480p">480P 清晰</string>
     <string name="videodetail_q_720p">720P 高清</string>
@@ -839,6 +842,24 @@
     <string name="update_toast_start_download">開始下載: %s</string>
 
     <!-- 桌面搜索小工具 -->
-    <string name="search_widget_hint">搜索B站視頻...</string>
+    <string name="search_widget_hint">搜索B站视频...</string>
     <string name="search_widget_desc">搜索</string>
+
+    <!-- 按鍵綁定 -->
+    <string name="keybinding_title">按鍵綁定</string>
+    <string name="keybinding_ask_title">是否綁定按鍵</string>
+    <string name="keybinding_ask_message">你的設備帶有實體按鍵。是否現在為應用綁定按鍵？\n\n（也可以稍後在設置中重新綁定）</string>
+    <string name="keybinding_yes">是，開始綁定</string>
+    <string name="keybinding_no">否，跳過</string>
+    <string name="keybinding_prompt_prefix">請按下</string>
+    <string name="keybinding_progress">（%1$d / %2$d）</string>
+    <string name="keybinding_recording_hint">每次只錄一個鍵，按下後請間隔 1 秒再按下一個</string>
+    <string name="keybinding_done">綁定完成！</string>
+    <string name="keybinding_exit">退出</string>
+    <string name="keybinding_exit_hint">點擊退出（本頁僅支持觸摸操作）</string>
+    <string name="keybinding_restart_setting">按鍵綁定</string>
+    <string name="keybinding_restart_setting_desc">重新綁定實體按鍵</string>
+    <string name="keybinding_toast_done">按鍵綁定完成</string>
+    <string name="keybinding_toast_skip">已跳過按鍵綁定</string>
+    <string name="keybinding_toast_exit">已退出按鍵綁定</string>
 </resources>
