@@ -11,10 +11,11 @@
         android:gravity="center"
         android:padding="16dp">
 
-        <!-- 方形容器，强制裁剪为正方形 -->
+        <!-- 方形容器，强制裁剪为正方形（尺寸在代码里按屏幕宽度自动适配） -->
         <LinearLayout
-            android:layout_width="240dp"
-            android:layout_height="240dp"
+            android:id="@+id/qr_container"
+            android:layout_width="@dimen/qr_container_size"
+            android:layout_height="@dimen/qr_container_size"
             android:background="#F0F0F0"
             android:gravity="center">
 

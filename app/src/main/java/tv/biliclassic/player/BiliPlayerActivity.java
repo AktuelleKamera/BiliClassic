@@ -468,17 +468,46 @@ public class BiliPlayerActivity extends Activity implements
             if (pref != 8) {
                 String playerPkg = SettingsActivity.getPlayerPackageName();
                 if (videoUrl != null && videoUrl.length() > 0) {
-                    Intent extIntent = new Intent(Intent.ACTION_VIEW);
-                    extIntent.setDataAndType(Uri.parse(videoUrl), "video/mp4");
-                    if (playerPkg != null) {
-                        try { Intent.class.getMethod("setPackage", String.class).invoke(extIntent, new Object[]{playerPkg}); } catch (Exception ignored) {};
-                        if (getPackageManager().queryIntentActivities(extIntent, 0).size() == 0) {
-                            try { Intent.class.getMethod("setPackage", String.class).invoke(extIntent, new Object[]{null}); } catch (Exception ignored) {};
+                    if ("tv.biliclassic.ostwind".equals(playerPkg)) {
+                        // Ostwind 简易播放器：本 App 内 Activity，MediaPlayer + 自定义请求头
+                        Intent wIntent = new Intent(this, OstwindPlayerActivity.class);
+                        wIntent.putExtra("video_url", videoUrl);
+                        String cookie = CookieGenerator.getCookieString(true);
+                        if (cookie != null && cookie.length() > 0) {
+                            wIntent.putExtra("cookie", cookie);
                         }
+                        wIntent.putExtra("agent", NetWorkUtil.USER_AGENT_WEB);
+                        wIntent.putExtra("_from_external_redirect", true);
+                        try {
+                            startActivity(wIntent);
+                            releaseBatteryReceiver();
+                            finish();
+                            return;
+                        } catch (Exception e) {
+                        }
+                    }
+                    Intent extIntent;
+                    if ("com.aliangmaker.media".equals(playerPkg)) {
+                        // 凉腕播放器：直接跳转其 PlayVideoActivity，并按凉腕约定附加在线播放信息
+                        extIntent = new Intent();
+                        extIntent.setClassName("com.aliangmaker.media",
+                                "com.aliangmaker.media.PlayVideoActivity");
+                        extIntent.setAction(Intent.ACTION_VIEW);
+                        extIntent.setData(Uri.parse(videoUrl));
+                        putLiangwanExtras(extIntent);
+                    } else {
+                        extIntent = new Intent(Intent.ACTION_VIEW);
+                        extIntent.setDataAndType(Uri.parse(videoUrl), "video/mp4");
+                        if (playerPkg != null) {
+                            try { Intent.class.getMethod("setPackage", String.class).invoke(extIntent, new Object[]{playerPkg}); } catch (Exception ignored) {};
+                        }
+                        putExternalPlayerExtras(extIntent);
                     }
                     extIntent.putExtra("_from_external_redirect", true);
                     try {
                         startActivity(extIntent);
+                        // 跳转前注销电池广播，避免 Activity finish 时 view 未 detach 导致 receiver 泄漏
+                        releaseBatteryReceiver();
                         finish();
                         return;
                     } catch (Exception e) {
@@ -534,6 +563,85 @@ public class BiliPlayerActivity extends Activity implements
         initGestureController();
         if (mGestureController != null) {
             mGestureController.setEnableGesture(enableGesture);
+        }
+    }
+
+    /**
+     * 给外部播放器 intent 附加 B 站在线播放所需信息：
+     * cookie（含 Cookie + Referer 头）、agent（网页版 UA）、progress（进度）、
+     * name（标题）、danmaku（弹幕 XML 地址）、live_mode（直播标记）。
+     * 支持这些 extras 的播放器（如凉腕）可据此直接在线播放。
+     */
+    private void putExternalPlayerExtras(Intent extIntent) {
+        try {
+            String cookie = CookieGenerator.getCookieString(true);
+            String referer = "https://www.bilibili.com/";
+            if (cookie != null && cookie.length() > 0) {
+                extIntent.putExtra("cookie", cookie);
+                extIntent.putExtra("referer", referer);
+            }
+            extIntent.putExtra("agent", NetWorkUtil.USER_AGENT_WEB);
+            if (videoTitle != null) {
+                extIntent.putExtra("name", videoTitle);
+            }
+            if (mCid > 0) {
+                extIntent.putExtra("danmaku", "https://comment.bilibili.com/" + mCid + ".xml");
+            }
+            // 在线跳转时无进度恢复，传 0；若未来支持断点续播可传当前进度
+            extIntent.putExtra("progress", 0);
+            extIntent.putExtra("live_mode", false);
+        } catch (Throwable t) {
+        }
+    }
+
+    /**
+     * 凉腕播放器（com.aliangmaker.media）在线播放附加信息（凉腕端约定）：
+     * cookie 必须是可序列化的 HashMap<String,String>（Cookie + Referer 头），
+     * agent 为网页 UA，progress 为毫秒，name/danmaku/live_mode 见文档。
+     */
+    private void putLiangwanExtras(Intent extIntent) {
+        try {
+            if (videoTitle != null) {
+                extIntent.putExtra("name", videoTitle);
+            }
+            if (mCid > 0) {
+                extIntent.putExtra("danmaku", "https://comment.bilibili.com/" + mCid + ".xml");
+            }
+            extIntent.putExtra("live_mode", false);
+
+            // 在线视频必须带请求头，绕过 B 站防盗链
+            java.util.Map<String, String> headers = new java.util.HashMap<String, String>();
+            String cookie = CookieGenerator.getCookieString(true);
+            if (cookie != null && cookie.length() > 0) {
+                headers.put("Cookie", cookie);
+            }
+            headers.put("Referer", "https://www.bilibili.com/");
+            extIntent.putExtra("cookie", (java.io.Serializable) headers);
+
+            extIntent.putExtra("agent", NetWorkUtil.USER_AGENT_WEB);
+            // 续播进度（毫秒），在线跳转默认 0
+            extIntent.putExtra("progress", 0L);
+        } catch (Throwable t) {
+        }
+    }
+
+    /**
+     * 注销电池广播 receiver，防止外部播放器跳转/退出时
+     * BatteryView2 未 detach 导致 IntentReceiver 泄漏。
+     */
+    private void releaseBatteryReceiver() {
+        try {
+            if (batteryView != null) {
+                batteryView.release();
+            } else if (mBatteryView instanceof BatteryView2) {
+                ((BatteryView2) mBatteryView).release();
+            } else {
+                View bv = findViewById(R.id.battery_view);
+                if (bv instanceof BatteryView2) {
+                    ((BatteryView2) bv).release();
+                }
+            }
+        } catch (Throwable t) {
         }
     }
 
@@ -3340,44 +3448,7 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     public static void reportHistoryStatic(final Context context, final long aid, final long cid, final int progressMs) {
-        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.PRIVACY_MODE, false)) return;
-        if (aid == 0 || cid == 0) return;
-        final int progressSec = progressMs / 1000;
-
-        new Thread(new Runnable() {
-            public void run() {
-                try {
-                    String url = "https://api.bilibili.com/x/v2/history/report";
-                    String cookie = SharedPreferencesUtil.getString("cookies", "");
-
-                    String csrf = null;
-                    if (cookie != null && cookie.length() > 0) {
-                        java.util.regex.Pattern p = java.util.regex.Pattern.compile("bili_jct=([a-f0-9]+)");
-                        java.util.regex.Matcher m = p.matcher(cookie);
-                        if (m.find()) {
-                            csrf = m.group(1);
-                        }
-                    }
-
-                    if (csrf == null || csrf.length() == 0) {
-                        return;
-                    }
-
-                    java.util.ArrayList headers = new java.util.ArrayList();
-                    headers.add("User-Agent");
-                    headers.add(NetWorkUtil.USER_AGENT_WEB);
-                    headers.add("Referer");
-                    headers.add("https://www.bilibili.com/");
-                    headers.add("Cookie");
-                    headers.add(cookie);
-                    headers.add("Content-Type");
-                    headers.add("application/x-www-form-urlencoded");
-
-                    String arg = "aid=" + aid + "&cid=" + cid + "&progress=" + progressSec + "&csrf=" + csrf;
-                    String result = NetWorkUtil.post(url, arg, headers);
-                } catch (Exception e) {}
-            }
-        }).start();
+        tv.biliclassic.api.HistoryApi.report(aid, cid, progressMs);
     }
 
     private void updateTimeDisplay() {

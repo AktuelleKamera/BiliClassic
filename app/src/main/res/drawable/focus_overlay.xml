@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     视频详情等界面焦点光标高亮：在 view 周围画一个粉色边框，
-    用 layer-list 套一个透明 shape，避免完全覆盖原背景（仅描边）。
+    用 layer-list 套一个透明 shape 描边。
 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>

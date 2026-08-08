@@ -173,15 +173,9 @@ public class VideoDetailFragment extends Fragment {
 
         mScrollView = (ScrollView) view.findViewById(R.id.scroll_view);
         if (mScrollView != null) {
-            mScrollView.setFocusableInTouchMode(true);
-            mScrollView.requestFocus();
-            mScrollView.post(new Runnable() {
-                @Override
-                public void run() {
-                    mScrollView.fullScroll(ScrollView.FOCUS_UP);
-                    mScrollView.scrollTo(0, 0);
-                }
-            });
+            // 触摸屏不请求焦点，避免内部可聚焦子项（如播放按钮）抢焦点把滚动拉下；
+            // 滚动到顶由数据加载完成后的 forceScrollToTop 负责
+            mScrollView.setFocusableInTouchMode(false);
         }
     }
 
@@ -190,8 +184,7 @@ public class VideoDetailFragment extends Fragment {
         super.onResume();
         // 重置防连点
         isPlayButtonClicked = false;
-        // 滚动到顶部
-        forceScrollToTop();
+        // 滚动到顶部由数据加载完成后的 forceScrollToTop 负责，这里不重复触发
     }
 
     @Override
@@ -204,14 +197,13 @@ public class VideoDetailFragment extends Fragment {
     // 强制滚动到顶部
     private void forceScrollToTop() {
         if (mScrollView == null) return;
-        // fullScroll 确保滚动到顶部
-        mScrollView.fullScroll(ScrollView.FOCUS_UP);
-        mScrollView.scrollTo(0, 0);
-        if (ivCover != null) {
-            ivCover.setFocusable(true);
-            ivCover.setFocusableInTouchMode(true);
-            ivCover.requestFocus();
-        }
+        // 数据加载（setText）会改变内容高度并调整 scrollY，延迟到重排稳定后再滚一次
+        mScrollView.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                mScrollView.scrollTo(0, 0);
+            }
+        }, 100);
     }
 
     public void clearImages() {
@@ -796,16 +788,9 @@ public class VideoDetailFragment extends Fragment {
             ((VideoDetailActivity) getActivity()).setVideoDetailFragment(this);
         }
 
-        // 数据加载完成后强制滚动到顶部（立即 + 布局完成后各一次）
-        forceScrollToTop();
-        final View fv = getView();
-        if (fv != null) {
-            fv.post(new Runnable() {
-                @Override
-                public void run() {
-                    if (isAdded()) forceScrollToTop();
-                }
-            });
+        // 数据加载完成后滚动到顶部（forceScrollToTop 内部延迟，等 setText 重排稳定）
+        if (isAdded()) {
+            forceScrollToTop();
         }
     }
 
@@ -970,6 +955,45 @@ public class VideoDetailFragment extends Fragment {
                                 public void run() {
                                     if (!isAdded() || getActivity() == null) return;
                                     if (videoUrl != null && videoUrl.length() > 0) {
+                                        // Ostwind 简易播放器：直接启动（MediaPlayer+本地代理，
+                                        // 兼容 2.2 以下），不走 BiliPlayerActivity（其内置 IJK 需 API 9+）
+                                        if (tv.biliclassic.SettingsActivity.getPlayerPreference()
+                                                == tv.biliclassic.SettingsActivity.PLAYER_OSTWIND) {
+                                            Intent wIntent = new Intent(getActivity(),
+                                                    tv.biliclassic.player.OstwindPlayerActivity.class);
+                                            wIntent.putExtra("video_url", videoUrl);
+                                            String cookie = tv.biliclassic.util.CookieGenerator.getCookieString(true);
+                                            if (cookie != null && cookie.length() > 0) {
+                                                wIntent.putExtra("cookie", cookie);
+                                            }
+                                            wIntent.putExtra("agent", tv.biliclassic.util.NetWorkUtil.USER_AGENT_WEB);
+                                            wIntent.putExtra("video_title", tempPartTitle);
+                                            wIntent.putExtra("aid", tempAid);
+                                            wIntent.putExtra("cid", targetCid);
+                                            isPlayButtonClicked = false;
+                                            startActivity(wIntent);
+                                            return;
+                                        }
+                                        // API < 9（Android 2.2 及以下）：BiliPlayerActivity 依赖内置 IJK（API 9+），
+                                        // 不可用，改走 PlayerAnimActivity 按播放器偏好分派
+                                        if (tv.biliclassic.util.SdkHelper.getSdkInt() < 9) {
+                                            Intent pIntent = new Intent(getActivity(), PlayerAnimActivity.class);
+                                            pIntent.putExtra("video_url", videoUrl);
+                                            pIntent.putExtra("video_title", tempPartTitle);
+                                            pIntent.putExtra("aid", tempAid);
+                                            pIntent.putExtra("cid", targetCid);
+                                            pIntent.putExtra("part_index", tempPartIndex);
+                                            if (videoInfo != null) {
+                                                pIntent.putExtra("cover_url", videoInfo.cover);
+                                            }
+                                            if (cidArray != null) {
+                                                pIntent.putExtra("cids", cidArray);
+                                                pIntent.putExtra("pagenames", partNameArray);
+                                            }
+                                            isPlayButtonClicked = false;
+                                            startActivity(pIntent);
+                                            return;
+                                        }
                                         Intent intent = new Intent(getActivity(), BiliPlayerActivity.class);
                                         intent.putExtra("video_url", videoUrl);
                                         intent.putExtra("video_title", tempPartTitle);
@@ -1169,9 +1193,8 @@ public class VideoDetailFragment extends Fragment {
             String pkg = SettingsActivity.getPlayerPackageName();
             if (pkg != null) {
                 try { Intent.class.getMethod("setPackage", String.class).invoke(extIntent, pkg); } catch (Exception ignored) {}
-                if (getActivity().getPackageManager().queryIntentActivities(extIntent, 0).size() == 0) {
-                    try { Intent.class.getMethod("setPackage", String.class).invoke(extIntent, new Object[]{null}); } catch (Exception ignored) {}
-                }
+                // 直接尝试启动；queryIntentActivities 对 FileProvider content URI 会因权限过滤误判 0，
+                // 导致装了播放器也被降级。改为 try-catch。
             }
             try {
                 if (getActivity() instanceof VideoDetailActivity) {

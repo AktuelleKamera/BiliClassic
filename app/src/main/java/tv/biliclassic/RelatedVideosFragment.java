@@ -388,7 +388,9 @@ public class RelatedVideosFragment extends Fragment {
                     String response = NetWorkUtil.get(url, headers);
 
                     if (response == null || response.length() == 0) {
-                        showError("网络返回为空");
+                        // 空响应多为网络瞬断（如视频流占满带宽），不弹错误 toast 打扰，
+                        // 直接显示空态，下次进入会重新请求
+                        showEmptyResult("暂无相关视频");
                         return;
                     }
 

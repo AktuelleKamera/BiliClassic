@@ -25,7 +25,7 @@
 
 ### 0.4.11 (Wirbelwind) 更新 (开发中)
 
-**main版** —— 内置播放器，功能完整
+**main版** —— 支持内置播放器软解，功能最完整
 
 **legacy版** —— ARMv5TE/ARMv6 (无VFP) 设备支持
 
@@ -34,7 +34,7 @@
 ## Android 版已实现功能
 
 - 轻量适配 Android 1.5+ 设备
-- 完美适配 Android 2.3+ 设备（带内置播放器）
+- 完美适配 Android 2.3+ 设备（带软解）
 - 扫码登录 / Cookie 登录 / 手动输入 Cookie
 - 视频搜索（支持 AV / BV 号快捷跳转）
 - 播放历史记录
@@ -42,6 +42,7 @@
 - 查看评论区
 - 离线缓存
 - 分P下载（带封面缓存）
+- 自带 MediaPlayer 内核的 Ostwind 硬解播放器和完整 IJK V3 播放器
 - 视频播放（内置播放器 / MX Player / VLC / MoboPlayer / QQ影音等）
 - 弹幕引擎切换（完整版 DanmakuFlameMaster / BT-5 简易版）
 - 发布评论和弹幕
@@ -83,6 +84,32 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 ### (BT-5-IS快速坦克)
 <img width="847" height="514" alt="07n9mbv7f7541" src="https://github.com/user-attachments/assets/d820526d-bdb6-4a41-84b4-c5fe05e3b5c3" />
 
+
+---
+
+## 播放器
+
+本项目内置两套播放器，可在设置中自由切换：
+
+| 特性 | Ostwind（东风） | IJK（内置播放器） |
+|------|-------------------|-------------------|
+| 播放内核 | 系统 MediaPlayer（Stagefright） | IjkMediaPlayer（ffmpeg/ffplay） |
+| 最低系统 | Android 1.5（API 3） | Android 2.3（API 9+） |
+| 解码方式 | 系统 OMX 硬件解码 | 软解 / 硬解可切换 |
+| 防盗链 | 本地代理 LocalStreamProxy 转发 Referer/Cookie | 原生自定义请求头 |
+| 弹幕 | DanmakuManager（完整 / 简易双引擎） | DanmakuManager（完整 / 简易双引擎） |
+| 播放进度上报 | ✓（HistoryApi.report，每 5s） | ✓ |
+| 渲染 | SurfaceView + SURFACE_TYPE_PUSH_BUFFERS | TextureView / SurfaceView |
+| 控制栏 | 风味控制栏（比例循环 / 横滑快进 / 双击暂停） | 完整控制器（手势缩放 / 清晰度 / 弹幕发送） |
+| 包体积 | 无 native 依赖 | 含 ijkffmpeg/ijkplayer.so |
+| 推荐设备 | Android 2.3以下 | Android 2.3+ |
+
+**Ostwind 播放器**是本项目为 Android 2.2 及以下支持硬解的设备专门设计的在线播放器。基于系统 MediaPlayer，通过本地 HTTP 代理携带 B 站防盗链请求头；使用 PUSH_BUFFERS 表面规避 QComHardwareOverlayRenderer 崩溃。支持清朝B站风味控制栏、横滑快进、双击暂停、画面比例循环、弹幕与播放历史上报等功能。
+
+**IJK 播放器**基于 ffmpeg/ffplay，支持软解与硬解切换，在 Android 2.3+ 设备上提供更完整的播放体验，包括手势缩放、清晰度切换、弹幕发送等完整控制器功能。
+
+### (Ostwind 自行防空炮)
+<img width="610" height="458" alt="xrpaiYN" src="https://github.com/user-attachments/assets/02f6c6f1-0919-46a5-a66e-948d2c397501" />
 
 ---
 

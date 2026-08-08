@@ -33,6 +33,17 @@ public class SpecialLoginActivity extends BaseActivity {
 
         setContentView(R.layout.activity_special_login);
 
+        // 进入页面自动滚到顶部，避免保留上次滚动位置
+        final android.widget.ScrollView scrollView = (android.widget.ScrollView) findViewById(R.id.special_login_scroll);
+        if (scrollView != null) {
+            scrollView.post(new Runnable() {
+                @Override
+                public void run() {
+                    scrollView.scrollTo(0, 0);
+                }
+            });
+        }
+
         textInput = (EditText) findViewById(R.id.loginInput);
         confirmBtn = (Button) findViewById(R.id.confirm);
         refuseBtn = (Button) findViewById(R.id.refuse);

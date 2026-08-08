@@ -27,9 +27,10 @@ import java.net.URL;
 
 import tv.biliclassic.R;
 import tv.biliclassic.SettingsActivity;
+import tv.biliclassic.util.CookieGenerator;
 import tv.biliclassic.util.FileProviderCompat;
+import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.PermissionUtil;
-
 import tv.biliclassic.util.SdkHelper;
 public class PlayerAnimActivity extends Activity {
 
@@ -111,6 +112,26 @@ public class PlayerAnimActivity extends Activity {
             handler.post(new Runnable() {
                 public void run() {
                     stopTvAnimation();
+                    // Ostwind 简易播放器（MediaPlayer+本地代理，兼容 2.2 以下）：
+                    // API<9 时内置 IJK(BiliPlayer) 不可用，一律走 Ostwind 在线播放，
+                    // 避免进 BiliPlayerActivity 触发 VerifyError 后跳浏览器
+                    if (SdkHelper.getSdkInt() < 9
+                            || SettingsActivity.getPlayerPreference() == SettingsActivity.PLAYER_OSTWIND) {
+                        Intent wIntent = new Intent(PlayerAnimActivity.this,
+                                tv.biliclassic.player.OstwindPlayerActivity.class);
+                        wIntent.putExtra("video_url", videoUrl);
+                        String cookie = tv.biliclassic.util.CookieGenerator.getCookieString(true);
+                        if (cookie != null && cookie.length() > 0) {
+                            wIntent.putExtra("cookie", cookie);
+                        }
+                        wIntent.putExtra("agent", tv.biliclassic.util.NetWorkUtil.USER_AGENT_WEB);
+                        wIntent.putExtra("video_title", videoTitle);
+                        wIntent.putExtra("aid", aid);
+                        wIntent.putExtra("cid", cid);
+                        startActivity(wIntent);
+                        finish();
+                        return;
+                    }
                     playWithBuiltinPlayer(videoUrl);
                 }
             });
@@ -410,6 +431,11 @@ public class PlayerAnimActivity extends Activity {
                     return;
                 }
                 break;
+            case 9:
+                if (tryPlayWithPackage("com.aliangmaker.media", "凉腕播放器")) {
+                    return;
+                }
+                break;
             case 7:
                 if (trySystemPlayer()) {
                     return;
@@ -417,6 +443,9 @@ public class PlayerAnimActivity extends Activity {
                 break;
             case 8:
                 tryBuiltinPlayerWithCache();
+                return;
+            case SettingsActivity.PLAYER_OSTWIND:
+                playWithOstwind();
                 return;
             default:
                 autoSelectPlayer();
@@ -441,17 +470,16 @@ public class PlayerAnimActivity extends Activity {
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             }
             try { Intent.class.getMethod("setPackage", String.class).invoke(intent, new Object[]{packageName}); } catch (Exception ignored) {};
-            if (getPackageManager().queryIntentActivities(intent, 0).size() > 0) {
-                startActivity(intent);
-                finish();
-                return true;
-            } else {
-                if (!hasShownPreferenceToast) {
-                    hasShownPreferenceToast = true;
-                    Toast.makeText(this, playerName + " 未安装，正在尝试其他播放器...", Toast.LENGTH_SHORT).show();
-                }
-            }
+            // 直接尝试启动；queryIntentActivities 对 FileProvider content URI 会因权限过滤误判 0，
+            // 导致装了播放器也被降级。改为 try-catch，装了就播，没装/启动失败才降级。
+            startActivity(intent);
+            finish();
+            return true;
         } catch (Exception e) {
+            if (!hasShownPreferenceToast) {
+                hasShownPreferenceToast = true;
+                Toast.makeText(this, playerName + " 未安装或无法启动，正在尝试其他播放器...", Toast.LENGTH_SHORT).show();
+            }
         }
         return false;
     }
@@ -501,6 +529,24 @@ public class PlayerAnimActivity extends Activity {
         finish();
     }
 
+    /**
+     * 用缓存文件走 Ostwind 播放（本地文件无代理、无加载动画）
+     */
+    private void playWithOstwind() {
+        if (cacheFile == null || !cacheFile.exists() || cacheFile.length() == 0) {
+            Toast.makeText(this, this.getString(R.string.playeranimactivity_toast_89c6_1), Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+        Intent wIntent = new Intent(this, tv.biliclassic.player.OstwindPlayerActivity.class);
+        wIntent.putExtra("video_url", cacheFile.getAbsolutePath());
+        wIntent.putExtra("video_title", videoTitle);
+        wIntent.putExtra("aid", aid);
+        wIntent.putExtra("cid", cid);
+        startActivity(wIntent);
+        finish();
+    }
+
     private void autoSelectPlayer() {
         hasShownPreferenceToast = false;
 
@@ -523,6 +569,14 @@ public class PlayerAnimActivity extends Activity {
             return;
         }
         if (tryPlayWithPackageSilent("com.tencent.research.drop")) {
+            return;
+        }
+        if (tryPlayWithPackageSilent("com.aliangmaker.media")) {
+            return;
+        }
+        // 2.1+ 优先使用内置旋风播放器，而不是跳系统播放器
+        if (SdkHelper.getSdkInt() >= 7) {
+            playWithOstwind();
             return;
         }
         if (trySystemPlayer()) {

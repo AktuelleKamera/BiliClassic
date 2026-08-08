@@ -65,11 +65,11 @@ public class VideoPartAdapter extends BaseAdapter {
         tvIndex.setText(item.index + "");
         tvTitle.setText(item.title);
 
-        // 高亮选中的项
+        // 高亮选中的项；未选中用布局标准底色（浅灰 #F5F5F5，避免全透明露出页面背景看起来像纯白）
         if (position == selectedPosition) {
             convertView.setBackgroundColor(0x33FF6699);
         } else {
-            convertView.setBackgroundColor(0x00000000);
+            convertView.setBackgroundResource(R.drawable.item_click_effect_white);
         }
 
         convertView.setOnClickListener(new View.OnClickListener() {

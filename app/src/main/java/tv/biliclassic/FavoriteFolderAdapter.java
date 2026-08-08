@@ -258,7 +258,7 @@ public class FavoriteFolderAdapter extends BaseAdapter {
             });
         }
 
-        // ====== 关键修改：点击时保存 fid，跳转时按 fid 查找 ======
+        // ====== 点击：直接使用本次 getView 绑定的 item（避免 convertView 复用 + fid 相同导致跳错） ======
         final long clickedFid = item.fid;
         final String clickedName = item.name;
         final int pos = position;
@@ -267,12 +267,15 @@ public class FavoriteFolderAdapter extends BaseAdapter {
             @Override
             public void onClick(View v) {
                 if (context instanceof FavoriteFolderListActivity) {
-                    // 从 list 中按 fid 查找，确保准确
-                    FavoriteFolder target = null;
-                    for (FavoriteFolder f : list) {
-                        if (f.fid == clickedFid) {
-                            target = f;
-                            break;
+                    // 优先用本次绑定的 item；若因 convertView 复用了旧监听再按 fid
+                    FavoriteFolder target = item;
+                    if (target == null || target.fid != clickedFid) {
+                        target = null;
+                        for (FavoriteFolder f : list) {
+                            if (f.fid == clickedFid) {
+                                target = f;
+                                break;
+                            }
                         }
                     }
                     System.out.println("Adapter点击: clickedFid=" + clickedFid + ", target=" + (target != null ? target.name : "null"));

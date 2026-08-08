@@ -45,6 +45,7 @@ public class PartitionDetailActivity extends BaseActivity implements ViewPager.O
         } else {
             setContentView(R.layout.activity_partition_detail_v3);
         }
+        initRoundTitleBar();
 
         mPager = (ViewPager) findViewById(R.id.pager);
         mPager.setAdapter(new CategoryPagerAdapter(getSupportFragmentManager()));

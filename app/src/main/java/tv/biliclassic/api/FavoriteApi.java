@@ -128,6 +128,10 @@ public class FavoriteApi {
                 FavoriteFolder favoriteFolder = new FavoriteFolder();
 
                 long fid = folder.optLong("fid", 0);
+                if (fid == 0) {
+                    // 部分接口/场景只返回完整 id（mlid），fid 字段缺失时回退
+                    fid = folder.optLong("id", 0);
+                }
                 favoriteFolder.id = fid;
                 favoriteFolder.fid = fid;
                 favoriteFolder.name = folder.optString("title", "未命名收藏夹");

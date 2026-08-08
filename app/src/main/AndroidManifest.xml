@@ -139,6 +139,13 @@
             android:configChanges="orientation|screenSize"
             android:theme="@style/PlayerTheme" />
 
+        <!-- 简易在线播放器（Ostwind，兼容 Android 2.2 及以下，MediaPlayer + 本地代理） -->
+        <activity
+            android:name=".player.OstwindPlayerActivity"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+
         <!-- 注册 LoginActivity -->
         <activity
             android:name=".FavoriteVideoListActivity"

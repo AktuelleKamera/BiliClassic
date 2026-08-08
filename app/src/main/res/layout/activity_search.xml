@@ -11,7 +11,7 @@
     <LinearLayout
         android:id="@+id/search_bar"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="@dimen/main_title_bar_height"
         android:background="#FFFFFF"
         android:orientation="horizontal"
         android:paddingLeft="4dp"

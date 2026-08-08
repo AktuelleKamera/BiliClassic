@@ -22,6 +22,13 @@ import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.X509TrustManager;
 
+/**
+ * 本地 HTTP 流代理（带防盗链请求头转发）。
+ *
+ * 系统 MediaPlayer 在线播放无法自定义请求头（B 站 CDN 防盗链需要 Referer/Cookie），
+ * 所以用本地 HTTP 代理带请求头转发：MediaPlayer 连 127.0.0.1，代理转发到远端。
+ * 支持 Range / 206 / Content-Range / Content-Length 原样透传。
+ */
 public class LocalStreamProxy {
     private static final String TAG = "LocalStreamProxy";
     private static final int BUFFER_SIZE = 8192;
@@ -116,7 +123,7 @@ public class LocalStreamProxy {
 
     private void handleClient(Socket client) {
         try {
-            client.setSoTimeout(30000);
+            client.setSoTimeout(60000);
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
             String requestLine = reader.readLine();
@@ -133,56 +140,10 @@ public class LocalStreamProxy {
                 }
             }
 
-            HttpURLConnection conn = openRemoteConnection(rangeHeader);
-            activeRemote = conn;
-
-            int respCode = conn.getResponseCode();
-            String contentType = conn.getContentType();
-            int contentLength = conn.getContentLength();
-            String contentRange = conn.getHeaderField("Content-Range");
-            String acceptRanges = conn.getHeaderField("Accept-Ranges");
-
             OutputStream out = client.getOutputStream();
-            StringBuilder resp = new StringBuilder();
+            serveRaw(out, requestLine, rangeHeader);
 
-            if (rangeHeader != null && (respCode == 206 || respCode == 200)) {
-                resp.append("HTTP/1.0 206 Partial Content\r\n");
-                resp.append("Accept-Ranges: bytes\r\n");
-                if (contentRange != null) {
-                    resp.append("Content-Range: ").append(contentRange).append("\r\n");
-                }
-            } else {
-                resp.append("HTTP/1.0 200 OK\r\n");
-                resp.append("Accept-Ranges: ").append(acceptRanges != null ? acceptRanges : "bytes").append("\r\n");
-            }
-            resp.append("Content-Type: ").append(contentType != null ? contentType : "video/mp4").append("\r\n");
-            if (contentLength > 0) {
-                resp.append("Content-Length: ").append(contentLength).append("\r\n");
-            }
-            resp.append("Connection: close\r\n");
-            resp.append("\r\n");
-            out.write(resp.toString().getBytes());
             out.flush();
-
-            InputStream remoteIn = (respCode >= 200 && respCode < 300)
-                    ? conn.getInputStream()
-                    : conn.getErrorStream();
-
-            if (remoteIn != null) {
-                byte[] buf = new byte[BUFFER_SIZE];
-                int n;
-                while (running && (n = remoteIn.read(buf)) != -1) {
-                    if (Thread.currentThread().isInterrupted()) break;
-                    try {
-                        out.write(buf, 0, n);
-                    } catch (IOException e) {
-                        break;
-                    }
-                }
-                out.flush();
-                remoteIn.close();
-            }
-
             out.close();
         } catch (Exception e) {
             if (!(e instanceof java.net.SocketException)) {
@@ -191,9 +152,68 @@ public class LocalStreamProxy {
         } finally {
             if (activeRemote != null) {
                 try { activeRemote.disconnect(); } catch (Exception ignored) {}
-                if (activeRemote == activeRemote) activeRemote = null;
+                activeRemote = null;
             }
             try { client.close(); } catch (Exception ignored) {}
+        }
+    }
+
+    // ===== 原始直通 =====
+    private void serveRaw(OutputStream out, String requestLine, String rangeHeader) throws IOException {
+        // 始终带 Range 请求远端：客户端没带时就请求 bytes=0-，
+        // 这样远端必然返回 Content-Range（含文件总长度）。
+        String remoteRange = (rangeHeader != null) ? rangeHeader : "bytes=0-";
+
+        HttpURLConnection conn = openRemoteConnection(remoteRange);
+        activeRemote = conn;
+
+        int respCode = conn.getResponseCode();
+        String contentType = conn.getContentType();
+        long contentLength = getContentLength(conn);
+        String contentRange = conn.getHeaderField("Content-Range");
+
+        Log.d(TAG, "req line=" + requestLine + " clientRange=" + rangeHeader
+                + " -> remoteRange=" + remoteRange + " remoteCode=" + respCode
+                + " remoteLen=" + contentLength + " remoteRangeHeader=" + contentRange);
+
+        StringBuilder resp = new StringBuilder();
+
+        if (respCode == 206) {
+            resp.append("HTTP/1.0 206 Partial Content\r\n");
+            resp.append("Accept-Ranges: bytes\r\n");
+            if (contentRange != null) {
+                resp.append("Content-Range: ").append(contentRange).append("\r\n");
+            }
+        } else {
+            resp.append("HTTP/1.0 200 OK\r\n");
+            resp.append("Accept-Ranges: bytes\r\n");
+        }
+        resp.append("Content-Type: ").append(contentType != null ? contentType : "video/mp4").append("\r\n");
+        if (contentLength >= 0) {
+            resp.append("Content-Length: ").append(contentLength).append("\r\n");
+        }
+        resp.append("Connection: close\r\n");
+        resp.append("\r\n");
+        Log.d(TAG, "resp -> " + resp.toString().replace("\r\n", " "));
+        out.write(resp.toString().getBytes());
+        out.flush();
+
+        InputStream remoteIn = (respCode >= 200 && respCode < 300)
+                ? conn.getInputStream()
+                : conn.getErrorStream();
+
+        if (remoteIn != null) {
+            byte[] buf = new byte[BUFFER_SIZE];
+            int n;
+            while (running && (n = remoteIn.read(buf)) != -1) {
+                if (Thread.currentThread().isInterrupted()) break;
+                try {
+                    out.write(buf, 0, n);
+                } catch (IOException e) {
+                    break;
+                }
+            }
+            remoteIn.close();
         }
     }
 
@@ -208,7 +228,7 @@ public class LocalStreamProxy {
         }
 
         conn.setConnectTimeout(15000);
-        conn.setReadTimeout(30000);
+        conn.setReadTimeout(60000);
 
         if (requestHeaders != null) {
             for (Map.Entry<String, String> e : requestHeaders.entrySet()) {
@@ -225,6 +245,19 @@ public class LocalStreamProxy {
         conn.setInstanceFollowRedirects(true);
         conn.connect();
         return conn;
+    }
+
+    /**
+     * 读取 Content-Length（长整型，避免 int 溢出；chunked 时返回 -1）。
+     */
+    private static long getContentLength(HttpURLConnection conn) {
+        try {
+            String v = conn.getHeaderField("Content-Length");
+            if (v != null && v.length() > 0) {
+                return Long.parseLong(v.trim());
+            }
+        } catch (Exception ignored) {}
+        return conn.getContentLength();
     }
 
     public void stop() {

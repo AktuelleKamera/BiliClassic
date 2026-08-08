@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/ostwind_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <SurfaceView
+        android:id="@+id/ostwind_surface"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- 弹幕层 -->
+    <FrameLayout
+        android:id="@+id/danmaku_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:focusable="false"
+        android:focusableInTouchMode="false" />
+
+    <!-- 小电视加载动画 -->
+    <include
+        android:id="@+id/ostwind_loading"
+        layout="@layout/activity_player_anim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- 顶部控制栏 -->
+    <RelativeLayout
+        android:id="@+id/ostwind_top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_gravity="top"
+        android:background="@color/videoplay__control_panel_bkgd_new"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/ostwind_top_right"
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_alignParentRight="true"
+            android:gravity="center_vertical">
+
+            <ImageButton
+                android:id="@+id/ostwind_options"
+                style="@style/PlayerControlBarButton"
+                android:layout_width="@dimen/player_status_bar_button_layout_width"
+                android:layout_height="match_parent"
+                android:layout_marginRight="10dp"
+                android:src="@drawable/ic_player_options_menu"
+                android:contentDescription="@null" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:id="@+id/ostwind_top_left"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_toLeftOf="@+id/ostwind_top_right"
+            android:layout_alignParentLeft="true">
+
+            <ImageButton
+                android:id="@+id/ostwind_back"
+                style="@style/PlayerControlBarButton"
+                android:layout_width="@dimen/player_status_bar_button_layout_width"
+                android:layout_height="match_parent"
+                android:src="@drawable/bili_player_back_button"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:id="@+id/ostwind_title"
+                style="@style/PlayerControlBarButton"
+                android:textSize="17sp"
+                android:textColor="@color/videoplay__video_title_text"
+                android:ellipsize="marquee"
+                android:gravity="left|center_vertical"
+                android:paddingRight="50dp"
+                android:background="@null"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:singleLine="true"
+                android:marqueeRepeatLimit="0" />
+        </LinearLayout>
+    </RelativeLayout>
+
+    <!-- 底部控制栏 -->
+    <LinearLayout
+        android:id="@+id/ostwind_bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:background="@drawable/bili_player_control_background"
+        android:visibility="gone">
+
+        <SeekBar
+            android:id="@+id/ostwind_seek"
+            style="@style/Widget.App.Seekbar.Player"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/player_bottom_controller_bar_layout_height"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageButton
+                android:id="@+id/ostwind_play_pause"
+                android:layout_width="48dp"
+                android:layout_height="match_parent"
+                android:src="@drawable/bili_player_ctrl_play_pause"
+                android:background="@null"
+                android:scaleType="center"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:id="@+id/ostwind_time_current"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="8dp"
+                android:text="00:00"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/ostwind_time_split"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="/"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/ostwind_time_total"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="00:00"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <Button
+                android:id="@+id/ostwind_aspect_ratio"
+                android:layout_width="@dimen/player_controller_bar_button_layout_width"
+                android:layout_height="match_parent"
+                android:drawableTop="@drawable/ic_toggle_aspect_ratio"
+                android:text="@string/PlayerController_tips_toggle_aspect_ratio"
+                style="@style/PlayerControlBarButtonWithText" />
+
+            <Button
+                android:id="@+id/ostwind_toggle_danmaku"
+                android:layout_width="@dimen/player_controller_bar_button_layout_width"
+                android:layout_height="match_parent"
+                android:drawableTop="@drawable/bili_player_ctrl_toggle_danmaku"
+                android:text="@string/PlayerController_tips_toggle_danmaku"
+                style="@style/PlayerControlBarButtonWithText" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>

@@ -201,6 +201,7 @@ public class ReplyListActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_reply_list);
+        initRoundTitleBar();
 
         tvTitle = (TextView) findViewById(R.id.tv_reply_list_title);
         lv = (ListView) findViewById(R.id.lv_replies);

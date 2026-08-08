@@ -39,6 +39,7 @@ public class DecoderSettingsActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_decoder_settings);
+        initRoundTitleBar();
 
         ImageView btnBack = (ImageView) findViewById(R.id.btn_back);
         if (btnBack != null) {

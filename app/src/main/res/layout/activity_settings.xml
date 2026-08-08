@@ -56,6 +56,15 @@
             android:orientation="vertical"
             android:padding="12dp">
 
+            <!-- 按键设置向导  -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/activity_settings_keyboard"
+                android:textColor="#333333"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
             <!-- 按键绑定入口 -->
             <LinearLayout
                 android:id="@+id/key_binding_item"
@@ -413,6 +422,52 @@
                 android:text="@string/activity_settings_aa627d9a1d4d"
                 android:textColor="#FF6B35"
                 android:textSize="11sp" />
+
+            <LinearLayout
+                android:id="@+id/round_screen_center_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="#FFFFFF"
+                android:clickable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/activity_settings_round_screen_center"
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/activity_settings_round_screen_center_desc"
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+                <CheckBox
+                    android:id="@+id/checkbox_round_screen_center"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:minHeight="0dp"
+                    android:padding="0dp" />
+
+            </LinearLayout>
 
             <!-- 播放流格式选择 -->
             <LinearLayout

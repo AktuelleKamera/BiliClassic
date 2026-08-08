@@ -69,6 +69,8 @@ public class SettingsActivity extends BaseActivity {
     private static final int PLAYER_QQPLAYER = 6;
     private static final int PLAYER_SYSTEM = 7;
     private static final int PLAYER_BUILTIN = 8;
+    private static final int PLAYER_LIANGWAN = 9;
+    public static final int PLAYER_OSTWIND = 10;
 
     // 首页 Tab 索引
     private static final int TAB_PROFILE = 0;
@@ -127,6 +129,7 @@ public class SettingsActivity extends BaseActivity {
 
     // TV模式强制开关
     private CheckBox checkboxForceTvMode;
+    private CheckBox checkboxRoundScreenCenter;
     private LinearLayout forceTvModeItem;
     private View forceTvModeWarning;
 
@@ -146,6 +149,7 @@ public class SettingsActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
+        initRoundTitleBar();
 
         try {
             currentVersionCode = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
@@ -283,38 +287,34 @@ public class SettingsActivity extends BaseActivity {
         onlinePlayWarning = findViewById(R.id.online_play_warning);
 
         if (onlinePlayItem != null) {
-            if (!isBuiltinPlayerSupported()) {
-                onlinePlayItem.setVisibility(View.GONE);
-                if (onlinePlayWarning != null) {
-                    onlinePlayWarning.setVisibility(View.GONE);
-                }
-                SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, false);
-            } else {
-                onlinePlayItem.setVisibility(View.VISIBLE);
-                if (onlinePlayWarning != null) {
-                    onlinePlayWarning.setVisibility(View.VISIBLE);
-                }
+            // 在线播放开关始终可用（Ostwind 等播放器用 MediaPlayer+本地代理，
+            // 即使系统不支持内置 IJK 也能在线播放），不再因内置播放器不可用而隐藏/强制关闭
+            onlinePlayItem.setVisibility(View.VISIBLE);
+            if (onlinePlayWarning != null) {
+                onlinePlayWarning.setVisibility(View.VISIBLE);
+            }
 
-                boolean onlinePlayEnabled = SharedPreferencesUtil.getBoolean(KEY_ONLINE_PLAY, true);
-                if (!SharedPreferencesUtil.contains(KEY_ONLINE_PLAY)) {
-                    onlinePlayEnabled = true;
-                    SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, true);
-                }
-                checkboxOnlinePlay.setChecked(onlinePlayEnabled);
+            boolean onlinePlayEnabled = SharedPreferencesUtil.getBoolean(KEY_ONLINE_PLAY, isBuiltinPlayerSupported());
+            if (!SharedPreferencesUtil.contains(KEY_ONLINE_PLAY)) {
+                onlinePlayEnabled = isBuiltinPlayerSupported();
+                SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, onlinePlayEnabled);
+            }
+            checkboxOnlinePlay.setChecked(onlinePlayEnabled);
 
                 checkboxOnlinePlay.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                     @Override
                     public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                         if (isChecked) {
-                            int playerPref = getPlayerPreference();
-                            if (playerPref != PLAYER_BUILTIN) {
+                            // 2.3 以下（内置播放器不可用）：提示改用旋风(Ostwind)播放器
+                            if (!isBuiltinPlayerSupported()
+                                    && getPlayerPreference() != PLAYER_OSTWIND) {
                                 new AlertDialog.Builder(DialogUtil.wrap(SettingsActivity.this))
                                         .setTitle(getString(R.string.settingsactivity_settitle_63d0))
-                                        .setMessage(getString(R.string.settingsactivity_setmessage_5728))
+                                        .setMessage(getString(R.string.settingsactivity_setmessage_ostwind))
                                         .setPositiveButton("切换并开启", new DialogInterface.OnClickListener() {
                                             @Override
                                             public void onClick(DialogInterface dialog, int which) {
-                                                SharedPreferencesUtil.putInt(KEY_PLAYER_PREFERENCE, PLAYER_BUILTIN);
+                                                SharedPreferencesUtil.putInt(KEY_PLAYER_PREFERENCE, PLAYER_OSTWIND);
                                                 updatePlayerChoiceDisplay();
                                                 SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, true);
                                                 checkboxOnlinePlay.setChecked(true);
@@ -330,7 +330,7 @@ public class SettingsActivity extends BaseActivity {
                                         .show();
                                 return;
                             }
-
+                            // 2.3+（或已是旋风播放器）：内置/旋风均可在线，直接开启
                             SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, true);
                             Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2_4), Toast.LENGTH_SHORT).show();
                         } else {
@@ -346,7 +346,6 @@ public class SettingsActivity extends BaseActivity {
                         checkboxOnlinePlay.toggle();
                     }
                 });
-            }
         }
 
         // TV模式强制开关
@@ -387,6 +386,29 @@ public class SettingsActivity extends BaseActivity {
                     }
                 });
             }
+        }
+
+        // 圆形屏幕居中开关（手动覆盖：系统镜像检测不到圆屏时手动开启）
+        checkboxRoundScreenCenter = (CheckBox) findViewById(R.id.checkbox_round_screen_center);
+        final LinearLayout roundScreenCenterItem = (LinearLayout) findViewById(R.id.round_screen_center_item);
+        if (roundScreenCenterItem != null && checkboxRoundScreenCenter != null) {
+            boolean roundCenter = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.ROUND_SCREEN_CENTER, false);
+            checkboxRoundScreenCenter.setChecked(roundCenter);
+            checkboxRoundScreenCenter.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    SharedPreferencesUtil.putBoolean(SharedPreferencesUtil.ROUND_SCREEN_CENTER, isChecked);
+                    Toast.makeText(SettingsActivity.this,
+                            isChecked ? "已开启圆形屏幕居中" : "已关闭圆形屏幕居中",
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+            roundScreenCenterItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    checkboxRoundScreenCenter.toggle();
+                }
+            });
         }
 
         // 头像缓存管理
@@ -837,9 +859,10 @@ public class SettingsActivity extends BaseActivity {
 
     // 获取在线播放状态
     public static boolean isOnlinePlayEnabled() {
-        // Android 2.3+ 且使用内置播放器时，默认开启在线播放
-        boolean defaultEnabled = isBuiltinPlayerSupported() && getPlayerPreference() == PLAYER_BUILTIN;
-        return SharedPreferencesUtil.getBoolean(KEY_ONLINE_PLAY, defaultEnabled);
+        // 默认：支持内置播放器（API 9+）时开启；老设备（API<9）默认关闭
+        boolean defaultEnabled = isBuiltinPlayerSupported();
+        boolean online = SharedPreferencesUtil.getBoolean(KEY_ONLINE_PLAY, defaultEnabled);
+        return online;
     }
 
     // 获取现代模式状态
@@ -910,6 +933,10 @@ public class SettingsActivity extends BaseActivity {
                 return "QQ影音";
             case PLAYER_BUILTIN:
                 return isBuiltinPlayerSupported() ? "内置播放器" : "内置播放器 (不可用)";
+            case PLAYER_LIANGWAN:
+                return "凉腕播放器";
+            case PLAYER_OSTWIND:
+                return "Ostwind播放器";
             case PLAYER_SYSTEM:
             default:
                 return "系统播放器";
@@ -934,6 +961,12 @@ public class SettingsActivity extends BaseActivity {
                 return "com.redirectin.rockplayer.android.unified.lite";
             case PLAYER_QQPLAYER:
                 return "com.tencent.research.drop";
+            case PLAYER_LIANGWAN:
+                return "com.aliangmaker.media";
+            case PLAYER_OSTWIND:
+                // Ostwind 是本 App 内置简易播放器（MediaPlayer + 自定义请求头），
+                // 包名返回特殊标记，跳转处识别后直接启动本地 Activity
+                return "tv.biliclassic.ostwind";
             case PLAYER_SYSTEM:
             case PLAYER_AUTO:
             default:
@@ -1168,8 +1201,8 @@ public class SettingsActivity extends BaseActivity {
 
     // 播放器选择对话框
     private void showPlayerChoiceDialog() {
-        final String[] allPlayers = {"内置播放器", "自动检测", "MX Player (免费版)", "MX Player (专业版)", "MoboPlayer", "VLC", "VPlayer", "RockPlaye Liter", "QQ影音", "系统播放器"};
-        final int[] allValues = {PLAYER_BUILTIN, PLAYER_AUTO, PLAYER_MX_AD, PLAYER_MX_PRO, PLAYER_MOBO, PLAYER_VLC, PLAYER_VPLAYER, PLAYER_ROCKPLAYER, PLAYER_QQPLAYER, PLAYER_SYSTEM};
+        final String[] allPlayers = {"内置播放器", "自动检测", "MX Player (免费版)", "MX Player (专业版)", "MoboPlayer", "VLC", "VPlayer", "RockPlaye Liter", "QQ影音", "凉腕播放器", "Ostwind播放器", "系统播放器"};
+        final int[] allValues = {PLAYER_BUILTIN, PLAYER_AUTO, PLAYER_MX_AD, PLAYER_MX_PRO, PLAYER_MOBO, PLAYER_VLC, PLAYER_VPLAYER, PLAYER_ROCKPLAYER, PLAYER_QQPLAYER, PLAYER_LIANGWAN, PLAYER_OSTWIND, PLAYER_SYSTEM};
 
         // 低版本过滤掉内置播放器
         ArrayList filteredPlayers = new ArrayList();

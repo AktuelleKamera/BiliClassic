@@ -16,9 +16,11 @@ import android.support.v4.view.PagerTabStrip;
 import android.support.v4.view.ViewPager;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import org.json.JSONObject;
@@ -140,7 +142,7 @@ public class MainActivity extends BaseActivity {
         int sdkInt = getSdkInt();
 
         // Android 4.0+ 正常检测 TV 模式
-        if (sdkInt >= 14 && tv.biliclassic.tv.util.TvUtil.isTv(this)) {
+        if (sdkInt >= 14 && tv.biliclassic.util.DeviceUtil.isTv(this)) {
             Intent intent = new Intent(this, tv.biliclassic.tv.TvMainActivity.class);
             startActivity(intent);
             finish();
@@ -149,7 +151,7 @@ public class MainActivity extends BaseActivity {
 
         // Android 4.0 以下：如果有 TV 标志或强制模式，强制横屏但不进入 TV UI
         if (sdkInt < 14) {
-            boolean tvModeEnabled = tv.biliclassic.tv.util.TvUtil.isTv(this);
+            boolean tvModeEnabled = tv.biliclassic.util.DeviceUtil.isTv(this);
             if (tvModeEnabled) {
                 // 强制横屏
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
@@ -168,11 +170,54 @@ public class MainActivity extends BaseActivity {
         checkLegacyVersionCompatibility();
         checkAndShowCrashDialog();
 
-        PagerTabStrip tabStrip = (PagerTabStrip) findViewById(R.id.pager_tab_strip);
+        // 圆形屏幕（手表）适配：顶栏 Bilibili 标题和搜索按钮水平居中
+        {
+            final View mainRoot = findViewById(R.id.title_bar);
+            if (mainRoot != null) {
+                mainRoot.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (tv.biliclassic.util.DeviceUtil.isRoundScreen(mainRoot)) {
+                            centerTopBarForRoundScreen();
+                        }
+                    }
+                });
+            }
+        }
+
+        final PagerTabStrip tabStrip = (PagerTabStrip) findViewById(R.id.pager_tab_strip);
         if (tabStrip != null) {
             tabStrip.setTabIndicatorColor(0xFFFCA3C5);
             tabStrip.setBackgroundColor(0xFFD86DA5);
             tabStrip.setTextColor(0xFFFFFFFF);
+            // 手表（小屏）适配：固定 TAB 栏高度 + 缩小 padding 让背景随文字变小；
+            // 手机上保持原生 wrap_content 行为
+            float screenWidthDp = getResources().getDisplayMetrics().widthPixels
+                    / getResources().getDisplayMetrics().density;
+            if (screenWidthDp <= 200) {
+                try {
+                    android.widget.FrameLayout.LayoutParams lp =
+                            (android.widget.FrameLayout.LayoutParams) tabStrip.getLayoutParams();
+                    lp.height = (int) getResources().getDimension(R.dimen.main_tab_bar_height);
+                    tabStrip.setLayoutParams(lp);
+                    // 文字垂直居中，固定高度 TAB 栏内上下空隙均匀
+                    tabStrip.setGravity(android.view.Gravity.CENTER_VERTICAL);
+                    // PagerTabStrip 底部指示条 padding（mMinPaddingBottom）默认 6dp 固定，
+                    // 小屏反射缩小，避免背景高度不随文字变小
+                    try {
+                        java.lang.reflect.Field minPadField =
+                                android.support.v4.view.PagerTabStrip.class.getDeclaredField("mMinPaddingBottom");
+                        minPadField.setAccessible(true);
+                        int minPad = (int) (getResources().getDisplayMetrics().density * 2.0f + 0.5f);
+                        minPadField.setInt(tabStrip, minPad);
+                    } catch (Throwable t) {
+                    }
+                    tabStrip.setPadding(0, 0, 0, 0);
+                    tabStrip.requestLayout();
+                    tabStrip.invalidate();
+                } catch (Throwable t) {
+                }
+            }
         }
 
         mPager = (ViewPager) findViewById(R.id.pager);
@@ -541,6 +586,57 @@ public class MainActivity extends BaseActivity {
         }
 
         return 0;
+    }
+
+    /**
+     * 圆形屏幕（手表）适配：顶栏 Bilibili 标题和搜索按钮作为一组整体居中。
+     * 用水平 LinearLayout 包裹两个图标（内部 logo 左、搜索右、间距约 2px），
+     * 整组在 RelativeLayout 中水平居中；两个图标都缩小。
+     */
+    private void centerTopBarForRoundScreen() {
+        try {
+            android.widget.RelativeLayout bar =
+                    (android.widget.RelativeLayout) findViewById(R.id.title_bar);
+            View logo = findViewById(R.id.logo);
+            View search = findViewById(R.id.btn_search);
+            if (bar == null || logo == null || search == null) return;
+
+            int logoW = (int) getResources().getDimension(R.dimen.round_bar_logo_width);
+            int searchSize = (int) getResources().getDimension(R.dimen.round_bar_search_size);
+
+            // 建居中容器
+            LinearLayout group = new LinearLayout(this);
+            group.setOrientation(LinearLayout.HORIZONTAL);
+            group.setGravity(Gravity.CENTER_VERTICAL);
+            android.widget.RelativeLayout.LayoutParams glp =
+                    new android.widget.RelativeLayout.LayoutParams(
+                            android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT,
+                            android.widget.RelativeLayout.LayoutParams.MATCH_PARENT);
+            glp.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
+            group.setLayoutParams(glp);
+            bar.addView(group);
+
+            // 从 title_bar 移除并移入 group
+            bar.removeView(logo);
+            bar.removeView(search);
+
+            LinearLayout.LayoutParams logoLp = new LinearLayout.LayoutParams(
+                    logoW, LinearLayout.LayoutParams.MATCH_PARENT);
+            logoLp.rightMargin = 2; // 间距约 2px
+            logo.setLayoutParams(logoLp);
+
+            LinearLayout.LayoutParams searchLp = new LinearLayout.LayoutParams(
+                    searchSize, searchSize);
+            search.setLayoutParams(searchLp);
+
+            group.addView(logo);
+            group.addView(search);
+        } catch (Throwable t) {
+        }
+    }
+
+    private int dpToPx(int dp) {
+        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
     }
 
     private void checkAndShowCrashDialog() {

@@ -19,6 +19,7 @@ public class LoginActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_login);
+        initRoundTitleBar();
 
         loadingContainer = (LinearLayout) findViewById(R.id.loading_container);
         fragmentContainer = (FrameLayout) findViewById(R.id.fragment_container);

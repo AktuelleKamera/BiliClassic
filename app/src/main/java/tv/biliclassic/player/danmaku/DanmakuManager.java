@@ -77,6 +77,7 @@ public class DanmakuManager {
     private boolean mUseSimpleEngine;
 
     private IMediaPlayer mMediaPlayer;
+    private PositionProvider mPosProvider;
     private boolean mVideoPrepared;
     private boolean mSeekPending;
     private long mSeekTarget;
@@ -220,22 +221,57 @@ public class DanmakuManager {
         mLoaded = false;
     }
 
+    public interface PositionProvider {
+        long getCurrentPosition();
+    }
+
     public void onVideoPrepared(IMediaPlayer mp) {
         mMediaPlayer = mp;
+        setPositionProvider(new PositionProvider() {
+            public long getCurrentPosition() {
+                try {
+                    return mMediaPlayer.getCurrentPosition();
+                } catch (Exception e) {
+                    android.util.Log.e("BT-5", "getCurrentPosition error: " + e.getMessage());
+                    return 0;
+                }
+            }
+        });
+    }
+
+    // 通用播放位置源（兼容系统 MediaPlayer 等非 IJK 播放器）
+    public void setPositionProvider(PositionProvider provider) {
+        mPosProvider = provider;
         mVideoPrepared = true;
         if (mSimpleEngine != null) {
             mSimpleEngine.setTimeProvider(new SimpleDanmakuEngine.VideoTimeProvider() {
                 public long getCurrentPosition() {
-                    try {
-                        long pos = mMediaPlayer.getCurrentPosition();
-                        return pos >= 0 ? pos : 0;
-                    } catch (Exception e) {
-                        android.util.Log.e("BT-5", "getCurrentPosition error: " + e.getMessage());
-                        return 0;
-                    }
+                    long pos = getCurrentVideoPosition();
+                    return pos >= 0 ? pos : 0;
                 }
             });
         }
+    }
+
+    // 当前弹幕时钟（ms）：全引擎返回视图时钟，简易引擎直接跟随视频位置
+    public long getCurrentTime() {
+        if (mSimpleEngine != null) {
+            return mVideoPrepared ? getCurrentVideoPosition() : 0;
+        }
+        if (mDanmakuView != null) {
+            return mDanmakuView.getCurrentTime();
+        }
+        return 0;
+    }
+
+    private long getCurrentVideoPosition() {
+        if (mPosProvider != null) {
+            try { return mPosProvider.getCurrentPosition(); } catch (Exception e) {}
+        }
+        if (mMediaPlayer != null) {
+            try { return mMediaPlayer.getCurrentPosition(); } catch (Exception e) {}
+        }
+        return 0;
     }
 
     public void seekTo(long positionMs) {
@@ -714,11 +750,9 @@ public class DanmakuManager {
                     android.util.Log.e("DanmakuManager", "弹幕引擎准备完毕");
                     mLoaded = true;
                     if (mEnabled) {
-                        if (mVideoPrepared && mMediaPlayer != null) {
-                            try {
-                                long pos = mMediaPlayer.getCurrentPosition();
-                                if (pos > 0) mDanmakuView.seekTo(pos);
-                            } catch (Exception ignored) {}
+                        if (mVideoPrepared) {
+                            long pos = getCurrentVideoPosition();
+                            if (pos > 0) mDanmakuView.seekTo(pos);
                         }
                         mDanmakuView.start();
                     }
@@ -726,9 +760,9 @@ public class DanmakuManager {
 
                 @Override
                 public void updateTimer(DanmakuTimer timer) {
-                    if (mMediaPlayer != null && mVideoPrepared && mSeekPending) {
+                    if (mVideoPrepared && mSeekPending) {
                         try {
-                            long pos = mMediaPlayer.getCurrentPosition();
+                            long pos = getCurrentVideoPosition();
                             if (pos >= 0 && Math.abs(pos - mSeekTarget) < 500) {
                                 timer.update(pos);
                                 mSeekPending = false;
@@ -759,8 +793,8 @@ public class DanmakuManager {
             public void run() {
                 try {
                     long progress = 0;
-                    if (mMediaPlayer != null && mVideoPrepared) {
-                        progress = mMediaPlayer.getCurrentPosition();
+                    if (mVideoPrepared) {
+                        progress = getCurrentVideoPosition();
                     }
                     int result = DanmakuApi.sendVideoDanmakuByAid(
                             mCid, text, mAid, progress,

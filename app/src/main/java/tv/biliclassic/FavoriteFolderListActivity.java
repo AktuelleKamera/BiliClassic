@@ -52,6 +52,7 @@ public class FavoriteFolderListActivity extends BaseActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_favorite_folder_list);
+        initRoundTitleBar();
 
         listView = (ListView) findViewById(R.id.list_view);
         emptyView = (TextView) findViewById(R.id.empty_view);

@@ -49,8 +49,37 @@ public class LoginApi {
         JSONObject data = json.getJSONObject("data");
         oauthKey = data.getString("qrcode_key");
         String qrUrl = data.getString("url");
-        // 传入 Context 参数
-        return QRCodeUtil.createQRCodeBitmap(context, qrUrl, 320, 320);
+        // 二维码尺寸按屏幕自适应：min(屏幕宽 - 左右留白, 260dp)，并保证不小于 120dp
+        int qrSizePx = computeQrSize(context);
+        return QRCodeUtil.createQRCodeBitmap(context, qrUrl, qrSizePx, qrSizePx);
+    }
+
+    /**
+     * 按屏幕宽度自适应二维码像素尺寸。
+     * 屏幕宽 - 左右留白（32dp），上限取 260dp 与屏幕宽 70% 的较小值，避免小屏超屏。
+     */
+    private static int computeQrSize(android.content.Context context) {
+        try {
+            android.util.DisplayMetrics dm = context.getResources().getDisplayMetrics();
+            float density = dm.density;
+            int screenW = dm.widthPixels;
+            int marginPx = (int) (32 * density + 0.5f);
+            int maxPx = (int) (260 * density + 0.5f);
+            int maxRatioPx = (int) (screenW * 0.7f);
+            int size = screenW - marginPx;
+            if (size > maxPx) {
+                size = maxPx;
+            }
+            if (size > maxRatioPx) {
+                size = maxRatioPx;
+            }
+            if (size < (int) (120 * density + 0.5f)) {
+                size = (int) (120 * density + 0.5f);
+            }
+            return size;
+        } catch (Throwable t) {
+            return 320;
+        }
     }
 
     /**

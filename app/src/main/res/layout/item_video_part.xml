@@ -23,10 +23,10 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:text="@string/item_video_part_5206"
-        android:textSize="14sp"
-        android:textColor="#333333"
+        android:ellipsize="end"
         android:maxLines="1"
-        android:ellipsize="end" />
+        android:text="@string/item_video_part_5206"
+        android:textColor="#333333"
+        android:textSize="14sp" />
 
 </LinearLayout>

@@ -89,6 +89,9 @@ public class PlayerApi {
         playerData.timeStamp = System.currentTimeMillis();
         android.util.Log.e("PlayerApi", "开始获取新地址，timeStamp 已更新");
 
+        android.util.Log.e("PlayerApi", "getPlayStreamFormat=" + tv.biliclassic.SettingsActivity.getPlayStreamFormat()
+                + " (1=MP4 durl, 16=DASH)");
+
         playerData.danmakuUrl = "https://comment.bilibili.com/" + playerData.cid + ".xml";
         android.util.Log.e("PlayerApi", "danmakuUrl=" + playerData.danmakuUrl);
 
@@ -134,7 +137,7 @@ public class PlayerApi {
             if (durl.length() > 0) {
                 JSONObject videoUrlObj = durl.getJSONObject(0);
                 videoUrl = videoUrlObj.getString("url");
-                android.util.Log.e("PlayerApi", "使用 durl 格式");
+                android.util.Log.e("PlayerApi", "使用 durl 格式, codec=" + videoUrlObj.optString("codecs", "?"));
             }
         }
 
@@ -145,6 +148,8 @@ public class PlayerApi {
             JSONArray video = dash.getJSONArray("video");
             if (video.length() > 0) {
                 JSONObject firstVideo = video.getJSONObject(0);
+                android.util.Log.e("PlayerApi", "dash video codecs=" + firstVideo.optString("codecs", "?")
+                        + " id=" + firstVideo.optString("id", "?"));
                 JSONArray backupUrl = firstVideo.optJSONArray("backupUrl");
                 if (backupUrl != null && backupUrl.length() > 0) {
                     videoUrl = backupUrl.getString(0);

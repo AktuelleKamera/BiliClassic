@@ -10,8 +10,8 @@
 
     <ImageView
         android:id="@+id/avatar"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="@dimen/reply_avatar_size"
+        android:layout_height="@dimen/reply_avatar_size"
         android:src="@drawable/bili_default_avatar"
         android:scaleType="centerCrop" />
 
@@ -34,7 +34,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/item_comment_7528"
-                android:textSize="14sp"
+                android:textSize="@dimen/reply_name_text_size"
                 android:textColor="#333333"
                 android:textStyle="bold"
                 android:singleLine="true"
@@ -57,7 +57,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:text="@string/item_comment_8bc4"
-            android:textSize="13sp"
+            android:textSize="@dimen/reply_content_text_size"
             android:textColor="#555555"
             android:lineSpacingExtra="2dp" />
 

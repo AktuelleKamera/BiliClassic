@@ -125,6 +125,7 @@ public class VideoDetailActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video_detail);
+        initRoundTitleBar();
 
         findViewById(R.id.btn_back).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -141,6 +142,7 @@ public class VideoDetailActivity extends BaseActivity {
             tabStrip.setTabIndicatorColor(0xFFFCA3C5);
             tabStrip.setBackgroundColor(0xFFD86DA5);
             tabStrip.setTextColor(0xFFFFFFFF);
+            applyTabTextSize(tabStrip);
         }
 
         Intent intent = getIntent();
@@ -362,6 +364,7 @@ public class VideoDetailActivity extends BaseActivity {
             tabStrip.setTabIndicatorColor(0xFFFCA3C5);
             tabStrip.setBackgroundColor(0xFFD86DA5);
             tabStrip.setTextColor(0xFFFFFFFF);
+            applyTabTextSize(tabStrip);
         }
 
         viewPager = (ViewPager) findViewById(R.id.viewpager);
@@ -381,6 +384,38 @@ public class VideoDetailActivity extends BaseActivity {
                 finish();
             }
         });
+    }
+
+    /**
+     * 手表（小屏）适配：固定 PagerTabStrip 高度 + 缩小 padding，让背景随文字变小；
+     * 手机上保持原生 wrap_content 行为。
+     */
+    private void applyTabTextSize(PagerTabStrip tabStrip) {
+        float screenWidthDp = getResources().getDisplayMetrics().widthPixels
+                / getResources().getDisplayMetrics().density;
+        if (screenWidthDp > 200) {
+            return;
+        }
+        try {
+            android.widget.FrameLayout.LayoutParams lp =
+                    (android.widget.FrameLayout.LayoutParams) tabStrip.getLayoutParams();
+            lp.height = (int) getResources().getDimension(R.dimen.main_tab_bar_height);
+            tabStrip.setLayoutParams(lp);
+            // 文字垂直居中，固定高度 TAB 栏内上下空隙均匀
+            tabStrip.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            try {
+                java.lang.reflect.Field minPadField =
+                        android.support.v4.view.PagerTabStrip.class.getDeclaredField("mMinPaddingBottom");
+                minPadField.setAccessible(true);
+                int minPad = (int) (getResources().getDisplayMetrics().density * 2.0f + 0.5f);
+                minPadField.setInt(tabStrip, minPad);
+            } catch (Throwable t) {
+            }
+            tabStrip.setPadding(0, 0, 0, 0);
+            tabStrip.requestLayout();
+            tabStrip.invalidate();
+        } catch (Throwable t) {
+        }
     }
 
     // 普通视频视图（三个 Tab）
@@ -450,7 +485,11 @@ public class VideoDetailActivity extends BaseActivity {
             return;
         }
         v.setFocusable(true);
-        v.setFocusableInTouchMode(true);
+        // 触屏用户不设置可触摸焦点：焦点系统是自绘光标（mFocusIndex+高亮），不依赖真实焦点；
+        // 若按钮 focusableInTouchMode，在 ScrollView 内第一次点击会被焦点获取吞掉、第二次才触发 onClick
+        if (mKeyNavActive) {
+            v.setFocusableInTouchMode(true);
+        }
         mFocusableViews.add(v);
     }
 
@@ -497,7 +536,10 @@ public class VideoDetailActivity extends BaseActivity {
         }
         mFocusIndex = target;
         applyFocusHighlight();
-        ensureFocusVisible(getCurrentFocusView());
+        // 仅按键导航激活时才滚动到焦点视图；触屏用户不滚动，避免数据加载后自动平滑滚动
+        if (mKeyNavActive) {
+            ensureFocusVisible(getCurrentFocusView());
+        }
     }
 
     private View getCurrentFocusView() {

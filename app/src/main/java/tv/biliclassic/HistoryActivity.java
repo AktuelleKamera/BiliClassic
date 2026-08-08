@@ -63,6 +63,7 @@ public class HistoryActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.history_activity);
+        initRoundTitleBar();
 
         historyList = (ListView) findViewById(R.id.history_list);
         progressBar = (ProgressBar) findViewById(R.id.progress_bar);
@@ -324,8 +325,9 @@ public class HistoryActivity extends BaseActivity {
 
                     mainHandler.post(new Runnable() {
                         public void run() {
-                            // 检查 Activity 是否存活
-                            if (isFinishing() || isDestroyed()) {
+                            // 检查 Activity 是否存活（isFinishing 为 API 1；
+                            // isDestroyed 是 API 17+，minSdk 3 下直接调用会 NoSuchMethodError）
+                            if (isFinishing()) {
                                 return;
                             }
 

@@ -57,6 +57,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_favorite_video_list);
+        initRoundTitleBar();
 
         Intent intent = getIntent();
         fid = intent.getLongExtra("fid", 0L);

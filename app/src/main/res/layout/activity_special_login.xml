@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/special_login_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fillViewport="true">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="16dp">
 
@@ -35,7 +41,8 @@
     <EditText
         android:id="@+id/loginInput"
         android:layout_width="match_parent"
-        android:layout_height="200dp"
+        android:layout_height="wrap_content"
+        android:minHeight="120dp"
         android:background="#FFFFFF"
         android:gravity="top"
         android:padding="8dp"
@@ -54,7 +61,7 @@
         <Button
             android:id="@+id/confirm"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_weight="1"
             android:text="@string/activity_special_login_786e"
             android:background="#D86DA5"
@@ -64,7 +71,7 @@
         <Button
             android:id="@+id/refuse"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_weight="1"
             android:text="@string/activity_special_login_8fd4"
             android:background="#999999"
@@ -73,7 +80,7 @@
         <Button
             android:id="@+id/copy"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_weight="1"
             android:text="@string/activity_special_login_590d"
             android:background="#D86DA5"
@@ -84,3 +91,4 @@
     </LinearLayout>
 
 </LinearLayout>
+</ScrollView>

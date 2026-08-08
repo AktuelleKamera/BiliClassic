@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <dimen name="player_seekbar_inset_value">5dp</dimen>
     <dimen name="player_controller_bar_button_layout_long_width">80dp</dimen>
@@ -11,5 +11,41 @@
     <dimen name="player_bottom_controller_bar_layout_height">50dp</dimen>
     <dimen name="player_bottom_controller_toast_message_bottom_margin">18dp</dimen>
     <dimen name="player_preloading_status_padding_bottom">3dp</dimen>
+
+    <!-- SetupActivity 低 DPI 适配：默认尺寸（mdpi 及以上） -->
+    <dimen name="setup_title_text_size">40sp</dimen>
+    <dimen name="setup_divider_height">2dp</dimen>
+    <dimen name="setup_content_text_size">18sp</dimen>
+    <dimen name="setup_button_text_size">18sp</dimen>
+    <dimen name="setup_button_padding">8dp</dimen>
+    <dimen name="setup_page_padding">16dp</dimen>
+    <dimen name="setup_message_padding">24dp</dimen>
+    <dimen name="setup_prompt_text_size">32sp</dimen>
+    <dimen name="setup_progress_text_size">16sp</dimen>
+    <dimen name="setup_hint_text_size">13sp</dimen>
+    <dimen name="setup_tile_min_width">120dp</dimen>
+    <dimen name="setup_tile_text_size">16sp</dimen>
+    <dimen name="setup_changelog_text_size">15sp</dimen>
+    <dimen name="setup_changelog_title_size">16sp</dimen>
+    <dimen name="setup_changelog_top_padding">40dp</dimen>
+    <dimen name="qr_container_size">240dp</dimen>
+    <dimen name="main_title_bar_height">48dp</dimen>
+    <dimen name="main_tab_bar_height">44dp</dimen>
+    <dimen name="round_bar_logo_width">64dp</dimen>
+    <dimen name="round_bar_search_size">24dp</dimen>
+    <dimen name="recommend_info_bar_height">28dp</dimen>
+    <dimen name="recommend_info_icon_size">12dp</dimen>
+    <dimen name="recommend_info_text_size">10sp</dimen>
+    <dimen name="video_title_bar_height">48dp</dimen>
+    <dimen name="video_bottom_icon_size">28dp</dimen>
+    <dimen name="video_cover_width">100dp</dimen>
+    <dimen name="video_cover_height">70dp</dimen>
+    <dimen name="video_play_btn_height">40dp</dimen>
+    <dimen name="reply_title_bar_height">48dp</dimen>
+    <dimen name="reply_avatar_size">40dp</dimen>
+    <dimen name="reply_name_text_size">14sp</dimen>
+    <dimen name="reply_content_text_size">13sp</dimen>
+    <dimen name="about_brief_text_size">18sp</dimen>
+    <dimen name="about_link_text_size">14sp</dimen>
 
 </resources>

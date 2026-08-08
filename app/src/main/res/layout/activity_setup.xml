@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root_layout"
     android:layout_width="match_parent"
@@ -13,24 +13,25 @@
         android:visibility="visible">
 
         <LinearLayout
+            android:id="@+id/welcome_title_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="16dp">
+            android:padding="@dimen/setup_page_padding">
 
             <TextView
                 android:id="@+id/title_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/activity_setup_521d"
-                android:textSize="40sp"
+                android:textSize="@dimen/setup_title_text_size"
                 android:textColor="#D86DA5" />
 
         </LinearLayout>
 
         <View
             android:layout_width="match_parent"
-            android:layout_height="2dp"
+            android:layout_height="@dimen/setup_divider_height"
             android:background="#D86DA5" />
 
         <FrameLayout
@@ -44,27 +45,28 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:text="@string/activity_setup_6b22"
-                android:textSize="18sp"
+                android:textSize="@dimen/setup_content_text_size"
                 android:textColor="#666666" />
 
         </FrameLayout>
 
         <LinearLayout
+            android:id="@+id/welcome_bottom_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="right"
-            android:padding="16dp"
-            android:layout_marginBottom="16dp">
+            android:padding="@dimen/setup_page_padding"
+            android:layout_marginBottom="@dimen/setup_page_padding">
 
             <TextView
                 android:id="@+id/btn_next"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/activity_setup_4e0b"
-                android:textSize="18sp"
+                android:textSize="@dimen/setup_button_text_size"
                 android:textColor="#D86DA5"
-                android:padding="8dp"
+                android:padding="@dimen/setup_button_padding"
                 android:clickable="true"
                 android:focusable="true" />
 
@@ -81,24 +83,25 @@
         android:visibility="gone">
 
         <LinearLayout
+            android:id="@+id/tiles_title_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="16dp">
+            android:padding="@dimen/setup_page_padding">
 
             <TextView
                 android:id="@+id/page2_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/activity_setup_9009"
-                android:textSize="40sp"
+                android:textSize="@dimen/setup_title_text_size"
                 android:textColor="#D86DA5" />
 
         </LinearLayout>
 
         <View
             android:layout_width="match_parent"
-            android:layout_height="2dp"
+            android:layout_height="@dimen/setup_divider_height"
             android:background="#D86DA5" />
 
         <ScrollView
@@ -106,8 +109,8 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
+            android:paddingTop="@dimen/setup_page_padding"
+            android:paddingBottom="@dimen/setup_page_padding"
             android:clipChildren="false">
 
             <LinearLayout
@@ -119,21 +122,22 @@
         </ScrollView>
 
         <LinearLayout
+            android:id="@+id/tiles_bottom_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="right"
-            android:padding="16dp"
-            android:layout_marginBottom="16dp">
+            android:padding="@dimen/setup_page_padding"
+            android:layout_marginBottom="@dimen/setup_page_padding">
 
             <TextView
                 android:id="@+id/btn_start"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/activity_setup_5f00"
-                android:textSize="18sp"
+                android:textSize="@dimen/setup_button_text_size"
                 android:textColor="#D86DA5"
-                android:padding="8dp"
+                android:padding="@dimen/setup_button_padding"
                 android:clickable="true"
                 android:focusable="true" />
 
@@ -157,24 +161,25 @@
             android:orientation="vertical">
 
             <LinearLayout
+                android:id="@+id/ask_title_row"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:padding="16dp">
+                android:padding="@dimen/setup_page_padding">
 
                 <TextView
                     android:id="@+id/binding_ask_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/keybinding_title"
-                    android:textSize="40sp"
+                    android:textSize="@dimen/setup_title_text_size"
                     android:textColor="#D86DA5" />
 
             </LinearLayout>
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="2dp"
+                android:layout_height="@dimen/setup_divider_height"
                 android:background="#D86DA5" />
 
             <FrameLayout
@@ -188,10 +193,10 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:gravity="center"
-                    android:paddingLeft="24dp"
-                    android:paddingRight="24dp"
+                    android:paddingLeft="@dimen/setup_message_padding"
+                    android:paddingRight="@dimen/setup_message_padding"
                     android:text="@string/keybinding_ask_message"
-                    android:textSize="18sp"
+                    android:textSize="@dimen/setup_content_text_size"
                     android:textColor="#666666" />
 
             </FrameLayout>
@@ -201,19 +206,19 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center"
-                android:padding="16dp"
-                android:layout_marginBottom="16dp">
+                android:padding="@dimen/setup_page_padding"
+                android:layout_marginBottom="@dimen/setup_page_padding">
 
                 <TextView
                     android:id="@+id/btn_yes"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/keybinding_yes"
-                    android:textSize="18sp"
+                    android:textSize="@dimen/setup_button_text_size"
                     android:textColor="#FFFFFF"
                     android:background="@drawable/setup_ask_yes_bg"
-                    android:padding="12dp"
-                    android:layout_marginRight="16dp"
+                    android:padding="@dimen/setup_button_padding"
+                    android:layout_marginRight="@dimen/setup_page_padding"
                     android:clickable="true"
                     android:focusable="false" />
 
@@ -222,10 +227,10 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/keybinding_no"
-                    android:textSize="18sp"
+                    android:textSize="@dimen/setup_button_text_size"
                     android:textColor="#D86DA5"
                     android:background="@drawable/setup_ask_no_bg"
-                    android:padding="12dp"
+                    android:padding="@dimen/setup_button_padding"
                     android:clickable="true"
                     android:focusable="false" />
 
@@ -242,10 +247,11 @@
             android:visibility="gone">
 
             <LinearLayout
+                android:id="@+id/record_title_row"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:padding="16dp">
+                android:padding="@dimen/setup_page_padding">
 
                 <TextView
                     android:id="@+id/record_title"
@@ -253,7 +259,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/keybinding_title"
-                    android:textSize="40sp"
+                    android:textSize="@dimen/setup_title_text_size"
                     android:textColor="#D86DA5" />
 
                 <TextView
@@ -261,10 +267,10 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/keybinding_exit"
-                    android:textSize="18sp"
+                    android:textSize="@dimen/setup_button_text_size"
                     android:textColor="#D86DA5"
                     android:background="#FFFFFF"
-                    android:padding="8dp"
+                    android:padding="@dimen/setup_button_padding"
                     android:clickable="true"
                     android:focusable="false" />
 
@@ -272,7 +278,7 @@
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="2dp"
+                android:layout_height="@dimen/setup_divider_height"
                 android:background="#D86DA5" />
 
             <FrameLayout
@@ -286,7 +292,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:text="@string/keybinding_prompt_prefix"
-                    android:textSize="32sp"
+                    android:textSize="@dimen/setup_prompt_text_size"
                     android:textColor="#333333" />
 
             </FrameLayout>
@@ -296,9 +302,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:paddingLeft="24dp"
-                android:paddingRight="24dp"
-                android:textSize="16sp"
+                android:paddingLeft="@dimen/setup_message_padding"
+                android:paddingRight="@dimen/setup_message_padding"
+                android:textSize="@dimen/setup_progress_text_size"
                 android:textColor="#666666" />
 
             <TextView
@@ -306,24 +312,24 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:paddingLeft="24dp"
-                android:paddingRight="24dp"
+                android:paddingLeft="@dimen/setup_message_padding"
+                android:paddingRight="@dimen/setup_message_padding"
                 android:text="@string/keybinding_recording_hint"
-                android:textSize="13sp"
+                android:textSize="@dimen/setup_hint_text_size"
                 android:textColor="#999999"
-                android:paddingBottom="8dp" />
+                android:paddingBottom="@dimen/setup_button_padding" />
 
             <TextView
                 android:id="@+id/exit_hint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"
-                android:paddingLeft="24dp"
-                android:paddingRight="24dp"
+                android:paddingLeft="@dimen/setup_message_padding"
+                android:paddingRight="@dimen/setup_message_padding"
                 android:text="@string/keybinding_exit_hint"
-                android:textSize="13sp"
+                android:textSize="@dimen/setup_hint_text_size"
                 android:textColor="#999999"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginBottom="@dimen/setup_page_padding" />
 
         </LinearLayout>
 

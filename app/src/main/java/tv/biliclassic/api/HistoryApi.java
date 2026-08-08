@@ -27,6 +27,7 @@ import java.util.List;
 import tv.biliclassic.model.ApiResult;
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.StringUtil;
 
 public class HistoryApi {
@@ -125,5 +126,50 @@ public class HistoryApi {
         }
 
         return new HistoryResult(apiResult, newItems);
+    }
+
+    /**
+     * 上报播放进度到 B 站观看历史（需登录）。后台线程执行，失败静默。
+     * 兼容 Android 2.x：只使用 API 1 方法。
+     */
+    public static void report(final long aid, final long cid, final int progressMs) {
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.PRIVACY_MODE, false)) return;
+        if (aid == 0 || cid == 0) return;
+        final int progressSec = progressMs / 1000;
+
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    String url = "https://api.bilibili.com/x/v2/history/report";
+                    String cookie = SharedPreferencesUtil.getString("cookies", "");
+
+                    String csrf = null;
+                    if (cookie != null && cookie.length() > 0) {
+                        java.util.regex.Pattern p = java.util.regex.Pattern.compile("bili_jct=([a-f0-9]+)");
+                        java.util.regex.Matcher m = p.matcher(cookie);
+                        if (m.find()) {
+                            csrf = m.group(1);
+                        }
+                    }
+
+                    if (csrf == null || csrf.length() == 0) {
+                        return;
+                    }
+
+                    java.util.ArrayList headers = new java.util.ArrayList();
+                    headers.add("User-Agent");
+                    headers.add(NetWorkUtil.USER_AGENT_WEB);
+                    headers.add("Referer");
+                    headers.add("https://www.bilibili.com/");
+                    headers.add("Cookie");
+                    headers.add(cookie);
+                    headers.add("Content-Type");
+                    headers.add("application/x-www-form-urlencoded");
+
+                    String arg = "aid=" + aid + "&cid=" + cid + "&progress=" + progressSec + "&csrf=" + csrf;
+                    NetWorkUtil.post(url, arg, headers);
+                } catch (Exception e) {}
+            }
+        }).start();
     }
 }

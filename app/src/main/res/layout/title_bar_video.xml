@@ -2,7 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/title_bar"
     android:layout_width="match_parent"
-    android:layout_height="48dp"
+    android:layout_height="@dimen/video_title_bar_height"
     android:background="#F5F5F5">
 
     <ImageView

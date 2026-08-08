@@ -862,4 +862,10 @@
     <string name="keybinding_toast_done">按鍵綁定完成</string>
     <string name="keybinding_toast_skip">已跳過按鍵綁定</string>
     <string name="keybinding_toast_exit">已退出按鍵綁定</string>
+    <string name="settingsactivity_setmessage_ostwind">目前系統不支援內置播放器，線上播放建議使用旋風(Ostwind)播放器。\n\n是否切換到旋風播放器並開啟線上播放？</string>
+    <string name="activity_settings_keyboard">按鍵設置</string>
+    <string name="activity_settings_round_screen_center">圓形屏幕居中</string>
+    <string name="activity_settings_round_screen_center_desc">在圓形屏幕上居中顯示內容</string>
+    <string name="ostwind_loading">正在載入...</string>
+    <string name="ostwind_error">播放失敗，請檢查網路或重新選擇播放器</string>
 </resources>

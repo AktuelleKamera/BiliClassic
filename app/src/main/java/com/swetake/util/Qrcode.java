@@ -44,17 +44,17 @@ public class Qrcode {
 
     private static final String TAG = "Qrcode";
     private static Context sContext;
+    private static int sInitCount = 0;
 
     public static void init(Context context) {
+        sInitCount++;
         if (context != null) {
             sContext = context.getApplicationContext();
-            Log.d(TAG, "Qrcode 初始化成功");
+            Log.d(TAG, "Qrcode 初始化成功 #" + sInitCount);
         } else {
-            Log.e(TAG, "Qrcode 初始化失败，Context 为 null");
+            Log.e(TAG, "Qrcode 初始化失败，Context 为 null #" + sInitCount);
         }
-    }
-
-    static final String QRCODE_DATA_PATH = "qrcode_data";
+    }    static final String QRCODE_DATA_PATH = "qrcode_data";
     char qrcodeErrorCorrect = 77;
     char qrcodeEncodeMode = 66;
     int qrcodeVersion = 0;

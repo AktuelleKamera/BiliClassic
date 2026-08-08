@@ -274,6 +274,11 @@ public class RecommendFragment extends Fragment {
         if (swipeRefreshLayout != null) {
             swipeRefreshLayout.setRefreshing(false);
         }
+        // 刷新后重置滚动状态，立即应用刷新期间积压的封面，
+        // 避免封面要滚动一下才显示
+        if (adapter != null) {
+            adapter.setScrolling(false);
+        }
     }
 
     private void showFooter() {
@@ -603,6 +608,18 @@ public class RecommendFragment extends Fragment {
             }
             // 指示器层其他键（如数字键 2/8）仍按原逻辑处理
         }
+        // 仅方向/确认/数字键视为真实按键导航；
+        // BACK 等未分类按键不激活光标（触屏手机实体返回键返回时不误亮"选择框"）
+        int action = KeyBindingUtil.classify(event.getKeyCode());
+        if (action != KeyBindingUtil.ACTION_UP
+                && action != KeyBindingUtil.ACTION_DOWN
+                && action != KeyBindingUtil.ACTION_LEFT
+                && action != KeyBindingUtil.ACTION_RIGHT
+                && action != KeyBindingUtil.ACTION_CONFIRM
+                && action != KeyBindingUtil.ACTION_NUM_2
+                && action != KeyBindingUtil.ACTION_NUM_8) {
+            return false;
+        }
         // 真实遥控器按键：启用光标高亮（首次按键立即显示当前位置）
         if (!mKeyNavActive) {
             mKeyNavActive = true;
@@ -617,7 +634,6 @@ public class RecommendFragment extends Fragment {
         int cols = adapter.getNumColumns();
         int count = videoList.size();
         int newPos = selectedPosition;
-        int action = KeyBindingUtil.classify(event.getKeyCode());
         // 数字键 2/8：按一屏快速翻页；连按两下 2 回到顶部
         // （首次按下翻页；长按 repeat 消费但不连续翻页）
         if (action == KeyBindingUtil.ACTION_NUM_2 || action == KeyBindingUtil.ACTION_NUM_8) {

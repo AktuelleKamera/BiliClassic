@@ -96,6 +96,18 @@ public class QRLoginFragment extends Fragment {
         btnManualLogin = (Button) view.findViewById(R.id.btn_manual_login);
         btnBack = (Button) view.findViewById(R.id.btn_back);
 
+        // 二维码容器尺寸按屏幕宽度自动适配（与二维码生成尺寸一致）
+        final android.view.View qrContainer = view.findViewById(R.id.qr_container);
+        if (qrContainer != null) {
+            int size = computeQrSize();
+            android.view.ViewGroup.LayoutParams lp = qrContainer.getLayoutParams();
+            if (lp != null) {
+                lp.width = size;
+                lp.height = size;
+                qrContainer.setLayoutParams(lp);
+            }
+        }
+
         rebuildNavViews();
 
         btnBack.setOnClickListener(new View.OnClickListener() {
@@ -132,6 +144,35 @@ public class QRLoginFragment extends Fragment {
 
         refreshQrCode();
         return view;
+    }
+
+    /**
+     * 按屏幕宽度自适应二维码容器像素尺寸。
+     * 与 LoginApi.computeQrSize 保持一致：屏幕宽 - 左右留白（32dp），
+     * 上限取 260dp 与屏幕宽 70% 的较小值，避免小屏超屏。
+     */
+    private int computeQrSize() {
+        try {
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            float density = dm.density;
+            int screenW = dm.widthPixels;
+            int marginPx = (int) (32 * density + 0.5f);
+            int maxPx = (int) (260 * density + 0.5f);
+            int maxRatioPx = (int) (screenW * 0.7f);
+            int size = screenW - marginPx;
+            if (size > maxPx) {
+                size = maxPx;
+            }
+            if (size > maxRatioPx) {
+                size = maxRatioPx;
+            }
+            if (size < (int) (120 * density + 0.5f)) {
+                size = (int) (120 * density + 0.5f);
+            }
+            return size;
+        } catch (Throwable t) {
+            return (int) (240 * getResources().getDisplayMetrics().density + 0.5f);
+        }
     }
 
     @Override

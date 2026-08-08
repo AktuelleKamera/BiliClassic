@@ -13,11 +13,11 @@ android {
         applicationId "tv.biliclassic"
         minSdkVersion 3
         targetSdkVersion 26
-        versionCode 4106
-        versionName "0.4.11-dev3"
+        versionCode 4107
+        versionName "0.4.11-dev4"
 
         ndk {
-            abiFilters 'armeabi-v7a'
+            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86'
         }
     }
 

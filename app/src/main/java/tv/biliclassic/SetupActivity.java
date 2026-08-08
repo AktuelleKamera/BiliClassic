@@ -109,6 +109,25 @@ public class SetupActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_setup);
 
+        // 圆形屏幕（手表）适配：标题行居中显示，避免偏左在圆屏上难看。
+        // 用户手动开启"圆形屏幕居中"开关立即生效；系统自动检测（WindowInsets.isRound /
+        // Configuration.isScreenRound）需等首帧布局后 insets 传递完成再判断。
+        final View rootLayoutForRound = findViewById(R.id.root_layout);
+        if (rootLayoutForRound != null) {
+            rootLayoutForRound.post(new Runnable() {
+                @Override
+                public void run() {
+                    boolean manual = tv.biliclassic.util.SharedPreferencesUtil.getBoolean(
+                            tv.biliclassic.util.SharedPreferencesUtil.ROUND_SCREEN_CENTER, false);
+                    boolean roundCenter = manual || tv.biliclassic.util.DeviceUtil.isRoundScreen(rootLayoutForRound);
+                    android.util.Log.d("SetupRound", "roundCenter=" + roundCenter + ", manual=" + manual);
+                    if (roundCenter) {
+                        centerTitlesForRoundScreen();
+                    }
+                }
+            });
+        }
+
         final View rootLayout = findViewById(R.id.root_layout);
         if (rootLayout != null) {
             rootLayout.post(new Runnable() {
@@ -159,7 +178,7 @@ public class SetupActivity extends BaseActivity {
         final TextView btnStart = (TextView) findViewById(R.id.btn_start);
         mBtnStart = btnStart;
         // 触屏机：磁贴页按钮为"开始使用"（选完直接开始）；按键机：为"下一页"（选完进入按键绑定）
-        boolean hasHardwareKeys = tv.biliclassic.util.SdkHelper.hasHardwareKeys(SetupActivity.this);
+        boolean hasHardwareKeys = tv.biliclassic.util.DeviceUtil.hasHardwareKeys(SetupActivity.this);
         btnStart.setText(hasHardwareKeys
                 ? getString(R.string.activity_setup_4e0b)
                 : getString(R.string.activity_setup_5f00));
@@ -170,7 +189,7 @@ public class SetupActivity extends BaseActivity {
                 // 首次启动（非升级）、设备有物理按键且尚未绑定任何按键 → 滑入绑定页
                 boolean isUpgrade = "upgrade".equals(getIntent().getStringExtra("mode"));
                 boolean needBinding = !isUpgrade && !KeyBindingUtil.anyBound()
-                        && tv.biliclassic.util.SdkHelper.hasHardwareKeys(SetupActivity.this);
+                        && tv.biliclassic.util.DeviceUtil.hasHardwareKeys(SetupActivity.this);
                 if (needBinding) {
                     slideToBinding();
                 } else {
@@ -200,6 +219,31 @@ public class SetupActivity extends BaseActivity {
                 }
             }
         });
+    }
+
+    /**
+     * 圆形屏幕（手表）适配：各页标题行与底部按钮行水平居中。
+     */
+    private void centerTitlesForRoundScreen() {
+        int[] rowIds = {
+                R.id.welcome_title_row,
+                R.id.tiles_title_row,
+                R.id.ask_title_row,
+                R.id.record_title_row,
+                R.id.welcome_bottom_row,
+                R.id.tiles_bottom_row
+        };
+        for (int id : rowIds) {
+            View row = findViewById(id);
+            if (row instanceof LinearLayout) {
+                ((LinearLayout) row).setGravity(Gravity.CENTER);
+            }
+        }
+        // 录制页标题占满行宽（weight=1），文字本身也要居中
+        TextView recordTitle = (TextView) findViewById(R.id.record_title);
+        if (recordTitle != null) {
+            recordTitle.setGravity(Gravity.CENTER);
+        }
     }
 
     private void finishSetup(View btnStart) {
@@ -646,7 +690,7 @@ public class SetupActivity extends BaseActivity {
 
     /**
      * 按屏幕宽度自适应磁贴列数：
-     * 手机（<600dp）2 列；平板（600-900dp）3 列；大屏 TV/横屏（≥900dp）4 列。
+     * 超小屏（<360dp，手表等）2 列；手机（<600dp）2 列；平板（600-900dp）3 列；大屏 TV/横屏（≥900dp）4 列。
      */
     private int computeTileCols() {
         float widthDp = getResources().getDisplayMetrics().widthPixels
@@ -670,7 +714,9 @@ public class SetupActivity extends BaseActivity {
             row.setOrientation(LinearLayout.HORIZONTAL);
             // 铺不满的一行从左边开始排，避免整行居中
             row.setGravity(Gravity.LEFT);
-            row.setPadding(8, 4, 8, 4);
+            int rowPad = dpToPx(8);
+            int rowPadV = dpToPx(4);
+            row.setPadding(rowPad, rowPadV, rowPad, rowPadV);
 
             for (int c = 0; c < mTileCols; c++) {
                 int idx = i + c;
@@ -689,13 +735,23 @@ public class SetupActivity extends BaseActivity {
         int paddingPx = dpToPx(8) * 2;
         int marginPx = dpToPx(8) * 2;
         int tileSizePx = (getResources().getDisplayMetrics().widthPixels - paddingPx - marginPx) / mTileCols;
-        if (tileSizePx < dpToPx(120)) {
-            tileSizePx = dpToPx(120);
+        int minTilePx = (int) getResources().getDimension(R.dimen.setup_tile_min_width);
+        if (tileSizePx < minTilePx) {
+            tileSizePx = minTilePx;
+        }
+        // 超小屏：磁贴总宽不能超过屏幕宽（否则换行错乱）
+        int maxTilePx = (getResources().getDisplayMetrics().widthPixels - paddingPx - marginPx) / mTileCols;
+        if (tileSizePx > maxTilePx) {
+            tileSizePx = maxTilePx;
+        }
+        if (tileSizePx < dpToPx(40)) {
+            tileSizePx = dpToPx(40);
         }
 
         FrameLayout tile = new FrameLayout(this);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(tileSizePx, (int) (tileSizePx * 0.7f));
-        lp.setMargins(8, 8, 8, 8);
+        int tileMargin = dpToPx(8);
+        lp.setMargins(tileMargin, tileMargin, tileMargin, tileMargin);
         tile.setLayoutParams(lp);
         tile.setFocusable(true);
         tile.setClickable(true);
@@ -717,7 +773,8 @@ public class SetupActivity extends BaseActivity {
         TextView label = new TextView(this);
         label.setText(TAB_NAMES[index]);
         label.setTextColor(Color.WHITE);
-        label.setTextSize(16);
+        label.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,
+                getResources().getDimension(R.dimen.setup_tile_text_size));
         label.setGravity(Gravity.CENTER);
         FrameLayout.LayoutParams labelLp = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -954,9 +1011,10 @@ public class SetupActivity extends BaseActivity {
         final TextView loadingText = new TextView(this);
         loadingText.setText(getString(R.string.setupactivity_settext_6b63));
         loadingText.setTextColor(0xFF999999);
-        loadingText.setTextSize(15);
+        loadingText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,
+                getResources().getDimension(R.dimen.setup_changelog_text_size));
         loadingText.setGravity(Gravity.CENTER);
-        loadingText.setPadding(0, dpToPx(40), 0, 0);
+        loadingText.setPadding(0, (int) getResources().getDimension(R.dimen.setup_changelog_top_padding), 0, 0);
         loadingText.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -999,9 +1057,10 @@ public class SetupActivity extends BaseActivity {
             TextView errorText = new TextView(SetupActivity.this);
             errorText.setText("\u83B7\u53D6\u66F4\u65B0\u65E5\u5FD7\u5931\u8D25");
             errorText.setTextColor(0xFF999999);
-            errorText.setTextSize(15);
+            errorText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,
+                    getResources().getDimension(R.dimen.setup_changelog_text_size));
             errorText.setGravity(Gravity.CENTER);
-            errorText.setPadding(0, dpToPx(40), 0, 0);
+            errorText.setPadding(0, (int) getResources().getDimension(R.dimen.setup_changelog_top_padding), 0, 0);
             errorText.setLayoutParams(new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -1021,7 +1080,8 @@ public class SetupActivity extends BaseActivity {
                 TextView tv = new TextView(SetupActivity.this);
                 tv.setText(line);
                 tv.setTextColor(textColor);
-                tv.setTextSize(15);
+                tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,
+                        getResources().getDimension(R.dimen.setup_changelog_text_size));
                 tv.setPadding(dpToPx(24), dpToPx(4), dpToPx(16), dpToPx(4));
                 tv.setLayoutParams(new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
@@ -1031,7 +1091,8 @@ public class SetupActivity extends BaseActivity {
                 TextView tv = new TextView(SetupActivity.this);
                 tv.setText(line);
                 tv.setTextColor(pinkColor);
-                tv.setTextSize(16);
+                tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,
+                        getResources().getDimension(R.dimen.setup_changelog_title_size));
                 tv.setTypeface(null, Typeface.BOLD);
                 tv.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(4));
                 tv.setLayoutParams(new LinearLayout.LayoutParams(
