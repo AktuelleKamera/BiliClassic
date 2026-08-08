@@ -98,7 +98,7 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 | 解码方式 | 系统 OMX 硬件解码 | 软解 / 硬解可切换 |
 | 防盗链 | 本地代理 LocalStreamProxy 转发 Referer/Cookie | 原生自定义请求头 |
 | 弹幕 | DanmakuManager（完整 / 简易双引擎） | DanmakuManager（完整 / 简易双引擎） |
-| 播放进度上报 | ✓（HistoryApi.report，每 5s） | ✓ |
+| 播放进度上报 | ✓ | ✓ |
 | 渲染 | SurfaceView + SURFACE_TYPE_PUSH_BUFFERS | TextureView / SurfaceView |
 | 控制栏 | 风味控制栏（比例循环 / 横滑快进 / 双击暂停） | 完整控制器（手势缩放 / 清晰度 / 弹幕发送） |
 | 包体积 | 无 native 依赖 | 含 ijkffmpeg/ijkplayer.so |
