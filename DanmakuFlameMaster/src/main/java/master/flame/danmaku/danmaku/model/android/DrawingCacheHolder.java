@@ -59,13 +59,27 @@ public class DrawingCacheHolder {
         bitmap = NativeBitmapFactory.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         if (density > 0) {
             mDensity = density;
-            bitmap.setDensity(density);
+            setDensityReflect(bitmap, density);
         }
         if (canvas == null){
             canvas = new Canvas(bitmap);
-            canvas.setDensity(density);
+            setDensityReflect(canvas, density);
         }else
             canvas.setBitmap(bitmap);
+    }
+
+    // Bitmap.setDensity(int) / Canvas.setDensity(int) 都是 API 4+ 的方法，
+    // 若在字节码里直接引用，verifier 会在 API<4 平台上因方法不存在而拒绝整个类（VerifyError）。
+    // 这里用反射调用，失败时静默忽略。
+    private static void setDensityReflect(Object target, int density) {
+        if (target == null) {
+            return;
+        }
+        try {
+            java.lang.reflect.Method m = target.getClass().getMethod("setDensity", int.class);
+            m.invoke(target, Integer.valueOf(density));
+        } catch (Throwable t) {
+        }
     }
 
     public void erase() {
@@ -105,7 +119,7 @@ public class DrawingCacheHolder {
         if (canvas == null){
             canvas = new Canvas();
             if (mDensity > 0) {
-                canvas.setDensity(mDensity);
+                setDensityReflect(canvas, mDensity);
             }
         }
         Rect rectSrc = new Rect();
@@ -115,7 +129,7 @@ public class DrawingCacheHolder {
                 Bitmap bmp = bmpArray[yIndex][xIndex] = NativeBitmapFactory.createBitmap(
                         averageWidth, averageHeight, Bitmap.Config.ARGB_8888);
                 if (mDensity > 0) {
-                    bmp.setDensity(mDensity);
+                    setDensityReflect(bmp, mDensity);
                 }
                 canvas.setBitmap(bmp);
                 int left = xIndex * averageWidth, top = yIndex * averageHeight;

@@ -28,6 +28,10 @@ import javax.net.ssl.X509TrustManager;
  * 系统 MediaPlayer 在线播放无法自定义请求头（B 站 CDN 防盗链需要 Referer/Cookie），
  * 所以用本地 HTTP 代理带请求头转发：MediaPlayer 连 127.0.0.1，代理转发到远端。
  * 支持 Range / 206 / Content-Range / Content-Length 原样透传。
+ *
+ * 注意：必须保持 HTTP/1.0 + Connection: close 的逐请求独立连接模型，
+ * 系统 MediaPlayer/Stagefright 依赖该行为，改用 HTTP/1.1 keep-alive 会导致
+ * OMX 解码器读到不连续数据而崩溃（mediaserver died）。
  */
 public class LocalStreamProxy {
     private static final String TAG = "LocalStreamProxy";
@@ -38,7 +42,6 @@ public class LocalStreamProxy {
     private ServerSocket server;
     private String localUrl;
     private volatile boolean running;
-    private volatile HttpURLConnection activeRemote;
     private volatile Socket activeClient;
     private Thread serverThread;
 
@@ -87,7 +90,6 @@ public class LocalStreamProxy {
                 while (running) {
                     try {
                         final Socket client = server.accept();
-                        closePrevious();
                         activeClient = client;
                         new Thread(new Runnable() {
                             public void run() {
@@ -102,23 +104,8 @@ public class LocalStreamProxy {
         }, "LocalStreamProxy");
         serverThread.start();
 
-        Log.e(TAG, "Proxy started: " + localUrl + " -> " + remoteUrl);
+        Log.d(TAG, "Proxy started: " + localUrl + " -> " + remoteUrl);
         return localUrl;
-    }
-
-    private void closePrevious() {
-        try {
-            if (activeRemote != null) {
-                activeRemote.disconnect();
-                activeRemote = null;
-            }
-        } catch (Exception ignored) {}
-        try {
-            if (activeClient != null) {
-                activeClient.close();
-                activeClient = null;
-            }
-        } catch (Exception ignored) {}
     }
 
     private void handleClient(Socket client) {
@@ -150,10 +137,6 @@ public class LocalStreamProxy {
                 Log.e(TAG, "handleClient error", e);
             }
         } finally {
-            if (activeRemote != null) {
-                try { activeRemote.disconnect(); } catch (Exception ignored) {}
-                activeRemote = null;
-            }
             try { client.close(); } catch (Exception ignored) {}
         }
     }
@@ -165,7 +148,6 @@ public class LocalStreamProxy {
         String remoteRange = (rangeHeader != null) ? rangeHeader : "bytes=0-";
 
         HttpURLConnection conn = openRemoteConnection(remoteRange);
-        activeRemote = conn;
 
         int respCode = conn.getResponseCode();
         String contentType = conn.getContentType();
@@ -205,15 +187,24 @@ public class LocalStreamProxy {
         if (remoteIn != null) {
             byte[] buf = new byte[BUFFER_SIZE];
             int n;
-            while (running && (n = remoteIn.read(buf)) != -1) {
-                if (Thread.currentThread().isInterrupted()) break;
-                try {
-                    out.write(buf, 0, n);
-                } catch (IOException e) {
-                    break;
+            try {
+                while (running && (n = remoteIn.read(buf)) != -1) {
+                    if (Thread.currentThread().isInterrupted()) break;
+                    try {
+                        out.write(buf, 0, n);
+                    } catch (IOException e) {
+                        break;
+                    }
                 }
+            } catch (Throwable t) {
+                // Android 2.2 HttpURLConnection LimitedInputStream 在连接被
+                // 中断时 read() 可能抛 NPE；此处吞掉，让连接自然收尾，
+                // 避免 handleClient 崩掉导致 ffmpeg av_read_frame 拿不到数据。
+                Log.d(TAG, "read loop ended: " + t.getClass().getSimpleName());
+            } finally {
+                try { remoteIn.close(); } catch (Throwable ignored) {}
+                try { conn.disconnect(); } catch (Throwable ignored) {}
             }
-            remoteIn.close();
         }
     }
 
@@ -230,12 +221,14 @@ public class LocalStreamProxy {
         conn.setConnectTimeout(15000);
         conn.setReadTimeout(60000);
 
+        // 先应用防盗链请求头（Referer/Cookie/User-Agent 等）
         if (requestHeaders != null) {
             for (Map.Entry<String, String> e : requestHeaders.entrySet()) {
                 conn.setRequestProperty(e.getKey(), e.getValue());
             }
         }
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        // 覆盖 UA 为现代浏览器 UA（B 站 CDN 对老 Android UA 返回 403）
+        conn.setRequestProperty("User-Agent", tv.biliclassic.util.NetWorkUtil.USER_AGENT_WEB);
         conn.setRequestProperty("Accept", "*/*");
 
         if (rangeHeader != null) {
@@ -263,12 +256,6 @@ public class LocalStreamProxy {
     public void stop() {
         running = false;
         try {
-            if (activeRemote != null) {
-                activeRemote.disconnect();
-                activeRemote = null;
-            }
-        } catch (Exception ignored) {}
-        try {
             if (activeClient != null) {
                 activeClient.close();
                 activeClient = null;
@@ -284,7 +271,7 @@ public class LocalStreamProxy {
             serverThread.interrupt();
             serverThread = null;
         }
-        Log.e(TAG, "Proxy stopped");
+        Log.d(TAG, "Proxy stopped");
     }
 
     public String getLocalUrl() {

@@ -309,7 +309,7 @@ public class GestureController {
         switch (decoderType) {
             case 0: typeName = "系统解码器"; break;
             case 1: typeName = "IJK硬解"; break;
-            case 2: typeName = "IJK软解"; break;
+            case 2: typeName = "软件解码器"; break;
             default: typeName = "未知";
         }
         Log.d(TAG, "setDecoderType: " + typeName);

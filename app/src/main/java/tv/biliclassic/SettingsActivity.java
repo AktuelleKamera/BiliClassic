@@ -305,7 +305,7 @@ public class SettingsActivity extends BaseActivity {
                     @Override
                     public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                         if (isChecked) {
-                            // 2.3 以下（内置播放器不可用）：提示改用旋风(Ostwind)播放器
+                            // 2.3 以下（内置播放器不可用）：提示改用东风(Ostwind)播放器
                             if (!isBuiltinPlayerSupported()
                                     && getPlayerPreference() != PLAYER_OSTWIND) {
                                 new AlertDialog.Builder(DialogUtil.wrap(SettingsActivity.this))
@@ -330,7 +330,7 @@ public class SettingsActivity extends BaseActivity {
                                         .show();
                                 return;
                             }
-                            // 2.3+（或已是旋风播放器）：内置/旋风均可在线，直接开启
+                            // 2.3+（或已是东风播放器）：内置/东风均可在线，直接开启
                             SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, true);
                             Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2_4), Toast.LENGTH_SHORT).show();
                         } else {
@@ -1286,11 +1286,11 @@ public class SettingsActivity extends BaseActivity {
 
         if (isIjkHardwareSupported()) {
             // Android 4.1+ 显示三个选项
-            decoders = new String[]{"系统解码器", "IJK 硬解", "IJK 软解"};
+            decoders = new String[]{"系统解码器", "IJK 硬解", "软件解码器"};
             decoderValues = new int[]{DECODER_SYSTEM, DECODER_IJK_HARD, DECODER_IJK_SOFT};
         } else {
             // Android 4.1 以下只显示两个选项
-            decoders = new String[]{"系统解码器", "IJK 软解"};
+            decoders = new String[]{"系统解码器", "软件解码器"};
             decoderValues = new int[]{DECODER_SYSTEM, DECODER_IJK_SOFT};
         }
 

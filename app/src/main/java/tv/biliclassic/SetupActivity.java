@@ -553,27 +553,19 @@ public class SetupActivity extends BaseActivity {
 
     /**
      * 询问页按键导航高亮：当前选择项（是/否）背景变深粉，另一项恢复原样。
+     * 用 state_selected selector + setSelected 驱动，避免 setBackgroundColor/
+     * setBackgroundResource 混用导致老设备上高亮残留或尺寸跳动。
      */
     private void applyAskHighlight() {
         TextView btnYes = (TextView) findViewById(R.id.btn_yes);
         TextView btnNo = (TextView) findViewById(R.id.btn_no);
         if (btnYes != null) {
-            if (mAskChoiceIndex == 0) {
-                btnYes.setBackgroundColor(0xFFC06090);
-                btnYes.setTextColor(0xFFFFFFFF);
-            } else {
-                btnYes.setBackgroundResource(R.drawable.setup_ask_yes_bg);
-                btnYes.setTextColor(0xFFFFFFFF);
-            }
+            btnYes.setSelected(mAskChoiceIndex == 0);
+            btnYes.setTextColor(0xFFFFFFFF);
         }
         if (btnNo != null) {
-            if (mAskChoiceIndex == 1) {
-                btnNo.setBackgroundColor(0xFFC06090);
-                btnNo.setTextColor(0xFFFFFFFF);
-            } else {
-                btnNo.setBackgroundResource(R.drawable.setup_ask_no_bg);
-                btnNo.setTextColor(0xFFD86DA5);
-            }
+            btnNo.setSelected(mAskChoiceIndex == 1);
+            btnNo.setTextColor(mAskChoiceIndex == 1 ? 0xFFFFFFFF : 0xFFD86DA5);
         }
     }
 
@@ -584,7 +576,34 @@ public class SetupActivity extends BaseActivity {
             SharedPreferencesUtil.putInt("last_version_code", versionCode);
         } catch (Exception e) {
         }
-        enterMain();
+        if (mAnimating) {
+            enterMain();
+            return;
+        }
+        // 与磁贴页"开始使用"完成时一致：整页向下滑出后再进主界面
+        mAnimating = true;
+        final int h = mPageBinding != null ? mPageBinding.getHeight() : 0;
+        if (h > 0) {
+            TranslateAnimation exit = new TranslateAnimation(0, 0, 0, h);
+            exit.setDuration(400);
+            exit.setInterpolator(new AccelerateInterpolator());
+            exit.setFillAfter(true);
+            exit.setAnimationListener(new Animation.AnimationListener() {
+                @Override
+                public void onAnimationStart(Animation animation) {
+                }
+                @Override
+                public void onAnimationEnd(Animation animation) {
+                    enterMain();
+                }
+                @Override
+                public void onAnimationRepeat(Animation animation) {
+                }
+            });
+            mPageBinding.startAnimation(exit);
+        } else {
+            enterMain();
+        }
     }
 
     @Override
@@ -620,8 +639,10 @@ public class SetupActivity extends BaseActivity {
                     || act == KeyBindingUtil.ACTION_UP
                     || act == KeyBindingUtil.ACTION_DOWN) {
                 if (!mAskKeyNavActive) {
+                    // 首次按键只激活高亮（停在默认项"是"），不切换选择
                     mAskKeyNavActive = true;
                     applyAskHighlight();
+                    return true;
                 }
                 mAskChoiceIndex = 1 - mAskChoiceIndex;
                 applyAskHighlight();

@@ -21,3 +21,9 @@
 
 # Danmaku: public API
 -keep class master.flame.danmaku.** { public protected *; }
+
+# MoboPlayer soft-decode JNI: native methods and native-called Java callbacks
+-keep class com.clov4r.android.nil.** {
+    <fields>;
+    <methods>;
+}

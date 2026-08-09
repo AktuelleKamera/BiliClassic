@@ -241,7 +241,7 @@ public class RecommendFragment extends Fragment {
     }
 
     private boolean isTablet() {
-        return getResources().getBoolean(R.bool.is_tablet);
+        return tv.biliclassic.util.SdkHelper.getBooleanResource(getResources(), R.bool.is_tablet);
     }
 
     private boolean isLandscape() {

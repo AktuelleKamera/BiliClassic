@@ -56,6 +56,7 @@
 
             <!-- ========== 软件解码 ========== -->
             <TextView
+                android:id="@+id/category_sw_decode"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/decoder_pref_category_sw_decode"
@@ -315,6 +316,7 @@
 
             <!-- 分隔线 -->
             <View
+                android:id="@+id/divider_playctl"
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginTop="12dp"
@@ -323,6 +325,7 @@
 
             <!-- ========== 播放控制 ========== -->
             <TextView
+                android:id="@+id/category_playctl"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/decoder_pref_category_playctl"
@@ -418,6 +421,7 @@
 
             <!-- 分隔线 -->
             <View
+                android:id="@+id/divider_audio"
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginTop="12dp"
@@ -426,6 +430,7 @@
 
             <!-- ========== 音频输出 ========== -->
             <TextView
+                android:id="@+id/category_audio"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/decoder_pref_category_audio"

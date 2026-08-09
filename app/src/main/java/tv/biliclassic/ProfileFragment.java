@@ -77,6 +77,23 @@ public class ProfileFragment extends Fragment {
         }
     }
 
+    // API 3/4 适配：功能列表项固定高度，避免 LinearLayout padding 测量 bug 导致紧贴
+    private void applyFixedItemHeight(View item, int heightPx) {
+        if (item == null) return;
+        android.widget.LinearLayout.LayoutParams lp =
+                (android.widget.LinearLayout.LayoutParams) item.getLayoutParams();
+        if (lp != null) {
+            lp.height = heightPx;
+            lp.topMargin = 0;
+            lp.bottomMargin = 0;
+            item.setLayoutParams(lp);
+        }
+        // 布局内的子项（图标/文字）在 LinearLayout 里垂直居中，保证间距正常
+        if (item instanceof android.widget.LinearLayout) {
+            ((android.widget.LinearLayout) item).setGravity(android.view.Gravity.CENTER_VERTICAL);
+        }
+    }
+
     // inflate 失败（Android 2.x 外部堆不足）时为 true：跳过控件初始化，仅显示空白页
     private boolean mInflateFailed = false;
 
@@ -194,6 +211,19 @@ public class ProfileFragment extends Fragment {
         applyCachedIcon(itemHistory, R.drawable.ic_action_device_access_data_usage);
         applyCachedIcon(itemOffline, R.drawable.ic_action_download_manager);
         applyCachedIcon(itemSettings, R.drawable.ic_action_settings);
+
+        // API 3/4（Android 1.5/1.6）：LinearLayout 的 wrap_content 高度测量不应用子项 padding，
+        // 导致功能列表项上下 padding 消失、全部紧贴。这里给每项设固定高度（icon 24dp + 上下各 12dp），
+        // 保证间距与新版一致。
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() < 5) {
+            // 固定高度 = 图标(24dp) + 上下各 8dp，比原 48dp 更紧凑，避免 1.5 上间距过大
+            int itemHeight = (int) (40 * getResources().getDisplayMetrics().density + 0.5f);
+            applyFixedItemHeight(itemRefresh, itemHeight);
+            applyFixedItemHeight(itemFavorites, itemHeight);
+            applyFixedItemHeight(itemHistory, itemHeight);
+            applyFixedItemHeight(itemOffline, itemHeight);
+            applyFixedItemHeight(itemSettings, itemHeight);
+        }
 
         // 点击头像或名字进入个人主页
         View.OnClickListener profileClickListener = new View.OnClickListener() {

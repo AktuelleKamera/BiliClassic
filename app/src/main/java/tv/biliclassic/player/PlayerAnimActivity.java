@@ -574,7 +574,7 @@ public class PlayerAnimActivity extends Activity {
         if (tryPlayWithPackageSilent("com.aliangmaker.media")) {
             return;
         }
-        // 2.1+ 优先使用内置旋风播放器，而不是跳系统播放器
+        // 2.1+ 优先使用内置东风播放器，而不是跳系统播放器
         if (SdkHelper.getSdkInt() >= 7) {
             playWithOstwind();
             return;

@@ -166,8 +166,25 @@
                 android:drawableTop="@drawable/bili_player_ctrl_toggle_danmaku"
                 android:text="@string/PlayerController_tips_toggle_danmaku"
                 style="@style/PlayerControlBarButtonWithText" />
+
+            <Button
+                android:id="@+id/ostwind_send_danmaku"
+                android:layout_width="@dimen/player_controller_bar_button_layout_width"
+                android:layout_height="match_parent"
+                android:drawableTop="@drawable/ic_send_danmaku"
+                android:text="@string/PlayerController_tips_send_danmaku"
+                style="@style/PlayerControlBarButtonWithText" />
         </LinearLayout>
 
     </LinearLayout>
+
+    <!-- 弹幕输入面板（ViewStub 懒加载） -->
+    <ViewStub
+        android:id="@+id/danmaku_sender_viewstub"
+        android:visibility="gone"
+        android:layout="@layout/bili_app_player_danmaku_input"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/ACD_DanmakuInputView" />
 
 </FrameLayout>

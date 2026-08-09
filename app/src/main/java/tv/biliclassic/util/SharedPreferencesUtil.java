@@ -92,6 +92,10 @@ public class SharedPreferencesUtil {
         return sharedPreferences;
     }
 
+    public static Context getAppContext() {
+        return sAppContext;
+    }
+
     public static SharedPreferences getDefaultSharedPreferences() {
         return android.preference.PreferenceManager.getDefaultSharedPreferences(sAppContext);
     }

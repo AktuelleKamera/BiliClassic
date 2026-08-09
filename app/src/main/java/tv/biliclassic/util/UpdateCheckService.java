@@ -229,10 +229,19 @@ public class UpdateCheckService extends Service {
         }
 
         long next = System.currentTimeMillis() + CHECK_INTERVAL;
-        if (SdkHelper.getSdkInt() >= 19) {
-            am.setInexactRepeating(AlarmManager.RTC_WAKEUP, next, CHECK_INTERVAL, pi);
-        } else {
-            am.setRepeating(AlarmManager.RTC_WAKEUP, next, CHECK_INTERVAL, pi);
+        try {
+            if (SdkHelper.getSdkInt() >= 19) {
+                try {
+                    Method m = AlarmManager.class.getMethod("setInexactRepeating",
+                            int.class, long.class, long.class, PendingIntent.class);
+                    m.invoke(am, AlarmManager.RTC_WAKEUP, next, CHECK_INTERVAL, pi);
+                } catch (NoSuchMethodException e) {
+                    am.setRepeating(AlarmManager.RTC_WAKEUP, next, CHECK_INTERVAL, pi);
+                }
+            } else {
+                am.setRepeating(AlarmManager.RTC_WAKEUP, next, CHECK_INTERVAL, pi);
+            }
+        } catch (Throwable t) {
         }
     }
 

@@ -23,18 +23,18 @@
 
 ## 当前版本
 
-### 0.4.11 (Wirbelwind) 更新 (开发中)
+### 0.5.0 (Tiger E) 更新 (开发中)
 
 **main版** —— 支持内置播放器软解，功能最完整
 
-**legacy版** —— ARMv5TE/ARMv6 (无VFP) 设备支持
+**legacy版** —— ARMv5TE/ARMv6 (无VFP) 设备IJK支持
 
 ---
 
 ## Android 版已实现功能
 
 - 轻量适配 Android 1.5+ 设备
-- 完美适配 Android 2.3+ 设备（带软解）
+- 完美适配 Android 2.3+ 设备（带IJK播放器）
 - 扫码登录 / Cookie 登录 / 手动输入 Cookie
 - 视频搜索（支持 AV / BV 号快捷跳转）
 - 播放历史记录
@@ -42,7 +42,7 @@
 - 查看评论区
 - 离线缓存
 - 分P下载（带封面缓存）
-- 自带 MediaPlayer 内核的 Ostwind 硬解播放器和完整 IJK V3 播放器
+- 支持 MediaPlayer 内核的 Ostwind 播放器和完整 IJK V3 播放器
 - 视频播放（内置播放器 / MX Player / VLC / MoboPlayer / QQ影音等）
 - 弹幕引擎切换（完整版 DanmakuFlameMaster / BT-5 简易版）
 - 发布评论和弹幕
@@ -93,18 +93,18 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 
 | 特性 | Ostwind（东风） | IJK（内置播放器） |
 |------|-------------------|-------------------|
-| 播放内核 | 系统 MediaPlayer（Stagefright） | IjkMediaPlayer（ffmpeg/ffplay） |
+| 播放内核 | 系统 MediaPlayer / ffmpeg | IjkMediaPlayer（ffmpeg/IJK硬解） |
 | 最低系统 | Android 1.5（API 3） | Android 2.3（API 9+） |
-| 解码方式 | 系统 OMX 硬件解码 | 软解 / 硬解可切换 |
+| 解码方式 | 软解 / 硬解可切换 | 软解 / 硬解可切换 |
 | 防盗链 | 本地代理 LocalStreamProxy 转发 Referer/Cookie | 原生自定义请求头 |
 | 弹幕 | DanmakuManager（完整 / 简易双引擎） | DanmakuManager（完整 / 简易双引擎） |
 | 播放进度上报 | ✓ | ✓ |
 | 渲染 | SurfaceView + SURFACE_TYPE_PUSH_BUFFERS | TextureView / SurfaceView |
 | 控制栏 | 风味控制栏（比例循环 / 横滑快进 / 双击暂停） | 完整控制器（手势缩放 / 清晰度 / 弹幕发送） |
-| 包体积 | 无 native 依赖 | 含 ijkffmpeg/ijkplayer.so |
+| 包体积 | 仅含 ffmpeg相关so | 含 ijkffmpeg/ijkplayer.so |
 | 推荐设备 | Android 2.3以下 | Android 2.3+ |
 
-**Ostwind 播放器**是本项目为 Android 2.2 及以下支持硬解的设备专门设计的在线播放器。基于系统 MediaPlayer，通过本地 HTTP 代理携带 B 站防盗链请求头；使用 PUSH_BUFFERS 表面规避 QComHardwareOverlayRenderer 崩溃。支持清朝B站风味控制栏、横滑快进、双击暂停、画面比例循环、弹幕与播放历史上报等功能。
+**Ostwind 播放器**是本项目为 Android 2.2 及以下支持硬解的设备专门设计的在线播放器。基于系统 MediaPlayer 和 MoboPlayer，通过本地 HTTP 代理携带 B 站防盗链请求头；使用 PUSH_BUFFERS 表面规避 QComHardwareOverlayRenderer 崩溃。支持清朝B站风味控制栏、横滑快进、双击暂停、画面比例循环、弹幕与播放历史上报等功能。
 
 **IJK 播放器**基于 ffmpeg/ffplay，支持软解与硬解切换，在 Android 2.3+ 设备上提供更完整的播放体验，包括手势缩放、清晰度切换、弹幕发送等完整控制器功能。
 
@@ -136,7 +136,7 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 - 处理器: ARMv7-A 及以上
 - 物理内存: 512 MB
 
-### 各平台最低推荐处理器 (ARMv7-A 及以上)
+### 各平台最低推荐处理器 (建议 ARMv7-A 及以上)
 
 手机平台
 - 高通 MSM7227A — 1GHz Cortex-A5 单核
@@ -151,13 +151,15 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 - 展讯 SC6820 — 1GHz Cortex-A5 单核
 
 平板/盒子/其他平台
-- 瑞芯微 RK2918 — 1GHz Cortex-A8 单核
+- 瑞芯微 RK2816 — 600Mhz ARM11 单核
 - 晶晨 AML8726-M — 800MHz Cortex-A9 双核
 - MIPS 1074Kc — 1GHz MIPS32 双核
 - 飞思卡尔 i.MX51 — 800MHz Cortex-A8 单核
 - 全志 A10 — 1GHz Cortex-A8 单核
 
+（瑞芯微RK28系列较为特殊，是自带了解码单元的armeabi，比其他ARM11手机流畅）
 只要你的设备不是古老的纯armeabi架构，我想……呃，大约都能跑的比较流畅吧hhh
+不过如果你是自带硬解单元的ARM11，那就
 
 ---
 

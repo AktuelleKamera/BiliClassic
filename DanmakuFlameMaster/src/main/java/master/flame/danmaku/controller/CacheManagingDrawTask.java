@@ -235,7 +235,11 @@ public class CacheManagingDrawTask extends DrawTask {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                mThread.quit();
+                // HandlerThread.quit() 是 API 18+，改用 Looper.quit()（API 1）
+                try {
+                    mThread.getLooper().quit();
+                } catch (Throwable t) {
+                }
                 mThread = null;
             }
         }

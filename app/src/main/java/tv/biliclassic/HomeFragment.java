@@ -34,6 +34,7 @@ import java.util.concurrent.Executors;
 import tv.biliclassic.api.PartitionApi;
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.GlobalImageCache;
+import tv.biliclassic.util.SdkHelper;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class HomeFragment extends Fragment {
@@ -307,7 +308,7 @@ public class HomeFragment extends Fragment {
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         if (homeList == null) return;
-        if (!getResources().getBoolean(R.bool.is_tablet)) return;
+        if (!SdkHelper.getBooleanResource(getResources(), R.bool.is_tablet)) return;
         for (int i = 0; i < homeList.getChildCount(); i++) {
             View section = homeList.getChildAt(i);
             if (section != null && section.findViewById(R.id.video_area) != null) {
@@ -318,7 +319,7 @@ public class HomeFragment extends Fragment {
 
     private void applyTabletLayout(final View section) {
         if (!isAdded()) return;
-        if (!getResources().getBoolean(R.bool.is_tablet)) return;
+        if (!SdkHelper.getBooleanResource(getResources(), R.bool.is_tablet)) return;
         LinearLayout videoArea = (LinearLayout) section.findViewById(R.id.video_area);
         if (videoArea == null) return;
         LinearLayout root = (LinearLayout) videoArea.getParent();
@@ -343,7 +344,7 @@ public class HomeFragment extends Fragment {
                                     final LinearLayout.LayoutParams vp,
                                     final LinearLayout.LayoutParams cp) {
         if (!isAdded()) return;
-        if (!getResources().getBoolean(R.bool.is_tablet)) return;
+        if (!SdkHelper.getBooleanResource(getResources(), R.bool.is_tablet)) return;
         boolean landscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
         v3c.setVisibility(View.VISIBLE);
         if (landscape) {

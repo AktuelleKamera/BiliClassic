@@ -3192,12 +3192,10 @@ public class BiliPlayerActivity extends Activity implements
         View root = getWindow().getDecorView();
         mPlayerOptionsPannel.showAtLocation(root, Gravity.RIGHT, 0, 0);
         if (SdkHelper.getSdkInt() >= 28) {
-            wrapper.addOnAttachStateChangeListener(new android.view.View.OnAttachStateChangeListener() {
-                public void onViewAttachedToWindow(android.view.View v) {
+            tv.biliclassic.util.SdkHelper.onViewAttached(wrapper, new Runnable() {
+                public void run() {
                     applyPopupCutout(mPlayerOptionsPannel);
-                    v.removeOnAttachStateChangeListener(this);
                 }
-                public void onViewDetachedFromWindow(android.view.View v) {}
             });
         }
         showControlsWithAutoHide();
@@ -3275,7 +3273,7 @@ public class BiliPlayerActivity extends Activity implements
         } else if (decoderType == DECODER_IJK_HARD) {
             decoder = "IJK 硬解";
         } else {
-            decoder = "IJK 软解";
+            decoder = "软件解码器";
         }
         String renderer = (mRendererType == RENDERER_TEXTUREVIEW) ? "TextureView" : "SurfaceView";
         String resolution = videoWidth + " x " + videoHeight;
@@ -3476,7 +3474,7 @@ public class BiliPlayerActivity extends Activity implements
             }
 
             int progressMs = (int) current;
-            if (progressMs > 0 && progressMs % 5000 < 250) {
+            if (progressMs >= 0 && progressMs % 5000 < 250) {
                 reportHistory(progressMs);
             }
         } catch (Exception e) {}

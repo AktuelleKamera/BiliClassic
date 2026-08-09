@@ -12,6 +12,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewStub;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -24,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import tv.biliclassic.R;
+import tv.biliclassic.SettingsActivity;
 import tv.biliclassic.api.HistoryApi;
 import tv.biliclassic.player.danmaku.DanmakuManager;
 import tv.biliclassic.util.NetWorkUtil;
@@ -68,6 +70,7 @@ public class OstwindPlayerActivity extends Activity
 
     // 弹幕开关/设置
     private Button mToggleDanmaku;
+    private Button mSendDanmaku;
     private ImageButton mDanmakuOptions;
 
     // 画面比例
@@ -112,6 +115,65 @@ public class OstwindPlayerActivity extends Activity
     private long mAid;
     private long mCid;
 
+    // 弹幕输入面板用：暂停/恢复播放器
+    private final DanmakuManager.PlayControl mPlayControl = new DanmakuManager.PlayControl() {
+        public boolean isPlaying() {
+            if (mUseSoftDecode) {
+                return mSoftPlaying;
+            }
+            if (mPlayer != null) {
+                try {
+                    return mPlayer.isPlaying();
+                } catch (Throwable t) {
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        public boolean isPrepared() {
+            return mPrepared;
+        }
+
+        public void pausePlayer() {
+            if (mUseSoftDecode) {
+                if (mSoftPlayer != null && mSoftPlaying) {
+                    try {
+                        mSoftPlayer.nativePause();
+                        mSoftPlaying = false;
+                    } catch (Throwable t) {
+                    }
+                }
+            } else if (mPlayer != null) {
+                try {
+                    mPlayer.pause();
+                } catch (Throwable t) {
+                }
+            }
+            if (mDanmaku != null) mDanmaku.pause();
+            updatePlayPauseIcon();
+        }
+
+        public void resumePlayer() {
+            if (mUseSoftDecode) {
+                if (mSoftPlayer != null && mPrepared && !mSoftPlaying) {
+                    try {
+                        mSoftPlayer.nativePlay();
+                        mSoftPlaying = true;
+                    } catch (Throwable t) {
+                    }
+                }
+            } else if (mPlayer != null && mPrepared) {
+                try {
+                    mPlayer.start();
+                } catch (Throwable t) {
+                }
+            }
+            if (mDanmaku != null) mDanmaku.resume();
+            updatePlayPauseIcon();
+        }
+    };
+
     // 播放历史上报（每 5s 一次，去重）
     private int mLastReportProgress = -1;
 
@@ -144,6 +206,17 @@ public class OstwindPlayerActivity extends Activity
     private boolean mErrorHandled = false;
     private boolean mIsLocalFile = false;
 
+    // ---- 软解内核（MoboPlayer cmplayer + ffmpeg，MediaPlayer 失败时自动降级） ----
+    // 需要与 SettingsActivity.DECODER_IJK_SOFT (=2) 保持一致
+    private static final int DECODER_IJK_SOFT = 2;
+    private com.clov4r.android.nil.CMPlayer mSoftPlayer;
+    private boolean mUseSoftDecode = false;
+    private boolean mSoftFallbackTried = false;
+    private boolean mSoftPlaying = false;
+    // nativeOpen 成功后才为 true；失败时 native 内部状态未正确建立，
+    // 后续调 nativeClose/nativePause 会访问 null 状态崩溃（cmplayer 0x58f8）。
+    private boolean mSoftOpenOk = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -156,9 +229,14 @@ public class OstwindPlayerActivity extends Activity
 
         mSurfaceView = (SurfaceView) findViewById(R.id.ostwind_surface);
         mHolder = mSurfaceView.getHolder();
-        // msm7x30 视频播放必须用 push 模式表面（硬件 overlay 路径），默认 NORMAL 会在
-        // 解码器端口重建时触发 QComHardwareOverlayRenderer 的 UAF 崩溃（系统播放器即 push 模式）
-        mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+        // 表面类型按解码模式动态决定：
+        //  - 硬解(msm7x30 overlay)：必须 push 模式，避免 QComHardwareOverlayRenderer UAF 崩溃
+        //  - 软解(ffmpeg 直写)：必须 NORMAL，native 端用 Surface.lock/unlockAndPost 画帧，
+        //    PUSH_BUFFERS 下 lock 会失败（requestBuffer null handle / w:0,h:0）
+        mUseSoftDecode = SettingsActivity.getDecoderType() == DECODER_IJK_SOFT;
+        mHolder.setType(mUseSoftDecode
+                ? SurfaceHolder.SURFACE_TYPE_NORMAL
+                : SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
         mHolder.addCallback(this);
 
         mBottomBar = findViewById(R.id.ostwind_bottom_bar);
@@ -177,6 +255,7 @@ public class OstwindPlayerActivity extends Activity
         });
 
         mToggleDanmaku = (Button) findViewById(R.id.ostwind_toggle_danmaku);
+        mSendDanmaku = (Button) findViewById(R.id.ostwind_send_danmaku);
         mDanmakuOptions = (ImageButton) findViewById(R.id.ostwind_options);
         mAspectRatio = (Button) findViewById(R.id.ostwind_aspect_ratio);
         mAspectRatio.setOnClickListener(new View.OnClickListener() {
@@ -209,17 +288,7 @@ public class OstwindPlayerActivity extends Activity
             }
 
             public void onStopTrackingTouch(SeekBar seekBar) {
-                if (mPlayer != null) {
-                    try {
-                        mPlayer.seekTo(seekBar.getProgress());
-                        if (mDanmaku != null) {
-                            mDanmaku.seekTo(seekBar.getProgress());
-                            mLastDanmakuSeek = System.currentTimeMillis();
-                        }
-                    } catch (Exception e) {
-                        android.util.Log.e(TAG, "seekTo failed", e);
-                    }
-                }
+                doSeek(seekBar.getProgress());
                 mIsSeeking = false;
             }
         });
@@ -257,16 +326,23 @@ public class OstwindPlayerActivity extends Activity
         // 本地文件（非 http/https）直接播，无需代理，也不显示网络加载动画
         mIsLocalFile = !(mVideoUrl.startsWith("http://") || mVideoUrl.startsWith("https://"));
 
+        // 解码方式：设置里选了"软解"则直接软解；否则 MediaPlayer 硬解，失败自动降级软解
+        mUseSoftDecode = SettingsActivity.getDecoderType() == DECODER_IJK_SOFT;
+        android.util.Log.d(TAG, "decoder=" + SettingsActivity.getDecoderType()
+                + " useSoftDecode=" + mUseSoftDecode);
+
         // 弹幕：有 cid 就加载（异步下载 XML，播放前准备好即同步）
         if (mCid > 0) {
             FrameLayout danmakuContainer = (FrameLayout) findViewById(R.id.danmaku_container);
+            ViewStub inputStub = (ViewStub) findViewById(R.id.danmaku_sender_viewstub);
             if (danmakuContainer != null) {
-                mDanmaku = new DanmakuManager(this, danmakuContainer, mAid, mCid, null);
+                mDanmaku = new DanmakuManager(this, danmakuContainer, mAid, mCid, inputStub);
                 mDanmaku.init();
             }
         }
         if (mDanmaku == null) {
             if (mToggleDanmaku != null) mToggleDanmaku.setVisibility(View.GONE);
+            if (mSendDanmaku != null) mSendDanmaku.setVisibility(View.GONE);
             if (mDanmakuOptions != null) mDanmakuOptions.setVisibility(View.GONE);
         } else {
             mToggleDanmaku.setOnClickListener(new View.OnClickListener() {
@@ -279,6 +355,13 @@ public class OstwindPlayerActivity extends Activity
                     }
                 }
             });
+            if (mSendDanmaku != null) {
+                mSendDanmaku.setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View v) {
+                        mDanmaku.showInputPanel(mPlayControl);
+                    }
+                });
+            }
             mDanmakuOptions.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
                     mDanmaku.showOptionsPanel();
@@ -290,8 +373,26 @@ public class OstwindPlayerActivity extends Activity
     // ===== SurfaceHolder.Callback =====
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        android.util.Log.d(TAG, "surfaceCreated");
+        android.util.Log.d(TAG, "surfaceCreated thread=" + Thread.currentThread().getName()
+                + " mPrepared=" + mPrepared + " mSoftPlayer=" + (mSoftPlayer != null));
         mSurfaceReady = true;
+        if (mUseSoftDecode) {
+            // 软解：把新 Surface 交给 native 绑定显示
+            if (mPrepared && mSoftPlayer != null) {
+                try {
+                    com.clov4r.android.nil.NativeSurfaceView.setSurfaceChanged(holder.getSurface(),
+                            holder.getSurfaceFrame().width(), holder.getSurfaceFrame().height());
+                    android.util.Log.d(TAG, "setSurfaceChanged in surfaceCreated done "
+                            + holder.getSurfaceFrame().width() + "x"
+                            + holder.getSurfaceFrame().height());
+                } catch (Throwable t) {
+                    android.util.Log.e(TAG, "setSurfaceChanged in surfaceCreated failed", t);
+                }
+            } else {
+                preparePlayer();
+            }
+            return;
+        }
         if (mPlayer != null) {
             // 表面可能因布局/加载层重建而再次创建：只需重新绑定显示，
             // 绝不能在这里新建播放器，否则 msm7x30 上会出现第二个解码器
@@ -317,15 +418,32 @@ public class OstwindPlayerActivity extends Activity
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        android.util.Log.d(TAG, "surfaceChanged w=" + width + " h=" + height);
+        android.util.Log.d(TAG, "surfaceChanged w=" + width + " h=" + height
+                + " thread=" + Thread.currentThread().getName());
+        if (mUseSoftDecode && mSoftPlayer != null) {
+            try {
+                // 与原始 MoboPlayer 一致：传 surface 实际尺寸（setFixedSize 后 = 视频尺寸）
+                com.clov4r.android.nil.NativeSurfaceView.setSurfaceChanged(
+                        holder.getSurface(), width, height);
+                android.util.Log.d(TAG, "setSurfaceChanged in surfaceChanged done");
+            } catch (Throwable t) {
+                android.util.Log.e(TAG, "setSurfaceChanged failed", t);
+            }
+        }
     }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-        android.util.Log.d(TAG, "surfaceDestroyed");
+        android.util.Log.d(TAG, "surfaceDestroyed thread=" + Thread.currentThread().getName());
         mSurfaceReady = false;
-        if (mPlayer != null) {
-            mPlayer.setDisplay(null);
+        // API 1 的 MediaPlayer.setDisplay(null) 在播放器已 release 或 surface 为 null 时
+        // 会在 native 层 NPE（AOSP 1.5 MediaPlayer.java:481），这里必须 try-catch 保护
+        if (!mUseSoftDecode && mPlayer != null && mPrepared) {
+            try {
+                mPlayer.setDisplay(null);
+            } catch (Throwable t) {
+                android.util.Log.w(TAG, "setDisplay(null) in surfaceDestroyed failed", t);
+            }
         }
     }
 
@@ -340,6 +458,20 @@ public class OstwindPlayerActivity extends Activity
                     + " mSurfaceReady=" + mSurfaceReady);
             return;
         }
+        if (mUseSoftDecode) {
+            // 软解：native 用 Surface.lock/unlockAndPost 画帧，必须 NORMAL 类型
+            try {
+                mHolder.setType(SurfaceHolder.SURFACE_TYPE_NORMAL);
+            } catch (Throwable t) {
+            }
+            prepareSoftPlayer();
+            return;
+        }
+        // 硬解(msm7x30 overlay)：push 模式表面，避免解码器端口重建时崩溃
+        try {
+            mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+        } catch (Throwable t) {
+        }
         mPreparing = true;
         mErrorHandled = false;
         if (!mIsLocalFile) {
@@ -348,7 +480,7 @@ public class OstwindPlayerActivity extends Activity
         android.util.Log.d(TAG, "preparePlayer url=" + mVideoUrl
                 + " hasCookie=" + (mCookie != null && mCookie.length() > 0)
                 + " agentLen=" + (mAgent != null ? mAgent.length() : 0)
-                + " sdk=" + android.os.Build.VERSION.SDK_INT);
+                + " sdk=" + tv.biliclassic.util.SdkHelper.getSdkInt());
         try {
             mPlayer = new MediaPlayer();
             mPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
@@ -388,6 +520,227 @@ public class OstwindPlayerActivity extends Activity
             mFailed = true;
             showStatus(getString(R.string.ostwind_error));
             releasePlayer();
+        }
+    }
+
+    // ===== 软解内核（MoboPlayer cmplayer + ffmpeg，MediaPlayer 失败时自动降级） =====
+
+    /**
+     * 软解准备：后台线程 nativeOpen + 轮询取视频尺寸，成功后 UI 线程绑定 Surface 并播放。
+     */
+    private void prepareSoftPlayer() {
+        if (mSoftPlayer != null) {
+            return;
+        }
+        mPreparing = true;
+        mErrorHandled = false;
+        if (!mIsLocalFile) {
+            showStatus(getString(R.string.ostwind_loading));
+        }
+        if (!com.clov4r.android.nil.library.NativeLibrary.load()) {
+            android.util.Log.e(TAG, "soft lib load failed");
+            mPreparing = false;
+            mFailed = true;
+            hideStatus();
+            Toast.makeText(this, getString(R.string.ostwind_error), Toast.LENGTH_SHORT).show();
+            finishPlayer();
+            return;
+        }
+        // 本地代理复用同一逻辑：软解 native 端 ffmpeg 需要走 http/file 本地路径
+        final String playUrl;
+        String resolvedUrl = mVideoUrl;
+        if (mVideoUrl.startsWith("http://") || mVideoUrl.startsWith("https://")) {
+            Map<String, String> headers = new HashMap<String, String>();
+            headers.put("User-Agent", mAgent);
+            headers.put("Referer", "https://www.bilibili.com/");
+            if (mCookie != null && mCookie.length() > 0) {
+                headers.put("Cookie", mCookie);
+            }
+            mLocalProxy = new LocalStreamProxy(mVideoUrl, headers);
+            try {
+                resolvedUrl = mLocalProxy.start();
+                android.util.Log.d(TAG, "soft proxy started: " + resolvedUrl);
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "soft proxy start failed, fallback to direct url", e);
+                mLocalProxy = null;
+            }
+        }
+        playUrl = resolvedUrl;
+
+        Thread t = new Thread(new Runnable() {
+            public void run() {
+                android.util.Log.d(TAG, "soft thread start, thread=" + Thread.currentThread().getName());
+                mSoftPlayer = new com.clov4r.android.nil.CMPlayer();
+                int ret;
+                try {
+                    android.util.Log.d(TAG, "nativeOpen begin url=" + playUrl
+                            + " sdk=" + com.clov4r.android.nil.library.NativeLibrary.sdkVersion());
+                    long t0 = System.currentTimeMillis();
+                    ret = mSoftPlayer.nativeOpen(playUrl,
+                            com.clov4r.android.nil.library.NativeLibrary.sdkVersion(), "");
+                    android.util.Log.d(TAG, "nativeOpen done ret=" + ret
+                            + " 耗时=" + (System.currentTimeMillis() - t0) + "ms");
+                } catch (Throwable e) {
+                    android.util.Log.e(TAG, "nativeOpen crashed", e);
+                    ret = -1;
+                }
+                if (ret < 0) {
+                    android.util.Log.e(TAG, "nativeOpen ret<0 -> onSoftOpenFailed");
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            onSoftOpenFailed();
+                        }
+                    });
+                    return;
+                }
+                mSoftOpenOk = true;
+                android.util.Log.d(TAG, "nativeOpen success, mSoftOpenOk=true");
+                int w = 0, h = 0;
+                // ARMv6/vfp 慢设备上 nativeOpen 后视频流可能尚未就绪（曾出现 6s+），
+                // 轮询放宽到 ~12s 避免尺寸未就绪就绑定错误尺寸导致渲染 lock 失败。
+                for (int i = 0; i < 240; i++) {
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+                    try {
+                        h = com.clov4r.android.nil.NativeSurfaceView.getVideoHeight();
+                        w = com.clov4r.android.nil.NativeSurfaceView.getVideoWidth();
+                    } catch (Throwable e) {
+                        android.util.Log.e(TAG, "getVideoSize failed", e);
+                    }
+                    if (h > 0 && w > 0) {
+                        break;
+                    }
+                }
+                android.util.Log.d(TAG, "poll video size done w=" + w + " h=" + h);
+                final int fw = w;
+                final int fh = h;
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        onSoftOpenSuccess(fw, fh);
+                    }
+                });
+            }
+        });
+        t.start();
+    }
+
+    private void onSoftOpenFailed() {
+        android.util.Log.e(TAG, "onSoftOpenFailed thread=" + Thread.currentThread().getName());
+        mPreparing = false;
+        mFailed = true;
+        hideStatus();
+        releasePlayer();
+        Toast.makeText(this, getString(R.string.ostwind_error), Toast.LENGTH_SHORT).show();
+        finishPlayer();
+    }
+
+    private void onSoftOpenSuccess(int videoW, int videoH) {
+        if (mFailed) {
+            return;
+        }
+        mPreparing = false;
+        mPrepared = true;
+        mSoftPlaying = true;
+        hideStatus();
+        // 与原始 MoboPlayer 一致：
+        //  - setFixedSize = 视频原始尺寸 → native 画满整个 buffer
+        //  - setSurfaceChanged = 视频尺寸 → native 渲染目标与 buffer 一致
+        //  - View layoutParams 由 applyAspectRatio 设为适配尺寸（如 720x480）
+        //    SurfaceView 会把 buffer 拉伸到 View 区域 → 全屏且保持比例
+        bindSoftVideoSize(videoW, videoH);
+        try {
+            long dur = mSoftPlayer.nativeGetDurationTime();
+            if (dur > 0) {
+                mSeekBar.setMax((int) dur);
+                mTimeTotal.setText(formatTime(dur));
+            }
+        } catch (Throwable t) {
+        }
+        mPlayPause.getDrawable().setLevel(1); // 播放中 -> 暂停图标
+        try {
+            android.util.Log.d(TAG, "onSoftOpenSuccess nativePlay begin");
+            mSoftPlayer.nativePlay();
+            android.util.Log.d(TAG, "onSoftOpenSuccess nativePlay done");
+        } catch (Throwable t) {
+            android.util.Log.e(TAG, "nativePlay failed", t);
+        }
+        mUiHandler.post(mTimeRunnable);
+        applyAspectRatio();
+        if (videoW <= 0 || videoH <= 0) {
+            // 视频尺寸尚未就绪（慢设备）：后台持续补取，就绪后重新绑定 surface，
+            // 否则 native 渲染线程会用错误的 surface 尺寸 lock buffer 而失败。
+            Thread t = new Thread(new Runnable() {
+                public void run() {
+                    int w = 0, h = 0;
+                    for (int i = 0; i < 240; i++) {
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException e) {
+                            break;
+                        }
+                        try {
+                            h = com.clov4r.android.nil.NativeSurfaceView.getVideoHeight();
+                            w = com.clov4r.android.nil.NativeSurfaceView.getVideoWidth();
+                        } catch (Throwable e) {
+                        }
+                        if (h > 0 && w > 0) {
+                            break;
+                        }
+                    }
+                    if (w > 0 && h > 0 && !mFailed) {
+                        final int fw = w;
+                        final int fh = h;
+                        android.util.Log.d(TAG, "re-bind video size after play w=" + fw + " h=" + fh);
+                        runOnUiThread(new Runnable() {
+                            public void run() {
+                                if (mFailed) return;
+                                bindSoftVideoSize(fw, fh);
+                                applyAspectRatio();
+                            }
+                        });
+                    }
+                }
+            });
+            t.setDaemon(true);
+            t.start();
+        }
+        if (mDanmaku != null) {
+            mDanmaku.setPositionProvider(new DanmakuManager.PositionProvider() {
+                public long getCurrentPosition() {
+                    if (mSoftPlayer == null) return 0;
+                    try {
+                        long pos = mSoftPlayer.nativeGetCurrTime();
+                        return pos >= 0 ? pos : 0;
+                    } catch (Throwable t) {
+                        return 0;
+                    }
+                }
+            });
+        }
+    }
+
+    // 软解：把视频尺寸绑定到 Surface（setFixedSize + native setSurfaceChanged）
+    private void bindSoftVideoSize(int videoW, int videoH) {
+        if (videoW > 0 && videoH > 0 && mHolder != null) {
+            try {
+                mHolder.setFixedSize(videoW, videoH);
+                if (mSurfaceReady) {
+                    com.clov4r.android.nil.NativeSurfaceView.setSurfaceChanged(
+                            mHolder.getSurface(), videoW, videoH);
+                }
+            } catch (Throwable t) {
+                android.util.Log.e(TAG, "setFixedSize/setSurfaceChanged(video size) failed", t);
+            }
+        } else if (mSurfaceReady && mHolder != null) {
+            try {
+                com.clov4r.android.nil.NativeSurfaceView.setSurfaceChanged(mHolder.getSurface(),
+                        mHolder.getSurfaceFrame().width(), mHolder.getSurfaceFrame().height());
+            } catch (Throwable t) {
+                android.util.Log.e(TAG, "setSurfaceChanged(frame size) failed", t);
+            }
         }
     }
 
@@ -432,7 +785,44 @@ public class OstwindPlayerActivity extends Activity
         mp.start();
     }
 
+    // 同步播放/暂停图标状态
+    private void updatePlayPauseIcon() {
+        if (mPlayPause == null) return;
+        boolean playing;
+        if (mUseSoftDecode) {
+            playing = mSoftPlaying;
+        } else {
+            try {
+                playing = mPlayer != null && mPlayer.isPlaying();
+            } catch (Throwable t) {
+                playing = false;
+            }
+        }
+        mPlayPause.getDrawable().setLevel(playing ? 1 : 0);
+    }
+
     private void togglePlayPause() {
+        if (mUseSoftDecode) {
+            if (mSoftPlayer == null || !mPrepared) return;
+            try {
+                if (mSoftPlaying) {
+                    android.util.Log.d(TAG, "togglePlayPause: nativePause");
+                    mSoftPlayer.nativePause();
+                    mSoftPlaying = false;
+                    mPlayPause.getDrawable().setLevel(0); // 已暂停 -> 播放图标
+                    if (mDanmaku != null) mDanmaku.pause();
+                } else {
+                    android.util.Log.d(TAG, "togglePlayPause: nativePlay");
+                    mSoftPlayer.nativePlay();
+                    mSoftPlaying = true;
+                    mPlayPause.getDrawable().setLevel(1); // 播放中 -> 暂停图标
+                    if (mDanmaku != null) mDanmaku.resume();
+                }
+            } catch (Throwable t) {
+                android.util.Log.e(TAG, "soft togglePlayPause failed", t);
+            }
+            return;
+        }
         if (mPlayer == null) return;
         try {
             if (mPlayer.isPlaying()) {
@@ -449,11 +839,8 @@ public class OstwindPlayerActivity extends Activity
         }
     }
 
-    // 按所选比例调整 SurfaceView 尺寸（容器内适配，居中）
-    private void applyAspectRatio() {
-        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) mSurfaceView.getLayoutParams();
-        if (lp == null) return;
-
+    // 计算目标显示尺寸 {w, h}：容器内按所选比例适配（与 applyAspectRatio 同一套逻辑）
+    private int[] computeDisplaySize(int vw, int vh) {
         View container = findViewById(R.id.ostwind_root);
         int cw = container != null ? container.getWidth() : 0;
         int ch = container != null ? container.getHeight() : 0;
@@ -464,16 +851,7 @@ public class OstwindPlayerActivity extends Activity
         }
         float containerRatio = (float) cw / ch;
 
-        int vw = 0, vh = 0;
-        if (mPlayer != null) {
-            try {
-                vw = mPlayer.getVideoWidth();
-                vh = mPlayer.getVideoHeight();
-            } catch (Exception e) {
-            }
-        }
         float videoRatio = (vw > 0 && vh > 0) ? (float) vw / vh : containerRatio;
-
         float targetRatio;
         switch (mCurrentAspectRatio) {
             case AR_ADJUST_SCREEN:
@@ -504,6 +882,30 @@ public class OstwindPlayerActivity extends Activity
         }
         if (tw < 1) tw = 1;
         if (th < 1) th = 1;
+        return new int[]{tw, th};
+    }
+
+    // 按所选比例调整 SurfaceView 尺寸（容器内适配，居中）
+    private void applyAspectRatio() {
+        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) mSurfaceView.getLayoutParams();
+        if (lp == null) return;
+
+        int vw = 0, vh = 0;
+        if (mUseSoftDecode) {
+            try {
+                vw = com.clov4r.android.nil.NativeSurfaceView.getVideoWidth();
+                vh = com.clov4r.android.nil.NativeSurfaceView.getVideoHeight();
+            } catch (Throwable t) {
+            }
+        } else if (mPlayer != null) {
+            try {
+                vw = mPlayer.getVideoWidth();
+                vh = mPlayer.getVideoHeight();
+            } catch (Exception e) {
+            }
+        }
+        int[] size = computeDisplaySize(vw, vh);
+        int tw = size[0], th = size[1];
 
         lp.width = tw;
         lp.height = th;
@@ -514,6 +916,10 @@ public class OstwindPlayerActivity extends Activity
         lp.bottomMargin = 0;
         mSurfaceView.setLayoutParams(lp);
         mSurfaceView.requestLayout();
+        android.util.Log.d(TAG, "applyAspectRatio video=" + vw + "x" + vh
+                + " view=" + tw + "x" + th
+                + " surface=" + (mHolder != null ? mHolder.getSurfaceFrame().width() + "x"
+                        + mHolder.getSurfaceFrame().height() : "null"));
     }
 
     private void toggleController() {
@@ -536,7 +942,9 @@ public class OstwindPlayerActivity extends Activity
     // 定时刷新进度与时间
     private final Runnable mTimeRunnable = new Runnable() {
         public void run() {
-            if (mPlayer != null) {
+            if (mUseSoftDecode) {
+                tickSoft();
+            } else if (mPlayer != null) {
                 try {
                     if (mPlayer.isPlaying() && !mIsSeeking) {
                         int pos = mPlayer.getCurrentPosition();
@@ -545,7 +953,7 @@ public class OstwindPlayerActivity extends Activity
                         mSeekBar.setProgress(pos);
                         mTimeCurrent.setText(formatTime(pos));
                         if (dur > 0) mTimeTotal.setText(formatTime(dur));
-                        if (pos > 0 && pos % 5000 < 250) {
+                        if (pos >= 0 && pos % 5000 < 250) {
                             reportHistory(pos);
                         }
                         // 弹幕时钟纠偏：漂移超 2s 才 seekTo 对齐，且每次纠偏至少间隔 5s
@@ -569,6 +977,42 @@ public class OstwindPlayerActivity extends Activity
             mUiHandler.postDelayed(this, 500);
         }
     };
+
+    // 软解进度刷新（native 无回调，播放完成在此检测）
+    private void tickSoft() {
+        if (mSoftPlayer == null || !mPrepared) {
+            return;
+        }
+        try {
+            if (mSoftPlaying && !mIsSeeking) {
+                long pos = mSoftPlayer.nativeGetCurrTime();
+                long dur = mSoftPlayer.nativeGetDurationTime();
+                if (dur > 0) mSeekBar.setMax((int) dur);
+                mSeekBar.setProgress((int) pos);
+                mTimeCurrent.setText(formatTime(pos));
+                if (dur > 0) mTimeTotal.setText(formatTime(dur));
+                if (pos >= 0 && pos % 5000 < 250) {
+                    reportHistory((int) pos);
+                }
+                if (mDanmaku != null
+                        && System.currentTimeMillis() - mLastDanmakuSeek > 2000
+                        && System.currentTimeMillis() - mLastDanmakuCorrection > 5000) {
+                    try {
+                        long dTime = mDanmaku.getCurrentTime();
+                        if (dTime > 0 && Math.abs(dTime - pos) > 2000) {
+                            mLastDanmakuCorrection = System.currentTimeMillis();
+                            mDanmaku.seekTo(pos);
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+                if (dur > 0 && pos >= dur - 500 && dur > 5000) {
+                    finishPlayer();
+                }
+            }
+        } catch (Throwable t) {
+        }
+    }
 
     // 上报播放进度到 B 站观看历史（去重，异步）
     private void reportHistory(int progressMs) {
@@ -596,6 +1040,21 @@ public class OstwindPlayerActivity extends Activity
         }
         mErrorHandled = true;
         mPreparing = false;
+        // 自动降级：MediaPlayer 硬解失败 → 切换软解重试一次
+        if (!mSoftFallbackTried) {
+            android.util.Log.e(TAG, "hard decode failed, falling back to soft decode");
+            mSoftFallbackTried = true;
+            releaseHardPlayer();
+            mUseSoftDecode = true;
+            mFailed = false;
+            mErrorHandled = false;
+            if (mSurfaceReady) {
+                preparePlayer();
+            } else {
+                hideStatus();
+            }
+            return true;
+        }
         mFailed = true;
         // 停止加载动画并释放播放器/代理，避免 MediaPlayer 在 error 状态反复回调导致动画一直转
         hideStatus();
@@ -610,6 +1069,105 @@ public class OstwindPlayerActivity extends Activity
         finishPlayer();
     }
 
+    // 当前播放位置（软硬解分派）
+    private int getEnginePosition() {
+        if (mUseSoftDecode) {
+            if (mSoftPlayer != null) {
+                try {
+                    return (int) mSoftPlayer.nativeGetCurrTime();
+                } catch (Throwable t) {
+                }
+            }
+            return 0;
+        }
+        if (mPlayer != null) {
+            try {
+                return mPlayer.getCurrentPosition();
+            } catch (Exception e) {
+            }
+        }
+        return 0;
+    }
+
+    // 总时长（软硬解分派）
+    private int getEngineDuration() {
+        if (mUseSoftDecode) {
+            if (mSoftPlayer != null) {
+                try {
+                    return (int) mSoftPlayer.nativeGetDurationTime();
+                } catch (Throwable t) {
+                }
+            }
+            return 0;
+        }
+        if (mPlayer != null) {
+            try {
+                return mPlayer.getDuration();
+            } catch (Exception e) {
+            }
+        }
+        return 0;
+    }
+
+    // 统一的 seek（软硬解分派），并同步弹幕时钟
+    private void doSeek(int positionMs) {        if (mUseSoftDecode) {
+            if (mSoftPlayer != null) {
+                try {
+                    mSoftPlayer.nativeSeek(positionMs);
+                    if (mDanmaku != null) {
+                        mDanmaku.seekTo(positionMs);
+                        mLastDanmakuSeek = System.currentTimeMillis();
+                    }
+                } catch (Throwable t) {
+                    android.util.Log.e(TAG, "soft seek failed", t);
+                }
+            }
+            return;
+        }
+        if (mPlayer != null) {
+            try {
+                mPlayer.seekTo(positionMs);
+                if (mDanmaku != null) {
+                    mDanmaku.seekTo(positionMs);
+                    mLastDanmakuSeek = System.currentTimeMillis();
+                }
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "seekTo failed", e);
+            }
+        }
+    }
+
+    // 仅释放硬解 MediaPlayer/代理，保留软解尝试状态（自动降级用）
+    private void releaseHardPlayer() {        mUiHandler.removeCallbacks(mTimeRunnable);
+        if (mPlayer != null) {
+            try {
+                mPlayer.release();
+            } catch (Exception e) {
+            }
+            mPlayer = null;
+        }
+        if (mLocalProxy != null) {
+            try {
+                mLocalProxy.stop();
+            } catch (Exception e) {
+            }
+            mLocalProxy = null;
+        }
+        mPrepared = false;
+        if (mDanmaku != null) {
+            try {
+                mDanmaku.release();
+            } catch (Exception e) {
+            }
+            mDanmaku = null;
+            FrameLayout danmakuContainer = (FrameLayout) findViewById(R.id.danmaku_container);
+            if (danmakuContainer != null && mCid > 0) {
+                mDanmaku = new DanmakuManager(this, danmakuContainer, mAid, mCid, null);
+                mDanmaku.init();
+            }
+        }
+    }
+
     @Override
     public boolean onTouchEvent(android.view.MotionEvent event) {
         int action = event.getAction();
@@ -618,18 +1176,14 @@ public class OstwindPlayerActivity extends Activity
             mTouchDownY = event.getY();
             mGestureSeeking = false;
             mTouchDownPos = 0;
-            if (mPlayer != null && mPrepared) {
-                try {
-                    mTouchDownPos = mPlayer.getCurrentPosition();
-                } catch (Exception e) {
-                    mTouchDownPos = 0;
-                }
+            if (mPrepared) {
+                mTouchDownPos = getEnginePosition();
             }
             return true;
         } else if (action == android.view.MotionEvent.ACTION_MOVE) {
             float dx = event.getX() - mTouchDownX;
             float dy = event.getY() - mTouchDownY;
-            if (!mGestureSeeking && mPlayer != null && mPrepared) {
+            if (!mGestureSeeking && mPrepared) {
                 int slop = android.view.ViewConfiguration.get(this).getScaledTouchSlop();
                 if (Math.abs(dx) > slop && Math.abs(dx) > Math.abs(dy) * 1.5f) {
                     mGestureSeeking = true;
@@ -644,11 +1198,7 @@ public class OstwindPlayerActivity extends Activity
             if (mGestureSeeking) {
                 int w = mSurfaceView.getWidth();
                 if (w <= 0) w = getResources().getDisplayMetrics().widthPixels;
-                long dur = 0;
-                try {
-                    dur = mPlayer.getDuration();
-                } catch (Exception e) {
-                }
+                long dur = getEngineDuration();
                 long target = mTouchDownPos + (long) (dx / w * GESTURE_SEEK_RANGE_MS);
                 if (dur > 0) {
                     target = Math.min(Math.max(target, 0), dur);
@@ -660,17 +1210,7 @@ public class OstwindPlayerActivity extends Activity
             return true;
         } else if (action == android.view.MotionEvent.ACTION_UP) {
             if (mGestureSeeking) {
-                if (mPlayer != null) {
-                    try {
-                        mPlayer.seekTo(mGestureTargetPos);
-                        if (mDanmaku != null) {
-                            mDanmaku.seekTo(mGestureTargetPos);
-                            mLastDanmakuSeek = System.currentTimeMillis();
-                        }
-                    } catch (Exception e) {
-                        android.util.Log.e(TAG, "gesture seekTo failed", e);
-                    }
-                }
+                doSeek(mGestureTargetPos);
                 mGestureSeeking = false;
                 mIsSeeking = false;
                 mUiHandler.postDelayed(mHideControllerRunnable, CONTROLLER_HIDE_DELAY);
@@ -747,6 +1287,31 @@ public class OstwindPlayerActivity extends Activity
         mUiHandler.removeCallbacks(mTimeRunnable);
         mUiHandler.removeCallbacks(mHideControllerRunnable);
         mPreparing = false;
+        if (mSoftPlayer != null) {
+            android.util.Log.d(TAG, "releasePlayer: closing soft player (openOk=" + mSoftOpenOk + ")");
+            // nativeOpen 失败时 native 内部状态未建立，调 nativeClose/nativePause
+            // 会访问 null 状态崩溃，因此只在打开成功后才释放
+            if (mSoftOpenOk) {
+                try {
+                    mSoftPlayer.nativePause();
+                } catch (Throwable t) {
+                    android.util.Log.w(TAG, "nativePause failed", t);
+                }
+                try {
+                    mSoftPlayer.nativeClose();
+                } catch (Throwable t) {
+                    android.util.Log.w(TAG, "nativeClose failed", t);
+                }
+                // native 已释放音频输出，清掉强引用让 GC 回收 AudioTrack
+                try {
+                    mSoftPlayer.mAudioTrack = null;
+                } catch (Throwable t) {
+                }
+            }
+            mSoftPlayer = null;
+            mSoftPlaying = false;
+            mSoftOpenOk = false;
+        }
         if (mPlayer != null) {
             try {
                 mPlayer.release();
@@ -774,7 +1339,15 @@ public class OstwindPlayerActivity extends Activity
     @Override
     protected void onPause() {
         super.onPause();
-        if (mPlayer != null && mPlayer.isPlaying()) {
+        if (mUseSoftDecode) {
+            if (mSoftPlayer != null && mSoftPlaying) {
+                try {
+                    mSoftPlayer.nativePause();
+                    mSoftPlaying = false;
+                } catch (Throwable t) {
+                }
+            }
+        } else if (mPlayer != null && mPlayer.isPlaying()) {
             mPlayer.pause();
         }
         if (mDanmaku != null) {
@@ -787,7 +1360,9 @@ public class OstwindPlayerActivity extends Activity
         super.onResume();
         // 息屏/切后台返回后：确保画面重新绑定（surfaceCreated 可能未触发），
         // 与 surfaceCreated 相同的 seek 强制刷帧，避免黑屏
-        if (mPlayer != null && mPrepared && mSurfaceReady) {
+        if (mUseSoftDecode) {
+            // 软解暂停中，等待用户点播放恢复（与硬解行为一致）
+        } else if (mPlayer != null && mPrepared && mSurfaceReady) {
             try {
                 mPlayer.setDisplay(mHolder);
                 try {

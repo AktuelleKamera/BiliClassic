@@ -327,6 +327,7 @@ public class DrawHandler extends Handler {
             synchronized (drawTask) {
                 drawTask.notifyAll();
             }
+            // UpdateThread 是自定义 Thread 子类，quit() 是它自己的方法（非 API 18 的 HandlerThread.quit()）
             mThread.quit();
             try {
                 mThread.join();
@@ -499,7 +500,13 @@ public class DrawHandler extends Handler {
         mDisp = new AndroidDisplayer();
         mDisp.setSize(width, height);
         DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
-        mDisp.setDensities(displayMetrics.density, displayMetrics.densityDpi,
+        int densityDpi = 160;
+        try {
+            java.lang.reflect.Field f = DisplayMetrics.class.getField("densityDpi");
+            densityDpi = f.getInt(displayMetrics);
+        } catch (Throwable t) {
+        }
+        mDisp.setDensities(displayMetrics.density, densityDpi,
                 displayMetrics.scaledDensity);
         mDisp.resetSlopPixel(DanmakuGlobalConfig.DEFAULT.scaleTextSize);
         mDisp.setHardwareAccelerated(isHardwareAccelerated);

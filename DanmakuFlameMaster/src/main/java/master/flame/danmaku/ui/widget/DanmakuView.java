@@ -158,14 +158,22 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            mHandlerThread.quit();
+            // HandlerThread.quit() 是 API 18+，直接引用会在 API<18 上 VerifyError。
+            // Looper.quit() 自 API 1 就有，且功能等价。
+            try {
+                mHandlerThread.getLooper().quit();
+            } catch (Throwable t) {
+            }
             mHandlerThread = null;
         }
     }
     
     protected Looper getLooper(int type){
         if (mHandlerThread != null) {
-            mHandlerThread.quit();
+            try {
+                mHandlerThread.getLooper().quit();
+            } catch (Throwable t) {
+            }
             mHandlerThread = null;
         }
         
@@ -242,10 +250,16 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
     private void postInvalidateCompat() {
         mRequestRender = true;
         if(getSdkInt() >= 16) {
-            this.postInvalidateOnAnimation();
-        } else {
-            this.postInvalidate();
+            // postInvalidateOnAnimation() 是 API 16+，直接引用会在 API<16 上 VerifyError，
+            // 改用反射调用（仅 API 16+ 会进入此分支，反射失败则回退 postInvalidate）
+            try {
+                java.lang.reflect.Method m = android.view.View.class.getMethod("postInvalidateOnAnimation");
+                m.invoke(this);
+                return;
+            } catch (Throwable t) {
+            }
         }
+        this.postInvalidate();
     }
 
     private void lockCanvas() {
@@ -472,9 +486,15 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
     @Override
     @SuppressLint("NewApi")
     public boolean isHardwareAccelerated() {
-        // >= 3.0
+        // >= 3.0（isHardwareAccelerated 是 API 11+ 方法，super 调用在 API<11 上会 VerifyError，
+        // 用反射绕过）
         if (getSdkInt() >= 11) {
-            return super.isHardwareAccelerated();
+            try {
+                java.lang.reflect.Method m = android.view.View.class.getMethod("isHardwareAccelerated");
+                return ((Boolean) m.invoke(this)).booleanValue();
+            } catch (Throwable t) {
+            }
+            return false;
         } else {
             return false;
         }

@@ -79,7 +79,7 @@ public abstract class BaseActivity extends FragmentActivity {
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
         } else {
             // 判断是否为平板
-            boolean isTablet = getResources().getBoolean(R.bool.is_tablet);
+            boolean isTablet = SdkHelper.getBooleanResource(getResources(), R.bool.is_tablet);
             if (isTablet) {
                 // 平板：自动旋转（横竖屏都可）
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);

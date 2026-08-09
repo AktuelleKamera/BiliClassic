@@ -132,19 +132,24 @@ public class AndroidDisplayer extends AbsDisplayer<Canvas> {
     @SuppressLint("NewApi")
     private static final int getMaximumBitmapWidth(Canvas c) {
         if (getSdkInt() >= 14) {
-            return c.getMaximumBitmapWidth();
-        } else {
-            return c.getWidth();
+            // getMaximumBitmapWidth 是 API 14+，直接引用在 API<14 上 VerifyError，反射绕过
+            try {
+                return ((Integer) Canvas.class.getMethod("getMaximumBitmapWidth").invoke(c)).intValue();
+            } catch (Throwable t) {
+            }
         }
+        return c.getWidth();
     }
 
     @SuppressLint("NewApi")
     private static final int getMaximumBitmapHeight(Canvas c) {
         if (getSdkInt() >= 14) {
-            return c.getMaximumBitmapHeight();
-        } else {
-            return c.getHeight();
+            try {
+                return ((Integer) Canvas.class.getMethod("getMaximumBitmapHeight").invoke(c)).intValue();
+            } catch (Throwable t) {
+            }
         }
+        return c.getHeight();
     }
 
     public static void setTypeFace(Typeface font) {

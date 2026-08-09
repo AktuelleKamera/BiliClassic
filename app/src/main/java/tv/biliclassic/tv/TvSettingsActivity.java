@@ -314,10 +314,10 @@ public class TvSettingsActivity extends FragmentActivity {
         final String[] decoders;
         final int[] decoderValues;
         if (hwSupported) {
-            decoders = new String[]{"系统解码器", "IJK 硬解", "IJK 软解"};
+            decoders = new String[]{"系统解码器", "IJK 硬解", "软件解码器"};
             decoderValues = new int[]{DECODER_SYSTEM, DECODER_IJK_HARD, DECODER_IJK_SOFT};
         } else {
-            decoders = new String[]{"系统解码器", "IJK 软解"};
+            decoders = new String[]{"系统解码器", "软件解码器"};
             decoderValues = new int[]{DECODER_SYSTEM, DECODER_IJK_SOFT};
         }
 

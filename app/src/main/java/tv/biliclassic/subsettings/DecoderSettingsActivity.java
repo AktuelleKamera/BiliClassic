@@ -53,7 +53,42 @@ public class DecoderSettingsActivity extends BaseActivity {
 
         initListItems();
         initCheckBoxItems();
+        updateVisibilityByDecoder();
         updateAllDisplays();
+    }
+
+    // 按当前解码方式动态显示/隐藏设置项：
+    //   - 软解(2, IJK软解/cmplayer): 全部显示
+    //   - IJK硬解(1): 隐藏"软件解码"分类(IJK软解专用项)
+    //   - 系统解码器(0): 隐藏"软件解码"与"音频输出"分类
+    private void updateVisibilityByDecoder() {
+        int decoderType = tv.biliclassic.SettingsActivity.getDecoderType();
+        boolean showSwDecode = (decoderType == 2);
+        boolean showPlayCtl = (decoderType == 1 || decoderType == 2);
+        boolean showAudio = (decoderType == 1 || decoderType == 2);
+
+        setVisible(R.id.category_sw_decode, showSwDecode);
+        setVisible(R.id.item_pictq_size, showSwDecode);
+        setVisible(R.id.item_maxfps, showSwDecode);
+        setVisible(R.id.item_framedrop, showSwDecode);
+        setVisible(R.id.item_skip_loop_filter, showSwDecode);
+        setVisible(R.id.item_skip_frame, showSwDecode);
+
+        setVisible(R.id.divider_playctl, showPlayCtl);
+        setVisible(R.id.category_playctl, showPlayCtl);
+        setVisible(R.id.item_video_disabled, showPlayCtl);
+        setVisible(R.id.item_audio_disabled, showPlayCtl);
+
+        setVisible(R.id.divider_audio, showAudio);
+        setVisible(R.id.category_audio, showAudio);
+        setVisible(R.id.item_opensles, showAudio);
+    }
+
+    private void setVisible(int id, boolean visible) {
+        View v = findViewById(id);
+        if (v != null) {
+            v.setVisibility(visible ? View.VISIBLE : View.GONE);
+        }
     }
 
     private void initListItems() {

@@ -57,7 +57,7 @@
     <string name="Player_options_title_portrait_rotation">允许旋转至竖屏</string>
     <string name="Player_playback_options_pannel_title">播放控制</string>
     <string name="Player_settings_decoder">解码方式</string>
-    <string name="Player_settings_ijk_player">IJK V3软解</string>
+    <string name="Player_settings_ijk_player">软件解码器</string>
     <string name="Player_settings_system_player">系统硬解</string>
     <string name="PreloadingView_press_back_to_exit">再次按后退可以结束播放</string>
     <string name="VideoView_buffering">正在缓冲...</string>
@@ -140,7 +140,7 @@
     <string name="activity_settings_618e688f6a1c">缓存管理</string>
     <string name="activity_settings_69d96ab742b7">播放器设置</string>
     <string name="activity_settings_6c07bb6fd4b6">设备信息</string>
-    <string name="activity_settings_6c2223ae0a18">• 建议：如果你的设备是 Android 2.3 以下，请优先选择 MX Player 或 MoboPlayer。</string>
+    <string name="activity_settings_6c2223ae0a18">• 建议：如果你的设备是 Android 2.3 以下，请优先选择 Ostwind 内置播放器或 MoboPlayer。</string>
     <string name="activity_settings_6c4a2a96c18f">• VPlayer / MoboPlayer / RockPlaye Liter：轻量级播放器，部分老设备兼容性较好，可作为备选。</string>
     <string name="activity_settings_75c7ffe7c7b3">图片加载设置</string>
     <string name="activity_settings_7b80">简体中文</string>
@@ -190,7 +190,7 @@
     <string name="activity_settings_e512c25c5a09">横屏适配</string>
     <string name="activity_settings_e85696350756">新番专题</string>
     <string name="activity_settings_e88ca343dda4">清除图片缓存</string>
-    <string name="activity_settings_e8a5788596ec">• 内置播放器：推荐使用，集成了 IJK V3 软解播放器和系统硬解播放器，无需安装第三方应用。可在设置中切换解码方式（IJK软解/系统硬解）。IJK V3目前仅支持Android 2.3+。</string>
+    <string name="activity_settings_e8a5788596ec">• 内置播放器：推荐使用，集成了软件解码器和系统硬解播放器，无需安装第三方应用。可在设置中切换解码方式（软件解码器/系统硬解）。软件解码器目前仅支持Android 2.3+。</string>
     <string name="activity_settings_e8ada398d92a">默认首页</string>
     <string name="activity_settings_ec35b2ba9bfe">实验性功能，直接在线播放视频（可能不稳定）</string>
     <string name="activity_settings_ed495078a9b9">无痕模式</string>
@@ -281,7 +281,7 @@
     <string name="biliplayeractivity_settitle_9009">选集</string>
     <string name="biliplayeractivity_toast_1_65e0">无视频源</string>
     <string name="biliplayeractivity_toast_1_7cfb">系统解码器失败，切换到IJK硬解</string>
-    <string name="biliplayeractivity_toast_2_7cfb">系统解码器失败，切换到IJK软解</string>
+    <string name="biliplayeractivity_toast_2_7cfb">系统解码器失败，切换到软件解码器</string>
     <string name="biliplayeractivity_toast_3_7cfb">系统解码器失败，切换到IJK硬解</string>
     <string name="biliplayeractivity_toast_518d">再次按后退可以结束播放</string>
     <string name="biliplayeractivity_toast_5207">切换画质失败，请重试</string>
@@ -292,8 +292,8 @@
     <string name="biliplayeractivity_toast_65e0">无法获取用户信息</string>
     <string name="biliplayeractivity_toast_65e0_1">无视频源</string>
     <string name="biliplayeractivity_toast_7528">用户屏蔽 (暂未实现)</string>
-    <string name="biliplayeractivity_toast_786c">IJK硬解失败，切换到IJK软解</string>
-    <string name="biliplayeractivity_toast_7cfb">系统解码器失败，切换到IJK软解</string>
+    <string name="biliplayeractivity_toast_786c">IJK硬解失败，切换到软件解码器</string>
+    <string name="biliplayeractivity_toast_7cfb">系统解码器失败，切换到软件解码器</string>
     <string name="commentadapter_toast_1_65e0">无法获取用户信息</string>
     <string name="commentadapter_toast_5220">删除失败</string>
     <string name="commentadapter_toast_5df2">已删除</string>
@@ -578,7 +578,7 @@
     <string name="settingsactivity_settext_7ecf">经典样式</string>
     <string name="settingsactivity_settext_81ea">自动适配</string>
     <string name="settingsactivity_settext_8d85">1080P 超清</string>
-    <string name="settingsactivity_settext_8f6f">IJK 软解</string>
+    <string name="settingsactivity_settext_8f6f">软件解码器</string>
     <string name="settingsactivity_settext_968f">随一个</string>
     <string name="settingsactivity_settext_9ad8">720P 高清</string>
     <string name="settingsactivity_settitle_1_9009">选择默认播放器</string>
@@ -861,7 +861,7 @@
     <string name="keybinding_toast_done">按键绑定完成</string>
     <string name="keybinding_toast_skip">已跳过按键绑定</string>
     <string name="keybinding_toast_exit">已退出按键绑定</string>
-    <string name="settingsactivity_setmessage_ostwind">当前系统不支持内置播放器，在线播放建议使用旋风(Ostwind)播放器。\n\n是否切换到旋风播放器并开启在线播放？</string>
+    <string name="settingsactivity_setmessage_ostwind">当前系统不支持内置播放器，在线播放建议使用东风(Ostwind)播放器。\n\n是否切换到旋风播放器并开启在线播放？</string>
     <string name="activity_settings_keyboard">按键设置</string>
     <string name="activity_settings_round_screen_center">圆形屏幕居中</string>
     <string name="activity_settings_round_screen_center_desc">在圆形屏幕上居中显示内容</string>

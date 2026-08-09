@@ -444,12 +444,10 @@ public class DanmakuManager {
         View root = mActivity.getWindow().getDecorView();
         mOptionsPanel.showAtLocation(root, Gravity.RIGHT, 0, 0);
         if (SdkHelper.getSdkInt() >= 28) {
-            panel.addOnAttachStateChangeListener(new android.view.View.OnAttachStateChangeListener() {
-                public void onViewAttachedToWindow(android.view.View v) {
+            tv.biliclassic.util.SdkHelper.onViewAttached(panel, new Runnable() {
+                public void run() {
                     tv.biliclassic.player.BiliPlayerActivity.applyPopupCutout(mOptionsPanel);
-                    v.removeOnAttachStateChangeListener(this);
                 }
-                public void onViewDetachedFromWindow(android.view.View v) {}
             });
         }
     }
@@ -917,12 +915,10 @@ public class DanmakuManager {
         View root = mActivity.getWindow().getDecorView();
         mOptionsPanel.showAtLocation(root, Gravity.RIGHT, 0, 0);
         if (SdkHelper.getSdkInt() >= 28) {
-            panel.addOnAttachStateChangeListener(new android.view.View.OnAttachStateChangeListener() {
-                public void onViewAttachedToWindow(android.view.View v) {
+            tv.biliclassic.util.SdkHelper.onViewAttached(panel, new Runnable() {
+                public void run() {
                     tv.biliclassic.player.BiliPlayerActivity.applyPopupCutout(mOptionsPanel);
-                    v.removeOnAttachStateChangeListener(this);
                 }
-                public void onViewDetachedFromWindow(android.view.View v) {}
             });
         }
     }
