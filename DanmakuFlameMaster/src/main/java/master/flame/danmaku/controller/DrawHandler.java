@@ -126,6 +126,35 @@ public class DrawHandler extends Handler {
 
     private long mLastDeltaTime;
 
+    // 应用内诊断：每 30 帧记录一次绘制耗时（无需 adb，供卡顿排查）。
+    // 卡顿时帧率极低（几帧/秒），间隔太大（如 200 帧）要等几十秒才有一条，难捕获。
+    private int mDiagFrameCount;
+    private static final int DIAG_FRAME_INTERVAL = 30;
+
+    private void diagDraw(long drawMs) {
+        // 是否写文件由 sink（App 层注入的 LogFileUtil）自行判断，
+        // 这里不依赖 DiagLogger.enabled 开关，避免两套开关不同步导致抓不到日志
+        mDiagFrameCount++;
+        // 首帧写一次（确认 diagDraw 被调用），之后每 30 帧写一次（卡顿采样）
+        if (mDiagFrameCount == 1 || mDiagFrameCount % DIAG_FRAME_INTERVAL == 0) {
+            master.flame.danmaku.util.DiagLogger.diag("Danmaku",
+                    "drawMs=" + drawMs
+                            + " renderMs=" + mRenderingState.consumingTime
+                            + " updateNewThread=" + mUpdateInNewThread
+                            + " visible=" + mDanmakusVisible
+                            + " rate=" + mFrameUpdateRate);
+        }
+        // 额外：drawMs 明显偏大（>200ms）时单独记录，避免卡顿被采样间隔漏掉
+        if (drawMs > 200) {
+            long maxMem = Runtime.getRuntime().maxMemory() / 1024 / 1024;
+            long usedMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024 / 1024;
+            master.flame.danmaku.util.DiagLogger.diag("Danmaku",
+                    "SLOW drawMs=" + drawMs
+                            + " frame=" + mDiagFrameCount
+                            + " memUsed=" + usedMem + "/" + maxMem + "MB");
+        }
+    }
+
     private boolean mInSeekingAction;
 
     private long mRemainingTime;
@@ -350,6 +379,7 @@ public class DrawHandler extends Handler {
             return;
         }
         d = mDanmakuView.drawDanmakus();
+        diagDraw(d);
         removeMessages(UPDATE);
         if (!mDanmakusVisible) {
             waitRendering(INDEFINITE_TIME);
@@ -393,6 +423,7 @@ public class DrawHandler extends Handler {
                         continue;
                     }
                     d = mDanmakuView.drawDanmakus();
+                    diagDraw(d);
                     if (!mDanmakusVisible) {
                         waitRendering(INDEFINITE_TIME);
                     } else if (mRenderingState.nothingRendered && mIdleSleep) {

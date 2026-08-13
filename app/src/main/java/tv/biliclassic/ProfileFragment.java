@@ -112,6 +112,7 @@ public class ProfileFragment extends Fragment {
     private View itemOffline;
     private View itemSettings;
     private View itemRefresh;
+    private View itemFollowing;
 
     // 遥控器按键导航：可聚焦条目集合 + 当前选中下标
     private final ArrayList<View> mKeyNavItems = new ArrayList<View>();
@@ -204,20 +205,23 @@ public class ProfileFragment extends Fragment {
         itemOffline = view.findViewById(R.id.item_offline);
         itemSettings = view.findViewById(R.id.item_settings);
         itemRefresh = view.findViewById(R.id.item_refresh);
+        itemFollowing = view.findViewById(R.id.item_following);
 
         // list 选项图标用静态缓存 Drawable（避免每次重建重新解码资源图）
-        applyCachedIcon(itemRefresh, R.drawable.ic_action_refresh);
-        applyCachedIcon(itemFavorites, R.drawable.ic_action_collections_collection);
-        applyCachedIcon(itemHistory, R.drawable.ic_action_device_access_data_usage);
-        applyCachedIcon(itemOffline, R.drawable.ic_action_download_manager);
-        applyCachedIcon(itemSettings, R.drawable.ic_action_settings);
+        applyCachedIcon(itemFollowing, R.drawable.ic_my_follow);
+        applyCachedIcon(itemRefresh, R.drawable.ic_my_refresh);
+        applyCachedIcon(itemFavorites, R.drawable.ic_my_fav);
+        applyCachedIcon(itemHistory, R.drawable.ic_my_history);
+        applyCachedIcon(itemOffline, R.drawable.ic_my_download_manager);
+        applyCachedIcon(itemSettings, R.drawable.ic_my_settings);
 
         // API 3/4（Android 1.5/1.6）：LinearLayout 的 wrap_content 高度测量不应用子项 padding，
         // 导致功能列表项上下 padding 消失、全部紧贴。这里给每项设固定高度（icon 24dp + 上下各 12dp），
         // 保证间距与新版一致。
         if (tv.biliclassic.util.SdkHelper.getSdkInt() < 5) {
-            // 固定高度 = 图标(24dp) + 上下各 8dp，比原 48dp 更紧凑，避免 1.5 上间距过大
-            int itemHeight = (int) (40 * getResources().getDisplayMetrics().density + 0.5f);
+            // 固定高度 = 图标(24dp) + 上下各 8dp，Android 1.x 上间距问题
+            int itemHeight = (int) (48 * getResources().getDisplayMetrics().density + 0.5f);
+            applyFixedItemHeight(itemFollowing, itemHeight);
             applyFixedItemHeight(itemRefresh, itemHeight);
             applyFixedItemHeight(itemFavorites, itemHeight);
             applyFixedItemHeight(itemHistory, itemHeight);
@@ -294,6 +298,18 @@ public class ProfileFragment extends Fragment {
                     return;
                 }
                 Intent intent = new Intent(getActivity(), FavoriteFolderListActivity.class);
+                startActivity(intent);
+            }
+        });
+
+        itemFollowing.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!isLoggedIn()) {
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.profilefragment_toast_8bf7), Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Intent intent = new Intent(getActivity(), FollowingListActivity.class);
                 startActivity(intent);
             }
         });

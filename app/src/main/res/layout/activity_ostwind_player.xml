@@ -10,6 +10,27 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- 亮度调节遮罩：SurfaceView 硬解走硬件 overlay，window.screenBrightness 无效，
+         用黑色半透明层叠加模拟调暗。默认 GONE（无遮罩），调亮度时再显示 -->
+    <View
+        android:id="@+id/brightness_dim_layer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FF000000"
+        android:visibility="gone"
+        android:clickable="false"
+        android:focusable="false" />
+
+    <!-- 手势承载层：全屏透明，接收 GestureController 手势（与原版一致） -->
+    <View
+        android:id="@+id/controller_underlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/ACD_Underlay" />
+
+    <!-- 亮度/音量调节条 -->
+    <include layout="@layout/bili_app_player_media_level_bar2" />
+
     <!-- 弹幕层 -->
     <FrameLayout
         android:id="@+id/danmaku_container"
@@ -18,10 +39,10 @@
         android:focusable="false"
         android:focusableInTouchMode="false" />
 
-    <!-- 小电视加载动画 -->
+    <!-- 加载动画（preloading 外观） -->
     <include
         android:id="@+id/ostwind_loading"
-        layout="@layout/activity_player_anim"
+        layout="@layout/bili_app_player_preloading"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
@@ -104,7 +125,6 @@
             android:paddingRight="16dp"
             android:paddingTop="6dp"
             android:paddingBottom="6dp" />
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="@dimen/player_bottom_controller_bar_layout_height"

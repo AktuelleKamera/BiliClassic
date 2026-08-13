@@ -39,39 +39,19 @@
                 android:layout_height="wrap_content">
                 <TableRow>
                     <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="center"
-                        android:text="@string/bili_about_53cd"
-                        android:textSize="12sp"
-                        android:textColor="#CCCCCC" />
+                        style="@style/AboutTableText"
+                        android:text="@string/bili_about_53cd" />
                     <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="center"
-                        android:text="754725037"
-                        android:textSize="12sp"
-                        android:textColor="#CCCCCC" />
+                        style="@style/AboutTableText"
+                        android:text="@string/bili_about_qq_group" />
                 </TableRow>
                 <TableRow>
                     <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="center"
-                        android:text="@string/bili_about_53cd"
-                        android:textSize="12sp"
-                        android:textColor="#CCCCCC" />
+                        style="@style/AboutTableText"
+                        android:text="@string/bili_about_53cd_1" />
                     <TextView
                         android:id="@+id/release_website"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="center"
-                        android:textSize="12sp"
-                        android:textColor="#CCCCCC" />
+                        style="@style/AboutTableText" />
                 </TableRow>
             </TableLayout>
 
@@ -79,10 +59,8 @@
 
         <!-- STAFF 区域 -->
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="STAFF"
+            style="@style/AboutBodyText"
+            android:text="@string/bili_about_staff"
             android:textSize="14sp"
             android:textColor="#FFFFFF"
             android:textStyle="bold"
@@ -90,29 +68,17 @@
             android:padding="8dp" />
 
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
+            style="@style/AboutBodyText"
             android:text="@string/bili_about_539f"
-            android:textSize="12sp"
-            android:textColor="#CCCCCC"
             android:layout_marginTop="8dp" />
 
         <TextView
             android:id="@+id/bilibili_website"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:textSize="12sp"
-            android:textColor="#CCCCCC" />
+            style="@style/AboutBodyText" />
 
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
+            style="@style/AboutBodyText"
             android:text="@string/bili_about_4f01"
-            android:textSize="12sp"
-            android:textColor="#CCCCCC"
             android:layout_marginTop="12dp" />
 
         <TableLayout
@@ -121,50 +87,19 @@
             android:layout_marginTop="4dp">
             <TableRow>
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="⑨bishi"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_9bishi" />
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="@string/bili_about_4e00"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_4e00" />
             </TableRow>
         </TableLayout>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="@string/bili_about_5236"
-            android:textSize="12sp"
-            android:textColor="#CCCCCC"
-            android:layout_marginTop="12dp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="@string/bili_about_67d0"
-            android:textSize="12sp"
-            android:textColor="#CCCCCC" />
 
         <TextView
             android:id="@+id/textView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            style="@style/AboutBodyText"
             android:layout_marginTop="12dp"
-            android:gravity="center"
-            android:text="@string/bili_about_8f6f"
-            android:textColor="#CCCCCC"
-            android:textSize="12sp" />
+            android:text="@string/bili_about_8f6f" />
 
         <TableLayout
             android:layout_width="match_parent"
@@ -172,113 +107,63 @@
             android:layout_marginTop="4dp">
             <TableRow>
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="@string/bili_about_4e00"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_4e00" />
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="Skyler1n"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_skyler1n" />
             </TableRow>
         </TableLayout>
 
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
+            style="@style/AboutBodyText"
             android:text="@string/bili_about_7cfb"
-            android:textSize="12sp"
-            android:textColor="#CCCCCC"
             android:layout_marginTop="12dp" />
 
         <TextView
             android:id="@+id/tv_system_architect"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="bbcallen"
-            android:textColor="#CCCCCC"
-            android:textSize="12sp" />
+            style="@style/AboutBodyText"
+            android:text="@string/bili_about_bbcallen" />
 
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
+            style="@style/AboutBodyText"
             android:text="@string/bili_about_5f00"
-            android:textSize="12sp"
-            android:textColor="#CCCCCC"
             android:layout_marginTop="12dp" />
 
         <TextView
             android:id="@+id/tv_open_source_0"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="https://github.com/bilibili/ijkplayer"
-            android:textColor="#CCCCCC"
-            android:textSize="12sp" />
+            style="@style/AboutBodyText"
+            android:text="@string/bili_about_os_ijkplayer" />
 
         <TextView
             android:id="@+id/tv_open_source_1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="https://gitee.com/RobinNotBad/BiliClient"
-            android:textColor="#CCCCCC"
-            android:textSize="12sp" />
+            style="@style/AboutBodyText"
+            android:text="@string/bili_about_os_biliclient" />
 
         <TextView
             android:id="@+id/tv_open_source_2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="https://github.com/luern0313/WristBilibili"
-            android:textColor="#CCCCCC"
-            android:textSize="12sp" />
+            style="@style/AboutBodyText"
+            android:text="@string/bili_about_os_wristbilibili" />
 
         <TextView
             android:id="@+id/tv_open_source_3"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="https://github.com/qidian55/bilibilitv1.6.6-repair"
-            android:textColor="#CCCCCC"
-            android:textSize="12sp" />
+            style="@style/AboutBodyText"
+            android:text="@string/bili_about_os_bilitv_repair" />
 
         <TextView
             android:id="@+id/tv_open_source_4"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="https://github.com/bilibili/DanmakuFlameMaster"
-            android:textColor="#CCCCCC"
-            android:textSize="12sp" />
+            style="@style/AboutBodyText"
+            android:text="@string/bili_about_os_danmaku" />
 
         <TextView
             android:id="@+id/tv_open_source_5"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="https://github.com/bilibili-plugins/bilibili-api-collect"
-            android:textColor="#CCCCCC"
-            android:textSize="12sp" />
+            style="@style/AboutBodyText"
+            android:text="@string/bili_about_os_api_collect" />
 
         <!-- 特别鸣谢 -->
         <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
+            style="@style/AboutBodyText"
             android:text="@string/bili_about_7279"
-            android:textSize="12sp"
-            android:textColor="#CCCCCC"
             android:layout_marginTop="12dp" />
 
         <TableLayout
@@ -286,107 +171,77 @@
             android:layout_height="wrap_content">
             <TableRow>
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="@string/bili_about_8001"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_xiaosuyang" />
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="wcxawa"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_cctyl" />
             </TableRow>
             <TableRow>
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="@string/bili_about_6d41"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_9010" />
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="mongou666"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_wcxawa" />
             </TableRow>
             <TableRow>
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="NullNanError"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_moreixima" />
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="@string/bili_about_6c34"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
-            </TableRow>
-            <TableRow>
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="ビリビリ_User"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="Steven-Rong"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_liumu" />
             </TableRow>
             <TableRow>
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="MC-Windows1145"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_6d41" />
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="@string/bili_about_662f"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_chuichui" />
+            </TableRow>
+            <TableRow>
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_nullnanerror" />
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_mongou666" />
+            </TableRow>
+            <TableRow>
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_biribili_user" />
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_6c34" />
+            </TableRow>
+            <TableRow>
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_mc_windows" />
+                <TextView
+                    android:id="@+id/textView4"
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_steven_rong" />
+            </TableRow>
+            <TableRow>
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_budong" />
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_662f" />
             </TableRow>
         </TableLayout>
 
         <!-- 赞助 -->
         <TextView
             android:id="@+id/thanks"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            style="@style/AboutBodyText"
             android:layout_marginTop="12dp"
-            android:gravity="center"
-            android:text="@string/bili_about_8d5e"
-            android:textColor="#CCCCCC"
-            android:textSize="12sp" />
+            android:text="@string/bili_about_8d5e" />
 
         <TableLayout
             android:layout_width="match_parent"
@@ -394,21 +249,16 @@
             android:layout_marginTop="4dp">
             <TableRow>
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="wcxawa"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_wcxawa" />
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:text="Skyler1n"
-                    android:textSize="12sp"
-                    android:textColor="#CCCCCC" />
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_skyler1n" />
+            </TableRow>
+            <TableRow>
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_8001" />
             </TableRow>
         </TableLayout>
 
@@ -421,20 +271,12 @@
             android:layout_marginTop="12dp">
 
             <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:text="@string/bili_about_76d1"
-                android:textSize="12sp"
-                android:textColor="#CCCCCC" />
+                style="@style/AboutBodyText"
+                android:text="@string/bili_about_76d1" />
 
             <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:text="@string/bili_about_9010"
-                android:textSize="12sp"
-                android:textColor="#CCCCCC" />
+                style="@style/AboutBodyText"
+                android:text="@string/bili_about_9010" />
 
         </LinearLayout>
 

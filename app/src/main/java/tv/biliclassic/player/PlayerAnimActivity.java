@@ -14,6 +14,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.view.Display;
 import android.view.Surface;
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -24,7 +25,10 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 
+import tv.biliclassic.ProxyStreamService;
 import tv.biliclassic.R;
 import tv.biliclassic.SettingsActivity;
 import tv.biliclassic.util.CookieGenerator;
@@ -78,6 +82,20 @@ public class PlayerAnimActivity extends Activity {
         tvProgress = (TextView) findViewById(R.id.tv_progress);
         tvStatus = (TextView) findViewById(R.id.tv_status);
 
+        // 左上角返回按钮：退出加载页
+        try {
+            View animBack = findViewById(R.id.anim_back);
+            if (animBack != null) {
+                animBack.setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View v) {
+                        isDownloadCancelled = true;
+                        finish();
+                    }
+                });
+            }
+        } catch (Throwable t) {
+        }
+
         videoUrl = getIntent().getStringExtra("video_url");
         videoTitle = getIntent().getStringExtra("video_title");
         coverUrl = getIntent().getStringExtra("cover_url");
@@ -112,11 +130,9 @@ public class PlayerAnimActivity extends Activity {
             handler.post(new Runnable() {
                 public void run() {
                     stopTvAnimation();
-                    // Ostwind 简易播放器（MediaPlayer+本地代理，兼容 2.2 以下）：
-                    // API<9 时内置 IJK(BiliPlayer) 不可用，一律走 Ostwind 在线播放，
-                    // 避免进 BiliPlayerActivity 触发 VerifyError 后跳浏览器
-                    if (SdkHelper.getSdkInt() < 9
-                            || SettingsActivity.getPlayerPreference() == SettingsActivity.PLAYER_OSTWIND) {
+                    int pref = SettingsActivity.getPlayerPreference();
+                    if (pref == SettingsActivity.PLAYER_OSTWIND) {
+                        // Ostwind 简易播放器（MediaPlayer+本地代理，兼容 2.2 以下）
                         Intent wIntent = new Intent(PlayerAnimActivity.this,
                                 tv.biliclassic.player.OstwindPlayerActivity.class);
                         wIntent.putExtra("video_url", videoUrl);
@@ -132,7 +148,13 @@ public class PlayerAnimActivity extends Activity {
                         finish();
                         return;
                     }
-                    playWithBuiltinPlayer(videoUrl);
+                    if (pref == 8) {
+                        // 内置播放器：BiliPlayerActivity（在线直接播放，自带代理）
+                        playWithBuiltinPlayer(videoUrl);
+                        return;
+                    }
+                    // 外部/系统/自动：在线播放走本地代理（带 Referer/Cookie/UA 请求头）再跳外部播放器
+                    playOnlineWithExternal(pref);
                 }
             });
         } else {
@@ -234,6 +256,76 @@ public class PlayerAnimActivity extends Activity {
         putQualityExtras(intent);
         startActivity(intent);
         finish();
+    }
+
+    /**
+     * 在线播放交给外部播放器（系统/第三方）：启动本地代理（带防盗链请求头转发），
+     * 把代理地址传给外部播放器，绕过 B 站 CDN 403。
+     */
+    private void playOnlineWithExternal(int pref) {
+        if (videoUrl == null || videoUrl.length() == 0) {
+            Toast.makeText(this, this.getString(R.string.playeranimactivity_toast_89c6_1), Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+        boolean isNet = videoUrl.startsWith("http://") || videoUrl.startsWith("https://");
+        String playUrl = videoUrl;
+        if (isNet) {
+            try {
+                String proxied = ProxyStreamService.startProxyForExternal(this,
+                        videoUrl, buildOnlineHeaders());
+                if (proxied != null && proxied.length() > 0) {
+                    playUrl = proxied;
+                }
+            } catch (Throwable t) {
+            }
+        }
+        Intent extIntent = new Intent(Intent.ACTION_VIEW);
+        extIntent.setDataAndType(Uri.parse(playUrl), "video/mp4");
+        String pkg = SettingsActivity.getPlayerPackageName();
+        if (pkg != null) {
+            try { Intent.class.getMethod("setPackage", String.class).invoke(extIntent, new Object[]{pkg}); } catch (Exception ignored) {};
+        }
+        putOnlineExternalExtras(extIntent);
+        try {
+            startActivity(extIntent);
+            finish();
+        } catch (Exception e) {
+            Toast.makeText(this, this.getString(R.string.playeranimactivity_toast_672a), Toast.LENGTH_SHORT).show();
+            finish();
+        }
+    }
+
+    private Map<String, String> buildOnlineHeaders() {
+        Map<String, String> headers = new HashMap<String, String>();
+        headers.put("Referer", "https://www.bilibili.com/");
+        headers.put("User-Agent", NetWorkUtil.USER_AGENT_WEB);
+        String cookie = CookieGenerator.getCookieString(true);
+        if (cookie != null && cookie.length() > 0) {
+            headers.put("Cookie", cookie);
+        }
+        return headers;
+    }
+
+    private void putOnlineExternalExtras(Intent extIntent) {
+        try {
+            String cookie = CookieGenerator.getCookieString(true);
+            String referer = "https://www.bilibili.com/";
+            if (cookie != null && cookie.length() > 0) {
+                extIntent.putExtra("cookie", cookie);
+                extIntent.putExtra("referer", referer);
+            }
+            extIntent.putExtra("agent", NetWorkUtil.USER_AGENT_WEB);
+            if (videoTitle != null) {
+                extIntent.putExtra("name", videoTitle);
+            }
+            if (cid > 0) {
+                extIntent.putExtra("danmaku", "https://comment.bilibili.com/" + cid + ".xml");
+            }
+            extIntent.putExtra("progress", 0);
+            extIntent.putExtra("live_mode", false);
+        } catch (Throwable t) {
+        }
     }
 
     private void startTvAnimation() {

@@ -614,6 +614,50 @@ public class SettingsActivity extends BaseActivity {
             });
         }
 
+        // 运行日志：默认关闭（避免日志写入影响性能），开启后记录运行与弹幕绘制日志到文件
+        final String KEY_RUN_LOG = "run_log_enabled";
+        final CheckBox checkboxRunLog = (CheckBox) findViewById(R.id.checkbox_enable_run_log);
+        LinearLayout enableRunLogItem = (LinearLayout) findViewById(R.id.enable_run_log_item);
+        boolean runLogEnabled = SharedPreferencesUtil.getBoolean(KEY_RUN_LOG, false);
+        tv.biliclassic.util.LogFileUtil.setEnabled(runLogEnabled);
+        master.flame.danmaku.util.DiagLogger.setEnabled(runLogEnabled);
+        if (checkboxRunLog != null) {
+            checkboxRunLog.setChecked(runLogEnabled);
+        }
+        if (enableRunLogItem != null) {
+            enableRunLogItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    checkboxRunLog.toggle();
+                    boolean current = checkboxRunLog.isChecked();
+                    SharedPreferencesUtil.putBoolean(KEY_RUN_LOG, current);
+                    tv.biliclassic.util.LogFileUtil.setEnabled(current);
+                    master.flame.danmaku.util.DiagLogger.setEnabled(current);
+                    if (current) {
+                        tv.biliclassic.util.LogFileUtil.clearDiag();
+                        tv.biliclassic.util.LogFileUtil.log("App", "运行日志已开启 SDK="
+                                + tv.biliclassic.util.SdkHelper.getSdkInt()
+                                + " model=" + android.os.Build.MODEL);
+                    }
+                    Toast.makeText(SettingsActivity.this,
+                            current ? getString(R.string.activity_settings_run_log_on)
+                                    : getString(R.string.activity_settings_run_log_off),
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        // 查看运行日志（应用内日志，无需 adb）
+        LinearLayout viewLogItem = (LinearLayout) findViewById(R.id.view_log_item);
+        if (viewLogItem != null) {
+            viewLogItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    tv.biliclassic.util.LogFileUtil.showLogsDialog(SettingsActivity.this);
+                }
+            });
+        }
+
         // 检查更新
         checkUpdateItem = (LinearLayout) findViewById(R.id.check_update_item);
         checkUpdateText = (TextView) findViewById(R.id.check_update_text);

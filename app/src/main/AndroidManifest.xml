@@ -27,40 +27,40 @@
 
         <activity
             android:name=".BaseActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
 
         <activity
             android:name=".CrashReportActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
 
         <activity
             android:name=".ImageViewerActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
 
         <activity
             android:name=".ReplyListActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
 
         <activity
             android:name=".PartitionDetailActivity"
-            android:screenOrientation="portrait"/>
+            android:screenOrientation="unspecified"/>
 
         <activity
             android:name=".SetupActivity"
-            android:screenOrientation="portrait"/>
+            android:screenOrientation="unspecified" />
 
         <activity
             android:name=".KeyBindingSetupActivity"
-            android:screenOrientation="portrait"/>
+            android:screenOrientation="unspecified" />
 
         <activity
             android:name=".WebViewActivity"
-            android:screenOrientation="portrait"/>
+            android:screenOrientation="unspecified" />
 
         <!-- MainActivity -->
         <activity
             android:name=".MainActivity"
-            android:screenOrientation="portrait"
+            android:screenOrientation="unspecified"
             android:configChanges="keyboardHidden|orientation|screenSize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -81,55 +81,65 @@
 
         <activity
             android:name=".SearchActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
 
         <!-- AboutActivity -->
         <activity
             android:name=".AboutActivity"
             android:theme="@android:style/Theme.Black.NoTitleBar"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
 
         <activity
             android:name=".VideoDetailActivity"
-            android:screenOrientation="portrait"/>
+            android:screenOrientation="unspecified" />
 
         <activity
             android:name=".DeviceInfoActivity"
-            android:screenOrientation="portrait"/>
+            android:screenOrientation="unspecified" />
 
         <activity
             android:name=".UserProfileActivity"
-            android:screenOrientation="portrait"/>
-
-        <!-- 注册 LoginActivity -->
-        <activity
-            android:name=".HistoryActivity"
-            android:screenOrientation="portrait" />
-
-        <!-- 注册 SettingsActivity -->
-        <activity
-            android:name=".SettingsActivity"
-            android:screenOrientation="portrait" />
-
-        <!-- 解码设置 -->
-        <activity
-            android:name=".subsettings.DecoderSettingsActivity"
-            android:screenOrientation="portrait" />
-
-        <!-- 注册 OfflineActivity -->
-        <activity
-            android:name=".OfflineActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified"/>
 
         <!-- 注册 LoginActivity -->
         <activity
             android:name=".LoginActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
+
+        <!-- 注册 HistoryActivity -->
+        <activity
+            android:name=".HistoryActivity"
+            android:screenOrientation="unspecified" />
+
+        <!-- 注册 FollowingListActivity（关注的人） -->
+        <activity
+            android:name=".FollowingListActivity"
+            android:screenOrientation="unspecified" />
+
+        <!-- 注册 SettingsActivity -->
+        <activity
+            android:name=".SettingsActivity"
+            android:screenOrientation="unspecified" />
+
+        <!-- 解码设置 -->
+        <activity
+            android:name=".subsettings.DecoderSettingsActivity"
+            android:screenOrientation="unspecified" />
+
+        <!-- 注册 OfflineActivity -->
+        <activity
+            android:name=".OfflineActivity"
+            android:screenOrientation="unspecified" />
+
+        <!-- 注册 LoginActivity -->
+        <activity
+            android:name=".FavoriteVideoListActivity"
+            android:screenOrientation="unspecified" />
 
         <!-- 注册 FavoriteFolderActivity -->
         <activity
             android:name=".FavoriteFolderListActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
 
         <!-- 注册 PlayerAnimActivity -->
         <activity
@@ -142,22 +152,18 @@
         <!-- 简易在线播放器（Ostwind，兼容 Android 2.2 及以下，MediaPlayer + 本地代理） -->
         <activity
             android:name=".player.OstwindPlayerActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="landscape"
-            android:configChanges="orientation|screenSize"
-            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+            android:theme="@style/PlayerTheme" />
 
         <!-- 注册 LoginActivity -->
         <activity
-            android:name=".FavoriteVideoListActivity"
-            android:screenOrientation="portrait" />
-
-        <activity
             android:name=".SpecialLoginActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
 
         <activity
             android:name=".MetroHomeActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
 
         <activity
             android:name=".player.BiliPlayerActivity"
@@ -173,6 +179,11 @@
         <!-- 更新检查后台服务 -->
         <service
             android:name=".util.UpdateCheckService"
+            android:exported="false" />
+
+        <!-- 外部播放器在线播放本地代理持有服务 -->
+        <service
+            android:name=".ProxyStreamService"
             android:exported="false" />
 
         <!-- 桌面搜索小工具 -->

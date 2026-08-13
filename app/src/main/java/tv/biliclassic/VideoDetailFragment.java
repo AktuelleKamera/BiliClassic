@@ -955,10 +955,9 @@ public class VideoDetailFragment extends Fragment {
                                 public void run() {
                                     if (!isAdded() || getActivity() == null) return;
                                     if (videoUrl != null && videoUrl.length() > 0) {
-                                        // Ostwind 简易播放器：直接启动（MediaPlayer+本地代理，
-                                        // 兼容 2.2 以下），不走 BiliPlayerActivity（其内置 IJK 需 API 9+）
-                                        if (tv.biliclassic.SettingsActivity.getPlayerPreference()
-                                                == tv.biliclassic.SettingsActivity.PLAYER_OSTWIND) {
+                                        int pref = tv.biliclassic.SettingsActivity.getPlayerPreference();
+                                        // Ostwind 播放器：直接进 Ostwind，不走 PlayerAnimActivity
+                                        if (pref == tv.biliclassic.SettingsActivity.PLAYER_OSTWIND) {
                                             Intent wIntent = new Intent(getActivity(),
                                                     tv.biliclassic.player.OstwindPlayerActivity.class);
                                             wIntent.putExtra("video_url", videoUrl);
@@ -974,43 +973,49 @@ public class VideoDetailFragment extends Fragment {
                                             startActivity(wIntent);
                                             return;
                                         }
-                                        // API < 9（Android 2.2 及以下）：BiliPlayerActivity 依赖内置 IJK（API 9+），
-                                        // 不可用，改走 PlayerAnimActivity 按播放器偏好分派
-                                        if (tv.biliclassic.util.SdkHelper.getSdkInt() < 9) {
-                                            Intent pIntent = new Intent(getActivity(), PlayerAnimActivity.class);
-                                            pIntent.putExtra("video_url", videoUrl);
-                                            pIntent.putExtra("video_title", tempPartTitle);
-                                            pIntent.putExtra("aid", tempAid);
-                                            pIntent.putExtra("cid", targetCid);
-                                            pIntent.putExtra("part_index", tempPartIndex);
+                                        // 内置播放器（PLAYER_BUILTIN 且 API>=9）才直接进 BiliPlayerActivity；
+                                        // 其余（外部/系统/自动）统一走 PlayerAnimActivity 分派，
+                                        // 由 PlayerAnimActivity 按播放器偏好处理在线播放（含本地代理跳外部）
+                                        // PLAYER_BUILTIN == 8
+                                        boolean useBuiltin = pref == 8
+                                                && tv.biliclassic.util.SdkHelper.getSdkInt() >= 9;
+                                        if (useBuiltin) {
+                                            Intent intent = new Intent(getActivity(), BiliPlayerActivity.class);
+                                            intent.putExtra("video_url", videoUrl);
+                                            intent.putExtra("video_title", tempPartTitle);
+                                            intent.putExtra("aid", tempAid);
+                                            intent.putExtra("cid", targetCid);
+                                            intent.putExtra("online_mode", true);
+                                            intent.putExtra("part_index", tempPartIndex);
                                             if (videoInfo != null) {
-                                                pIntent.putExtra("cover_url", videoInfo.cover);
+                                                intent.putExtra("cover_url", videoInfo.cover);
                                             }
                                             if (cidArray != null) {
-                                                pIntent.putExtra("cids", cidArray);
-                                                pIntent.putExtra("pagenames", partNameArray);
+                                                intent.putExtra("cids", cidArray);
+                                                intent.putExtra("pagenames", partNameArray);
                                             }
+                                            putQualityExtras(intent, playerData);
                                             isPlayButtonClicked = false;
-                                            startActivity(pIntent);
+                                            startActivity(intent);
                                             return;
                                         }
-                                        Intent intent = new Intent(getActivity(), BiliPlayerActivity.class);
-                                        intent.putExtra("video_url", videoUrl);
-                                        intent.putExtra("video_title", tempPartTitle);
-                                        intent.putExtra("aid", tempAid);
-                                        intent.putExtra("cid", targetCid);
-                                        intent.putExtra("online_mode", true);
-                                        intent.putExtra("part_index", tempPartIndex);
+                                        Intent pIntent = new Intent(getActivity(), PlayerAnimActivity.class);
+                                        pIntent.putExtra("video_url", videoUrl);
+                                        pIntent.putExtra("video_title", tempPartTitle);
+                                        pIntent.putExtra("aid", tempAid);
+                                        pIntent.putExtra("cid", targetCid);
+                                        pIntent.putExtra("online_mode", true);
+                                        pIntent.putExtra("part_index", tempPartIndex);
                                         if (videoInfo != null) {
-                                            intent.putExtra("cover_url", videoInfo.cover);
+                                            pIntent.putExtra("cover_url", videoInfo.cover);
                                         }
                                         if (cidArray != null) {
-                                            intent.putExtra("cids", cidArray);
-                                            intent.putExtra("pagenames", partNameArray);
+                                            pIntent.putExtra("cids", cidArray);
+                                            pIntent.putExtra("pagenames", partNameArray);
                                         }
-                                        putQualityExtras(intent, playerData);
+                                        putQualityExtras(pIntent, playerData);
                                         isPlayButtonClicked = false;
-                                        startActivity(intent);
+                                        startActivity(pIntent);
                                     } else {
                                         Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_83b7_1), Toast.LENGTH_SHORT).show();
                                         isPlayButtonClicked = false;

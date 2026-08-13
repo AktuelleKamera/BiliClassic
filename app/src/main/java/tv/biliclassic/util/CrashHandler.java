@@ -45,6 +45,8 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
         String mfr = getManufacturer();
         pw.close();
         android.util.Log.e("CrashHandler", "Device: " + mfr + ", Error: " + sw.toString());
+        // 同时写入应用内日志，供无 adb 用户查看/分享
+        LogFileUtil.log("CrashHandler", "Device: " + mfr + ", Error: " + sw.toString());
 
         // 保存崩溃日志并标记 has_crash，下次启动弹出崩溃报告对话框
         saveCrashLog(ex);

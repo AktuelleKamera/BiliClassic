@@ -88,6 +88,7 @@
         android:id="@+id/lv_replies"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="#F5F5F5"
         android:divider="#E0E0E0"
         android:dividerHeight="1dp"
         android:footerDividersEnabled="false"

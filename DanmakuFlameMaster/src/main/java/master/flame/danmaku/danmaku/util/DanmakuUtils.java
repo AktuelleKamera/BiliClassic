@@ -28,13 +28,6 @@ public class DanmakuUtils {
     private static final float[] sRect1 = new float[4];
     private static final float[] sRect2 = new float[4];
 
-    // 缓存上次计算的时间，避免重复计算
-    private static long sLastCacheTime = -1;
-    private static float[] sCachedRect1 = null;
-    private static float[] sCachedRect2 = null;
-    private static long sCachedTime1 = -1;
-    private static long sCachedTime2 = -1;
-
     /**
      * 检测两个弹幕是否会碰撞
      * 允许不同类型弹幕的碰撞
@@ -59,14 +52,19 @@ public class DanmakuUtils {
             return true;
         }
 
+        if (type1 == BaseDanmaku.TYPE_FIX_TOP || type1 == BaseDanmaku.TYPE_FIX_BOTTOM) {
+            // 固定弹幕（顶/底）：只要旧弹幕还没超时消失就视为占用该行。
+            // 不能走 dTime >= duration 的"不碰撞"分支——大屏高密度时多条底部弹幕
+            // 时间差 >= duration 但旧弹幕仍在屏上，会误判不碰撞而叠在同一行。
+            if (d1.isTimeOut() || d2.isTimeOut()) {
+                return false;
+            }
+            return true;
+        }
+
         // 时间差超过持续时间或已超时则不碰撞
         if (dTime >= duration || d1.isTimeOut() || d2.isTimeOut()) {
             return false;
-        }
-
-        // 固定弹幕总是碰撞
-        if (type1 == BaseDanmaku.TYPE_FIX_TOP || type1 == BaseDanmaku.TYPE_FIX_BOTTOM) {
-            return true;
         }
 
         // 检查当前时间点是否碰撞
@@ -79,41 +77,18 @@ public class DanmakuUtils {
     }
 
     private static boolean checkHitAtTime(IDisplayer disp, BaseDanmaku d1, BaseDanmaku d2, long time) {
-        // 获取 d1 的位置（使用缓存）
-        float[] rect1 = getRectWithCache(d1, disp, time, 1);
+        // 注意：这里不使用 static 共享缓存（sCachedRect1/2）。多弹幕布局时多次调用
+        // willHitInDuration 传入不同弹幕对，static 缓存按 time 命中会返回错误矩形，
+        // 导致布局错乱/反复。直接计算，正确性优先（layout 量小，性能影响可忽略）。
+        float[] rect1 = d1.getRectAtTime(disp, time);
         if (rect1 == null) {
             return false;
         }
-
-        // 获取 d2 的位置（使用缓存）
-        float[] rect2 = getRectWithCache(d2, disp, time, 2);
+        float[] rect2 = d2.getRectAtTime(disp, time);
         if (rect2 == null) {
             return false;
         }
-
         return checkHit(d1.getType(), d2.getType(), rect1, rect2);
-    }
-
-    // 带缓存的 getRectAtTime
-    private static float[] getRectWithCache(BaseDanmaku danmaku, IDisplayer disp, long time, int id) {
-        // 检查缓存是否命中
-        if (id == 1) {
-            if (sCachedTime1 == time && sCachedRect1 != null) {
-                return sCachedRect1;
-            }
-            float[] rect = danmaku.getRectAtTime(disp, time);
-            sCachedRect1 = rect;
-            sCachedTime1 = time;
-            return rect;
-        } else {
-            if (sCachedTime2 == time && sCachedRect2 != null) {
-                return sCachedRect2;
-            }
-            float[] rect = danmaku.getRectAtTime(disp, time);
-            sCachedRect2 = rect;
-            sCachedTime2 = time;
-            return rect;
-        }
     }
 
     private static boolean checkHit(int type1, int type2, float[] rectArr1, float[] rectArr2) {

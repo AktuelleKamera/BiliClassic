@@ -199,9 +199,9 @@
                     android:layout_height="1dp"
                     android:background="#E0E0E0" />
 
-                <!-- 检查更新 -->
+                <!-- 关注的人 -->
                 <LinearLayout
-                    android:id="@+id/item_refresh"
+                    android:id="@+id/item_following"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
@@ -212,16 +212,17 @@
                     android:focusable="true">
 
                     <ImageView
+                        android:id="@+id/item_following_icon"
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:contentDescription="@string/content_profile_66f4" />
+                        android:contentDescription="@string/content_profile_6d73" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
                         android:layout_marginLeft="16dp"
-                        android:text="@string/content_profile_68c0"
+                        android:text="@string/content_profile_6d73"
                         android:textSize="15sp"
                         android:textColor="#333333" />
 
@@ -362,6 +363,46 @@
                         android:textColor="#333333" />
 
                 </LinearLayout>
+
+                <!-- 分割线 -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#E0E0E0" />
+
+                <!-- 检查更新 -->
+                <LinearLayout
+                    android:id="@+id/item_refresh"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp"
+                    android:background="@drawable/item_click_effect"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@string/content_profile_66f4" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginLeft="16dp"
+                        android:text="@string/content_profile_68c0"
+                        android:textSize="15sp"
+                        android:textColor="#333333" />
+
+                </LinearLayout>
+
+                <!-- 分割线 -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#E0E0E0" />
 
                 <!-- 分割线 -->
             </LinearLayout>

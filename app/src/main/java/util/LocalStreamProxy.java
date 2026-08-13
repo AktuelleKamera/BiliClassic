@@ -78,11 +78,16 @@ public class LocalStreamProxy {
     }
 
     public String start() throws IOException {
+        // 监听所有接口（0.0.0.0），URL 用本机局域网 IP 而非 127.0.0.1：
+        // Android 4.x 上系统 MediaPlayer 的 native 层（mediaserver 进程）连 loopback
+        // 的 http://127.0.0.1 会被某些 ROM 拦截/拒绝（MediaHTTPConnection 兼容问题），
+        // 改用本机非 loopback IP 可绕开；拿不到 IP 时回退 127.0.0.1。
         server = new ServerSocket();
         server.setReuseAddress(true);
-        server.bind(new InetSocketAddress("127.0.0.1", 0));
+        server.bind(new InetSocketAddress(0));
         int port = server.getLocalPort();
-        localUrl = "http://127.0.0.1:" + port + "/video";
+        String host = getLocalIpAddress();
+        localUrl = "http://" + host + ":" + port + "/video";
         running = true;
 
         serverThread = new Thread(new Runnable() {
@@ -106,6 +111,53 @@ public class LocalStreamProxy {
 
         Log.d(TAG, "Proxy started: " + localUrl + " -> " + remoteUrl);
         return localUrl;
+    }
+
+    /**
+     * 获取本机非 loopback 的 IPv4 地址（优先可用接口）。
+     * Android 4.x MediaPlayer native 层连 127.0.0.1 可能被拦截，用真实 IP 更稳。
+     * 拿不到（异常/无网络）时回退 127.0.0.1。
+     *
+     * 注意：NetworkInterface.isUp()/isLoopback() 是 API 9+，直接引用会在 API<9 上
+     * VerifyError（见 0.5.0 在 Android 2.2 上的崩溃），这里用反射调用。
+     */
+    private static String getLocalIpAddress() {
+        try {
+            java.lang.reflect.Method isUp = null;
+            java.lang.reflect.Method isLoopback = null;
+            try {
+                isUp = java.net.NetworkInterface.class.getMethod("isUp");
+            } catch (Throwable t) {
+            }
+            try {
+                isLoopback = java.net.NetworkInterface.class.getMethod("isLoopback");
+            } catch (Throwable t) {
+            }
+            java.util.Enumeration<java.net.NetworkInterface> nifs =
+                    java.net.NetworkInterface.getNetworkInterfaces();
+            while (nifs != null && nifs.hasMoreElements()) {
+                java.net.NetworkInterface nif = nifs.nextElement();
+                try {
+                    if (isUp != null && !((Boolean) isUp.invoke(nif)).booleanValue()) continue;
+                    if (isLoopback != null && ((Boolean) isLoopback.invoke(nif)).booleanValue()) continue;
+                } catch (Throwable t) {
+                    // 反射调用失败时跳过该接口的 isUp/isLoopback 检查
+                }
+                String name = nif.getName();
+                if (name == null) continue;
+                java.util.Enumeration<java.net.InetAddress> addrs = nif.getInetAddresses();
+                while (addrs != null && addrs.hasMoreElements()) {
+                    java.net.InetAddress addr = addrs.nextElement();
+                    if (addr.isLoopbackAddress() || addr.isLinkLocalAddress()) continue;
+                    if (addr instanceof java.net.Inet4Address) {
+                        return addr.getHostAddress();
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "getLocalIpAddress error: " + t.getMessage());
+        }
+        return "127.0.0.1";
     }
 
     private void handleClient(Socket client) {

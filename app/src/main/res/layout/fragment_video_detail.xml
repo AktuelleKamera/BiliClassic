@@ -109,7 +109,7 @@
                         android:layout_height="wrap_content"
                         android:text="@string/fragment_video_detail_64ad"
                         android:textColor="#666666"
-                        android:layout_marginRight="50dp" />
+                        android:layout_marginRight="45dp" />
 
                     <TextView
                         android:id="@+id/tv_danmaku"

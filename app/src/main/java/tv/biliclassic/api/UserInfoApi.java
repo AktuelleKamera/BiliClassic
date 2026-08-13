@@ -248,8 +248,51 @@ public class UserInfoApi {
         }
     }
 
-    public static int followUser(long mid, boolean isFollow) throws IOException, JSONException {
-        String url = "https://api.bilibili.com/x/relation/modify?";
+    /**
+     * 获取我关注的人（UP主）列表。
+     * 接口：x/relation/followings，返回 data.list[]（mid/uname/face/sign）。
+     * @return 0=成功；1=没有更多；-1=失败/未登录
+     */
+    public static int getFollowingList(long mid, int page, List<UserInfo> userList) throws IOException, JSONException {
+        if (mid == 0) {
+            return -1;
+        }
+        String url = "https://api.bilibili.com/x/relation/followings?vmid=" + mid
+                + "&pn=" + page + "&ps=20&order=desc&order_type=attention";
+        ArrayList<String> headers = buildHeaders();
+        JSONObject all = NetWorkUtil.getJson(url, headers);
+        if (all == null) {
+            return -1;
+        }
+        int code = all.optInt("code", -1);
+        if (code != 0) {
+            Log.e(TAG, "getFollowingList code=" + code);
+            return -1;
+        }
+        if (!all.has("data") || all.isNull("data")) {
+            return -1;
+        }
+        JSONObject data = all.getJSONObject("data");
+        if (!data.has("list") || data.isNull("list")) {
+            return 1;
+        }
+        JSONArray list = data.getJSONArray("list");
+        if (list.length() == 0) {
+            return 1;
+        }
+        for (int i = 0; i < list.length(); i++) {
+            JSONObject item = list.getJSONObject(i);
+            long fmid = item.optLong("mid", 0);
+            String uname = item.optString("uname", "");
+            String face = item.optString("face", "");
+            String sign = item.optString("sign", "");
+            long mtime = item.optLong("mtime", 0);
+            userList.add(new UserInfo(fmid, uname, face, sign, 0, 0, 0, true, "", 0, "", mtime, 0));
+        }
+        return 0;
+    }
+
+    public static int followUser(long mid, boolean isFollow) throws IOException, JSONException {        String url = "https://api.bilibili.com/x/relation/modify?";
         String csrf = NetWorkUtil.getInfoFromCookie("bili_jct", SharedPreferencesUtil.getString("cookies", ""));
         String arg = "fid=" + mid + "&csrf=" + csrf;
         if (isFollow) {

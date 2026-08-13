@@ -717,6 +717,11 @@ public class SearchActivity extends BaseActivity {
                     doSearchRequest(keyword, 1, retryLeft - 1);
                 }
             }, 1000);
+        } else if (code == -111) {
+            // B 站对搜索敏感词/被屏蔽内容统一返回 -111 "csrf 校验失败"，并非登录或 csrf 问题。
+            showEmptyResult();
+            emptyView.setText("该关键词暂时无法搜索");
+            MsgUtil.showMsg(this, "该关键词暂时无法搜索");
         } else {
             showEmptyResult();
             emptyView.setText("API错误(" + code + "): " + message);

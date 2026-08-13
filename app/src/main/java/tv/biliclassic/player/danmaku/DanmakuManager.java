@@ -120,6 +120,18 @@ public class DanmakuManager {
         mReleased = false;
         mUseSimpleEngine = isSimpleEngineEnabled();
 
+        // 应用内诊断日志（无需 adb，开关默认关）：记录引擎选择与设备关键信息，供卡顿/崩溃排查
+        try {
+            tv.biliclassic.util.LogFileUtil.diag("Danmaku",
+                    "sdk=" + tv.biliclassic.util.SdkHelper.getSdkInt()
+                            + " abi=" + getCpuAbi()
+                            + " simpleEngine=" + mUseSimpleEngine
+                            + " cpus=" + Runtime.getRuntime().availableProcessors()
+                            + " model=" + android.os.Build.MODEL
+                            + " release=" + android.os.Build.VERSION.RELEASE);
+        } catch (Throwable t) {
+        }
+
         if (mUseSimpleEngine) {
             initSimpleEngine();
         } else {
@@ -746,6 +758,10 @@ public class DanmakuManager {
                 public void prepared() {
                     if (mReleased || mDanmakuView == null) return;
                     android.util.Log.e("DanmakuManager", "弹幕引擎准备完毕");
+                    try {
+                        tv.biliclassic.util.LogFileUtil.diag("Danmaku", "完整引擎准备完毕");
+                    } catch (Throwable t) {
+                    }
                     mLoaded = true;
                     if (mEnabled) {
                         if (mVideoPrepared) {

@@ -86,15 +86,6 @@ public class NativeBitmapFactory {
         }
     }
 
-    // Bitmap.isPremultiplied() 是 API 17+，直接引用会在 API<17 上 VerifyError，反射绕过
-    private static boolean isPremultipliedReflect(Bitmap bitmap) {
-        try {
-            return ((Boolean) Bitmap.class.getMethod("isPremultiplied").invoke(bitmap)).booleanValue();
-        } catch (Throwable t) {
-            return true;
-        }
-    }
-
     @SuppressLint("NewApi")
     private static boolean testLib() {
         if (nativeIntField == null) {
@@ -106,10 +97,10 @@ public class NativeBitmapFactory {
             bitmap = createNativeBitmap(2, 2, Bitmap.Config.ARGB_8888, true);
             boolean result = (bitmap != null && bitmap.getWidth() == 2 && bitmap.getHeight() == 2);
             if (result) {
-                if (getSdkInt() >= 17 && !isPremultipliedReflect(bitmap)) {
+                if (getSdkInt() >= 17
+                        && !master.flame.danmaku.util.DanmakuCompat.V17.isPremultiplied(bitmap)) {
                     try {
-                        java.lang.reflect.Method method = Bitmap.class.getMethod("setPremultiplied", boolean.class);
-                        method.invoke(bitmap, true);
+                        master.flame.danmaku.util.DanmakuCompat.V17.setPremultiplied(bitmap, true);
                     } catch (Exception e) {
                     }
                 }
@@ -121,7 +112,7 @@ public class NativeBitmapFactory {
                         paint);
                 canvas.drawText("TestLib", 0, 0, paint);
                 if (getSdkInt() >= 17) {
-                    result = isPremultipliedReflect(bitmap);
+                    result = master.flame.danmaku.util.DanmakuCompat.V17.isPremultiplied(bitmap);
                 }
             }
             return result;

@@ -12,6 +12,23 @@ import tv.cjump.jni.NativeBitmapFactory;
 
 public class DrawingCacheHolder {
 
+    private static int sSdkInt = -1;
+
+    private static int getSdkInt() {
+        if (sSdkInt < 0) {
+            try {
+                sSdkInt = android.os.Build.VERSION.class.getField("SDK_INT").getInt(null);
+            } catch (Exception e) {
+                try {
+                    sSdkInt = Integer.parseInt(android.os.Build.VERSION.SDK);
+                } catch (Exception e2) {
+                    sSdkInt = 0;
+                }
+            }
+        }
+        return sSdkInt;
+    }
+
     public Canvas canvas;
 
     public Bitmap bitmap;
@@ -59,27 +76,19 @@ public class DrawingCacheHolder {
         bitmap = NativeBitmapFactory.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         if (density > 0) {
             mDensity = density;
-            setDensityReflect(bitmap, density);
+            // Bitmap.setDensity(int) 是 API 4+（部分老 ROM 缺失）。封装进 DanmakuCompat.V4
+            // 并用 SDK 判断：VFY 安全 + 直接调用（无反射，不卡）。
+            if (getSdkInt() >= 4) {
+                master.flame.danmaku.util.DanmakuCompat.V4.setBitmapDensity(bitmap, density);
+            }
         }
         if (canvas == null){
             canvas = new Canvas(bitmap);
-            setDensityReflect(canvas, density);
+            if (getSdkInt() >= 4) {
+                master.flame.danmaku.util.DanmakuCompat.V4.setCanvasDensity(canvas, density);
+            }
         }else
             canvas.setBitmap(bitmap);
-    }
-
-    // Bitmap.setDensity(int) / Canvas.setDensity(int) 都是 API 4+ 的方法，
-    // 若在字节码里直接引用，verifier 会在 API<4 平台上因方法不存在而拒绝整个类（VerifyError）。
-    // 这里用反射调用，失败时静默忽略。
-    private static void setDensityReflect(Object target, int density) {
-        if (target == null) {
-            return;
-        }
-        try {
-            java.lang.reflect.Method m = target.getClass().getMethod("setDensity", int.class);
-            m.invoke(target, Integer.valueOf(density));
-        } catch (Throwable t) {
-        }
     }
 
     public void erase() {
@@ -118,8 +127,8 @@ public class DrawingCacheHolder {
         final Bitmap[][] bmpArray = new Bitmap[yCount][xCount];
         if (canvas == null){
             canvas = new Canvas();
-            if (mDensity > 0) {
-                setDensityReflect(canvas, mDensity);
+            if (mDensity > 0 && getSdkInt() >= 4) {
+                master.flame.danmaku.util.DanmakuCompat.V4.setCanvasDensity(canvas, mDensity);
             }
         }
         Rect rectSrc = new Rect();
@@ -128,8 +137,8 @@ public class DrawingCacheHolder {
             for (int xIndex = 0; xIndex < xCount; xIndex++) {
                 Bitmap bmp = bmpArray[yIndex][xIndex] = NativeBitmapFactory.createBitmap(
                         averageWidth, averageHeight, Bitmap.Config.ARGB_8888);
-                if (mDensity > 0) {
-                    setDensityReflect(bmp, mDensity);
+                if (mDensity > 0 && getSdkInt() >= 4) {
+                    master.flame.danmaku.util.DanmakuCompat.V4.setBitmapDensity(bmp, mDensity);
                 }
                 canvas.setBitmap(bmp);
                 int left = xIndex * averageWidth, top = yIndex * averageHeight;
@@ -186,16 +195,35 @@ public class DrawingCacheHolder {
                         if (dtop > canvas.getHeight() || dtop + bmp.getHeight() < 0) {
                             continue;
                         }
-                        canvas.drawBitmap(bmp, dleft, dtop, paint);
+                        drawBitmapExact(canvas, bmp, dleft, dtop, paint);
                     }
                 }
             }
             return true;
         } else if (bitmap != null) {
-            canvas.drawBitmap(bitmap, left, top, paint);
+            drawBitmapExact(canvas, bitmap, left, top, paint);
             return true;
         }
         return false;
     }
+
+    /**
+     * 1:1 像素绘制缓存 bitmap，不依赖 density 自动缩放。
+     * drawBitmap(bitmap, x, y) 会按 bitmap.density 与 canvas.density 的比值缩放，
+     * 若两者不一致（如软件 canvas density=160、缓存 bitmap density=屏幕 480）会被整体放大，
+     * 表现为弹幕变宽/变大。用 src/dst 显式绘制可避免该缩放。
+     */
+    private static void drawBitmapExact(Canvas canvas, Bitmap bmp, float x, float y, Paint paint) {
+        int bw = bmp.getWidth();
+        int bh = bmp.getHeight();
+        Rect dst = sDstRect;
+        dst.set((int) x, (int) y, (int) x + bw, (int) y + bh);
+        Rect src = sSrcRect;
+        src.set(0, 0, bw, bh);
+        canvas.drawBitmap(bmp, src, dst, paint);
+    }
+
+    private static final Rect sSrcRect = new Rect();
+    private static final Rect sDstRect = new Rect();
 
 }

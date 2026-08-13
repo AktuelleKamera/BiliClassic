@@ -28,6 +28,7 @@ import tv.biliclassic.R;
 import tv.biliclassic.SettingsActivity;
 import tv.biliclassic.api.HistoryApi;
 import tv.biliclassic.player.danmaku.DanmakuManager;
+import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import util.LocalStreamProxy;
 
@@ -62,7 +63,7 @@ public class OstwindPlayerActivity extends Activity
     private TextView mTimeTotal;
     private ImageButton mPlayPause;
     private boolean mIsSeeking = false;
-    private static final long CONTROLLER_HIDE_DELAY = 4000;
+    private static final long CONTROLLER_HIDE_DELAY = 6000;
 
     // 顶部控制栏（返回 + 标题）
     private View mTopBar;
@@ -83,28 +84,10 @@ public class OstwindPlayerActivity extends Activity
     private static final int AR_9_16 = 4;
     private static final int ASPECT_RATIO_COUNT = 5;
 
-    // 小电视加载动画
+    // 加载动画（preloading 布局，动画由 AnimationDrawable 自动播放）
     private View mLoadingOverlay;
     private ImageView mLoadingIcon;
-    private Handler mAnimHandler = new Handler();
     private Handler mUiHandler = new Handler();
-    private int mAnimIndex;
-    private int[] mAnimDrawables = {
-            R.drawable.bili_anim_tv_chan_1,
-            R.drawable.bili_anim_tv_chan_3,
-            R.drawable.bili_anim_tv_chan_5,
-            R.drawable.bili_anim_tv_chan_7,
-            R.drawable.bili_anim_tv_chan_9
-    };
-    private Runnable mAnimRunnable = new Runnable() {
-        public void run() {
-            if (mLoadingOverlay != null && mLoadingOverlay.getVisibility() == View.VISIBLE) {
-                mLoadingIcon.setImageResource(mAnimDrawables[mAnimIndex]);
-                mAnimIndex = (mAnimIndex + 1) % mAnimDrawables.length;
-                mAnimHandler.postDelayed(this, 200);
-            }
-        }
-    };
 
     private String mVideoUrl;
     private String mCookie;
@@ -177,28 +160,16 @@ public class OstwindPlayerActivity extends Activity
     // 播放历史上报（每 5s 一次，去重）
     private int mLastReportProgress = -1;
 
-    // seek 手势（水平滑动快进快退）
-    private float mTouchDownX;
-    private float mTouchDownY;
-    private int mTouchDownPos;
-    private boolean mGestureSeeking;
-    private int mGestureTargetPos;
-    private static final int GESTURE_SEEK_RANGE_MS = 600000; // 全屏滑动 = 10 分钟
-
     // 弹幕时钟纠偏
     private long mLastDanmakuSeek;
     private long mLastDanmakuCorrection;
 
-    // 双击暂停 / 按返回两次退出
-    private long mLastTapTime;
-    private float mLastTapX;
-    private float mLastTapY;
+    // 按返回两次退出
     private long mLastBackTime;
-    private static final long DOUBLE_TAP_TIME = 300;
-    private static final int DOUBLE_TAP_SLOP = 50;
     private static final long BACK_EXIT_TIME = 2000;
 
     private LocalStreamProxy mLocalProxy;
+    private GestureController mGestureController;
     private boolean mPrepared = false;
     private boolean mPreparing = false;
     private boolean mFailed = false;
@@ -293,15 +264,44 @@ public class OstwindPlayerActivity extends Activity
             }
         });
 
-        // 小电视加载动画
+        // 加载动画（preloading 外观）
         mLoadingOverlay = findViewById(R.id.ostwind_loading);
         if (mLoadingOverlay != null) {
-            mLoadingIcon = (ImageView) mLoadingOverlay.findViewById(R.id.iv_tv_anim);
-            View progressGroup = mLoadingOverlay.findViewById(R.id.linearLayout);
-            if (progressGroup != null) progressGroup.setVisibility(View.INVISIBLE);
+            mLoadingIcon = (ImageView) mLoadingOverlay.findViewById(R.id.tv_chan_animation);
+            // preloading 布局里用不到的杂项元素（重试/随机提示等）一律隐藏
+            int[] extraIds = {
+                    R.id.press_back_to_exit,
+                    R.id.random_tips,
+                    R.id.preloading_overlay,
+                    R.id.refresh,
+                    R.id.retry_tips,
+                    R.id.refresh_tips
+            };
+            for (int id : extraIds) {
+                try {
+                    View v = mLoadingOverlay.findViewById(id);
+                    if (v != null) v.setVisibility(View.GONE);
+                } catch (Throwable t) {
+                }
+            }
+            // 保留返回按钮：点击退出播放器
+            try {
+                View backBtn = mLoadingOverlay.findViewById(R.id.back);
+                if (backBtn != null) {
+                    backBtn.setVisibility(View.VISIBLE);
+                    backBtn.setOnClickListener(new View.OnClickListener() {
+                        public void onClick(View v) {
+                            finishPlayer();
+                        }
+                    });
+                }
+            } catch (Throwable t) {
+            }
         }
 
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
+
+        initGestureController();
 
         Intent intent = getIntent();
         mVideoUrl = intent.getStringExtra("video_url");
@@ -542,8 +542,8 @@ public class OstwindPlayerActivity extends Activity
             mPreparing = false;
             mFailed = true;
             hideStatus();
-            Toast.makeText(this, getString(R.string.ostwind_error), Toast.LENGTH_SHORT).show();
-            finishPlayer();
+            // 未找到软解解码器：提示安装 MoboPlayer 软解包（可加群下载）
+            showNoDecoderDialog();
             return;
         }
         // 本地代理复用同一逻辑：软解 native 端 ffmpeg 需要走 http/file 本地路径
@@ -656,6 +656,9 @@ public class OstwindPlayerActivity extends Activity
             if (dur > 0) {
                 mSeekBar.setMax((int) dur);
                 mTimeTotal.setText(formatTime(dur));
+                if (mGestureController != null) {
+                    mGestureController.setDuration((int) dur);
+                }
             }
         } catch (Throwable t) {
         }
@@ -760,6 +763,9 @@ public class OstwindPlayerActivity extends Activity
             if (dur > 0) {
                 mSeekBar.setMax(dur);
                 mTimeTotal.setText(formatTime(dur));
+                if (mGestureController != null) {
+                    mGestureController.setDuration(dur);
+                }
             }
         } catch (Exception e) {
             android.util.Log.e(TAG, "getDuration failed", e);
@@ -922,8 +928,36 @@ public class OstwindPlayerActivity extends Activity
                         + mHolder.getSurfaceFrame().height() : "null"));
     }
 
-    private void toggleController() {
-        boolean show = mBottomBar.getVisibility() != View.VISIBLE;
+    // 手势：复用原版 GestureController（亮度/音量/seek/双击/缩放）
+    private void initGestureController() {
+        try {
+            View rootView = findViewById(android.R.id.content);
+            mGestureController = new GestureController(this, mUiHandler, rootView,
+                    new GestureController.OnGestureActionListener() {
+                        public void onToggleControls() {
+                            toggleController();
+                        }
+
+                        public void onTogglePlayPause() {
+                            togglePlayPause();
+                        }
+
+                        public void onSeekTo(long position) {
+                            if (mPrepared) {
+                                doSeek((int) position);
+                            }
+                        }
+                    });
+            mGestureController.setSeekBar(mSeekBar);
+            mGestureController.setCurrentTimeView(mTimeCurrent);
+            mGestureController.setDuration(getEngineDuration());
+            mGestureController.setSeekBarUsesMillis(true);
+        } catch (Throwable t) {
+            android.util.Log.e(TAG, "initGestureController failed", t);
+        }
+    }
+
+    private void toggleController() {        boolean show = mBottomBar.getVisibility() != View.VISIBLE;
         mBottomBar.setVisibility(show ? View.VISIBLE : View.GONE);
         mTopBar.setVisibility(show ? View.VISIBLE : View.GONE);
         mUiHandler.removeCallbacks(mHideControllerRunnable);
@@ -1169,79 +1203,28 @@ public class OstwindPlayerActivity extends Activity
     }
 
     @Override
-    public boolean onTouchEvent(android.view.MotionEvent event) {
-        int action = event.getAction();
-        if (action == android.view.MotionEvent.ACTION_DOWN) {
-            mTouchDownX = event.getX();
-            mTouchDownY = event.getY();
-            mGestureSeeking = false;
-            mTouchDownPos = 0;
-            if (mPrepared) {
-                mTouchDownPos = getEnginePosition();
-            }
-            return true;
-        } else if (action == android.view.MotionEvent.ACTION_MOVE) {
-            float dx = event.getX() - mTouchDownX;
-            float dy = event.getY() - mTouchDownY;
-            if (!mGestureSeeking && mPrepared) {
-                int slop = android.view.ViewConfiguration.get(this).getScaledTouchSlop();
-                if (Math.abs(dx) > slop && Math.abs(dx) > Math.abs(dy) * 1.5f) {
-                    mGestureSeeking = true;
-                    mIsSeeking = true;
-                    if (mBottomBar.getVisibility() != View.VISIBLE) {
-                        mBottomBar.setVisibility(View.VISIBLE);
-                        mTopBar.setVisibility(View.VISIBLE);
-                    }
-                    mUiHandler.removeCallbacks(mHideControllerRunnable);
-                }
-            }
-            if (mGestureSeeking) {
-                int w = mSurfaceView.getWidth();
-                if (w <= 0) w = getResources().getDisplayMetrics().widthPixels;
-                long dur = getEngineDuration();
-                long target = mTouchDownPos + (long) (dx / w * GESTURE_SEEK_RANGE_MS);
-                if (dur > 0) {
-                    target = Math.min(Math.max(target, 0), dur);
-                }
-                mGestureTargetPos = (int) target;
-                mSeekBar.setProgress(mGestureTargetPos);
-                mTimeCurrent.setText(formatTime(mGestureTargetPos));
-            }
-            return true;
-        } else if (action == android.view.MotionEvent.ACTION_UP) {
-            if (mGestureSeeking) {
-                doSeek(mGestureTargetPos);
-                mGestureSeeking = false;
-                mIsSeeking = false;
-                mUiHandler.postDelayed(mHideControllerRunnable, CONTROLLER_HIDE_DELAY);
-                return true;
-            }
-            // 双击：切换播放/暂停
-            long now = System.currentTimeMillis();
-            float tapX = event.getX();
-            float tapY = event.getY();
-            if (mLastTapTime > 0
-                    && now - mLastTapTime <= DOUBLE_TAP_TIME
-                    && Math.abs(tapX - mLastTapX) <= DOUBLE_TAP_SLOP
-                    && Math.abs(tapY - mLastTapY) <= DOUBLE_TAP_SLOP) {
-                mLastTapTime = 0;
-                togglePlayPause();
-                return true;
-            }
-            mLastTapTime = now;
-            mLastTapX = tapX;
-            mLastTapY = tapY;
-            if (mLoadingOverlay == null || mLoadingOverlay.getVisibility() != View.VISIBLE) {
-                toggleController();
-            }
-            return true;
-        } else if (action == android.view.MotionEvent.ACTION_CANCEL) {
-            mGestureSeeking = false;
-            mIsSeeking = false;
-            mLastTapTime = 0;
-            return true;
+    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+        // 加载动画/缓冲（未 prepared）期间禁用手势：小电视动画时不能左右进退，
+        // 也避免 GestureController 在 seekbar max 未就绪时乱写进度导致"跳到最后"。
+        if (mGestureController != null) {
+            mGestureController.setEnableGesture(mPrepared);
         }
-        return true;
+        return super.dispatchTouchEvent(ev);
+    }
+
+    @Override
+    public boolean onTouchEvent(android.view.MotionEvent event) {
+        // 手势统一交给 GestureController（controller_underlay 拦截后也会走这里）
+        // 注意：删除旧的独立 seek/双击/单击逻辑，避免与 GestureController 重复触发
+        if (mGestureController != null && mPrepared) {
+            try {
+                if (mGestureController.onTouchEvent(event)) {
+                    return true;
+                }
+            } catch (Throwable t) {
+            }
+        }
+        return super.onTouchEvent(event);
     }
 
     // 返回键：第一次 toast"再按一次退出"，2s 内再按退出；弹幕设置面板开着则先关面板
@@ -1261,29 +1244,102 @@ public class OstwindPlayerActivity extends Activity
             Toast.makeText(this, getString(R.string.biliplayeractivity_toast_518d), Toast.LENGTH_SHORT).show();
             return true;
         }
+        if (keyCode == android.view.KeyEvent.KEYCODE_MENU
+                && event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+            // 按 MENU 调出控制栏（顶栏+底栏），并延迟自动隐藏
+            if (!mPrepared) {
+                return true;
+            }
+            showControllerBars();
+            return true;
+        }
         return super.onKeyDown(keyCode, event);
+    }
+
+    private void showControllerBars() {
+        mBottomBar.setVisibility(View.VISIBLE);
+        mTopBar.setVisibility(View.VISIBLE);
+        mUiHandler.removeCallbacks(mHideControllerRunnable);
+        mUiHandler.postDelayed(mHideControllerRunnable, CONTROLLER_HIDE_DELAY);
     }
 
     private void finishPlayer() {
         finish();
     }
 
+    // 软解解码器未找到：提示安装 MoboPlayer 软解包（可加群 754725037 下载）
+    private void showNoDecoderDialog() {
+        try {
+            new android.app.AlertDialog.Builder(DialogUtil.wrap(this))
+                    .setTitle(getString(R.string.ostwind_no_decoder_title))
+                    .setMessage(getString(R.string.ostwind_no_decoder_msg))
+                    .setCancelable(false)
+                    .setPositiveButton(getString(R.string.ostwind_no_decoder_ok),
+                            new android.content.DialogInterface.OnClickListener() {
+                                public void onClick(android.content.DialogInterface d, int w) {
+                                    finishPlayer();
+                                }
+                            })
+                    .show();
+        } catch (Throwable t) {
+            finishPlayer();
+        }
+    }
+
     private void showStatus(String msg) {
         if (mLoadingOverlay != null) {
             mLoadingOverlay.setVisibility(View.VISIBLE);
-            mAnimHandler.post(mAnimRunnable);
+            // 显示到 preloading 底部状态栏（有则显示，无则忽略）
+            if (msg != null && msg.length() > 0) {
+                try {
+                    TextView statusBar = (TextView) mLoadingOverlay.findViewById(R.id.video_preloading_status_bar);
+                    if (statusBar != null) {
+                        statusBar.setText(msg);
+                        statusBar.setVisibility(View.VISIBLE);
+                    }
+                } catch (Throwable t) {
+                }
+            }
+            startLoadingAnimation();
         }
     }
 
     private void hideStatus() {
         if (mLoadingOverlay != null) {
-            mAnimHandler.removeCallbacks(mAnimRunnable);
+            stopLoadingAnimation();
             mLoadingOverlay.setVisibility(View.GONE);
         }
     }
 
+    private void startLoadingAnimation() {
+        try {
+            if (mLoadingIcon != null) {
+                mLoadingIcon.setImageResource(R.anim.bili_loading_tv_chan);
+                android.graphics.drawable.AnimationDrawable ad =
+                        (android.graphics.drawable.AnimationDrawable) mLoadingIcon.getDrawable();
+                if (ad != null) {
+                    ad.stop();
+                    ad.start();
+                }
+            }
+        } catch (Throwable t) {
+        }
+    }
+
+    private void stopLoadingAnimation() {
+        try {
+            if (mLoadingIcon != null) {
+                android.graphics.drawable.Drawable d = mLoadingIcon.getDrawable();
+                if (d instanceof android.graphics.drawable.AnimationDrawable) {
+                    ((android.graphics.drawable.AnimationDrawable) d).stop();
+                }
+            }
+        } catch (Throwable t) {
+        }
+    }
+
     private void releasePlayer() {
-        mAnimHandler.removeCallbacks(mAnimRunnable);
+        stopLoadingAnimation();
         mUiHandler.removeCallbacks(mTimeRunnable);
         mUiHandler.removeCallbacks(mHideControllerRunnable);
         mPreparing = false;

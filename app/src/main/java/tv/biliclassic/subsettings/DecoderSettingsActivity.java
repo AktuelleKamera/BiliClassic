@@ -60,11 +60,12 @@ public class DecoderSettingsActivity extends BaseActivity {
     // 按当前解码方式动态显示/隐藏设置项：
     //   - 软解(2, IJK软解/cmplayer): 全部显示
     //   - IJK硬解(1): 隐藏"软件解码"分类(IJK软解专用项)
-    //   - 系统解码器(0): 隐藏"软件解码"与"音频输出"分类
+    //   - 系统解码器(0): 隐藏"软件解码"与"音频输出"分类，但保留"播放控制"分类，
+    //     避免整个设置页空白（禁用视频/音频对系统解码器同样适用）
     private void updateVisibilityByDecoder() {
         int decoderType = tv.biliclassic.SettingsActivity.getDecoderType();
         boolean showSwDecode = (decoderType == 2);
-        boolean showPlayCtl = (decoderType == 1 || decoderType == 2);
+        boolean showPlayCtl = true; // 系统解码器也保留：禁用视频/音频是通用控制
         boolean showAudio = (decoderType == 1 || decoderType == 2);
 
         setVisible(R.id.category_sw_decode, showSwDecode);
