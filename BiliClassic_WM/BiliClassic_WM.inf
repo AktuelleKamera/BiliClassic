@@ -1,0 +1,34 @@
+[Version]
+Signature="$Chicago$"
+CESignature="$Windows CE$"
+Provider="BiliClassic"
+
+[CEStrings]
+AppName="BiliClassic"
+InstallDir="%CE1%\%AppName%"
+
+[Strings]
+
+[CEDevice]
+BuildMax=0xE0000000
+ProcessorType=0
+
+[DefaultInstall]
+CopyFiles=Files.Common
+CEShortcuts=Shortcuts
+
+[SourceDisksNames]
+1=,"Application Files",,
+
+[SourceDisksFiles]
+BiliClassic.exe=1
+
+[Files.Common]
+BiliClassic.exe,,0
+
+[DestinationDirs]
+Files.Common=0,"%InstallDir%"
+Shortcuts=0,"%CE17%"
+
+[Shortcuts]
+BiliClassic,0,BiliClassic.exe,%CE17%

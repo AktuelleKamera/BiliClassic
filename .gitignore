@@ -1,0 +1,32 @@
+# ===== Build outputs =====
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+*.xml
+*.cache
+*.resources
+*.obj
+*.FileListAbsolute.txt
+
+# ===== Installer / tooling =====
+*.cab
+NetCFSetupv35.msi
+*.msi
+
+# ===== IDE / user settings =====
+*.suo
+*.user
+.vs/
+*.sln.docstates
+
+# ===== Runtime / log / data (generated on device) =====
+*.txt
+cookie.txt
+playmode.txt
+*.log
+
+# ===== Misc =====
+.DS_Store
+Thumbs.db
