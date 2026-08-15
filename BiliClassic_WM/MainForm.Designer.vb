@@ -17,15 +17,20 @@ Private components As System.ComponentModel.IContainer
     Private WithEvents mnuSettings As System.Windows.Forms.MenuItem
     Private WithEvents mnuStream As System.Windows.Forms.MenuItem
     Private WithEvents mnuOffline As System.Windows.Forms.MenuItem
+    Private WithEvents mnuHistory As System.Windows.Forms.MenuItem
     Private WithEvents mnuCheckUpdate As System.Windows.Forms.MenuItem
     Private WithEvents mnuWebsite As System.Windows.Forms.MenuItem
+    Private WithEvents mnuMine As System.Windows.Forms.MenuItem
+    Private WithEvents mnuProfile As System.Windows.Forms.MenuItem
+    Private WithEvents mnuLogin As System.Windows.Forms.MenuItem
     Private WithEvents mnuExit As System.Windows.Forms.MenuItem
     Private WithEvents Panel1 As System.Windows.Forms.Panel
     Private WithEvents btnTestNet As System.Windows.Forms.Button
     Private WithEvents btnPlayAv706 As System.Windows.Forms.Button
 Private WithEvents btnPlayStream As System.Windows.Forms.Button
     Private WithEvents btnPlayOffline As System.Windows.Forms.Button
-    Private WithEvents btnLogin As System.Windows.Forms.Button
+Private WithEvents btnLogin As System.Windows.Forms.Button
+    Private WithEvents btnMine As System.Windows.Forms.Button
     Private WithEvents txtSearch As System.Windows.Forms.TextBox
     Private WithEvents btnSearch As System.Windows.Forms.Button
     Private WithEvents picQr As System.Windows.Forms.PictureBox
@@ -41,8 +46,12 @@ Private Sub InitializeComponent()
         Me.mnuSettings = New System.Windows.Forms.MenuItem
         Me.mnuStream = New System.Windows.Forms.MenuItem
         Me.mnuOffline = New System.Windows.Forms.MenuItem
+        Me.mnuHistory = New System.Windows.Forms.MenuItem
         Me.mnuCheckUpdate = New System.Windows.Forms.MenuItem
         Me.mnuWebsite = New System.Windows.Forms.MenuItem
+        Me.mnuMine = New System.Windows.Forms.MenuItem
+        Me.mnuProfile = New System.Windows.Forms.MenuItem
+        Me.mnuLogin = New System.Windows.Forms.MenuItem
         Me.mnuExit = New System.Windows.Forms.MenuItem
         Me.Panel1 = New System.Windows.Forms.Panel
         Me.btnSearch = New System.Windows.Forms.Button
@@ -52,6 +61,7 @@ Private Sub InitializeComponent()
         Me.btnPlayStream = New System.Windows.Forms.Button
         Me.btnPlayOffline = New System.Windows.Forms.Button
         Me.btnLogin = New System.Windows.Forms.Button
+        Me.btnMine = New System.Windows.Forms.Button
         Me.picQr = New System.Windows.Forms.PictureBox
         Me.txtResult = New System.Windows.Forms.TextBox
         Me.lstSearch = New System.Windows.Forms.ListView
@@ -60,6 +70,7 @@ Private Sub InitializeComponent()
         '
         'mainMenu1
         '
+        Me.mainMenu1.MenuItems.Add(Me.mnuMine)
         Me.mainMenu1.MenuItems.Add(Me.mnuSettings)
         Me.mainMenu1.MenuItems.Add(Me.mnuExit)
         '
@@ -79,6 +90,10 @@ Private Sub InitializeComponent()
         '
         Me.mnuOffline.Text = "离线播放"
         '
+        'mnuHistory
+        '
+        Me.mnuHistory.Text = "历史记录"
+        '
         'mnuCheckUpdate
         '
         Me.mnuCheckUpdate.Text = "检查更新"
@@ -86,6 +101,21 @@ Private Sub InitializeComponent()
         'mnuWebsite
         '
         Me.mnuWebsite.Text = "官网"
+        '
+        'mnuMine
+        '
+        Me.mnuMine.Text = "我的"
+        Me.mnuMine.MenuItems.Add(Me.mnuProfile)
+        Me.mnuMine.MenuItems.Add(Me.mnuLogin)
+        Me.mnuMine.MenuItems.Add(Me.mnuHistory)
+        '
+        'mnuProfile
+        '
+        Me.mnuProfile.Text = "个人中心"
+        '
+        'mnuLogin
+        '
+        Me.mnuLogin.Text = "扫码登录"
         '
         'mnuExit
         '
@@ -157,6 +187,16 @@ Private Sub InitializeComponent()
         Me.btnLogin.Size = New System.Drawing.Size(200, 40)
         Me.btnLogin.TabIndex = 3
         Me.btnLogin.Text = "扫码登录"
+        Me.btnLogin.Visible = False
+        '
+        'btnMine
+        '
+        Me.btnMine.Location = New System.Drawing.Point(10, 250)
+        Me.btnMine.Name = "btnMine"
+        Me.btnMine.Size = New System.Drawing.Size(200, 40)
+        Me.btnMine.TabIndex = 2
+        Me.btnMine.Text = "我的"
+        Me.btnMine.Visible = False
         '
         'picQr
         '
@@ -193,6 +233,7 @@ Private Sub InitializeComponent()
         Me.Controls.Add(Me.lstSearch)
         Me.Controls.Add(Me.picQr)
         Me.Controls.Add(Me.btnLogin)
+        Me.Controls.Add(Me.btnMine)
         Me.Controls.Add(Me.btnPlayOffline)
         Me.Controls.Add(Me.btnPlayStream)
         Me.Controls.Add(Me.btnPlayAv706)

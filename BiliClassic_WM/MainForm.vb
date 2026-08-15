@@ -30,6 +30,14 @@
     Private loginUserName As String = ""
     Private searchHint As String = ""
 
+    ' History pagination cursor (bilibili cursor API). max=0 means first page.
+    Private histMax As String = "0"
+    Private histViewAt As String = "0"
+    Private histBusiness As String = "archive"
+    Private histHasMore As Boolean = False
+    Private histLoading As Boolean = False
+    Private Const HIST_PAGE_MARKER As String = ">>>"
+
     Public Sub New()
         InitializeComponent()
     End Sub
@@ -80,6 +88,7 @@
                 btnSearch.Text = "搜索"
                 mnuSettings.Text = "设置"
                 mnuExit.Text = "退出"
+                mnuLogin.Text = "扫码登录"
                 searchHint = "输入关键词或AV/BV号"
             Else
                 btnTestNet.Text = "Test Bilibili Connection"
@@ -90,6 +99,7 @@
                 btnSearch.Text = "Search"
                 mnuSettings.Text = "Settings"
                 mnuExit.Text = "Exit"
+                mnuLogin.Text = "QR Login"
                 searchHint = "Enter keyword or av/BV"
             End If
 
@@ -295,10 +305,15 @@
         btnLogin.Left = CInt((w - btnLogin.Width) / 2)
         btnLogin.Top = btnPlayAv706.Bottom + 10
 
+        btnMine.Width = CInt(w * 0.6)
+        btnMine.Height = 40
+        btnMine.Left = CInt((w - btnMine.Width) / 2)
+        btnMine.Top = btnLogin.Bottom + 10
+
         picQr.Width = CInt(w * 0.5)
         picQr.Height = picQr.Width
         picQr.Left = CInt((w - picQr.Width) / 2)
-        picQr.Top = btnLogin.Bottom + 12
+        picQr.Top = btnMine.Bottom + 12
         If picQr.Top + picQr.Height > h - 100 Then
             picQr.Height = h - 100 - picQr.Top
             If picQr.Height > 0 Then
@@ -371,6 +386,11 @@
         SetPlayMode("offline")
     End Sub
 
+    Private Sub mnuHistory_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles mnuHistory.Click
+        StopLoginPolling()
+        LoadHistory()
+    End Sub
+
     Private Sub SetPlayMode(ByVal mode As String)
         playMode = mode
         UpdatePlayModeMenu()
@@ -428,6 +448,7 @@
     End Sub
 
     Private Sub mnuCheckUpdate_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles mnuCheckUpdate.Click
+        StopLoginPolling()
         CheckForUpdate()
     End Sub
 
@@ -577,6 +598,7 @@
     End Sub
 
     Private Sub btnTestNet_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles btnTestNet.Click
+        StopLoginPolling()
         ShowResultView()
         btnTestNet.Enabled = False
         If isChinese Then
@@ -721,6 +743,7 @@
     End Sub
 
     Private Sub btnPlayAv706_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles btnPlayAv706.Click
+        StopLoginPolling()
         ShowResultView()
         btnPlayAv706.Enabled = False
         Dim sb As New System.Text.StringBuilder()
@@ -769,6 +792,7 @@
     End Sub
 
     Private Sub btnSearch_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles btnSearch.Click
+        StopLoginPolling()
         btnSearch.Enabled = False
         Dim kw As String = txtSearch.Text.Trim()
         If kw = searchHint Then
@@ -823,6 +847,11 @@
             Dim idx As Integer = lstSearch.SelectedIndices(0)
             If idx >= 0 AndAlso idx < lstSearch.Items.Count Then
                 Dim sel As String = lstSearch.Items(idx).Text
+                ' "Load more history" row triggers the next page of history.
+                If sel.EndsWith(HIST_PAGE_MARKER) Then
+                    LoadMoreHistory()
+                    Return
+                End If
                 ' Extract the trailing BV number from the list line
                 Dim mBv As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(sel, "(BV\w+)")
                 If mBv.Success Then
@@ -994,6 +1023,242 @@
             txtResult.Visible = True
         End Try
     End Sub
+
+    ' Load the logged-in user's watch history (mirrors Android HistoryApi).
+    ' bilibili returns a cursor (max/view_at/business) used to request the next page.
+    Private Sub LoadHistory()
+        ShowResultView()
+        If String.IsNullOrEmpty(savedCookies) Then
+            If isChinese Then
+                txtResult.Text = "请先登录后再查看历史记录"
+            Else
+                txtResult.Text = "Please log in first to view history"
+            End If
+            Return
+        End If
+
+        histMax = "0"
+        histViewAt = "0"
+        histBusiness = "archive"
+        histHasMore = False
+        histLoading = False
+        LoadHistoryPage(False)
+    End Sub
+
+    Private Sub LoadMoreHistory()
+        If histLoading Then
+            Return
+        End If
+        If Not histHasMore Then
+            Return
+        End If
+        LoadHistoryPage(True)
+    End Sub
+
+    Private Sub LoadHistoryPage(ByVal loadMore As Boolean)
+        If histLoading Then
+            Return
+        End If
+        histLoading = True
+        ShowResultView()
+
+        lstSearch.BringToFront()
+        lstSearch.Visible = True
+        txtResult.Visible = False
+
+        If loadMore Then
+            ' Replace the trailing "load more" row with a loading indicator.
+            If lstSearch.Items.Count > 0 Then
+                lstSearch.Items(lstSearch.Items.Count - 1).Text = If(isChinese, "正在加载更多...", "Loading more...")
+            Else
+                lstSearch.Items.Add(New System.Windows.Forms.ListViewItem(If(isChinese, "正在加载更多...", "Loading more...")))
+            End If
+            lstSearch.Refresh()
+        Else
+            lstSearch.Items.Clear()
+            If isChinese Then
+                lstSearch.Items.Add(New System.Windows.Forms.ListViewItem("正在加载历史记录..."))
+            Else
+                lstSearch.Items.Add(New System.Windows.Forms.ListViewItem("Loading history..."))
+            End If
+            lstSearch.Refresh()
+        End If
+
+        Dim results As New System.Collections.ArrayList()
+        Try
+            System.Net.ServicePointManager.CertificatePolicy = New TrustAllPolicy()
+        Catch exCert As Exception
+        End Try
+
+        Dim ua As String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        Try
+            Dim url As String = "https://api.bilibili.com/x/web-interface/history/cursor?type=archive&ps=20&max=" & histMax
+            If histMax <> "0" Then
+                url &= "&view_at=" & histViewAt & "&business=" & histBusiness
+            End If
+            WriteLog("history: url=" & url)
+            Dim req As System.Net.HttpWebRequest = CType(System.Net.WebRequest.Create(url), System.Net.HttpWebRequest)
+            req.Method = "GET"
+            req.Timeout = 15000
+            req.Accept = "application/json, text/plain, */*"
+            req.UserAgent = ua
+            req.Referer = "https://www.bilibili.com/"
+            ApplyCookies(req)
+            Dim resp As System.Net.HttpWebResponse = CType(req.GetResponse(), System.Net.HttpWebResponse)
+            Dim reader As New System.IO.StreamReader(resp.GetResponseStream(), System.Text.Encoding.UTF8)
+            Dim body As String = reader.ReadToEnd()
+            reader.Close()
+            resp.Close()
+
+            WriteLog("history: " & Microsoft.VisualBasic.Left(body, 200))
+
+            Dim mCode As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(body, """code"":\s*(-?\d+)")
+            If mCode.Success AndAlso mCode.Groups(1).Value <> "0" Then
+                lstSearch.Items.Clear()
+                If isChinese Then
+                    lstSearch.Items.Add(New System.Windows.Forms.ListViewItem("历史记录获取失败 (code=" & mCode.Groups(1).Value & ")"))
+                Else
+                    lstSearch.Items.Add(New System.Windows.Forms.ListViewItem("History failed (code=" & mCode.Groups(1).Value & ")"))
+                End If
+                lstSearch.Refresh()
+                histLoading = False
+                Return
+            End If
+
+            ' Update the pagination cursor from this page's response.
+            Dim mCur As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(body, """cursor"":\s*\{([^}]*)\}")
+            If mCur.Success Then
+                Dim cBlock As String = mCur.Groups(1).Value
+                Dim mMax As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(cBlock, """max"":\s*(\d+)")
+                If mMax.Success Then
+                    histMax = mMax.Groups(1).Value
+                End If
+                Dim mVA As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(cBlock, """view_at"":\s*(\d+)")
+                If mVA.Success Then
+                    histViewAt = mVA.Groups(1).Value
+                End If
+                Dim mBiz As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(cBlock, """business"":\s*""([^""]*)""")
+                If mBiz.Success Then
+                    histBusiness = mBiz.Groups(1).Value
+                End If
+            End If
+
+            ' Each history entry: title before history.bvid; author_name and
+            ' progress after it. Anchor on bvid, look backward for title and
+            ' forward for author/progress.
+            Dim mB As System.Text.RegularExpressions.MatchCollection = System.Text.RegularExpressions.Regex.Matches(body, """bvid"":\s*""([^""]+)""")
+            Dim seen As New System.Collections.ArrayList()
+            For Each m As System.Text.RegularExpressions.Match In mB
+                Dim bv As String = m.Groups(1).Value
+                If seen.Contains(bv) Then
+                    Continue For
+                End If
+                seen.Add(bv)
+                If results.Count >= 20 Then
+                    Exit For
+                End If
+
+                Dim startIdx As Integer = m.Index - 300
+                If startIdx < 0 Then
+                    startIdx = 0
+                End If
+                Dim before As String = body.Substring(startIdx, m.Index - startIdx)
+                Dim mt As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(before, """title"":\s*""((?:[^""\\]|\\.)*)""")
+                Dim title As String = ""
+                If mt.Success Then
+                    title = StripHtml(UnescapeJson(mt.Groups(1).Value))
+                End If
+
+                Dim tail As Integer = System.Math.Min(600, body.Length - m.Index)
+                Dim after As String = body.Substring(m.Index, tail)
+                Dim ma As System.Text.RegularExpressions.MatchCollection = System.Text.RegularExpressions.Regex.Matches(after, """author_name"":\s*""([^""]*)""")
+                Dim author As String = ""
+                If ma.Count > 0 Then
+                    author = ma(0).Groups(1).Value
+                End If
+                Dim mProg As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(after, """progress"":\s*(\d+)")
+                Dim prog As Long = 0
+                If mProg.Success Then
+                    prog = CLng(mProg.Groups(1).Value)
+                End If
+                Dim progStr As String = ""
+                If prog > 0 Then
+                    progStr = "看到 " & FormatTime(prog)
+                Else
+                    progStr = "还没看过"
+                End If
+
+                Dim line As String = title & " ｜ " & author & " ｜ " & progStr & "  " & bv
+                results.Add(line)
+            Next
+
+            ' Keep paging as long as this page returned records; only stop when
+            ' the server sends an empty page (list exhausted).
+            histHasMore = (results.Count > 0)
+
+            If loadMore Then
+                ' Drop the trailing loading-indicator row, then append the new page.
+                Dim idx As Integer = lstSearch.Items.Count - 1
+                If idx >= 0 AndAlso (lstSearch.Items(idx).Text = "正在加载更多..." OrElse lstSearch.Items(idx).Text = "Loading more...") Then
+                    lstSearch.Items.RemoveAt(idx)
+                End If
+            Else
+                lstSearch.Items.Clear()
+            End If
+
+            If results.Count = 0 Then
+                If loadMore Then
+                    If isChinese Then
+                        lstSearch.Items.Add(New System.Windows.Forms.ListViewItem("没有更多历史记录了"))
+                    Else
+                        lstSearch.Items.Add(New System.Windows.Forms.ListViewItem("No more history"))
+                    End If
+                ElseIf isChinese Then
+                    lstSearch.Items.Add(New System.Windows.Forms.ListViewItem("暂无历史记录"))
+                Else
+                    lstSearch.Items.Add(New System.Windows.Forms.ListViewItem("No history yet"))
+                End If
+            Else
+                For i As Integer = 0 To results.Count - 1
+                    lstSearch.Items.Add(New System.Windows.Forms.ListViewItem(CStr(results(i))))
+                Next
+                If histHasMore Then
+                    Dim loadTxt As String = If(isChinese, "加载更多历史记录 " & HIST_PAGE_MARKER, "Load more history " & HIST_PAGE_MARKER)
+                    lstSearch.Items.Add(New System.Windows.Forms.ListViewItem(loadTxt))
+                End If
+            End If
+            lstSearch.Refresh()
+            WriteLog("history OK: page=" & results.Count.ToString() & " hasMore=" & histHasMore.ToString() & " max=" & histMax)
+        Catch ex As Exception
+            WriteLog("history: " & ex.GetType().FullName & " | " & ex.Message & " | " & ex.StackTrace)
+            lstSearch.Items.Clear()
+            If isChinese Then
+                lstSearch.Items.Add(New System.Windows.Forms.ListViewItem("历史记录加载失败: " & ex.Message))
+            Else
+                lstSearch.Items.Add(New System.Windows.Forms.ListViewItem("History load failed: " & ex.Message))
+            End If
+            lstSearch.Refresh()
+        Finally
+            histLoading = False
+        End Try
+    End Sub
+
+    Private Function FormatTime(ByVal secs As Long) As String
+        Try
+            Dim h As Long = secs \ 3600
+            Dim m As Long = (secs Mod 3600) \ 60
+            Dim s As Long = secs Mod 60
+            Dim t As String = ""
+            If h > 0 Then
+                t = h.ToString() & ":" & m.ToString("00") & ":" & s.ToString("00")
+            Else
+                t = m.ToString() & ":" & s.ToString("00")
+            End If
+            Return t
+        Catch ex As Exception
+            Return secs.ToString()
+        End Try
+    End Function
 
     Private Function UnescapeJson(ByVal s As String) As String
         Try
@@ -1398,7 +1663,171 @@
     ' API: generate -> { qrcode_key, url }; poll -> code: 0=success, 86090=scanned,
     ' 86101=not scanned, 86038=expired. Poll every ~1s like the Android client.
 
+    Private Sub btnMine_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles btnMine.Click
+        ShowProfile()
+    End Sub
+
+    Private Sub mnuProfile_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles mnuProfile.Click
+        StopLoginPolling()
+        ShowProfile()
+    End Sub
+
+    Private Sub ShowProfile()
+        ShowResultView()
+        btnMine.Enabled = False
+        Try
+            System.Net.ServicePointManager.CertificatePolicy = New TrustAllPolicy()
+        Catch exCert As Exception
+        End Try
+
+        Dim sb As New System.Text.StringBuilder()
+        Try
+            If String.IsNullOrEmpty(savedCookies) Then
+                If isChinese Then
+                    SBLine(sb, "未登录。请点击「扫码登录」后再试。")
+                Else
+                    SBLine(sb, "Not logged in. Please tap QR Login first.")
+                End If
+                txtResult.Text = sb.ToString()
+                btnMine.Enabled = True
+                Return
+            End If
+
+            SBLine(sb, If(isChinese, "正在加载个人中心...", "Loading profile..."))
+            txtResult.Text = sb.ToString()
+
+            ' Nav API returns uname / mid / money / vip for the logged-in account.
+            Dim navUrl As String = "https://api.bilibili.com/x/web-interface/nav"
+            Dim ua As String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            Dim req As System.Net.HttpWebRequest = CType(System.Net.WebRequest.Create(navUrl), System.Net.HttpWebRequest)
+            req.Method = "GET"
+            req.Timeout = 15000
+            req.Accept = "application/json"
+            req.UserAgent = ua
+            req.Referer = "https://www.bilibili.com/"
+            ApplyCookies(req)
+            Dim resp As System.Net.HttpWebResponse = CType(req.GetResponse(), System.Net.HttpWebResponse)
+            Dim reader As New System.IO.StreamReader(resp.GetResponseStream(), System.Text.Encoding.UTF8)
+            Dim body As String = reader.ReadToEnd()
+            reader.Close()
+            resp.Close()
+
+            WriteLog("mine: " & Microsoft.VisualBasic.Left(body, 200))
+
+            Dim mCode As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(body, """code"":\s*(-?\d+)")
+            If mCode.Success AndAlso mCode.Groups(1).Value <> "0" Then
+                If isChinese Then
+                    SBLine(sb, "获取个人信息失败 (code=" & mCode.Groups(1).Value & ")，请重新扫码登录")
+                Else
+                    SBLine(sb, "Profile failed (code=" & mCode.Groups(1).Value & "), please re-login")
+                End If
+                txtResult.Text = sb.ToString()
+                btnMine.Enabled = True
+                Return
+            End If
+
+            Dim uname As String = ""
+            Dim mU As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(body, """uname"":\s*""([^""]*)""")
+            If mU.Success Then
+                uname = UnescapeJson(mU.Groups(1).Value)
+            End If
+            Dim mid As String = ""
+            Dim mM As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(body, """mid"":\s*(\d+)")
+            If mM.Success Then
+                mid = mM.Groups(1).Value
+            End If
+            Dim money As String = "0"
+            Dim mCo As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(body, """money"":\s*(\d+)")
+            If mCo.Success Then
+                money = mCo.Groups(1).Value
+            End If
+            Dim isVip As Boolean = False
+            Dim mVipType As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(body, """type"":\s*(\d+)")
+            Dim mVipStatus As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(body, """status"":\s*(\d+)")
+            If mVipType.Success AndAlso mVipStatus.Success Then
+                If CLng(mVipType.Groups(1).Value) > 0 AndAlso CLng(mVipStatus.Groups(1).Value) = 1 Then
+                    isVip = True
+                End If
+            End If
+
+            sb = New System.Text.StringBuilder()
+            SBLine(sb, "==============")
+            SBLine(sb, If(isChinese, "我的", "Mine"))
+            SBLine(sb, "==============")
+            If uname <> "" Then
+                SBLine(sb, If(isChinese, "用户名: ", "Name: ") & uname)
+            Else
+                SBLine(sb, If(isChinese, "用户名: （未知）", "Name: (unknown)"))
+            End If
+            If mid <> "" Then
+                SBLine(sb, "UID: " & mid)
+            End If
+            SBLine(sb, If(isChinese, "硬币: ", "Coins: ") & money)
+            If isVip Then
+                SBLine(sb, If(isChinese, "VIP: 大会员", "VIP: Big Member"))
+            Else
+                SBLine(sb, If(isChinese, "VIP: 普通用户", "VIP: Regular"))
+            End If
+            SBLine(sb, "")
+            SBLine(sb, If(isChinese, "点上方菜单「设置」可查看历史记录/检查更新。", "Use the Settings menu above for History / Update check."))
+            txtResult.Text = sb.ToString()
+            WriteLog("mine OK: uname=" & uname & " mid=" & mid)
+        Catch ex As Exception
+            WriteLog("mine: " & ex.GetType().FullName & " | " & ex.Message & " | " & ex.StackTrace)
+            sb = New System.Text.StringBuilder()
+            If isChinese Then
+                SBLine(sb, "个人中心加载失败: " & ex.Message)
+            Else
+                SBLine(sb, "Profile load failed: " & ex.Message)
+            End If
+            txtResult.Text = sb.ToString()
+        Finally
+            btnMine.Enabled = True
+        End Try
+    End Sub
+
     Private Sub btnLogin_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles btnLogin.Click
+        ShowLogin()
+    End Sub
+
+    Private Sub mnuLogin_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles mnuLogin.Click
+        If loginPolling Then
+            StopLoginPolling()
+            ShowResultView()
+            If isChinese Then
+                txtResult.Text = "已取消扫码登录"
+            Else
+                txtResult.Text = "QR login cancelled"
+            End If
+            Return
+        End If
+        ShowLogin()
+    End Sub
+
+    Private Sub StopLoginPolling()
+        loginPolling = False
+        If loginTimer IsNot Nothing Then
+            loginTimer.Enabled = False
+        End If
+        Try
+            picQr.Image = Nothing
+        Catch ex As Exception
+        End Try
+        UpdateLoginMenuText()
+    End Sub
+
+    Private Sub UpdateLoginMenuText()
+        Try
+            If loginPolling Then
+                mnuLogin.Text = If(isChinese, "取消扫码", "Cancel Login")
+            Else
+                mnuLogin.Text = If(isChinese, "扫码登录", "QR Login")
+            End If
+        Catch ex As Exception
+        End Try
+    End Sub
+
+    Private Sub ShowLogin()
         ShowResultView()
         btnLogin.Enabled = False
         Try
@@ -1458,6 +1887,7 @@
                 AddHandler loginTimer.Tick, AddressOf LoginTimer_Tick
             End If
             loginTimer.Enabled = True
+            UpdateLoginMenuText()
 
             If isChinese Then
                 txtResult.Text = "请用 B 站手机 App 扫码登录（180 秒有效）"
@@ -1522,6 +1952,7 @@
                     loginTimer.Enabled = False
                     picQr.Image = Nothing
                     SaveLoginCookies(body, resp)
+                    UpdateLoginMenuText()
                     If isChinese Then
                         txtResult.Text = "登录成功！" & Chr(13) & Chr(10) & body
                     Else
@@ -1536,6 +1967,7 @@
                 Case 86038 ' Expired
                     loginPolling = False
                     loginTimer.Enabled = False
+                    UpdateLoginMenuText()
                     If isChinese Then
                         txtResult.Text = "二维码已过期，请重新获取"
                     Else
