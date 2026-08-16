@@ -2,8 +2,7 @@
 
 <img width="1366" height="767" alt="Android 2" src="https://github.com/user-attachments/assets/52277284-e776-496c-886d-12351b15cc00" />
 
-一个面向 Android 1.5+ 和 webOS 3.0 设备的 Bilibili 客户端，致力于还原 2013 年前后的经典界面与交互体验。
-让那些被遗忘在抽屉里的老设备重新获得观看 Bilibili 视频的能力。
+一个面向各种旧设备的 Bilibili 客户端，支持 Android 1.5+、Windows Mobile 6.5、webOS 3.0。致力于还原 2013 年前后的经典界面与交互体验，让那些被遗忘在抽屉里的老设备重新获得观看 Bilibili 视频的能力。
 
 ---
 
@@ -124,6 +123,11 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 - 处理器: ARMv7
 - 设备: HP TouchPad
 
+#### Windows Mobile 版推荐配置
+- 系统: Windows Mobile 6.5 及以上
+- 处理器: QSD8250
+- 设备: HTC HD2
+
 #### 最低配置
 - 系统: Android 1.5 (Donut) 及以上
 - 处理器: ARMv5TE
@@ -159,7 +163,7 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 
 （瑞芯微RK28系列较为特殊，是自带了解码单元的armeabi，比其他ARM11手机流畅）
 只要你的设备不是古老的纯armeabi架构，我想……呃，大约都能跑的比较流畅吧hhh
-不过如果你是自带硬解单元的ARM11，那就
+如果你是自带硬解单元的ARM11甚至ARM9，那就真可能看了（
 
 ---
 
@@ -173,11 +177,12 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 
 | 分支 | 说明 |
 |------|------|
-| `master` | 0.4.x 开发主线（含内置播放器） |
-| `0.3.x` | 0.3.x 稳定分支（无播放器） |
+| `android` | 0.5.x 开发主线（含内置播放器） |
+| `0.3.x` | 0.3.x 旧版分支（无播放器） |
 | `webos` | webOS 3.0 版本 |
+| `wm` | Windows Mobile 版本 |
 
-0.3.x 分支将仅进行维护性更新，未来的新功能将在 master 分支开发。
+0.3.x 分支将仅进行维护性更新，未来的新功能都将在其他分支开发。
 
 ---
 

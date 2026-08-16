@@ -165,18 +165,24 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
             handler = null;
         }
         if (mHandlerThread != null) {
-            try {
-                mHandlerThread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            // HandlerThread.quit() 是 API 18+，直接引用会在 API<18 上 VerifyError。
-            // Looper.quit() 自 API 1 就有，且功能等价。
-            try {
-                mHandlerThread.getLooper().quit();
-            } catch (Throwable t) {
-            }
+            final HandlerThread ht = mHandlerThread;
             mHandlerThread = null;
+            Thread recycler = new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        ht.join();
+                    } catch (InterruptedException e) {
+                    }
+                    // HandlerThread.quit() 是 API 18+，直接引用会在 API<18 上 VerifyError。
+                    // Looper.quit() 自 API 1 就有，且功能等价。
+                    try {
+                        ht.getLooper().quit();
+                    } catch (Throwable t) {
+                    }
+                }
+            }, "DFM-ThreadRecycler");
+            recycler.setDaemon(true);
+            recycler.start();
         }
     }
     

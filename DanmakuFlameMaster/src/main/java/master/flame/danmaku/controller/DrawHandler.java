@@ -358,8 +358,12 @@ public class DrawHandler extends Handler {
             }
             // UpdateThread 是自定义 Thread 子类，quit() 是它自己的方法（非 API 18 的 HandlerThread.quit()）
             mThread.quit();
+            // notifyAll 存在丢失通知的竞态（线程在设置 mInWaitingState 后、进入
+            // drawTask.wait() 前，通知已被消费掉），此时线程会永久阻塞在 wait()。
+            // interrupt() 可打破该等待并让其在下一次循环退出。
+            mThread.interrupt();
             try {
-                mThread.join();
+                mThread.join(500);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
