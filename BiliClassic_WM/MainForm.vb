@@ -1,5 +1,7 @@
 ﻿Public Class MainForm
 
+    Private Delegate Sub SimpleCallback()
+
     Private Declare Function SHGetSpecialFolderPath Lib "coredll.dll" (ByVal hwndOwner As IntPtr, ByVal lpszPath As System.Text.StringBuilder, ByVal nFolder As Integer, ByVal fCreate As Boolean) As Boolean
 
     Private Const CSIDL_PROGRAMS As Integer = 2
@@ -10,6 +12,10 @@
     Private av706Cid As String = ""
     Private av706Fetched As Boolean = False
     Private av706VideoUrl As String = ""
+    Private av706Converted As Boolean = False
+    Private convertSrcUrl As String = ""
+    Private convertResultUrl As String = ""
+    Private convertFromPlay As Boolean = False
     Private av706Proxy As LocalStreamProxy = Nothing
     Private currentAv As String = "706"
     Private playMode As String = "stream"
@@ -21,6 +27,10 @@
     Private pseudoLaunched As Boolean = False
     Private pseudoDone As Boolean = False
     Private pseudoError As String = ""
+
+    Private loadingOverlay As LoadingOverlay = Nothing
+    Private loadingCancelRequested As Boolean = False
+    Private fetchSb As System.Text.StringBuilder = Nothing
 
     Private loginTimer As System.Windows.Forms.Timer = Nothing
     Private loginQrKey As String = ""
@@ -37,6 +47,17 @@
     Private histHasMore As Boolean = False
     Private histLoading As Boolean = False
     Private Const HIST_PAGE_MARKER As String = ">>>"
+
+    Private favMid As String = ""
+    Private favView As String = "" ' "folders" or "videos"
+    Private favFolderId As String = ""
+    Private favFolderName As String = ""
+    Private favHasMore As Boolean = False
+    Private favPage As Integer = 1
+    Private favLoading As Boolean = False
+    Private favLastBody As String = ""
+    Private favLastErr As String = ""
+    Private Const FAV_PAGE_MARKER As String = "==="
 
     Public Sub New()
         InitializeComponent()
@@ -61,7 +82,7 @@
             If isDesktop Then
                 Me.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable
                 Me.WindowState = System.Windows.Forms.FormWindowState.Normal
-                Me.Size = New System.Drawing.Size(500, 720)
+                Me.Size = New System.Drawing.Size(800, 480)
                 Me.Location = New System.Drawing.Point(0, 0)
                 Try
                     Dim icoStream As System.IO.Stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("BiliClassic_WM.icon.ico")
@@ -81,7 +102,7 @@
 
             If isChinese Then
                 btnTestNet.Text = "测试网络连接B站"
-                btnPlayAv706.Text = "播放视频"
+                btnPlay.Text = "播放视频"
                 btnPlayStream.Text = "流式播放"
                 btnPlayOffline.Text = "离线播放"
                 btnLogin.Text = "扫码登录"
@@ -92,7 +113,7 @@
                 searchHint = "输入关键词或AV/BV号"
             Else
                 btnTestNet.Text = "Test Bilibili Connection"
-                btnPlayAv706.Text = "Play Video"
+                btnPlay.Text = "Play Video"
                 btnPlayStream.Text = "Stream Play"
                 btnPlayOffline.Text = "Offline Play"
                 btnLogin.Text = "QR Login"
@@ -112,11 +133,24 @@
 
             LoadCookies()
             LoadPlayMode()
+            LoadConvertConfig()
+
+            loadingOverlay = New LoadingOverlay()
+            AddHandler loadingOverlay.ReturnPressed, AddressOf LoadingOverlay_ReturnPressed
+            Me.Controls.Add(loadingOverlay)
+            loadingOverlay.Visible = False
 
             LayoutControls()
             Me.Refresh()
 
-            AutoFetchVideo()
+            ' 启动时不再自动获取播放地址，改为点击「播放」时才获取，
+            ' 这样加载层小电视能正常展示获取过程。
+            ShowResultView()
+            If isChinese Then
+                txtResult.Text = "点击「播放」开始播放。"
+            Else
+                txtResult.Text = "Tap Play to start."
+            End If
         Catch ex As Exception
             MessageBox.Show(ex.ToString(), "Error")
         End Try
@@ -134,6 +168,7 @@
 
             av706Fetched = False
             av706VideoUrl = ""
+            av706Converted = False
             currentAv = "706"
             If av706Proxy IsNot Nothing Then
                 av706Proxy.Shutdown()
@@ -295,15 +330,15 @@
         btnTestNet.Left = CInt((w - btnTestNet.Width) / 2)
         btnTestNet.Top = rowTop
 
-        btnPlayAv706.Width = CInt(w * 0.6)
-        btnPlayAv706.Height = 40
-        btnPlayAv706.Left = CInt((w - btnPlayAv706.Width) / 2)
-        btnPlayAv706.Top = btnTestNet.Bottom + 10
+        btnPlay.Width = CInt(w * 0.6)
+        btnPlay.Height = 40
+        btnPlay.Left = CInt((w - btnPlay.Width) / 2)
+        btnPlay.Top = btnTestNet.Bottom + 10
 
         btnLogin.Width = CInt(w * 0.6)
         btnLogin.Height = 40
         btnLogin.Left = CInt((w - btnLogin.Width) / 2)
-        btnLogin.Top = btnPlayAv706.Bottom + 10
+        btnLogin.Top = btnPlay.Bottom + 10
 
         btnMine.Width = CInt(w * 0.6)
         btnMine.Height = 40
@@ -332,6 +367,10 @@
         txtResult.Height = h - txtResult.Top - 15
         If txtResult.Height < 50 Then
             txtResult.Height = 50
+        End If
+
+        If loadingOverlay IsNot Nothing Then
+            loadingOverlay.LayoutForSize()
         End If
     End Sub
 
@@ -384,6 +423,81 @@
 
     Private Sub mnuOffline_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles mnuOffline.Click
         SetPlayMode("offline")
+    End Sub
+
+    Private Sub mnuConvert_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles mnuConvert.Click
+        Dim enabled As Boolean = Not ConvertPlayUtil.IsConvertEnabled()
+        ConvertPlayUtil.SetConvertEnabled(enabled)
+        SaveConvertConfig()
+        UpdateConvertMenu()
+        If isChinese Then
+            txtResult.Text = "转码播放：" & If(enabled, "已开启", "已关闭")
+        Else
+            txtResult.Text = "Convert play: " & If(enabled, "On", "Off")
+        End If
+    End Sub
+
+    Private Sub mnuConvertH264_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles mnuConvertH264.Click
+        ConvertPlayUtil.SetConvertFormat("h264")
+        SaveConvertConfig()
+        UpdateConvertMenu()
+        If isChinese Then
+            txtResult.Text = "转码格式：H.264 Baseline"
+        Else
+            txtResult.Text = "Convert format: H.264 Baseline"
+        End If
+    End Sub
+
+    Private Sub mnuConvertMpeg4_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles mnuConvertMpeg4.Click
+        ConvertPlayUtil.SetConvertFormat("mpeg4")
+        SaveConvertConfig()
+        UpdateConvertMenu()
+        If isChinese Then
+            txtResult.Text = "转码格式：MPEG-4"
+        Else
+            txtResult.Text = "Convert format: MPEG-4"
+        End If
+    End Sub
+
+    Private Sub UpdateConvertMenu()
+        mnuConvert.Checked = ConvertPlayUtil.IsConvertEnabled()
+        mnuConvertH264.Checked = (ConvertPlayUtil.GetConvertFormat() = "h264")
+        mnuConvertMpeg4.Checked = (ConvertPlayUtil.GetConvertFormat() = "mpeg4")
+    End Sub
+
+    Private Function GetConvertPath() As String
+        Return GetAppDir() & "\convert.txt"
+    End Function
+
+    Private Sub SaveConvertConfig()
+        Try
+            System.IO.Directory.CreateDirectory(GetAppDir())
+            Dim fs As New System.IO.FileStream(GetConvertPath(), System.IO.FileMode.Create)
+            Dim w As New System.IO.StreamWriter(fs, System.Text.Encoding.ASCII)
+            w.Write(If(ConvertPlayUtil.IsConvertEnabled(), "1", "0") & "," & ConvertPlayUtil.GetConvertFormat())
+            w.Close()
+            fs.Close()
+        Catch ex As Exception
+        End Try
+    End Sub
+
+    Private Sub LoadConvertConfig()
+        ConvertPlayUtil.SetConvertEnabled(False)
+        ConvertPlayUtil.SetConvertFormat("h264")
+        Try
+            If System.IO.File.Exists(GetConvertPath()) Then
+                Dim sr As New System.IO.StreamReader(GetConvertPath())
+                Dim s As String = sr.ReadToEnd().Trim()
+                sr.Close()
+                Dim parts As String() = s.Split(","c)
+                If parts.Length >= 2 Then
+                    ConvertPlayUtil.SetConvertEnabled(parts(0).Trim() = "1")
+                    ConvertPlayUtil.SetConvertFormat(parts(1).Trim())
+                End If
+            End If
+        Catch ex As Exception
+        End Try
+        UpdateConvertMenu()
     End Sub
 
     Private Sub mnuHistory_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles mnuHistory.Click
@@ -742,29 +856,64 @@
         btnTestNet.Enabled = True
     End Sub
 
-    Private Sub btnPlayAv706_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles btnPlayAv706.Click
+    Private Sub btnPlay_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles btnPlay.Click
         StopLoginPolling()
         ShowResultView()
-        btnPlayAv706.Enabled = False
-        Dim sb As New System.Text.StringBuilder()
+        btnPlay.Enabled = False
+
+        ' 全屏加载层：获取播放地址期间显示动画，UI 线程只跑动画，
+        ' 网络获取/转码/播放启动全部放后台线程，避免阻塞消息泵。
+        Dim loadingMsg As String = If(isChinese, "正在获取播放地址...", "Fetching stream URL...")
+        ShowLoadingOverlay(loadingMsg)
+        loadingCancelRequested = False
 
         ' Ensure we have a fetched 360P stream for the current video.
+        ' 同步获取会饿死 UI 消息泵导致加载层动画不显示，改到后台线程执行。
         If (Not av706Fetched) OrElse String.IsNullOrEmpty(av706VideoUrl) Then
             av706Fetched = False
             av706VideoUrl = ""
+            av706Converted = False
             If av706Proxy IsNot Nothing Then
                 av706Proxy.Shutdown()
                 av706Proxy = Nothing
             End If
-            DoPlayVideoFlow(currentAv, "", sb)
-            If av706Fetched AndAlso String.IsNullOrEmpty(av706VideoUrl) Then
-                SBLine(sb, "")
-                SBLine(sb, If(isChinese, "自动获取播放地址...", "Auto fetching stream..."))
-                DoPlayVideoFlow("", "", sb)
-            End If
+            fetchSb = New System.Text.StringBuilder()
+            Dim tf As New System.Threading.Thread(AddressOf FetchAndPlayWorker)
+            tf.Start()
+            Return
         End If
 
-        txtResult.Text = sb.ToString()
+        ' 地址已存在（本会话曾获取过）。
+        If ConvertPlayUtil.IsConvertEnabled() AndAlso (Not av706Converted) AndAlso _
+           Not String.IsNullOrEmpty(av706VideoUrl) Then
+            Dim srcUrl As String = av706VideoUrl
+            Dim convertingMsg As String = ""
+            If isChinese Then
+                convertingMsg = "正在转码视频（H.264/MPEG-4），可能需要几分钟..." & Chr(13) & Chr(10) & srcUrl
+            Else
+                convertingMsg = "Converting video, may take a few minutes..." & Chr(13) & Chr(10) & srcUrl
+            End If
+            loadingCancelRequested = False
+            ShowLoadingOverlay(convertingMsg)
+            Dim t As New System.Threading.Thread(AddressOf ConvertAndPlayWorker)
+            convertSrcUrl = srcUrl
+            convertFromPlay = True
+            t.Start()
+            Return
+        End If
+
+        ' 直连：后台线程启动播放，加载层保持动画。
+        If (Not ConvertPlayUtil.IsConvertEnabled()) OrElse av706Converted Then
+            loadingCancelRequested = False
+            If isChinese Then
+                ShowLoadingOverlay("正在加载视频..." & Chr(13) & Chr(10) & "播放地址已就绪")
+            Else
+                ShowLoadingOverlay("Loading video..." & Chr(13) & Chr(10) & "Stream URL ready")
+            End If
+            Dim t As New System.Threading.Thread(AddressOf PlayDirectWorker)
+            t.Start()
+            Return
+        End If
 
         ' Play using the current preference (stream or offline).
         If playMode = "offline" Then
@@ -772,7 +921,202 @@
         Else
             btnPlayStream_Click(sender, e)
         End If
-        btnPlayAv706.Enabled = True
+        btnPlay.Enabled = True
+    End Sub
+
+    ' 后台线程：获取 360P 播放地址（避免同步阻塞 UI 消息泵），完成后回 UI 线程继续。
+    Private Sub FetchAndPlayWorker()
+        Dim sbLocal As System.Text.StringBuilder = fetchSb
+        Try
+            DoPlayVideoFlow(currentAv, "", sbLocal)
+            If av706Fetched AndAlso String.IsNullOrEmpty(av706VideoUrl) Then
+                SBLine(sbLocal, "")
+                SBLine(sbLocal, If(isChinese, "自动获取播放地址...", "Auto fetching stream..."))
+                DoPlayVideoFlow("", "", sbLocal)
+            End If
+        Catch ex As Exception
+            WriteLog("fetch worker: " & ex.GetType().FullName & " | " & ex.Message)
+        End Try
+        Try
+            Me.Invoke(New SimpleCallback(AddressOf ContinueAfterFetch))
+        Catch ex As Exception
+            WriteLog("fetch invoke: " & ex.GetType().FullName & " | " & ex.Message)
+        End Try
+    End Sub
+
+    ' UI 线程：获取完成后继续直连/转码/播放流程。
+    Private Sub ContinueAfterFetch()
+        If loadingCancelRequested Then
+            HideLoadingOverlay()
+            btnPlay.Enabled = True
+            Return
+        End If
+        Dim sb As System.Text.StringBuilder = fetchSb
+        txtResult.Text = sb.ToString()
+
+        ' Transcode the source URL on a background thread when enabled.
+        If ConvertPlayUtil.IsConvertEnabled() AndAlso (Not av706Converted) AndAlso _
+           Not String.IsNullOrEmpty(av706VideoUrl) Then
+            Dim srcUrl As String = av706VideoUrl
+            Dim convertingMsg As String = ""
+            If isChinese Then
+                convertingMsg = "正在转码视频（H.264/MPEG-4），可能需要几分钟..." & Chr(13) & Chr(10) & srcUrl
+            Else
+                convertingMsg = "Converting video, may take a few minutes..." & Chr(13) & Chr(10) & srcUrl
+            End If
+            txtResult.Text = convertingMsg
+            Me.Refresh()
+
+            ' 全屏加载层：转码期间显示小电视动画，返回键可取消。
+            loadingCancelRequested = False
+            ShowLoadingOverlay(convertingMsg)
+            Dim t As New System.Threading.Thread(AddressOf ConvertAndPlayWorker)
+            convertSrcUrl = srcUrl
+            convertFromPlay = True
+            t.Start()
+            Return
+        End If
+
+        ' 获取地址完成。直连（不转码）时也在后台线程启动播放，
+        ' 加载层保持显示到播放器真正启动。
+        If (Not ConvertPlayUtil.IsConvertEnabled()) OrElse av706Converted Then
+            loadingCancelRequested = False
+            If isChinese Then
+                ShowLoadingOverlay("正在加载视频..." & Chr(13) & Chr(10) & "正在获取播放地址...【完成】")
+            Else
+                ShowLoadingOverlay("Loading video..." & Chr(13) & Chr(10) & "Fetching stream URL... [done]")
+            End If
+            Dim t As New System.Threading.Thread(AddressOf PlayDirectWorker)
+            t.Start()
+            Return
+        End If
+
+        ' Play using the current preference (stream or offline).
+        If playMode = "offline" Then
+            btnPlayOffline_Click(Me, New System.EventArgs())
+        Else
+            btnPlayStream_Click(Me, New System.EventArgs())
+        End If
+        btnPlay.Enabled = True
+    End Sub
+
+' 直连播放：后台线程启动代理+播放器，完成后回 UI 线程隐藏加载层。
+    Private Sub PlayDirectWorker()
+        Try
+            If playMode = "offline" Then
+                Me.Invoke(New SimpleCallback(AddressOf PlayOfflineOnUi))
+            Else
+                Me.Invoke(New SimpleCallback(AddressOf PlayStreamOnUi))
+            End If
+        Catch ex As Exception
+            WriteLog("direct play invoke: " & ex.GetType().FullName & " | " & ex.Message)
+        End Try
+    End Sub
+
+    Private Sub PlayStreamOnUi()
+        If loadingCancelRequested Then
+            HideLoadingOverlay()
+            btnPlay.Enabled = True
+            Return
+        End If
+        Try
+            btnPlayStream_Click(Me, New System.EventArgs())
+        Catch ex As Exception
+            WriteLog("stream on ui: " & ex.Message)
+        End Try
+        If Not loadingCancelRequested Then
+            HideLoadingOverlay()
+        End If
+        btnPlay.Enabled = True
+    End Sub
+
+    Private Sub PlayOfflineOnUi()
+        If loadingCancelRequested Then
+            HideLoadingOverlay()
+            btnPlay.Enabled = True
+            Return
+        End If
+        Try
+            btnPlayOffline_Click(Me, New System.EventArgs())
+        Catch ex As Exception
+            WriteLog("offline on ui: " & ex.Message)
+        End Try
+        If Not loadingCancelRequested Then
+            HideLoadingOverlay()
+        End If
+        btnPlay.Enabled = True
+    End Sub
+
+    ' 全屏加载层：显示并带状态文字。
+    Private Sub ShowLoadingOverlay(ByVal status As String)
+        If loadingOverlay Is Nothing Then
+            Return
+        End If
+        loadingOverlay.ShowOverlay(status)
+    End Sub
+
+    Private Sub HideLoadingOverlay()
+        If loadingOverlay IsNot Nothing Then
+            loadingOverlay.HideOverlay()
+        End If
+    End Sub
+
+    ' 返回键：请求取消转码/加载，回到主界面。
+    Private Sub LoadingOverlay_ReturnPressed(ByVal sender As Object, ByVal e As System.EventArgs)
+        loadingCancelRequested = True
+        HideLoadingOverlay()
+        btnPlay.Enabled = True
+        If isChinese Then
+            txtResult.Text = "已取消加载，返回主界面。"
+        Else
+            txtResult.Text = "Loading cancelled."
+        End If
+    End Sub
+
+    ' Background worker: run the SCF transcode, then marshal back to the UI
+    ' thread to update the URL and start playback.
+    Private Sub ConvertAndPlayWorker()
+        convertResultUrl = ConvertPlayUtil.ConvertPlayUrl(convertSrcUrl)
+        If String.IsNullOrEmpty(convertResultUrl) Then
+            convertResultUrl = convertSrcUrl
+        End If
+        Try
+            Me.Invoke(New SimpleCallback(AddressOf FinishConvertAndPlay))
+        Catch ex As Exception
+            av706VideoUrl = convertResultUrl
+            av706Converted = True
+            ResumePlayAfterConvert()
+        End Try
+    End Sub
+
+    Private Sub FinishConvertAndPlay()
+        av706VideoUrl = convertResultUrl
+        av706Converted = True
+        If convertFromPlay AndAlso (Not loadingCancelRequested) Then
+            ResumePlayAfterConvert()
+        Else
+            HideLoadingOverlay()
+            btnPlay.Enabled = True
+        End If
+    End Sub
+
+    Private Sub ResumePlayAfterConvert()
+        Try
+            HideLoadingOverlay()
+            Dim sb2 As New System.Text.StringBuilder()
+            SBLine(sb2, If(isChinese, "转码完成，开始播放：", "Converted, playing:"))
+            SBLine(sb2, av706VideoUrl)
+            txtResult.Text = sb2.ToString()
+
+            If playMode = "offline" Then
+                btnPlayOffline_Click(Me, New System.EventArgs())
+            Else
+                btnPlayStream_Click(Me, New System.EventArgs())
+            End If
+        Catch ex As Exception
+            WriteLog("convert resume: " & ex.GetType().FullName & " | " & ex.Message)
+        End Try
+        btnPlay.Enabled = True
     End Sub
 
     Private Sub TxtSearch_GotFocus(ByVal sender As Object, ByVal e As System.EventArgs)
@@ -820,6 +1164,7 @@
         If aid <> "" OrElse bvid <> "" Then
             av706Fetched = False
             av706VideoUrl = ""
+            av706Converted = False
             If av706Proxy IsNot Nothing Then
                 av706Proxy.Shutdown()
                 av706Proxy = Nothing
@@ -852,6 +1197,26 @@
                     LoadMoreHistory()
                     Return
                 End If
+                ' Favorites: folder row -> video list; video row -> play.
+                If favView = "folders" Then
+                    Dim mFid As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(sel, "#fid=(\d+)")
+                    If mFid.Success Then
+                        Dim name As String = System.Text.RegularExpressions.Regex.Replace(sel, "\s*#fid=\d+.*$", "")
+                        OpenFavoriteFolder(mFid.Groups(1).Value, name)
+                        Return
+                    End If
+                ElseIf favView = "videos" Then
+                    If sel.EndsWith(FAV_PAGE_MARKER) Then
+                        favPage += 1
+                        LoadFolderVideosPage(True)
+                        Return
+                    End If
+                    Dim mBv2 As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(sel, "#bv=(BV\w+)")
+                    If mBv2.Success Then
+                        PlayBvid(mBv2.Groups(1).Value)
+                        Return
+                    End If
+                End If
                 ' Extract the trailing BV number from the list line
                 Dim mBv As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(sel, "(BV\w+)")
                 If mBv.Success Then
@@ -866,6 +1231,7 @@
         Dim sb As New System.Text.StringBuilder()
         av706Fetched = False
         av706VideoUrl = ""
+        av706Converted = False
         If av706Proxy IsNot Nothing Then
             av706Proxy.Shutdown()
             av706Proxy = Nothing
@@ -1672,6 +2038,292 @@
         ShowProfile()
     End Sub
 
+    Private Sub mnuFavs_Click(ByVal sender As Object, ByVal e As System.EventArgs) Handles mnuFavs.Click
+        StopLoginPolling()
+        LoadFavoriteFolders()
+    End Sub
+
+    ' 收藏夹：先取 mid，再显示收藏夹列表。列表显示在 lstSearch。
+    Private Sub LoadFavoriteFolders()
+        If String.IsNullOrEmpty(savedCookies) Then
+            ShowResultView()
+            If isChinese Then
+                txtResult.Text = "请先登录后再查看收藏夹"
+            Else
+                txtResult.Text = "Please log in first to view favorites"
+            End If
+            Return
+        End If
+
+        ShowResultView()
+        lstSearch.BringToFront()
+        lstSearch.Visible = True
+        txtResult.Visible = False
+        lstSearch.Items.Clear()
+        lstSearch.Items.Add(New System.Windows.Forms.ListViewItem(If(isChinese, "正在加载收藏夹...", "Loading favorites...")))
+        favView = "folders"
+        favLoading = True
+
+        Dim t As New System.Threading.Thread(AddressOf FetchFoldersWorker)
+        t.Start()
+    End Sub
+
+    Private Sub FetchFoldersWorker()
+        Dim body As String = ""
+        Dim errMsg As String = ""
+        Try
+            System.Net.ServicePointManager.CertificatePolicy = New TrustAllPolicy()
+        Catch exCert As Exception
+        End Try
+
+        Try
+            If String.IsNullOrEmpty(favMid) Then
+                favMid = FetchMidFromNav()
+            End If
+            If String.IsNullOrEmpty(favMid) Then
+                errMsg = If(isChinese, "无法获取账号 UID，请重新登录", "Cannot get UID, please re-login")
+            Else
+                Dim ua As String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                Dim url As String = "https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=" & favMid & "&type=0"
+                Dim req As System.Net.HttpWebRequest = CType(System.Net.WebRequest.Create(url), System.Net.HttpWebRequest)
+                req.Method = "GET"
+                req.Timeout = 15000
+                req.Accept = "application/json"
+                req.UserAgent = ua
+                req.Referer = "https://space.bilibili.com/"
+                ApplyCookies(req)
+                Dim resp As System.Net.HttpWebResponse = CType(req.GetResponse(), System.Net.HttpWebResponse)
+                Dim reader As New System.IO.StreamReader(resp.GetResponseStream(), System.Text.Encoding.UTF8)
+                body = reader.ReadToEnd()
+                reader.Close()
+                resp.Close()
+                WriteLog("fav folders: " & Microsoft.VisualBasic.Left(body, 200))
+            End If
+        Catch ex As Exception
+            errMsg = ex.GetType().FullName & " | " & ex.Message
+            WriteLog("fav folders: " & errMsg & " | " & ex.StackTrace)
+        End Try
+
+        favLastBody = body
+        favLastErr = errMsg
+        Try
+            Me.Invoke(New SimpleCallback(AddressOf ShowFoldersOnUi))
+        Catch ex As Exception
+            WriteLog("fav folders invoke: " & ex.GetType().FullName & " | " & ex.Message)
+        End Try
+    End Sub
+
+    Private Sub ShowFoldersOnUi()
+        favLoading = False
+        lstSearch.Items.Clear()
+        If favLastErr <> "" Then
+            lstSearch.Items.Add(New System.Windows.Forms.ListViewItem(favLastErr))
+            lstSearch.Enabled = True
+            Return
+        End If
+
+        Dim body As String = favLastBody
+        Dim mCode As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(body, """code"":\s*(-?\d+)")
+        If mCode.Success AndAlso mCode.Groups(1).Value <> "0" Then
+            lstSearch.Items.Add(New System.Windows.Forms.ListViewItem(If(isChinese, "获取收藏夹失败 (code=" & mCode.Groups(1).Value & ")", "Favorites failed (code=" & mCode.Groups(1).Value & ")")))
+            lstSearch.Enabled = True
+            Return
+        End If
+
+        Dim folderIdx As Integer = 0
+        For Each fm As System.Text.RegularExpressions.Match In System.Text.RegularExpressions.Regex.Matches(body, """fid"":\s*(\d+)")
+            If folderIdx >= 50 Then
+                Exit For
+            End If
+            Dim fid As String = fm.Groups(1).Value
+            ' 收藏夹对象结构: {"id":...,"fid":<fid>,"mid":...,"attr":...,"title":"...",...,"media_count":...}
+            ' title 在 fid 之后。取 fid 到本对象结束(})之间的文本，避免跨对象误匹配。
+            Dim objEnd As Integer = body.IndexOf("}", fm.Index)
+            If objEnd < 0 Then
+                objEnd = body.Length
+            End If
+            Dim after As String = body.Substring(fm.Index, objEnd - fm.Index)
+            Dim mt As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(after, """title"":\s*""((?:[^""\\]|\\.)*)""")
+            Dim title As String = ""
+            If mt.Success Then
+                title = StripHtml(UnescapeJson(mt.Groups(1).Value))
+            End If
+            If title = "" Then
+                title = If(isChinese, "未命名收藏夹", "Untitled folder")
+            End If
+            Dim mCnt As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(after, """media_count"":\s*(\d+)")
+            Dim cnt As String = ""
+            If mCnt.Success Then
+                cnt = mCnt.Groups(1).Value
+            End If
+            Dim line As String = title
+            If cnt <> "" Then
+                line &= "  [" & cnt & If(isChinese, "个视频", " videos") & "]"
+            End If
+            line &= "  #fid=" & fid
+            lstSearch.Items.Add(New System.Windows.Forms.ListViewItem(line))
+            folderIdx += 1
+        Next
+
+        If lstSearch.Items.Count = 0 Then
+            lstSearch.Items.Add(New System.Windows.Forms.ListViewItem(If(isChinese, "没有收藏夹", "No favorite folders")))
+        End If
+        lstSearch.Enabled = True
+    End Sub
+
+    ' 进入收藏夹：显示其中的视频列表。
+    Private Sub OpenFavoriteFolder(ByVal fid As String, ByVal name As String)
+        favFolderId = fid
+        favFolderName = name
+        favView = "videos"
+        favPage = 1
+        favHasMore = True
+        lstSearch.BringToFront()
+        lstSearch.Visible = True
+        txtResult.Visible = False
+        lstSearch.Items.Clear()
+        LoadFolderVideosPage(False)
+    End Sub
+
+    Private Sub LoadFolderVideosPage(ByVal loadMore As Boolean)
+        If favLoading Then
+            Return
+        End If
+        favLoading = True
+        If loadMore Then
+            Dim idx As Integer = lstSearch.Items.Count - 1
+            If idx >= 0 Then
+                lstSearch.Items.RemoveAt(idx)
+            End If
+        End If
+        lstSearch.Items.Add(New System.Windows.Forms.ListViewItem(If(isChinese, "正在加载更多...", "Loading more...")))
+        Dim t As New System.Threading.Thread(AddressOf FetchVideosWorker)
+        t.Start()
+    End Sub
+
+    Private Sub FetchVideosWorker()
+        Dim errMsg As String = ""
+        Try
+            System.Net.ServicePointManager.CertificatePolicy = New TrustAllPolicy()
+        Catch exCert As Exception
+        End Try
+        Try
+            Dim ua As String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            Dim url As String = "https://api.bilibili.com/x/space/fav/arc?vmid=" & favMid _
+                & "&ps=30&fid=" & favFolderId & "&tid=0&keyword=&pn=" & favPage.ToString() & "&order=fav_time"
+            Dim req As System.Net.HttpWebRequest = CType(System.Net.WebRequest.Create(url), System.Net.HttpWebRequest)
+            req.Method = "GET"
+            req.Timeout = 15000
+            req.Accept = "application/json"
+            req.UserAgent = ua
+            req.Referer = "https://space.bilibili.com/"
+            ApplyCookies(req)
+            Dim resp As System.Net.HttpWebResponse = CType(req.GetResponse(), System.Net.HttpWebResponse)
+            Dim reader As New System.IO.StreamReader(resp.GetResponseStream(), System.Text.Encoding.UTF8)
+            favLastBody = reader.ReadToEnd()
+            reader.Close()
+            resp.Close()
+            WriteLog("fav videos: " & Microsoft.VisualBasic.Left(favLastBody, 200))
+        Catch ex As Exception
+            errMsg = ex.GetType().FullName & " | " & ex.Message
+            WriteLog("fav videos: " & errMsg & " | " & ex.StackTrace)
+        End Try
+        favLastErr = errMsg
+        Try
+            Me.Invoke(New SimpleCallback(AddressOf ShowVideosOnUi))
+        Catch ex As Exception
+            WriteLog("fav videos invoke: " & ex.GetType().FullName & " | " & ex.Message)
+        End Try
+    End Sub
+
+    Private Sub ShowVideosOnUi()
+        favLoading = False
+        Dim idx As Integer = lstSearch.Items.Count - 1
+        If idx >= 0 Then
+            lstSearch.Items.RemoveAt(idx)
+        End If
+        If favLastErr <> "" Then
+            lstSearch.Items.Add(New System.Windows.Forms.ListViewItem(favLastErr))
+            lstSearch.Enabled = True
+            Return
+        End If
+
+        Dim body As String = favLastBody
+        Dim mCode As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(body, """code"":\s*(-?\d+)")
+        If mCode.Success AndAlso mCode.Groups(1).Value <> "0" Then
+            lstSearch.Items.Add(New System.Windows.Forms.ListViewItem(If(isChinese, "获取视频失败 (code=" & mCode.Groups(1).Value & ")", "Videos failed (code=" & mCode.Groups(1).Value & ")")))
+            lstSearch.Enabled = True
+            Return
+        End If
+
+        Dim added As Integer = 0
+        Dim seenBv As New System.Collections.ArrayList()
+        ' fav/arc 接口不返回独立 "bvid" 字段，BV 号出现在 short_link_v2 等位置。
+        ' 每个 archive 对象以 {"aid" 开头，title 在对象开头，BV 在末尾的 short_link_v2。
+        ' 用非贪婪正则按 {"aid" ... "short_link_v2":"https://b23.tv/BV..." 切出对象块。
+        For Each objM As System.Text.RegularExpressions.Match In _
+            System.Text.RegularExpressions.Regex.Matches(body, "\{""aid"":.*?""short_link_v2"":""https://b23.tv/(BV1[0-9A-Za-z]{9})")
+            Dim bv As String = objM.Groups(1).Value
+            If seenBv.Contains(bv) Then
+                Continue For
+            End If
+            seenBv.Add(bv)
+            Dim title As String = ""
+            Dim mt As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(objM.Value, """title"":\s*""((?:[^""\\]|\\.)*)""")
+            If mt.Success Then
+                title = StripHtml(UnescapeJson(mt.Groups(1).Value))
+            End If
+            If title = "" Then
+                title = If(isChinese, "无标题", "(no title)")
+            End If
+            lstSearch.Items.Add(New System.Windows.Forms.ListViewItem(title & "  #bv=" & bv))
+            added += 1
+        Next
+
+        ' 用接口的 pagecount 判断是否还有更多页（不能只看本页视频数，
+        ' 偶有视频缺 short_link_v2 导致本页 < ps=30 但后面仍有更多）。
+        Dim mPc As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(body, """pagecount"":\s*(\d+)")
+        Dim pageCount As Integer = 0
+        If mPc.Success Then
+            pageCount = CInt(mPc.Groups(1).Value)
+        End If
+        favHasMore = (pageCount > favPage)
+        If added > 0 Then
+            If favHasMore Then
+                lstSearch.Items.Add(New System.Windows.Forms.ListViewItem(If(isChinese, "加载更多视频 " & FAV_PAGE_MARKER, "Load more videos " & FAV_PAGE_MARKER)))
+            End If
+        Else
+            lstSearch.Items.Add(New System.Windows.Forms.ListViewItem(If(isChinese, "这个收藏夹还没有视频", "This folder has no videos")))
+        End If
+        lstSearch.Enabled = True
+    End Sub
+
+    ' 从 nav API 获取当前登录账号的 mid。
+    Private Function FetchMidFromNav() As String
+        Try
+            Dim ua As String = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            Dim req As System.Net.HttpWebRequest = CType(System.Net.WebRequest.Create("https://api.bilibili.com/x/web-interface/nav"), System.Net.HttpWebRequest)
+            req.Method = "GET"
+            req.Timeout = 10000
+            req.Accept = "application/json"
+            req.UserAgent = ua
+            req.Referer = "https://www.bilibili.com/"
+            ApplyCookies(req)
+            Dim resp As System.Net.HttpWebResponse = CType(req.GetResponse(), System.Net.HttpWebResponse)
+            Dim reader As New System.IO.StreamReader(resp.GetResponseStream(), System.Text.Encoding.UTF8)
+            Dim body As String = reader.ReadToEnd()
+            reader.Close()
+            resp.Close()
+            Dim mM As System.Text.RegularExpressions.Match = System.Text.RegularExpressions.Regex.Match(body, """mid"":\s*(\d+)")
+            If mM.Success Then
+                Return mM.Groups(1).Value
+            End If
+        Catch ex As Exception
+            WriteLog("fav mid: " & ex.GetType().FullName & " | " & ex.Message)
+        End Try
+        Return ""
+    End Function
+
     Private Sub ShowProfile()
         ShowResultView()
         btnMine.Enabled = False
@@ -1769,7 +2421,7 @@
                 SBLine(sb, If(isChinese, "VIP: 普通用户", "VIP: Regular"))
             End If
             SBLine(sb, "")
-            SBLine(sb, If(isChinese, "点上方菜单「设置」可查看历史记录/检查更新。", "Use the Settings menu above for History / Update check."))
+            SBLine(sb, If(isChinese, "点上方菜单「设置」可查看播放历史/检查更新。", "Use the Settings menu above for History / Update check."))
             txtResult.Text = sb.ToString()
             WriteLog("mine OK: uname=" & uname & " mid=" & mid)
         Catch ex As Exception

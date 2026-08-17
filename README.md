@@ -1,7 +1,7 @@
 ﻿# BiliClassic for Windows Mobile
 ## 这是一个非常早期的测试版！
 
-一个面向 Windows Mobile 6.5 设备的 Bilibili 客户端，让被遗忘在抽屉里的 Windows Mobile 设备重新获得观看 Bilibili 视频的能力。
+一个面向 Windows Mobile 6.x 设备的 Bilibili 客户端，让被遗忘在抽屉里的 Windows Mobile 设备重新获得观看 Bilibili 视频的能力。
 
 
 ---
@@ -22,15 +22,16 @@
 
 ## 当前版本
 
-**0.1.1 (尝鲜版)** —— 功能不完善版本，仅供尝鲜体验
+**0.3.0.0 (Landstalker)** —— 功能不完善版本，仅供尝鲜体验
 
 ---
 
-## 已实现功能 (0.1.1)
+## 已实现功能
 
-- 暂时仅支持 HTC HD2 等QSD8250设备播放
+- TCPMP外部播放器转码播放
 - 基于 .NET Compact Framework 开发
-- 观看视频
+- 我的收藏
+- 播放历史
 - 搜索视频
 - 检查更新
 - 扫码登录
@@ -39,16 +40,18 @@
 
 ## 计划中功能
 
-- 历史记录
+- WMP支持
+- 更正常的界面
 
 ---
 
 ## 技术路线
 
-- 基于 .NET Compact Framework 3.5 / VB.NET 开发
+- 基于 .NET Compact Framework 2.0 / VB.NET 开发
 - 使用 Visual Studio 2008 智能设备项目构建
 - 通过 Bilibili WBI 签名接口获取视频地址，播放 H.264 视频
-- 生成 CAB 安装包部署到 Windows Mobile 设备
+- 还有自定义接口获取视频地址转码，可播放 Baseline, MPEG-4 视频
+- CAB 安装包，可部署到 Windows Mobile 设备
 
 ---
 
@@ -80,7 +83,7 @@
 ## 致谢
 
 - github —— 让我可以传上来。
-- Visual Studio 2008 —— 去死吧，Gradle 和 IDE！
+- Visual Studio 2008 —— 去死吧，Gradle！
 - 所有还在折腾 Windows Mobile 的玩家们……
 ---
 

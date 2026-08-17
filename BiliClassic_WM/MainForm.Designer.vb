@@ -17,7 +17,12 @@ Private components As System.ComponentModel.IContainer
     Private WithEvents mnuSettings As System.Windows.Forms.MenuItem
     Private WithEvents mnuStream As System.Windows.Forms.MenuItem
     Private WithEvents mnuOffline As System.Windows.Forms.MenuItem
+    Private WithEvents mnuConvert As System.Windows.Forms.MenuItem
+    Private WithEvents mnuConvertFormat As System.Windows.Forms.MenuItem
+    Private WithEvents mnuConvertH264 As System.Windows.Forms.MenuItem
+    Private WithEvents mnuConvertMpeg4 As System.Windows.Forms.MenuItem
     Private WithEvents mnuHistory As System.Windows.Forms.MenuItem
+    Private WithEvents mnuFavs As System.Windows.Forms.MenuItem
     Private WithEvents mnuCheckUpdate As System.Windows.Forms.MenuItem
     Private WithEvents mnuWebsite As System.Windows.Forms.MenuItem
     Private WithEvents mnuMine As System.Windows.Forms.MenuItem
@@ -26,7 +31,7 @@ Private components As System.ComponentModel.IContainer
     Private WithEvents mnuExit As System.Windows.Forms.MenuItem
     Private WithEvents Panel1 As System.Windows.Forms.Panel
     Private WithEvents btnTestNet As System.Windows.Forms.Button
-    Private WithEvents btnPlayAv706 As System.Windows.Forms.Button
+    Private WithEvents btnPlay As System.Windows.Forms.Button
 Private WithEvents btnPlayStream As System.Windows.Forms.Button
     Private WithEvents btnPlayOffline As System.Windows.Forms.Button
 Private WithEvents btnLogin As System.Windows.Forms.Button
@@ -46,7 +51,12 @@ Private Sub InitializeComponent()
         Me.mnuSettings = New System.Windows.Forms.MenuItem
         Me.mnuStream = New System.Windows.Forms.MenuItem
         Me.mnuOffline = New System.Windows.Forms.MenuItem
+        Me.mnuConvert = New System.Windows.Forms.MenuItem
+        Me.mnuConvertFormat = New System.Windows.Forms.MenuItem
+        Me.mnuConvertH264 = New System.Windows.Forms.MenuItem
+        Me.mnuConvertMpeg4 = New System.Windows.Forms.MenuItem
         Me.mnuHistory = New System.Windows.Forms.MenuItem
+        Me.mnuFavs = New System.Windows.Forms.MenuItem
         Me.mnuCheckUpdate = New System.Windows.Forms.MenuItem
         Me.mnuWebsite = New System.Windows.Forms.MenuItem
         Me.mnuMine = New System.Windows.Forms.MenuItem
@@ -57,7 +67,7 @@ Private Sub InitializeComponent()
         Me.btnSearch = New System.Windows.Forms.Button
         Me.txtSearch = New System.Windows.Forms.TextBox
         Me.btnTestNet = New System.Windows.Forms.Button
-        Me.btnPlayAv706 = New System.Windows.Forms.Button
+        Me.btnPlay = New System.Windows.Forms.Button
         Me.btnPlayStream = New System.Windows.Forms.Button
         Me.btnPlayOffline = New System.Windows.Forms.Button
         Me.btnLogin = New System.Windows.Forms.Button
@@ -79,6 +89,8 @@ Private Sub InitializeComponent()
         Me.mnuSettings.Text = "设置"
         Me.mnuSettings.MenuItems.Add(Me.mnuStream)
         Me.mnuSettings.MenuItems.Add(Me.mnuOffline)
+        Me.mnuSettings.MenuItems.Add(Me.mnuConvert)
+        Me.mnuSettings.MenuItems.Add(Me.mnuConvertFormat)
         Me.mnuSettings.MenuItems.Add(Me.mnuCheckUpdate)
         Me.mnuSettings.MenuItems.Add(Me.mnuWebsite)
         '
@@ -90,9 +102,27 @@ Private Sub InitializeComponent()
         '
         Me.mnuOffline.Text = "离线播放"
         '
+        'mnuConvert
+        '
+        Me.mnuConvert.Text = "转码播放"
+        '
+        'mnuConvertFormat
+        '
+        Me.mnuConvertFormat.Text = "转码格式"
+        Me.mnuConvertFormat.MenuItems.Add(Me.mnuConvertH264)
+        Me.mnuConvertFormat.MenuItems.Add(Me.mnuConvertMpeg4)
+        '
+        'mnuConvertH264
+        '
+        Me.mnuConvertH264.Text = "H.264 Baseline"
+        '
+        'mnuConvertMpeg4
+        '
+        Me.mnuConvertMpeg4.Text = "MPEG-4"
+        '
         'mnuHistory
         '
-        Me.mnuHistory.Text = "历史记录"
+        Me.mnuHistory.Text = "播放历史"
         '
         'mnuCheckUpdate
         '
@@ -107,6 +137,7 @@ Private Sub InitializeComponent()
         Me.mnuMine.Text = "我的"
         Me.mnuMine.MenuItems.Add(Me.mnuProfile)
         Me.mnuMine.MenuItems.Add(Me.mnuLogin)
+        Me.mnuMine.MenuItems.Add(Me.mnuFavs)
         Me.mnuMine.MenuItems.Add(Me.mnuHistory)
         '
         'mnuProfile
@@ -116,6 +147,10 @@ Private Sub InitializeComponent()
         'mnuLogin
         '
         Me.mnuLogin.Text = "扫码登录"
+        '
+        'mnuFavs
+        '
+        Me.mnuFavs.Text = "我的收藏"
         '
         'mnuExit
         '
@@ -154,13 +189,13 @@ Private Sub InitializeComponent()
         Me.btnTestNet.TabIndex = 8
         Me.btnTestNet.Text = "测试网络连接B站"
         '
-        'btnPlayAv706
+        'btnPlay
         '
-        Me.btnPlayAv706.Location = New System.Drawing.Point(10, 90)
-        Me.btnPlayAv706.Name = "btnPlayAv706"
-        Me.btnPlayAv706.Size = New System.Drawing.Size(200, 40)
-        Me.btnPlayAv706.TabIndex = 7
-        Me.btnPlayAv706.Text = "播放 av706"
+        Me.btnPlay.Location = New System.Drawing.Point(10, 90)
+        Me.btnPlay.Name = "btnPlay"
+        Me.btnPlay.Size = New System.Drawing.Size(200, 40)
+        Me.btnPlay.TabIndex = 7
+        Me.btnPlay.Text = "播放视频"
         '
         'btnPlayStream
         '
@@ -236,7 +271,7 @@ Private Sub InitializeComponent()
         Me.Controls.Add(Me.btnMine)
         Me.Controls.Add(Me.btnPlayOffline)
         Me.Controls.Add(Me.btnPlayStream)
-        Me.Controls.Add(Me.btnPlayAv706)
+        Me.Controls.Add(Me.btnPlay)
         Me.Controls.Add(Me.btnTestNet)
         Me.Controls.Add(Me.Panel1)
         Me.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None

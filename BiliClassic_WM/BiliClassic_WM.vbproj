@@ -76,6 +76,11 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="WbiSigner.vb" />
+    <Compile Include="ConvertPlayUtil.vb" />
+    <Compile Include="HmacUtil.vb" />
+    <Compile Include="LoadingOverlay.vb">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="LocalStreamProxy.vb" />
     <Compile Include="QrCode.vb" />
     <Compile Include="SipHelper.vb" />
@@ -93,6 +98,11 @@
   <ItemGroup>
     <EmbeddedResource Include="icon.ico" />
     <EmbeddedResource Include="icon.png" />
+    <EmbeddedResource Include="tv_chan_1.png" />
+    <EmbeddedResource Include="tv_chan_3.png" />
+    <EmbeddedResource Include="tv_chan_5.png" />
+    <EmbeddedResource Include="tv_chan_7.png" />
+    <EmbeddedResource Include="tv_chan_9.png" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="MainForm.resx">
