@@ -55,6 +55,24 @@ Public Class ProfileControl
     ' 退出登录按钮矩形（命中测试）。
     Private mLogoutRect As System.Drawing.Rectangle = New System.Drawing.Rectangle(0, 0, 0, 0)
 
+    ' 布局缩放因子（MainForm 传入，适配 QVGA 等小屏）。
+    Private mLayoutScale As Single = 1.0F
+    Public Property LayoutScale() As Single
+        Get
+            Return mLayoutScale
+        End Get
+        Set(ByVal value As Single)
+            mLayoutScale = value
+            If mLayoutScale < 0.5F Then
+                mLayoutScale = 0.5F
+            End If
+            If mLayoutScale > 1.5F Then
+                mLayoutScale = 1.5F
+            End If
+            Invalidate()
+        End Set
+    End Property
+
     ' 双缓冲。
     Private mBackBuf As System.Drawing.Bitmap = Nothing
     Private mBackG As System.Drawing.Graphics = Nothing
@@ -421,12 +439,12 @@ Public Class ProfileControl
     ' 已登录视图：头像左 + 文字右 + 底部退出按钮。
     Private Sub DrawLoggedIn(ByVal g As System.Drawing.Graphics, ByVal w As Integer, ByVal h As Integer)
         Dim margin As Integer = 12
-        Dim avatarSize As Integer = 72
+        Dim avatarSize As Integer = CInt(72 * mLayoutScale)
         If avatarSize > w \ 4 Then
             avatarSize = w \ 4
         End If
-        If avatarSize < 48 Then
-            avatarSize = 48
+        If avatarSize < 40 Then
+            avatarSize = 40
         End If
 
         ' 头像（方形，底部浅灰底，有图则画图）。
@@ -451,10 +469,13 @@ Public Class ProfileControl
             textW = 60
         End If
         Dim y As Integer = 16
-        ' WM 字体行高较大，信息行间距需更大。
-        Dim lineStep As Integer = 22
+        ' WM 字体行高较大，信息行间距需更大；按布局缩放因子适配小屏。
+        Dim lineStep As Integer = CInt(22 * mLayoutScale)
         If Not IsDesktopRuntime() Then
-            lineStep = 38
+            lineStep = CInt(38 * mLayoutScale)
+        End If
+        If lineStep < 16 Then
+            lineStep = 16
         End If
 
         ' 名字 + 大会员标记（支持换行：名字过长自动换行，标记紧跟其后）。
@@ -513,13 +534,16 @@ Public Class ProfileControl
 
         ' 底部退出登录按钮。
         Dim btnW As Integer = CInt(w * 0.5)
-        If btnW > 220 Then
-            btnW = 220
+        If btnW > CInt(220 * mLayoutScale) Then
+            btnW = CInt(220 * mLayoutScale)
         End If
-        If btnW < 120 Then
-            btnW = 120
+        If btnW < 100 Then
+            btnW = 100
         End If
-        Dim btnH As Integer = 38
+        Dim btnH As Integer = CInt(38 * mLayoutScale)
+        If btnH < 28 Then
+            btnH = 28
+        End If
         Dim btnX As Integer = (w - btnW) \ 2
         Dim btnY As Integer = h - btnH - 14
         mLogoutRect = New System.Drawing.Rectangle(btnX, btnY, btnW, btnH)

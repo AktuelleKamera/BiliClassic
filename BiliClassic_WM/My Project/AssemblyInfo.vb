@@ -33,7 +33,7 @@ Imports System.Runtime.InteropServices
 ' 方法是按如下所示使用“*”:
 ' <Assembly: AssemblyVersion("1.0.*")>
 
-<Assembly: AssemblyVersion("0.4.0.0")>
+<Assembly: AssemblyVersion("0.4.1.0")>
 
 '以下属性将取消显示 FxCop 警告“CA2232 : Microsoft.Usage : 向程序集添加 STAThreadAttribute 属性”
 ' 因为设备应用程序不支持 STA 线程。
