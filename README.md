@@ -1,5 +1,4 @@
 ﻿# BiliClassic for Windows Mobile
-## 这是一个非常早期的测试版！
 
 一个面向 Windows Mobile 6.x 设备的 Bilibili 客户端，让被遗忘在抽屉里的 Windows Mobile 设备重新获得观看 Bilibili 视频的能力。
 
@@ -22,18 +21,18 @@
 
 ## 当前版本
 
-**0.3.0.0 (Landstalker)** —— 功能不完善版本，仅供尝鲜体验
+**0.4.0 (Idaho)** —— 功能不完善版本，仅供尝鲜体验
 
 ---
 
 ## 已实现功能
 
-- TCPMP外部播放器转码播放
-- 基于 .NET Compact Framework 开发
+- 转码播放
 - 我的收藏
 - 播放历史
 - 搜索视频
 - 检查更新
+- 视频详情
 - 扫码登录
 
 ---
@@ -41,7 +40,7 @@
 ## 计划中功能
 
 - WMP支持
-- 更正常的界面
+- 内置播放器
 
 ---
 
@@ -59,9 +58,9 @@
 
 本项目的推荐设备是 HTC HD2。
 
-### 配置
-- 系统: Windows Mobile 6.5+
-- 处理器: QSD8250 ARMv7单核
+### 推荐配置
+- 系统: Windows Mobile 6.0+
+- 处理器: ARM-v7A处理器
 - 物理内存: 256MB以上
 
 ---

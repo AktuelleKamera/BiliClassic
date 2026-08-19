@@ -9,6 +9,8 @@ obj/
 *.resources
 *.obj
 *.FileListAbsolute.txt
+*.lastbuildstate
+*.AssemblyInfo.cache
 
 # ===== Installer / tooling =====
 *.cab
@@ -20,13 +22,31 @@ NetCFSetupv35.msi
 *.user
 .vs/
 *.sln.docstates
+*.vssscc
+*.vsscc
+*.ncb
+*.userprefs
 
-# ===== Runtime / log / data (generated on device) =====
+# ===== Runtime / log / data (generated on device or desktop) =====
 *.txt
 cookie.txt
 playmode.txt
+player.txt
+playerlog.txt
+biliclassic.txt
+search_history.txt
 *.log
 
-# ===== Misc =====
+# ===== Backup / temp =====
+*.bak
+*.orig
+*.rej
+*.tmp
+*.temp
+*~
+
+# ===== Test / misc =====
+TestResults/
+*.trx
 .DS_Store
 Thumbs.db

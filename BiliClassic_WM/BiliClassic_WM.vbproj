@@ -78,12 +78,63 @@
     <Compile Include="WbiSigner.vb" />
     <Compile Include="ConvertPlayUtil.vb" />
     <Compile Include="HmacUtil.vb" />
+    <Compile Include="NetWorkUtil.vb" />
     <Compile Include="LoadingOverlay.vb">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="LocalStreamProxy.vb" />
     <Compile Include="QrCode.vb" />
+    <Compile Include="RecListControl.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="VideoDetailControl.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ProfileControl.vb">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="SipHelper.vb" />
+    <Compile Include="player\PInvokes.vb" />
+    <Compile Include="player\DirectShowGuids.vb" />
+    <Compile Include="player\DirectShowEnums.vb" />
+    <Compile Include="player\DirectShowStructs.vb" />
+    <Compile Include="player\DirectShowUtils.vb" />
+    <Compile Include="player\DirectShowHelper.vb" />
+    <Compile Include="player\DirectShowImports.vb" />
+    <Compile Include="player\PlayerModel.vb" />
+    <Compile Include="player\WndProc.vb" />
+    <Compile Include="player\ProgressEventArgs.vb" />
+    <Compile Include="player\PlayerControl.vb">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="player\PlayerForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="player\HomePanelControl.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="alpha\PlatformAPI\AlphaBlend.vb" />
+    <Compile Include="alpha\PlatformAPI\IImagingFactory.vb" />
+    <Compile Include="alpha\AlphaControl.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="alpha\AlphaContainer.vb" />
+    <Compile Include="alpha\AlphaImage.vb" />
+    <Compile Include="alpha\AlphaImageButton.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="alpha\AlphaLabel.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="alpha\AlphaPanel.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="alpha\AlphaPictureBox.vb">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="alpha\AlphaForm.vb">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="MainForm.Designer.vb">
       <DependentUpon>MainForm.vb</DependentUpon>
       <SubType>Form</SubType>
@@ -98,11 +149,18 @@
   <ItemGroup>
     <EmbeddedResource Include="icon.ico" />
     <EmbeddedResource Include="icon.png" />
-    <EmbeddedResource Include="tv_chan_1.png" />
-    <EmbeddedResource Include="tv_chan_3.png" />
-    <EmbeddedResource Include="tv_chan_5.png" />
-    <EmbeddedResource Include="tv_chan_7.png" />
-    <EmbeddedResource Include="tv_chan_9.png" />
+    <EmbeddedResource Include="res\bili_anim_tv_chan_1.png" />
+    <EmbeddedResource Include="res\bili_anim_tv_chan_3.png" />
+    <EmbeddedResource Include="res\bili_anim_tv_chan_5.png" />
+    <EmbeddedResource Include="res\bili_anim_tv_chan_7.png" />
+    <EmbeddedResource Include="res\bili_anim_tv_chan_9.png" />
+    <EmbeddedResource Include="res\defaultbg.png" />
+    <EmbeddedResource Include="res\ic_views.png" />
+    <EmbeddedResource Include="res\ic_danmakus.png" />
+    <EmbeddedResource Include="res\bilibili_tv.png" />
+    <EmbeddedResource Include="res\bili_default_avatar.png" />
+    <EmbeddedResource Include="res\ic_back.png" />
+    <EmbeddedResource Include="res\ic_search.png" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="MainForm.resx">

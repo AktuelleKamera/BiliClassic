@@ -15,12 +15,20 @@ Partial Public Class MainForm
 Private components As System.ComponentModel.IContainer
     Private WithEvents mainMenu1 As System.Windows.Forms.MainMenu
     Private WithEvents mnuSettings As System.Windows.Forms.MenuItem
+    Private WithEvents mnuPlayMode As System.Windows.Forms.MenuItem
     Private WithEvents mnuStream As System.Windows.Forms.MenuItem
     Private WithEvents mnuOffline As System.Windows.Forms.MenuItem
     Private WithEvents mnuConvert As System.Windows.Forms.MenuItem
     Private WithEvents mnuConvertFormat As System.Windows.Forms.MenuItem
     Private WithEvents mnuConvertH264 As System.Windows.Forms.MenuItem
     Private WithEvents mnuConvertMpeg4 As System.Windows.Forms.MenuItem
+    Private WithEvents mnuImageThreads As System.Windows.Forms.MenuItem
+    Private WithEvents mnuImageThreadsSingle As System.Windows.Forms.MenuItem
+    Private WithEvents mnuImageThreadsDual As System.Windows.Forms.MenuItem
+    Private WithEvents mnuPlayer As System.Windows.Forms.MenuItem
+    Private WithEvents mnuPlayerTcpmp As System.Windows.Forms.MenuItem
+    Private WithEvents mnuPlayerCorePlayer As System.Windows.Forms.MenuItem
+    Private WithEvents mnuPlayerOstwind As System.Windows.Forms.MenuItem
     Private WithEvents mnuHistory As System.Windows.Forms.MenuItem
     Private WithEvents mnuFavs As System.Windows.Forms.MenuItem
     Private WithEvents mnuCheckUpdate As System.Windows.Forms.MenuItem
@@ -30,17 +38,15 @@ Private components As System.ComponentModel.IContainer
     Private WithEvents mnuLogin As System.Windows.Forms.MenuItem
     Private WithEvents mnuExit As System.Windows.Forms.MenuItem
     Private WithEvents Panel1 As System.Windows.Forms.Panel
-    Private WithEvents btnTestNet As System.Windows.Forms.Button
-    Private WithEvents btnPlay As System.Windows.Forms.Button
 Private WithEvents btnPlayStream As System.Windows.Forms.Button
     Private WithEvents btnPlayOffline As System.Windows.Forms.Button
-Private WithEvents btnLogin As System.Windows.Forms.Button
-    Private WithEvents btnMine As System.Windows.Forms.Button
     Private WithEvents txtSearch As System.Windows.Forms.TextBox
-    Private WithEvents btnSearch As System.Windows.Forms.Button
-    Private WithEvents picQr As System.Windows.Forms.PictureBox
+    Private WithEvents btnSearch As System.Windows.Forms.PictureBox
+    Private WithEvents btnBack As System.Windows.Forms.PictureBox
     Private WithEvents txtResult As System.Windows.Forms.TextBox
     Private WithEvents lstSearch As System.Windows.Forms.ListView
+    Private WithEvents recPanel As System.Windows.Forms.Panel
+    Private WithEvents detailPanel As System.Windows.Forms.Panel
 
     '注意: 以下过程是 Windows 窗体设计器所必需的
     '可以使用 Windows 窗体设计器修改它。
@@ -49,12 +55,20 @@ Private WithEvents btnLogin As System.Windows.Forms.Button
 Private Sub InitializeComponent()
         Me.mainMenu1 = New System.Windows.Forms.MainMenu
         Me.mnuSettings = New System.Windows.Forms.MenuItem
+        Me.mnuPlayMode = New System.Windows.Forms.MenuItem
         Me.mnuStream = New System.Windows.Forms.MenuItem
         Me.mnuOffline = New System.Windows.Forms.MenuItem
         Me.mnuConvert = New System.Windows.Forms.MenuItem
         Me.mnuConvertFormat = New System.Windows.Forms.MenuItem
         Me.mnuConvertH264 = New System.Windows.Forms.MenuItem
         Me.mnuConvertMpeg4 = New System.Windows.Forms.MenuItem
+        Me.mnuImageThreads = New System.Windows.Forms.MenuItem
+        Me.mnuImageThreadsSingle = New System.Windows.Forms.MenuItem
+        Me.mnuImageThreadsDual = New System.Windows.Forms.MenuItem
+        Me.mnuPlayer = New System.Windows.Forms.MenuItem
+        Me.mnuPlayerTcpmp = New System.Windows.Forms.MenuItem
+        Me.mnuPlayerCorePlayer = New System.Windows.Forms.MenuItem
+        Me.mnuPlayerOstwind = New System.Windows.Forms.MenuItem
         Me.mnuHistory = New System.Windows.Forms.MenuItem
         Me.mnuFavs = New System.Windows.Forms.MenuItem
         Me.mnuCheckUpdate = New System.Windows.Forms.MenuItem
@@ -64,17 +78,14 @@ Private Sub InitializeComponent()
         Me.mnuLogin = New System.Windows.Forms.MenuItem
         Me.mnuExit = New System.Windows.Forms.MenuItem
         Me.Panel1 = New System.Windows.Forms.Panel
-        Me.btnSearch = New System.Windows.Forms.Button
+        Me.btnSearch = New System.Windows.Forms.PictureBox
         Me.txtSearch = New System.Windows.Forms.TextBox
-        Me.btnTestNet = New System.Windows.Forms.Button
-        Me.btnPlay = New System.Windows.Forms.Button
         Me.btnPlayStream = New System.Windows.Forms.Button
         Me.btnPlayOffline = New System.Windows.Forms.Button
-        Me.btnLogin = New System.Windows.Forms.Button
-        Me.btnMine = New System.Windows.Forms.Button
-        Me.picQr = New System.Windows.Forms.PictureBox
         Me.txtResult = New System.Windows.Forms.TextBox
         Me.lstSearch = New System.Windows.Forms.ListView
+        Me.recPanel = New System.Windows.Forms.Panel
+        Me.detailPanel = New System.Windows.Forms.Panel
         Me.Panel1.SuspendLayout()
         Me.SuspendLayout()
         '
@@ -87,12 +98,19 @@ Private Sub InitializeComponent()
         'mnuSettings
         '
         Me.mnuSettings.Text = "设置"
-        Me.mnuSettings.MenuItems.Add(Me.mnuStream)
-        Me.mnuSettings.MenuItems.Add(Me.mnuOffline)
+        Me.mnuSettings.MenuItems.Add(Me.mnuPlayMode)
         Me.mnuSettings.MenuItems.Add(Me.mnuConvert)
         Me.mnuSettings.MenuItems.Add(Me.mnuConvertFormat)
+        Me.mnuSettings.MenuItems.Add(Me.mnuImageThreads)
+        Me.mnuSettings.MenuItems.Add(Me.mnuPlayer)
         Me.mnuSettings.MenuItems.Add(Me.mnuCheckUpdate)
         Me.mnuSettings.MenuItems.Add(Me.mnuWebsite)
+        '
+        'mnuPlayMode
+        '
+        Me.mnuPlayMode.Text = "播放方式"
+        Me.mnuPlayMode.MenuItems.Add(Me.mnuStream)
+        Me.mnuPlayMode.MenuItems.Add(Me.mnuOffline)
         '
         'mnuStream
         '
@@ -111,6 +129,39 @@ Private Sub InitializeComponent()
         Me.mnuConvertFormat.Text = "转码格式"
         Me.mnuConvertFormat.MenuItems.Add(Me.mnuConvertH264)
         Me.mnuConvertFormat.MenuItems.Add(Me.mnuConvertMpeg4)
+        '
+        'mnuImageThreads
+        '
+        Me.mnuImageThreads.Text = "图片加载线程"
+        Me.mnuImageThreads.MenuItems.Add(Me.mnuImageThreadsSingle)
+        Me.mnuImageThreads.MenuItems.Add(Me.mnuImageThreadsDual)
+        '
+        'mnuImageThreadsSingle
+        '
+        Me.mnuImageThreadsSingle.Text = "单线程"
+        '
+        'mnuImageThreadsDual
+        '
+        Me.mnuImageThreadsDual.Text = "双线程"
+        '
+        'mnuPlayer
+        '
+        Me.mnuPlayer.Text = "播放器"
+        Me.mnuPlayer.MenuItems.Add(Me.mnuPlayerTcpmp)
+        Me.mnuPlayer.MenuItems.Add(Me.mnuPlayerCorePlayer)
+        Me.mnuPlayer.MenuItems.Add(Me.mnuPlayerOstwind)
+        '
+        'mnuPlayerTcpmp
+        '
+        Me.mnuPlayerTcpmp.Text = "TCPMP"
+        '
+        'mnuPlayerCorePlayer
+        '
+        Me.mnuPlayerCorePlayer.Text = "CorePlayer"
+        '
+        'mnuPlayerOstwind
+        '
+        Me.mnuPlayerOstwind.Text = "OstwindPlayer（内置）"
         '
         'mnuConvertH264
         '
@@ -158,21 +209,20 @@ Private Sub InitializeComponent()
         '
         'Panel1
         '
-        Me.Panel1.BackColor = System.Drawing.Color.FromArgb(CType(CType(216, Byte), Integer), CType(CType(109, Byte), Integer), CType(CType(165, Byte), Integer))
+        Me.Panel1.BackColor = System.Drawing.Color.White
         Me.Panel1.Controls.Add(Me.btnSearch)
         Me.Panel1.Controls.Add(Me.txtSearch)
         Me.Panel1.Dock = System.Windows.Forms.DockStyle.Top
         Me.Panel1.Location = New System.Drawing.Point(0, 0)
         Me.Panel1.Name = "Panel1"
         Me.Panel1.Size = New System.Drawing.Size(240, 38)
+        Me.Panel1.Visible = False
         '
         'btnSearch
         '
         Me.btnSearch.Location = New System.Drawing.Point(194, 4)
         Me.btnSearch.Name = "btnSearch"
-        Me.btnSearch.Size = New System.Drawing.Size(62, 30)
-        Me.btnSearch.TabIndex = 0
-        Me.btnSearch.Text = "搜索"
+        Me.btnSearch.Size = New System.Drawing.Size(32, 32)
         '
         'txtSearch
         '
@@ -180,22 +230,6 @@ Private Sub InitializeComponent()
         Me.txtSearch.Name = "txtSearch"
         Me.txtSearch.Size = New System.Drawing.Size(120, 21)
         Me.txtSearch.TabIndex = 1
-        '
-        'btnTestNet
-        '
-        Me.btnTestNet.Location = New System.Drawing.Point(10, 50)
-        Me.btnTestNet.Name = "btnTestNet"
-        Me.btnTestNet.Size = New System.Drawing.Size(200, 40)
-        Me.btnTestNet.TabIndex = 8
-        Me.btnTestNet.Text = "测试网络连接B站"
-        '
-        'btnPlay
-        '
-        Me.btnPlay.Location = New System.Drawing.Point(10, 90)
-        Me.btnPlay.Name = "btnPlay"
-        Me.btnPlay.Size = New System.Drawing.Size(200, 40)
-        Me.btnPlay.TabIndex = 7
-        Me.btnPlay.Text = "播放视频"
         '
         'btnPlayStream
         '
@@ -215,31 +249,6 @@ Private Sub InitializeComponent()
         Me.btnPlayOffline.Text = "离线播放"
         Me.btnPlayOffline.Visible = False
         '
-        'btnLogin
-        '
-        Me.btnLogin.Location = New System.Drawing.Point(10, 250)
-        Me.btnLogin.Name = "btnLogin"
-        Me.btnLogin.Size = New System.Drawing.Size(200, 40)
-        Me.btnLogin.TabIndex = 3
-        Me.btnLogin.Text = "扫码登录"
-        Me.btnLogin.Visible = False
-        '
-        'btnMine
-        '
-        Me.btnMine.Location = New System.Drawing.Point(10, 250)
-        Me.btnMine.Name = "btnMine"
-        Me.btnMine.Size = New System.Drawing.Size(200, 40)
-        Me.btnMine.TabIndex = 2
-        Me.btnMine.Text = "我的"
-        Me.btnMine.Visible = False
-        '
-        'picQr
-        '
-        Me.picQr.Location = New System.Drawing.Point(10, 285)
-        Me.picQr.Name = "picQr"
-        Me.picQr.Size = New System.Drawing.Size(200, 200)
-        Me.picQr.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage
-        '
         'txtResult
         '
         Me.txtResult.Location = New System.Drawing.Point(10, 465)
@@ -248,6 +257,7 @@ Private Sub InitializeComponent()
         Me.txtResult.ScrollBars = System.Windows.Forms.ScrollBars.Vertical
         Me.txtResult.Size = New System.Drawing.Size(460, 240)
         Me.txtResult.TabIndex = 0
+        Me.txtResult.Visible = False
         '
         'lstSearch
         '
@@ -260,19 +270,32 @@ Private Sub InitializeComponent()
         Me.lstSearch.View = System.Windows.Forms.View.List
         Me.lstSearch.Visible = False
         '
+        'recPanel
+        '
+        Me.recPanel.AutoScroll = True
+        Me.recPanel.Location = New System.Drawing.Point(4, 44)
+        Me.recPanel.Name = "recPanel"
+        Me.recPanel.Size = New System.Drawing.Size(460, 240)
+        Me.recPanel.Visible = False
+        '
+        'detailPanel
+        '
+        Me.detailPanel.AutoScroll = True
+        Me.detailPanel.Location = New System.Drawing.Point(4, 44)
+        Me.detailPanel.Name = "detailPanel"
+        Me.detailPanel.Size = New System.Drawing.Size(460, 240)
+        Me.detailPanel.Visible = False
+        '
         'MainForm
         '
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None
         Me.ClientSize = New System.Drawing.Size(240, 320)
         Me.Controls.Add(Me.txtResult)
         Me.Controls.Add(Me.lstSearch)
-        Me.Controls.Add(Me.picQr)
-        Me.Controls.Add(Me.btnLogin)
-        Me.Controls.Add(Me.btnMine)
+        Me.Controls.Add(Me.recPanel)
+        Me.Controls.Add(Me.detailPanel)
         Me.Controls.Add(Me.btnPlayOffline)
         Me.Controls.Add(Me.btnPlayStream)
-        Me.Controls.Add(Me.btnPlay)
-        Me.Controls.Add(Me.btnTestNet)
         Me.Controls.Add(Me.Panel1)
         Me.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None
         Me.Menu = Me.mainMenu1
