@@ -209,6 +209,17 @@ Public Class RecListControl
         End Try
     End Sub
 
+    ' 设置封面缩略图尺寸（小屏 QVGA 时缩小，行高须与封面高匹配）。
+    Public Sub SetCoverSize(ByVal coverW As Integer, ByVal coverH As Integer)
+        If coverW > 0 Then
+            mCoverW = coverW
+        End If
+        If coverH > 0 Then
+            mCoverH = coverH
+        End If
+        Invalidate()
+    End Sub
+
     ' 配置数据源与行高。
     Public Sub SetData(ByVal items As System.Collections.ArrayList, ByVal rowH As Integer, ByVal lineH As Integer, ByVal subH As Integer, ByVal isChinese As Boolean)
         mItems = items

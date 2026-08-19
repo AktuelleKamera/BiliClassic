@@ -99,15 +99,24 @@
 
     ' DPI 缩放因子：以桌面 96 DPI 为基准（1.0），高分辨率设备（如 HD2 WVGA）>1。
     Private dpiScale As Single = 1.0F
-    ' 标题栏高度：WM 实机字体/触控偏大，单独加大到 54；桌面保持 44。
+    ' 布局缩放因子：以 WVGA 高度 480 为基准（1.0），QVGA(240) 等小屏等比缩小固定间距/行高/封面。
+    Private layoutScale As Single = 1.0F
+    ' 内容缩放因子：标题栏可随屏幕放大（layoutScale），但内容（主页/列表/封面）封顶 1.0，
+    ' 避免大屏上间距/行高过大。
+    Private contentScale As Single = 1.0F
+    ' 标题栏高度：WM 实机字体/触控偏大，单独加大到 54；桌面保持 44。按布局缩放因子适配小屏。
     Private ReadOnly Property TITLE_BAR_H() As Integer
         Get
             Try
-                If System.Environment.OSVersion.Platform = System.PlatformID.Win32NT Then
-                    Return 44
-                Else
-                    Return 54
+                Dim base As Integer = 44
+                If System.Environment.OSVersion.Platform <> System.PlatformID.Win32NT Then
+                    base = 54
                 End If
+                Dim v As Integer = CInt(base * layoutScale)
+                If v < 30 Then
+                    v = 30
+                End If
+                Return v
             Catch ex As Exception
                 Return 44
             End Try
@@ -358,6 +367,32 @@
                 Me.Size = Screen.PrimaryScreen.Bounds.Size
                 Me.Location = Screen.PrimaryScreen.Bounds.Location
             End If
+            ' 布局缩放：以窗口高度 480（WVGA）为基准。
+            ' 桌面窗体固定 800x480 → 恒为 1.0（不受窗口最大化/DPI 影响，保持原观感）。
+            ' 设备窗体铺满屏幕 → 标题栏可放大到 1.5，内容封顶 1.0。
+            Try
+                If isDesktop Then
+                    layoutScale = 1.0F
+                Else
+                    Dim fh As Integer = Me.Size.Height
+                    If fh <= 0 Then
+                        fh = 480
+                    End If
+                    layoutScale = CSng(fh) / 480.0F
+                    If layoutScale < 0.5F Then
+                        layoutScale = 0.5F
+                    End If
+                    If layoutScale > 1.5F Then
+                        layoutScale = 1.5F
+                    End If
+                End If
+            Catch exLs As Exception
+                layoutScale = 1.0F
+            End Try
+            contentScale = layoutScale
+            If contentScale > 1.0F Then
+                contentScale = 1.0F
+            End If
             Panel1.Dock = System.Windows.Forms.DockStyle.Top
             Panel1.BringToFront()
 
@@ -436,6 +471,8 @@
             recListControl.OnRowTap = AddressOf RecRowTap
             recListControl.OnMoreTap = AddressOf RecMoreTap
             recListControl.OnScrollChanged = AddressOf RecListScrollChanged
+            ' 封面缩略图按布局缩放因子适配小屏（QVGA 缩小）。
+            recListControl.SetCoverSize(CInt(168 * contentScale), CInt(94 * contentScale))
             recPanel.AutoScroll = False
             recPanel.Controls.Add(recListControl)
 
@@ -448,6 +485,7 @@
             profilePanel.BackColor = System.Drawing.Color.White
             profileControl = New ProfileControl()
             profileControl.Dock = System.Windows.Forms.DockStyle.Fill
+            profileControl.LayoutScale = contentScale
             AddHandler profileControl.LogoutClick, AddressOf ProfileLogout_Click
             profilePanel.Controls.Add(profileControl)
             Me.Controls.Add(profilePanel)
@@ -660,9 +698,18 @@
         btnBack.BackColor = System.Drawing.Color.White
         btnBack.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage
         btnBack.Left = 4
-        btnBack.Top = (TITLE_BAR_H - 32) \ 2
-        btnBack.Width = 32
-        btnBack.Height = 32
+        btnBack.Width = CInt(32 * layoutScale)
+        btnBack.Height = CInt(32 * layoutScale)
+        If btnBack.Width < 24 Then
+            btnBack.Width = 24
+        End If
+        If btnBack.Height < 24 Then
+            btnBack.Height = 24
+        End If
+        btnBack.Top = (TITLE_BAR_H - btnBack.Height) \ 2
+        If btnBack.Top < 2 Then
+            btnBack.Top = 2
+        End If
         Try
             Dim iconBmp As System.Drawing.Bitmap = CreateBackButtonImage()
             If iconBmp IsNot Nothing Then
@@ -891,6 +938,101 @@
         End Try
     End Sub
 
+    ' 主页选项布局（命中测试与绘制共用同一几何）：
+    ' 标题固定在顶部，选项区从标题下方开始，行高优先填满可用高度（小屏也全部可见），
+    ' 不超过平台上限（桌面50/设备62，按 layoutScale 缩放）。
+    Private Function HomeLayout(ByVal w As Integer, ByVal h As Integer, ByRef itemH As Integer, ByRef gap As Integer, ByRef startY As Integer) As Boolean
+        Try
+            If homeButtons Is Nothing OrElse homeButtons.Count = 0 Then
+                Return False
+            End If
+            Dim n As Integer = homeButtons.Count
+            ' 标题高度（与绘制一致的缩放字号）。
+            Dim th As Integer = 30
+            Try
+                Dim fT As System.Drawing.Font = GetUiFont(24.0!, True)
+                Dim gh As System.Drawing.Graphics = homePanel.CreateGraphics()
+                th = CInt(gh.MeasureString("BiliClassic", fT).Height)
+                gh.Dispose()
+                fT.Dispose()
+            Catch exT As Exception
+            End Try
+            Dim titleBottom As Integer = 16 + th
+            Dim minStart As Integer = titleBottom + CInt(30 * contentScale)
+            If minStart < titleBottom + 8 Then
+                minStart = titleBottom + 8
+            End If
+            If minStart > h - 20 Then
+                minStart = h - 20
+            End If
+            If minStart < 8 Then
+                minStart = 8
+            End If
+            ' 间距（内容缩放）。
+            gap = CInt(12 * contentScale)
+            If Not isDesktopRuntime Then
+                gap = CInt(18 * contentScale)
+            End If
+            If gap < 3 Then
+                gap = 3
+            End If
+            ' 行高：小屏（QVGA）自适应填满保证全部可见；大屏（≥WVGA）用原始固定尺寸保持原观感。
+            If contentScale >= 0.95F Then
+                itemH = CInt(50 * contentScale)
+                If Not isDesktopRuntime Then
+                    itemH = CInt(62 * contentScale)
+                End If
+                If itemH < 24 Then
+                    itemH = 24
+                End If
+                If gap < 4 Then
+                    gap = 4
+                End If
+                Dim totalH2 As Integer = n * itemH + (n - 1) * gap
+                startY = (h - totalH2) \ 2
+                If startY < minStart Then
+                    startY = minStart
+                End If
+                Return True
+            End If
+            ' 行高上限：不超过平台上限。
+            Dim maxItemH As Integer = 50
+            If Not isDesktopRuntime Then
+                maxItemH = 62
+            End If
+            maxItemH = CInt(maxItemH * contentScale)
+            ' 行高下限：至少容纳自然字号（按磅值随 DPI 缩放）的选项文字，避免字太小/溢出。
+            Dim minItemH As Integer = 26
+            Try
+                Dim fI As System.Drawing.Font = GetUiFont(15.0!, True)
+                Dim gh2 As System.Drawing.Graphics = homePanel.CreateGraphics()
+                minItemH = CInt(gh2.MeasureString("个人中心", fI).Height) + 6
+                gh2.Dispose()
+                fI.Dispose()
+            Catch exF As Exception
+            End Try
+            Dim availH As Integer = h - minStart - 6
+            If availH < 30 Then
+                availH = 30
+            End If
+            itemH = (availH - (n - 1) * gap) \ n
+            If itemH > maxItemH Then
+                itemH = maxItemH
+            End If
+            If itemH < minItemH Then
+                itemH = minItemH
+            End If
+            Dim totalH As Integer = n * itemH + (n - 1) * gap
+            startY = (h - totalH) \ 2
+            If startY < minStart Then
+                startY = minStart
+            End If
+            Return True
+        Catch ex As Exception
+            Return False
+        End Try
+    End Function
+
     ' 命中测试：返回 y 对应的选项索引（-1=无）。
     Private Function HomeHitTest(ByVal y As Integer) As Integer
         Try
@@ -911,28 +1053,9 @@
             End If
             Dim itemH As Integer = 50
             Dim gap As Integer = 12
-            ' WM 字体行高较大，选项需要更大间距，避免相邻项重叠。
-            If Not isDesktopRuntime Then
-                itemH = 62
-                gap = 18
-            End If
-            Dim totalH As Integer = homeButtons.Count * itemH + (homeButtons.Count - 1) * gap
-            Dim startY As Integer = CInt((h - totalH) / 2)
-            ' 与 HomePanelDraw 同步：选项起点至少低于标题底部一段间距。
-            Dim th As Integer = 30
-            Try
-                Dim fT As System.Drawing.Font = GetUiFont(24.0!, True)
-                th = CInt(homePanel.CreateGraphics().MeasureString("BiliClassic", fT).Height)
-                fT.Dispose()
-            Catch exT As Exception
-            End Try
-            Dim titleBottom As Integer = 16 + th
-            Dim minStart As Integer = titleBottom + 30
-            If startY < minStart Then
-                startY = minStart
-            End If
-            If startY < 10 Then
-                startY = 10
+            Dim startY As Integer = 0
+            If Not HomeLayout(w, h, itemH, gap, startY) Then
+                Return -1
             End If
             Dim i As Integer
             For i = 0 To homeButtons.Count - 1
@@ -1003,21 +1126,9 @@
             End If
             Dim itemH As Integer = 50
             Dim gap As Integer = 12
-            ' WM 字体行高较大，选项需要更大间距，避免相邻项重叠。
-            If Not isDesktopRuntime Then
-                itemH = 62
-                gap = 18
-            End If
-            Dim totalH As Integer = homeButtons.Count * itemH + (homeButtons.Count - 1) * gap
-            Dim startY As Integer = CInt((h - totalH) / 2)
-            ' 标题在顶部，选项起点至少低于标题底部一段间距，拉开标题与下方文字的距离。
-            Dim titleBottom As Integer = 16 + th
-            Dim minStart As Integer = titleBottom + 30
-            If startY < minStart Then
-                startY = minStart
-            End If
-            If startY < 12 Then
-                startY = 12
+            Dim startY As Integer = 0
+            If Not HomeLayout(w, h, itemH, gap, startY) Then
+                Return
             End If
 
             Dim itemFont As System.Drawing.Font = GetUiFont(15.0!, True)
@@ -1337,7 +1448,7 @@
             If w < 10 Then
                 w = 460
             End If
-            Dim rowH As Integer = 94 + 12
+            Dim rowH As Integer = CInt(94 * contentScale) + 12
             Dim minTitleH As Integer = fontLineH * 2 + 8
             If rowH < minTitleH Then
                 rowH = minTitleH
@@ -1606,7 +1717,7 @@
         If w < 10 Then
             w = 460
         End If
-        Dim rowH As Integer = 94 + 12
+        Dim rowH As Integer = CInt(94 * contentScale) + 12
         Dim minTitleH As Integer = fontLineH * 2 + 8
         If rowH < minTitleH Then
             rowH = minTitleH
@@ -3515,19 +3626,26 @@
         ' Title bar now hosts the search: back button left, search box middle, button right.
         Panel1.Height = titleH
 
-        ' 搜索框起始位置：返回按钮(32px + 边距)之后。
-        txtSearch.Height = 24
+        ' 搜索框起始位置：返回按钮之后。尺寸按布局缩放因子适配小屏。
+        Dim btnSz As Integer = CInt(32 * layoutScale)
+        If btnSz < 24 Then
+            btnSz = 24
+        End If
+        txtSearch.Height = CInt(24 * layoutScale)
+        If txtSearch.Height < 18 Then
+            txtSearch.Height = 18
+        End If
         txtSearch.Top = CInt((titleH - txtSearch.Height) / 2)
-        txtSearch.Left = 42
-        txtSearch.Width = w - txtSearch.Left - 38
-        If txtSearch.Width < 80 Then
-            txtSearch.Width = 80
+        txtSearch.Left = btnSz + 10
+        txtSearch.Width = w - txtSearch.Left - btnSz - 8
+        If txtSearch.Width < 60 Then
+            txtSearch.Width = 60
         End If
 
-        btnSearch.Height = 32
+        btnSearch.Height = btnSz
         btnSearch.Top = CInt((titleH - btnSearch.Height) / 2)
         btnSearch.Left = txtSearch.Right + 4
-        btnSearch.Width = 32
+        btnSearch.Width = btnSz
 
         ' 个人中心面板。
         If profilePanel IsNot Nothing Then
@@ -3581,7 +3699,14 @@
         If pageTitle.Length > 0 Then
             Dim textBrush As New System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(&H22, &H22, &H22))
             Dim font As System.Drawing.Font = GetUiFont(9.0!, True)
+            ' 标题起点在返回按钮右侧（按实际按钮宽度，放大后不重叠）。
             Dim textLeft As Single = CSng(42)
+            Try
+                If btnBack IsNot Nothing Then
+                    textLeft = CSng(btnBack.Left + btnBack.Width + 8)
+                End If
+            Catch exB As Exception
+            End Try
             Dim textRect As New System.Drawing.RectangleF(textLeft, 0, CSng(Panel1.Width - textLeft), Panel1.Height)
             Dim sf As New System.Drawing.StringFormat()
             sf.Alignment = System.Drawing.StringAlignment.Near
@@ -4511,7 +4636,10 @@
                 w = 460
             End If
             ' 紧凑单行：只显示关键词。
-            Dim rowH As Integer = 34
+            Dim rowH As Integer = CInt(34 * contentScale)
+            If rowH < fontLineH + 8 Then
+                rowH = fontLineH + 8
+            End If
             recListControl.SetData(items, rowH, fontLineH, fontSubH, isChinese)
             recListControl.SetShowMore(False)
             recListControl.NoCoverMode = True
@@ -4988,7 +5116,7 @@
             Next
             histPendingResults = Nothing
 
-            Dim rowH As Integer = 94 + 12
+            Dim rowH As Integer = CInt(94 * contentScale) + 12
             Dim minTitleH As Integer = fontLineH * 2 + 8
             If rowH < minTitleH Then
                 rowH = minTitleH
@@ -5591,7 +5719,7 @@
             Return
         End If
 
-        Dim rowH As Integer = 94 + 12
+        Dim rowH As Integer = CInt(94 * contentScale) + 12
         Dim minTitleH As Integer = fontLineH * 2 + 8
         If rowH < minTitleH Then
             rowH = minTitleH
@@ -5715,7 +5843,7 @@
             favListActive = True
             recListControl.HistoryMode = True
             coverItems = favFolderItems
-            Dim rowH As Integer = 94 + 12
+            Dim rowH As Integer = CInt(94 * contentScale) + 12
             Dim minTitleH As Integer = fontLineH * 2 + 8
             If rowH < minTitleH Then
                 rowH = minTitleH
@@ -5865,7 +5993,7 @@
             Return
         End If
 
-        Dim rowH As Integer = 94 + 12
+        Dim rowH As Integer = CInt(94 * contentScale) + 12
         Dim minTitleH As Integer = fontLineH * 2 + 8
         If rowH < minTitleH Then
             rowH = minTitleH
