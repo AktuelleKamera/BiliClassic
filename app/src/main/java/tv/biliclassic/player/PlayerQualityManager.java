@@ -113,27 +113,6 @@ public class PlayerQualityManager {
         }
         mQualityListView.setVisibility(View.VISIBLE);
         mListVisible = true;
-        alignQualityList();
-    }
-
-    private void alignQualityList() {
-        if (mQualityButton == null || mQualityListView == null) return;
-        mQualityListView.post(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    int[] btnLoc = new int[2];
-                    int[] listLoc = new int[2];
-                    mQualityButton.getLocationOnScreen(btnLoc);
-                    mQualityListView.getLocationOnScreen(listLoc);
-                    int btnRight = btnLoc[0] + mQualityButton.getWidth();
-                    int listRight = listLoc[0] + mQualityListView.getWidth();
-                    mQualityListView.setTranslationX(btnRight - listRight);
-                } catch (Exception e) {
-                    // ignore
-                }
-            }
-        });
     }
 
     public void hideQualityList() {

@@ -10,7 +10,6 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -35,7 +34,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import tv.biliclassic.util.GlobalImageCache;
-import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.PermissionUtil;
@@ -77,23 +75,6 @@ public class ProfileFragment extends Fragment {
         }
     }
 
-    // API 3/4 适配：功能列表项固定高度，避免 LinearLayout padding 测量 bug 导致紧贴
-    private void applyFixedItemHeight(View item, int heightPx) {
-        if (item == null) return;
-        android.widget.LinearLayout.LayoutParams lp =
-                (android.widget.LinearLayout.LayoutParams) item.getLayoutParams();
-        if (lp != null) {
-            lp.height = heightPx;
-            lp.topMargin = 0;
-            lp.bottomMargin = 0;
-            item.setLayoutParams(lp);
-        }
-        // 布局内的子项（图标/文字）在 LinearLayout 里垂直居中，保证间距正常
-        if (item instanceof android.widget.LinearLayout) {
-            ((android.widget.LinearLayout) item).setGravity(android.view.Gravity.CENTER_VERTICAL);
-        }
-    }
-
     // inflate 失败（Android 2.x 外部堆不足）时为 true：跳过控件初始化，仅显示空白页
     private boolean mInflateFailed = false;
 
@@ -112,14 +93,6 @@ public class ProfileFragment extends Fragment {
     private View itemOffline;
     private View itemSettings;
     private View itemRefresh;
-    private View itemFollowing;
-
-    // 遥控器按键导航：可聚焦条目集合 + 当前选中下标
-    private final ArrayList<View> mKeyNavItems = new ArrayList<View>();
-    private int mKeyNavIndex = -1;
-    // 高亮覆盖前的原始背景（仅按键导航实际高亮过才记录，避免改动普通界面外观）
-    private final java.util.Map<View, android.graphics.drawable.Drawable> mNavOriginalBg =
-            new HashMap<View, android.graphics.drawable.Drawable>();
 
     private ExecutorService executor = createImageExecutor();
     private Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -205,29 +178,13 @@ public class ProfileFragment extends Fragment {
         itemOffline = view.findViewById(R.id.item_offline);
         itemSettings = view.findViewById(R.id.item_settings);
         itemRefresh = view.findViewById(R.id.item_refresh);
-        itemFollowing = view.findViewById(R.id.item_following);
 
         // list 选项图标用静态缓存 Drawable（避免每次重建重新解码资源图）
-        applyCachedIcon(itemFollowing, R.drawable.ic_my_follow);
-        applyCachedIcon(itemRefresh, R.drawable.ic_my_refresh);
-        applyCachedIcon(itemFavorites, R.drawable.ic_my_fav);
-        applyCachedIcon(itemHistory, R.drawable.ic_my_history);
-        applyCachedIcon(itemOffline, R.drawable.ic_my_download_manager);
-        applyCachedIcon(itemSettings, R.drawable.ic_my_settings);
-
-        // API 3/4（Android 1.5/1.6）：LinearLayout 的 wrap_content 高度测量不应用子项 padding，
-        // 导致功能列表项上下 padding 消失、全部紧贴。这里给每项设固定高度（icon 24dp + 上下各 12dp），
-        // 保证间距与新版一致。
-        if (tv.biliclassic.util.SdkHelper.getSdkInt() < 5) {
-            // 固定高度 = 图标(24dp) + 上下各 8dp，Android 1.x 上间距问题
-            int itemHeight = (int) (48 * getResources().getDisplayMetrics().density + 0.5f);
-            applyFixedItemHeight(itemFollowing, itemHeight);
-            applyFixedItemHeight(itemRefresh, itemHeight);
-            applyFixedItemHeight(itemFavorites, itemHeight);
-            applyFixedItemHeight(itemHistory, itemHeight);
-            applyFixedItemHeight(itemOffline, itemHeight);
-            applyFixedItemHeight(itemSettings, itemHeight);
-        }
+        applyCachedIcon(itemRefresh, R.drawable.ic_action_refresh);
+        applyCachedIcon(itemFavorites, R.drawable.ic_action_collections_collection);
+        applyCachedIcon(itemHistory, R.drawable.ic_action_device_access_data_usage);
+        applyCachedIcon(itemOffline, R.drawable.ic_action_download_manager);
+        applyCachedIcon(itemSettings, R.drawable.ic_action_settings);
 
         // 点击头像或名字进入个人主页
         View.OnClickListener profileClickListener = new View.OnClickListener() {
@@ -302,18 +259,6 @@ public class ProfileFragment extends Fragment {
             }
         });
 
-        itemFollowing.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (!isLoggedIn()) {
-                    Toast.makeText(getActivity(), getActivity().getString(R.string.profilefragment_toast_8bf7), Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                Intent intent = new Intent(getActivity(), FollowingListActivity.class);
-                startActivity(intent);
-            }
-        });
-
         itemHistory.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -355,201 +300,6 @@ public class ProfileFragment extends Fragment {
         super.onResume();
         if (mInflateFailed) return;
         updateLoginStatus();
-        // 回到页面时重建按键导航（登录态切换会改变可见条目）。
-        // 不在此处应用高亮：避免普通（触摸）界面被无端改变外观。
-        buildKeyNavItems();
-        if (mKeyNavIndex < 0 && mKeyNavItems.size() > 0) {
-            mKeyNavIndex = 0;
-        }
-    }
-
-    /**
-     * 收集个人中心所有可见可交互条目（登录按钮/头像+切号+退出/功能列表），
-     * 供遥控器方向键/确认键导航。条目可见性随登录状态变化，故每次重建。
-     */
-    private void buildKeyNavItems() {
-        // 先恢复所有被按键导航高亮覆盖过的条目背景（如登录按钮选中后切 Tab 再回来，
-        // 之前的高亮色会残留；这里在重建列表时统一恢复原始背景）。
-        if (mNavOriginalBg.size() > 0) {
-            for (java.util.Map.Entry<View, android.graphics.drawable.Drawable> e
-                    : mNavOriginalBg.entrySet()) {
-                View v = e.getKey();
-                if (v != null && e.getValue() != null) {
-                    v.setBackgroundDrawable(e.getValue());
-                }
-            }
-            mNavOriginalBg.clear();
-        }
-        // 按钮类确定性恢复布局背景色（不依赖保存的 drawable）
-        if (btnLogin != null) btnLogin.setBackgroundColor(0xFFD86DA5);
-        if (btnSwitchAccount != null) btnSwitchAccount.setBackgroundColor(0xFFDDDDDD);
-        if (btnLogout != null) btnLogout.setBackgroundColor(0xFFDDDDDD);
-        // 功能列表项确定性恢复原 selector 背景，确保高亮色不残留
-        restoreFeatureItemBg(itemRefresh);
-        restoreFeatureItemBg(itemFavorites);
-        restoreFeatureItemBg(itemHistory);
-        restoreFeatureItemBg(itemOffline);
-        restoreFeatureItemBg(itemSettings);
-        mKeyNavItems.clear();
-        if (mInflateFailed || getView() == null) return;
-        View loginContainer = getView().findViewById(R.id.login_container);
-        if (loginContainer != null && loginContainer.getVisibility() == View.VISIBLE) {
-            if (btnLogin != null && btnLogin.getVisibility() == View.VISIBLE) {
-                mKeyNavItems.add(btnLogin);
-            }
-        }
-        View userCard = getView().findViewById(R.id.user_card);
-        if (userCard != null && userCard.getVisibility() == View.VISIBLE) {
-            if (ivAvatar != null && ivAvatar.getVisibility() == View.VISIBLE) {
-                mKeyNavItems.add(ivAvatar);
-            }
-            if (btnSwitchAccount != null && btnSwitchAccount.getVisibility() == View.VISIBLE) {
-                mKeyNavItems.add(btnSwitchAccount);
-            }
-            if (btnLogout != null && btnLogout.getVisibility() == View.VISIBLE) {
-                mKeyNavItems.add(btnLogout);
-            }
-        }
-        addNavItem(itemRefresh);
-        addNavItem(itemFavorites);
-        addNavItem(itemHistory);
-        addNavItem(itemOffline);
-        addNavItem(itemSettings);
-    }
-
-    private void addNavItem(View v) {
-        if (v != null && v.getVisibility() == View.VISIBLE) {
-            mKeyNavItems.add(v);
-        }
-    }
-
-    /** 功能列表项恢复原始点击效果背景（透明 selector），清除可能的残留高亮色。 */
-    private void restoreFeatureItemBg(View v) {
-        if (v == null) return;
-        try {
-            v.setBackgroundDrawable(v.getResources().getDrawable(R.drawable.item_click_effect));
-        } catch (Exception e) {
-            v.setBackgroundColor(0xFFFFFFFF);
-        }
-    }
-
-    /**
-     * 刷新按键导航高亮：选中条目叠粉色背景，其余恢复原始背景。
-     * 仅按键导航激活时调用（首次方向键/确认键按下后），
-     * 且只在第一次覆盖前保存原始背景，之后始终恢复原样，不影响触摸界面。
-     */
-    private void applyKeyNavHighlight() {
-        for (int i = 0; i < mKeyNavItems.size(); i++) {
-            View v = mKeyNavItems.get(i);
-            if (v == null) {
-                continue;
-            }
-            if (i == mKeyNavIndex) {
-                // 选中：登录按钮本身是粉色 #D86DA5，选中时用深粉强调；其他条目用浅粉半透明
-                if (v.getId() == R.id.btn_login) {
-                    v.setBackgroundColor(0xFFC06090);
-                } else {
-                    v.setBackgroundColor(0x66D86DA5);
-                }
-            } else {
-                // 未选中：确定性恢复布局背景色（不依赖 getBackground 保存，
-                // 避免 Android 2.x Button 背景为 null、或已保存高亮色导致无法恢复）
-                if (v.getId() == R.id.btn_login) {
-                    v.setBackgroundColor(0xFFD86DA5);
-                } else if (v.getId() == R.id.btn_switch_account
-                        || v.getId() == R.id.btn_logout) {
-                    v.setBackgroundColor(0xFFDDDDDD);
-                } else {
-                    // 功能列表项：直接恢复原始 item_click_effect 背景
-                    restoreFeatureItemBg(v);
-                }
-            }
-        }
-    }
-
-    /**
-     * 移动按键导航光标（方向：-1 上，+1 下）并滚动到可见。
-     */
-    private void moveKeyNav(int direction) {
-        if (mKeyNavItems.size() == 0) {
-            return;
-        }
-        int next = mKeyNavIndex + direction;
-        if (next < 0) {
-            next = 0;
-        } else if (next >= mKeyNavItems.size()) {
-            next = mKeyNavItems.size() - 1;
-        }
-        if (next != mKeyNavIndex) {
-            mKeyNavIndex = next;
-            applyKeyNavHighlight();
-            scrollKeyNavToVisible(mKeyNavItems.get(mKeyNavIndex));
-        }
-    }
-
-    /** 滚动 ScrollView 让选中条目完整可见（用绝对位置，条目可能嵌套多层）。 */
-    private void scrollKeyNavToVisible(View item) {
-        View root = getView();
-        if (!(root instanceof android.widget.ScrollView) || item == null) {
-            return;
-        }
-        android.widget.ScrollView scrollView = (android.widget.ScrollView) root;
-        // 从条目向上累加各层 getTop()，得到相对 ScrollView 内容的绝对位置
-        int top = 0;
-        View p = item;
-        while (p != null && p != scrollView) {
-            top += p.getTop();
-            p = (View) p.getParent();
-        }
-        int bottom = top + item.getHeight();
-        int scrollY = scrollView.getScrollY();
-        int height = scrollView.getHeight();
-        if (top < scrollY) {
-            scrollView.smoothScrollTo(0, Math.max(0, top));
-        } else if (bottom > scrollY + height) {
-            scrollView.smoothScrollTo(0, bottom - height);
-        }
-    }
-
-    /**
-     * 供 MainActivity.dispatchKeyEvent 调用：
-     * 方向键上下移动光标，确认键触发选中条目点击。
-     */
-    public boolean handleRemoteKey(KeyEvent event) {
-        if (event.getAction() != KeyEvent.ACTION_DOWN) {
-            return false;
-        }
-        int action = KeyBindingUtil.classify(event.getKeyCode());
-        if (action != KeyBindingUtil.ACTION_UP
-                && action != KeyBindingUtil.ACTION_DOWN
-                && action != KeyBindingUtil.ACTION_CONFIRM) {
-            return false;
-        }
-        if (mKeyNavItems.size() == 0) {
-            buildKeyNavItems();
-        }
-        if (mKeyNavItems.size() == 0) {
-            return false;
-        }
-        if (mKeyNavIndex < 0 || mKeyNavIndex >= mKeyNavItems.size()) {
-            mKeyNavIndex = 0;
-        }
-        if (event.getRepeatCount() == 0) {
-            if (action == KeyBindingUtil.ACTION_UP) {
-                moveKeyNav(-1);
-            } else if (action == KeyBindingUtil.ACTION_DOWN) {
-                moveKeyNav(1);
-            } else if (action == KeyBindingUtil.ACTION_CONFIRM) {
-                // 首次确认时先应用高亮（若此前从未按键），保证选中态可见
-                applyKeyNavHighlight();
-                View v = mKeyNavItems.get(mKeyNavIndex);
-                if (v != null) {
-                    v.performClick();
-                }
-                return true;
-            }
-        }
-        return true;
     }
 
     // 检查更新（使用 UpdateUtil）

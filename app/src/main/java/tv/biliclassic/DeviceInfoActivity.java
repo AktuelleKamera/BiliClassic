@@ -27,7 +27,6 @@ public class DeviceInfoActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_device_info);
-        initRoundTitleBar();
 
         deviceInfoText = (TextView) findViewById(R.id.device_info_text);
         btnCopy = (Button) findViewById(R.id.btn_copy);

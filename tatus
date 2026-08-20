@@ -1,0 +1,154 @@
+[33mfbe4aff[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mandroid[m[33m, [m[1;31morigin/android[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: checkout: moving from 0.4.x to android
+[33mfbe4aff[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mandroid[m[33m, [m[1;31morigin/android[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{1}: reset: moving to HEAD
+[33mfbe4aff[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mandroid[m[33m, [m[1;31morigin/android[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{2}: checkout: moving from android to 0.4.x
+[33mfbe4aff[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mandroid[m[33m, [m[1;31morigin/android[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{3}: checkout: moving from 0.4 to android
+[33mfbe4aff[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mandroid[m[33m, [m[1;31morigin/android[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{4}: checkout: moving from android to 0.4
+[33mfbe4aff[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mandroid[m[33m, [m[1;31morigin/android[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{5}: commit: fix: 修复弹幕引擎线程阻塞死锁的问题
+[33mf64594c[m[33m ([m[1;31morigin/master[m[33m)[m HEAD@{6}: reset: moving to HEAD~1
+[33m5fe8b4c[m HEAD@{7}: commit: fix: 修复弹幕引擎线程阻塞死锁的问题
+[33mf64594c[m[33m ([m[1;31morigin/master[m[33m)[m HEAD@{8}: reset: moving to HEAD~1
+[33madf9693[m HEAD@{9}: commit: fix: 修复弹幕引擎线程阻塞死锁的问题
+[33mf64594c[m[33m ([m[1;31morigin/master[m[33m)[m HEAD@{10}: Branch: renamed refs/heads/master to refs/heads/android
+[33mf64594c[m[33m ([m[1;31morigin/master[m[33m)[m HEAD@{12}: checkout: moving from master to master
+[33mf64594c[m[33m ([m[1;31morigin/master[m[33m)[m HEAD@{13}: commit: feat: 0.5.0-dev4 弹幕引擎卡顿修复，新增外部播放器在线播放和关注的人
+[33m0d68d9e[m HEAD@{14}: reset: moving to HEAD~1
+[33m2fb15d4[m HEAD@{15}: commit: feat: 0.5.0-dev4 弹幕引擎卡顿修复，新增外部播放器在线播放和关注的人
+[33m0d68d9e[m HEAD@{16}: reset: moving to HEAD~1
+[33mae9613e[m HEAD@{17}: commit: feat: 0.5.0-dev4 弹幕引擎卡顿修复，支持外部播放器在线播放和关注的人
+[33m0d68d9e[m HEAD@{18}: reset: moving to HEAD~1
+[33m89485db[m HEAD@{19}: commit: feat: 0.5.0-dev4 弹幕引擎卡顿修复，支持外部播放器在线播放和关注的人
+[33m0d68d9e[m HEAD@{20}: commit: feat: 0.5.0-dev3 支持 Android 1.5+ 软硬解
+[33md1f00e4[m HEAD@{21}: reset: moving to HEAD~1
+[33m31cd10e[m HEAD@{22}: commit: feat: 0.5.0-dev3 支持 Android 1.5+ 软硬解
+[33md1f00e4[m HEAD@{23}: reset: moving to HEAD~1
+[33m7921930[m HEAD@{24}: commit: feat: 0.5.0-dev3 支持 Android 1.5+ 软硬解
+[33md1f00e4[m HEAD@{25}: commit: feat: 0.4.11-dev4 新增 Ostwind 播放器和凉腕播放器支持、增强屏幕适配，修复部分问题
+[33m96d1cee[m HEAD@{26}: commit: feat: 0.4.11-dev4 新增 Ostwind 播放器和凉腕播放器支持、增强屏幕适配，修复部分问题
+[33m713ecb1[m HEAD@{27}: reset: moving to HEAD~1
+[33maa5b618[m HEAD@{28}: commit: feat: 0.4.11-dev4 新增 Ostwind 播放器和凉腕播放器支持、增强屏幕适配，修复部分问题
+[33m713ecb1[m HEAD@{29}: reset: moving to HEAD~1
+[33m0538018[m HEAD@{30}: commit: feat: 0.4.11-dev4 新增 Ostwind 播放器和凉腕播放器支持、增强屏幕适配，修复部分问题
+[33m713ecb1[m HEAD@{31}: reset: moving to HEAD~2
+[33m0ad8806[m HEAD@{32}: commit: docs: 更新 README
+[33mb334f04[m HEAD@{33}: reset: moving to HEAD~1
+[33ma2d93c6[m HEAD@{34}: pull: Fast-forward
+[33mb334f04[m HEAD@{35}: commit: feat: 0.4.11-dev4 新增 Ostwind 播放器和凉腕播放器支持、增强屏幕适配，修复部分问题
+[33m713ecb1[m HEAD@{36}: commit: fix: 修复Android 5.0+启动瞬间无沉浸式状态栏的问题
+[33md81370e[m HEAD@{37}: commit: feat: 参考@cctyl 分支的按键适配实现，提升按键操作体验
+[33ma044cd4[m HEAD@{38}: reset: moving to HEAD~1
+[33m585a76b[m HEAD@{39}: commit: feat: 参考@cctyl 分支的按键适配实现，提升按键操作体验
+[33ma044cd4[m HEAD@{40}: reset: moving to HEAD~1
+[33meeb19de[m HEAD@{41}: commit: feat: 参考@cctyl 分支的按键适配实现，提升按键操作体验
+[33ma044cd4[m HEAD@{42}: reset: moving to HEAD~1
+[33m39ecd1c[m HEAD@{43}: commit: feat: 参考@cctyl 分支的按键适配实现，提升按键操作体验
+[33ma044cd4[m HEAD@{44}: reset: moving to HEAD~1
+[33mf23b871[m HEAD@{45}: commit: feat: 适配按键操作，提升遥控器与键盘体验（参考@cctyl 分支实现）
+[33ma044cd4[m HEAD@{46}: reset: moving to HEAD~1
+[33m0e4b683[m HEAD@{47}: commit: feat: 适配按键操作，提升遥控器与键盘体验（参考 @cctyl 分支实现）
+[33ma044cd4[m HEAD@{48}: reset: moving to HEAD~1
+[33m5c29637[m HEAD@{49}: commit: feat: 参考@cctyl分支的按键适配实现，提升按键操作体验
+[33ma044cd4[m HEAD@{50}: commit: perf: 优化推荐页滚动与缓存逻辑
+[33m3e0535d[m HEAD@{51}: commit: perf: 0.4.11-dev3-r2 相关视频性能优化，修复推荐视频加载
+[33ma0b39ec[m HEAD@{52}: commit: perf: 0.4.11-dev3 全面流畅度优化与登录修复
+[33m6dda1d0[m HEAD@{53}: reset: moving to HEAD~1
+[33m3185054[m HEAD@{54}: commit: perf: 0.4.11-dev3 全面流畅度优化与登录修复
+[33m6dda1d0[m HEAD@{55}: reset: moving to HEAD~2
+[33m3482235[m HEAD@{56}: commit: perf: 0.4.11-dev3 全面流畅度优化与登录修复
+[33m31fc46c[m HEAD@{57}: commit: perf: 0.4.11-dev3 全面流畅度优化与登录修复
+[33m6dda1d0[m HEAD@{58}: commit: perf: 0.4.11-dev2 性能优化与老设备兼容
+[33m3a0389e[m HEAD@{59}: reset: moving to HEAD~1
+[33m59bcca0[m HEAD@{60}: commit: feat: 0.4.11-dev2 性能优化与Android 1.5兼容
+[33m3a0389e[m HEAD@{61}: reset: moving to HEAD~1
+[33m21ce236[m HEAD@{62}: commit: feat: 0.4.11-dev2 性能优化与Android 1.5兼容
+[33m3a0389e[m HEAD@{63}: reset: moving to HEAD~1
+[33m1b394a9[m HEAD@{64}: commit: feat: 0.4.11-dev2 性能优化与老设备兼容
+[33m3a0389e[m HEAD@{65}: commit: feat: 更新.gitignore，升级Java 5为Java 6
+[33ma887bca[m HEAD@{66}: reset: moving to HEAD~1
+[33meac7fa3[m HEAD@{67}: commit: feat: 更新.gitignore，移除不应跟踪的文件
+[33ma887bca[m HEAD@{68}: commit: feat: 优化内存占用，修复神秘问题
+[33ma6fc8bf[m HEAD@{69}: commit: fix: 修复更新日志动画错误的问题
+[33m993e0d7[m HEAD@{70}: commit: feat: 0.4.11-dev 开发版更新
+[33m6ece0ca[m[33m ([m[1;33mtag: [m[1;33m0.4.10[m[33m)[m HEAD@{71}: reset: moving to HEAD~1
+[33me6d57eb[m HEAD@{72}: commit: feat: 添加@Skyler1n 制作的有色弹幕发送
+[33m6ece0ca[m[33m ([m[1;33mtag: [m[1;33m0.4.10[m[33m)[m HEAD@{73}: reset: moving to HEAD~1
+[33me5288e9[m HEAD@{74}: commit: feat: 添加实验性DASH播放源选择
+[33m6ece0ca[m[33m ([m[1;33mtag: [m[1;33m0.4.10[m[33m)[m HEAD@{75}: commit: feat: 0.4.10 (Puma) 更新
+[33md47a973[m[33m ([m[1;33mtag: [m[1;33m0.4.9[m[33m)[m HEAD@{76}: commit: 0.4.9 (Kettenkrad) 更新
+[33m0a70451[m HEAD@{77}: reset: moving to HEAD~1
+[33me233fa1[m HEAD@{78}: commit: 0.4.9 (Kettenkrad) 更新
+[33m0a70451[m HEAD@{79}: reset: moving to HEAD~1
+[33mea136aa[m HEAD@{80}: commit: 0.4.9 (Kettenkrad) 更新
+[33m0a70451[m HEAD@{81}: reset: moving to HEAD~1
+[33m07a2dba[m HEAD@{82}: commit: 0.4.9 (Kettenkrad) 更新
+[33m0a70451[m HEAD@{83}: reset: moving to HEAD~1
+[33meb61137[m HEAD@{84}: commit: 0.4.9 (Kettenkrad) 更新
+[33m0a70451[m HEAD@{85}: reset: moving to HEAD~1
+[33mf180de1[m HEAD@{86}: commit: 0.4.9 (Kettenkrad) 更新日志
+[33m0a70451[m HEAD@{87}: commit: fix: 修复设备识别问题
+[33m4342a09[m[33m ([m[1;33mtag: [m[1;33m0.4.8[m[33m)[m HEAD@{88}: reset: moving to HEAD~1
+[33me310c3b[m HEAD@{89}: commit: fix: 修复设备识别问题
+[33m4342a09[m[33m ([m[1;33mtag: [m[1;33m0.4.8[m[33m)[m HEAD@{90}: reset: moving to HEAD~1
+[33mc2c4bb0[m HEAD@{91}: commit: fix: 修复设备识别问题
+[33m4342a09[m[33m ([m[1;33mtag: [m[1;33m0.4.8[m[33m)[m HEAD@{92}: commit: feat: 0.4.8 正式版发布
+[33m6de0abf[m HEAD@{93}: commit: style(comment): 优化评论回复样式
+[33m7eeeb2c[m[33m ([m[1;33mtag: [m[1;33mv0.4.7[m[33m)[m HEAD@{94}: commit: feat: 0.4.7 更新：提升兼容性与全面屏适配，修复多处崩溃
+[33mb8ffdb5[m HEAD@{95}: reset: moving to HEAD~1
+[33m74b0bae[m[33m ([m[1;33mtag: [m[1;33m0.4.7[m[33m)[m HEAD@{96}: commit: feat: 0.4.7 更新：提升兼容性与全面屏适配，修复多处崩溃
+[33mb8ffdb5[m HEAD@{97}: commit: feat: 0.4.7 更新：提升兼容性与全面屏适配，修复多处崩溃
+[33m700930d[m HEAD@{98}: reset: moving to HEAD~1
+[33m0503935[m HEAD@{99}: commit: feat: 0.4.7 更新：提升兼容性与全面屏适配，修复多处崩溃
+[33m700930d[m HEAD@{100}: reset: moving to HEAD
+[33m700930d[m HEAD@{101}: commit: fix: 修复 TimelineFragment 的 NullPointerException 错误
+[33m56e4540[m HEAD@{102}: reset: moving to HEAD~1
+[33m533edd6[m HEAD@{103}: commit: fix: 修复 TimelineFragment 的 NullPointerException 错误
+[33m56e4540[m HEAD@{104}: pull origin master: Fast-forward
+[33me02eff0[m[33m ([m[1;33mtag: [m[1;33mv0.4.6[m[33m)[m HEAD@{105}: pull origin master: Fast-forward
+[33m8284d75[m[33m ([m[1;33mtag: [m[1;33m0.4.6[m[33m)[m HEAD@{106}: commit: release: 0.4.6 稳定版
+[33m5b0ea82[m[33m ([m[1;33mtag: [m[1;33m0.4.5[m[33m)[m HEAD@{107}: reset: moving to HEAD~1
+[33m0a8c62e[m HEAD@{108}: commit: release: 0.4.6 稳定版
+[33m5b0ea82[m[33m ([m[1;33mtag: [m[1;33m0.4.5[m[33m)[m HEAD@{109}: commit: feat: 0.4.5 疯狂星期四更新
+[33mdec9c26[m[33m ([m[1;33mtag: [m[1;33m0.4.4[m[33m)[m HEAD@{110}: commit: fix: 0.4.4 播放器紧急修复
+[33mdb4ce8f[m HEAD@{111}: commit: fix: 修复全面屏下播放器视频位置不正确的问题
+[33m7409a97[m[33m ([m[1;33mtag: [m[1;33m0.4.3[m[33m)[m HEAD@{112}: commit: feat: 0.4.3 播放器与界面优化
+[33mb1f681e[m[33m ([m[1;33mtag: [m[1;33mv0.4.2[m[33m)[m HEAD@{113}: commit: feat: 0.4.2 正式版发布(修复)
+[33m3daf8ec[m HEAD@{114}: commit: fix: 修复播放器手势进退时移动时间计算错误的问题
+[33meba2209[m[33m ([m[1;33mtag: [m[1;33m0.4.1[m[33m)[m HEAD@{115}: commit: feat: 回声洞上线，TV模式设置同步，外观更新，内置播放器更新
+[33ma6a282e[m[33m ([m[1;33mtag: [m[1;33m0.4.0[m[33m)[m HEAD@{116}: pull: Fast-forward
+[33mfce7d2c[m HEAD@{117}: pull origin master --no-edit: Merge made by the 'ort' strategy.
+[33m95f30ca[m HEAD@{118}: commit: feat: 播放器信息增强，新增渲染方式切换，修复BT-5弹幕引擎多处崩溃
+[33mb17af12[m[33m ([m[1;33mtag: [m[1;33m0.4.0-beta3[m[33m)[m HEAD@{119}: pull origin master --no-edit: Fast-forward
+[33m1a17507[m HEAD@{120}: commit: perf: 优化视频加载流程和头像缓存，新增长按加速，BT-5弹幕引擎优化
+[33mdd04faf[m HEAD@{121}: commit: feat: 新增BT-5简易弹幕引擎，优化ARMv6设备性能
+[33md660a9f[m HEAD@{122}: commit: perf(qr): 二维码版本从10改为7，减小生成压力
+[33m2bb8cbe[m HEAD@{123}: reset: moving to HEAD~1
+[33ma8d8a1b[m HEAD@{124}: commit: perf(qr): 二维码版本从10改为7，减小生成压力
+[33m2bb8cbe[m HEAD@{125}: commit: refactor(qr): 优化二维码缓存复用，去除无用的硬件加速检测
+[33m5201361[m HEAD@{126}: reset: moving to HEAD~1
+[33m7fc313f[m HEAD@{127}: commit: refactor(qr): 重构二维码生成，优化绘制策略
+[33m5201361[m HEAD@{128}: pull origin master --no-edit: Merge made by the 'ort' strategy.
+[33m77143f0[m HEAD@{129}: commit: fix(player): 视频缓冲区从15MB改为512KB
+[33m7fc9261[m[33m ([m[1;33mtag: [m[1;33mv0.4.0-beta2[m[33m)[m HEAD@{130}: commit: feat(player): 增加IJK硬解支持，优化解码方式选择
+[33m3da0b44[m[33m ([m[1;33mtag: [m[1;33mv0.4.0-beta[m[33m)[m HEAD@{131}: commit: feat: 优化TV模式界面，更新帮助界面和修改横屏适配
+[33m14dca6d[m HEAD@{132}: reset: moving to HEAD~1
+[33mad6fab5[m HEAD@{133}: commit: feat: 优化TV模式界面，更新帮助界面和修改横屏适配
+[33m14dca6d[m HEAD@{134}: reset: moving to HEAD~1
+[33m74e826f[m HEAD@{135}: commit: feat: 优化TV模式界面，更新帮助界面和修改横屏适配
+[33m14dca6d[m HEAD@{136}: reset: moving to HEAD~1
+[33m25f1fc1[m HEAD@{137}: commit: feat: 优化TV模式界面，更新帮助界面和修改横屏适配
+[33m14dca6d[m HEAD@{138}: commit: feat: 重构TV界面与搜索历史功能
+[33m6f72b8a[m HEAD@{139}: reset: moving to HEAD~1
+[33m92cee9b[m HEAD@{140}: commit: feat: 新增TV界面适配与搜索历史功能
+[33m6f72b8a[m HEAD@{141}: commit: fix: 修复 Android 1.6 崩溃问题
+[33m5e5f760[m HEAD@{142}: commit: 补充: 本次提交还包含了拆分手势控制模块
+[33mbf85d09[m HEAD@{143}: commit: feat: 增加评论和收藏功能，修复收藏夹删除视频
+[33m6f01824[m HEAD@{144}: pull origin master: Fast-forward
+[33md838fb4[m HEAD@{145}: commit: feat: 添加 TV 模式支持，优化弹幕性能
+[33mece00d6[m HEAD@{146}: commit: merge: 合并 Skyler PlayerDev 分支，修复切换画质出现Activity动画
+[33m9de5857[m HEAD@{147}: merge skyler/PlayerDev: Merge made by the 'ort' strategy.
+[33m1d54782[m HEAD@{148}: reset: moving to HEAD
+[33m1d54782[m HEAD@{149}: reset: moving to HEAD
+[33m1d54782[m HEAD@{150}: reset: moving to HEAD
+[33m1d54782[m HEAD@{151}: pull origin master: Fast-forward
+[33m4d02290[m[33m ([m[1;31mskyler/master[m[33m, [m[1;31mskyler/HEAD[m[33m)[m HEAD@{152}: commit (merge): 添加远程的 LICENSE 和 README
+[33m4751df4[m HEAD@{153}: commit: perf: 重构二维码功能和 NetWorkUtil，优化性能
+[33m62941e7[m HEAD@{154}: commit (initial): BiliClassic 0.4.0-alpha

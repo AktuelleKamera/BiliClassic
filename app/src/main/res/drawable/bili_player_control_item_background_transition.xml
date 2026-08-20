@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- <transition> 是 API 11+ 才支持的 drawable，Android 1.5(API 3) 解析会失败导致 Resources$NotFoundException。
-     改用 API 1 就支持的 shape（灰色实心），保留原视觉近似效果。 -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="@color/_bkgd__gray"/>
-</shape>
+<transition xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/_bkgd__gray"/>
+    <item android:drawable="@color/_bkgd__gray_light"/>
+</transition>

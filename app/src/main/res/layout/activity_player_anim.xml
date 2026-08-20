@@ -5,18 +5,6 @@
     android:fitsSystemWindows="true"
     android:background="@color/videoplay__preloading_background">
 
-    <!-- 左上角返回按钮 -->
-    <ImageView
-        android:id="@+id/anim_back"
-        android:focusable="true"
-        android:layout_marginLeft="8dp"
-        android:layout_marginTop="8dp"
-        android:src="@drawable/ica_light_ic_action_previous_item"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentTop="true"
-        android:contentDescription="@null"
-        style="@style/TitleBarButton"/>
-
     <!-- 中间小电视动画 -->
     <LinearLayout
         android:layout_width="wrap_content"

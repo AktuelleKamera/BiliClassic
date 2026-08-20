@@ -10,13 +10,11 @@ import android.os.Environment;
 import android.os.Handler;
 import android.text.ClipboardManager;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -31,7 +29,6 @@ import java.net.URL;
 import java.util.ArrayList;
 
 import tv.biliclassic.subsettings.DecoderSettingsActivity;
-import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.LocaleHelper;
 import tv.biliclassic.util.PermissionUtil;
@@ -70,7 +67,6 @@ public class SettingsActivity extends BaseActivity {
     private static final int PLAYER_SYSTEM = 7;
     private static final int PLAYER_BUILTIN = 8;
     private static final int PLAYER_LIANGWAN = 9;
-    public static final int PLAYER_OSTWIND = 10;
 
     // 首页 Tab 索引
     private static final int TAB_PROFILE = 0;
@@ -129,18 +125,10 @@ public class SettingsActivity extends BaseActivity {
 
     // TV模式强制开关
     private CheckBox checkboxForceTvMode;
-    private CheckBox checkboxRoundScreenCenter;
     private LinearLayout forceTvModeItem;
     private View forceTvModeWarning;
 
     private Handler mainHandler = new Handler();
-
-    // 按键导航：设置页可交互条目（方向键上下移动光标，确认键触发点击）
-    private java.util.List<View> mKeyNavItems = new java.util.ArrayList<View>();
-    private int mKeyNavIndex = -1;
-
-    // 是否已用遥控器按键导航过（触屏用户未按键时不高亮第一项）
-    private boolean mKeyNavActive = false;
 
     private int currentVersionCode = -1;
     private String currentVersionName = "";
@@ -149,7 +137,6 @@ public class SettingsActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
-        initRoundTitleBar();
 
         try {
             currentVersionCode = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
@@ -165,19 +152,6 @@ public class SettingsActivity extends BaseActivity {
                 @Override
                 public void onClick(View v) {
                     finish();
-                }
-            });
-        }
-
-        // 按键绑定入口
-        LinearLayout keyBindingItem = (LinearLayout) findViewById(R.id.key_binding_item);
-        if (keyBindingItem != null) {
-            keyBindingItem.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Intent intent = new Intent(SettingsActivity.this, KeyBindingSetupActivity.class);
-                    intent.putExtra("mode", "rebind");
-                    startActivity(intent);
                 }
             });
         }
@@ -287,8 +261,8 @@ public class SettingsActivity extends BaseActivity {
         onlinePlayWarning = findViewById(R.id.online_play_warning);
 
         if (onlinePlayItem != null) {
-            // 在线播放开关始终可用（Ostwind 等播放器用 MediaPlayer+本地代理，
-            // 即使系统不支持内置 IJK 也能在线播放），不再因内置播放器不可用而隐藏/强制关闭
+            // 在线播放开关始终可用（外部播放器经本地代理（ProxyStreamService/LocalStreamProxy）
+            // 带防盗链请求头转发也能在线播放），不再因内置播放器不可用而隐藏/强制关闭
             onlinePlayItem.setVisibility(View.VISIBLE);
             if (onlinePlayWarning != null) {
                 onlinePlayWarning.setVisibility(View.VISIBLE);
@@ -301,36 +275,11 @@ public class SettingsActivity extends BaseActivity {
             }
             checkboxOnlinePlay.setChecked(onlinePlayEnabled);
 
-                checkboxOnlinePlay.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            checkboxOnlinePlay.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                     @Override
                     public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                         if (isChecked) {
-                            // 2.3 以下（内置播放器不可用）：提示改用东风(Ostwind)播放器
-                            if (!isBuiltinPlayerSupported()
-                                    && getPlayerPreference() != PLAYER_OSTWIND) {
-                                new AlertDialog.Builder(DialogUtil.wrap(SettingsActivity.this))
-                                        .setTitle(getString(R.string.settingsactivity_settitle_63d0))
-                                        .setMessage(getString(R.string.settingsactivity_setmessage_ostwind))
-                                        .setPositiveButton("切换并开启", new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialog, int which) {
-                                                SharedPreferencesUtil.putInt(KEY_PLAYER_PREFERENCE, PLAYER_OSTWIND);
-                                                updatePlayerChoiceDisplay();
-                                                SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, true);
-                                                checkboxOnlinePlay.setChecked(true);
-                                                Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2_1), Toast.LENGTH_SHORT).show();
-                                            }
-                                        })
-                                        .setNegativeButton("取消", new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialog, int which) {
-                                                checkboxOnlinePlay.setChecked(false);
-                                            }
-                                        })
-                                        .show();
-                                return;
-                            }
-                            // 2.3+（或已是东风播放器）：内置/东风均可在线，直接开启
+                            // 内置/外部播放器均可在线播放（外部走本地代理），直接开启
                             SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, true);
                             Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2_4), Toast.LENGTH_SHORT).show();
                         } else {
@@ -386,29 +335,6 @@ public class SettingsActivity extends BaseActivity {
                     }
                 });
             }
-        }
-
-        // 圆形屏幕居中开关（手动覆盖：系统镜像检测不到圆屏时手动开启）
-        checkboxRoundScreenCenter = (CheckBox) findViewById(R.id.checkbox_round_screen_center);
-        final LinearLayout roundScreenCenterItem = (LinearLayout) findViewById(R.id.round_screen_center_item);
-        if (roundScreenCenterItem != null && checkboxRoundScreenCenter != null) {
-            boolean roundCenter = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.ROUND_SCREEN_CENTER, false);
-            checkboxRoundScreenCenter.setChecked(roundCenter);
-            checkboxRoundScreenCenter.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                @Override
-                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                    SharedPreferencesUtil.putBoolean(SharedPreferencesUtil.ROUND_SCREEN_CENTER, isChecked);
-                    Toast.makeText(SettingsActivity.this,
-                            isChecked ? "已开启圆形屏幕居中" : "已关闭圆形屏幕居中",
-                            Toast.LENGTH_SHORT).show();
-                }
-            });
-            roundScreenCenterItem.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    checkboxRoundScreenCenter.toggle();
-                }
-            });
         }
 
         // 头像缓存管理
@@ -614,50 +540,6 @@ public class SettingsActivity extends BaseActivity {
             });
         }
 
-        // 运行日志：默认关闭（避免日志写入影响性能），开启后记录运行与弹幕绘制日志到文件
-        final String KEY_RUN_LOG = "run_log_enabled";
-        final CheckBox checkboxRunLog = (CheckBox) findViewById(R.id.checkbox_enable_run_log);
-        LinearLayout enableRunLogItem = (LinearLayout) findViewById(R.id.enable_run_log_item);
-        boolean runLogEnabled = SharedPreferencesUtil.getBoolean(KEY_RUN_LOG, false);
-        tv.biliclassic.util.LogFileUtil.setEnabled(runLogEnabled);
-        master.flame.danmaku.util.DiagLogger.setEnabled(runLogEnabled);
-        if (checkboxRunLog != null) {
-            checkboxRunLog.setChecked(runLogEnabled);
-        }
-        if (enableRunLogItem != null) {
-            enableRunLogItem.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    checkboxRunLog.toggle();
-                    boolean current = checkboxRunLog.isChecked();
-                    SharedPreferencesUtil.putBoolean(KEY_RUN_LOG, current);
-                    tv.biliclassic.util.LogFileUtil.setEnabled(current);
-                    master.flame.danmaku.util.DiagLogger.setEnabled(current);
-                    if (current) {
-                        tv.biliclassic.util.LogFileUtil.clearDiag();
-                        tv.biliclassic.util.LogFileUtil.log("App", "运行日志已开启 SDK="
-                                + tv.biliclassic.util.SdkHelper.getSdkInt()
-                                + " model=" + android.os.Build.MODEL);
-                    }
-                    Toast.makeText(SettingsActivity.this,
-                            current ? getString(R.string.activity_settings_run_log_on)
-                                    : getString(R.string.activity_settings_run_log_off),
-                            Toast.LENGTH_SHORT).show();
-                }
-            });
-        }
-
-        // 查看运行日志（应用内日志，无需 adb）
-        LinearLayout viewLogItem = (LinearLayout) findViewById(R.id.view_log_item);
-        if (viewLogItem != null) {
-            viewLogItem.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tv.biliclassic.util.LogFileUtil.showLogsDialog(SettingsActivity.this);
-                }
-            });
-        }
-
         // 检查更新
         checkUpdateItem = (LinearLayout) findViewById(R.id.check_update_item);
         checkUpdateText = (TextView) findViewById(R.id.check_update_text);
@@ -777,124 +659,7 @@ public class SettingsActivity extends BaseActivity {
                 });
             }
         }
-
-        initKeyNavigation();
     }
-
-    /**
-     * 收集设置页所有可交互条目（id 以 _item 结尾的 LinearLayout），
-     * 供遥控器方向键/确认键导航。
-     */
-    private void initKeyNavigation() {
-        mKeyNavItems.clear();
-        ScrollView scrollView = (ScrollView) findViewById(R.id.settings_scroll);
-        if (scrollView == null || scrollView.getChildCount() == 0) {
-            return;
-        }
-        ViewGroup container = (ViewGroup) scrollView.getChildAt(0);
-        if (container == null) {
-            return;
-        }
-        for (int i = 0; i < container.getChildCount(); i++) {
-            View child = container.getChildAt(i);
-            if (child instanceof LinearLayout
-                    && child.getVisibility() == View.VISIBLE
-                    && child.getId() != View.NO_ID) {
-                String name = getResources().getResourceEntryName(child.getId());
-                if (name != null && name.endsWith("_item")) {
-                    mKeyNavItems.add(child);
-                }
-            }
-        }
-        if (mKeyNavItems.size() > 0) {
-            mKeyNavIndex = 0;
-            // 触屏用户未按键时不高亮第一项，等首次按键再显示
-            applyKeyNavHighlight();
-        }
-    }
-
-    /**
-     * 刷新按键导航高亮：只有当前选中条目显示粉色边框背景，
-     * 其余条目恢复白色背景。Android 2.x 无 getBackground 便捷处理，直接设色。
-     * 触屏用户未按键时（mKeyNavActive=false）不做任何修改，避免误高亮第一项。
-     */
-    private void applyKeyNavHighlight() {
-        if (!mKeyNavActive) {
-            return;
-        }
-        for (int i = 0; i < mKeyNavItems.size(); i++) {
-            View v = mKeyNavItems.get(i);
-            v.setBackgroundColor(i == mKeyNavIndex ? 0x66D86DA5 : 0xFFFFFFFF);
-        }
-    }
-
-    /**
-     * 移动按键导航光标并滚动到可见。方向：-1 上，+1 下。
-     */
-    private void moveKeyNav(int direction) {
-        if (mKeyNavItems.size() == 0) {
-            return;
-        }
-        int next = mKeyNavIndex + direction;
-        if (next < 0) {
-            next = 0;
-        } else if (next >= mKeyNavItems.size()) {
-            next = mKeyNavItems.size() - 1;
-        }
-        if (next != mKeyNavIndex) {
-            mKeyNavIndex = next;
-            applyKeyNavHighlight();
-            scrollKeyNavToVisible(mKeyNavItems.get(mKeyNavIndex));
-        }
-    }
-
-    /** 滚动 ScrollView 让选中条目完整可见。 */
-    private void scrollKeyNavToVisible(View item) {
-        ScrollView scrollView = (ScrollView) findViewById(R.id.settings_scroll);
-        if (scrollView == null || item == null) {
-            return;
-        }
-        int top = item.getTop();
-        int bottom = item.getBottom();
-        int scrollY = scrollView.getScrollY();
-        int height = scrollView.getHeight();
-        if (top < scrollY) {
-            scrollView.smoothScrollTo(0, Math.max(0, top));
-        } else if (bottom > scrollY + height) {
-            scrollView.smoothScrollTo(0, bottom - height);
-        }
-    }
-
-    /**
-     * 遥控器方向键：上下移动光标，确认键触发选中条目点击。
-     * 仅在没有任何子 View 获得焦点（弹窗未打开）时生效。
-     */
-    @Override
-    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
-        if (mKeyNavItems.size() > 0
-                && event.getAction() == android.view.KeyEvent.ACTION_DOWN
-                && event.getRepeatCount() == 0) {
-            int action = KeyBindingUtil.classify(event.getKeyCode());
-            if (action == KeyBindingUtil.ACTION_UP) {
-                mKeyNavActive = true;
-                moveKeyNav(-1);
-                return true;
-            } else if (action == KeyBindingUtil.ACTION_DOWN) {
-                mKeyNavActive = true;
-                moveKeyNav(1);
-                return true;
-            } else if (action == KeyBindingUtil.ACTION_CONFIRM) {
-                if (mKeyNavIndex >= 0 && mKeyNavIndex < mKeyNavItems.size()) {
-                    mKeyNavActive = true;
-                    applyKeyNavHighlight();
-                    mKeyNavItems.get(mKeyNavIndex).performClick();
-                }
-                return true;
-            }
-        }
-        return super.dispatchKeyEvent(event);
-    }
-
 
     // 判断是否支持 IJK 硬解 (Android 4.1+)
     private static boolean isIjkHardwareSupported() {
@@ -903,10 +668,9 @@ public class SettingsActivity extends BaseActivity {
 
     // 获取在线播放状态
     public static boolean isOnlinePlayEnabled() {
-        // 默认：支持内置播放器（API 9+）时开启；老设备（API<9）默认关闭
+        // 默认开启在线播放（内置/外部播放器均可，外部走本地代理转发请求头）
         boolean defaultEnabled = isBuiltinPlayerSupported();
-        boolean online = SharedPreferencesUtil.getBoolean(KEY_ONLINE_PLAY, defaultEnabled);
-        return online;
+        return SharedPreferencesUtil.getBoolean(KEY_ONLINE_PLAY, defaultEnabled);
     }
 
     // 获取现代模式状态
@@ -979,8 +743,6 @@ public class SettingsActivity extends BaseActivity {
                 return isBuiltinPlayerSupported() ? "内置播放器" : "内置播放器 (不可用)";
             case PLAYER_LIANGWAN:
                 return "凉腕播放器";
-            case PLAYER_OSTWIND:
-                return "Ostwind播放器";
             case PLAYER_SYSTEM:
             default:
                 return "系统播放器";
@@ -1007,10 +769,6 @@ public class SettingsActivity extends BaseActivity {
                 return "com.tencent.research.drop";
             case PLAYER_LIANGWAN:
                 return "com.aliangmaker.media";
-            case PLAYER_OSTWIND:
-                // Ostwind 是本 App 内置简易播放器（MediaPlayer + 自定义请求头），
-                // 包名返回特殊标记，跳转处识别后直接启动本地 Activity
-                return "tv.biliclassic.ostwind";
             case PLAYER_SYSTEM:
             case PLAYER_AUTO:
             default:
@@ -1245,8 +1003,8 @@ public class SettingsActivity extends BaseActivity {
 
     // 播放器选择对话框
     private void showPlayerChoiceDialog() {
-        final String[] allPlayers = {"内置播放器", "自动检测", "MX Player (免费版)", "MX Player (专业版)", "MoboPlayer", "VLC", "VPlayer", "RockPlaye Liter", "QQ影音", "凉腕播放器", "Ostwind播放器", "系统播放器"};
-        final int[] allValues = {PLAYER_BUILTIN, PLAYER_AUTO, PLAYER_MX_AD, PLAYER_MX_PRO, PLAYER_MOBO, PLAYER_VLC, PLAYER_VPLAYER, PLAYER_ROCKPLAYER, PLAYER_QQPLAYER, PLAYER_LIANGWAN, PLAYER_OSTWIND, PLAYER_SYSTEM};
+        final String[] allPlayers = {"内置播放器", "自动检测", "MX Player (免费版)", "MX Player (专业版)", "MoboPlayer", "VLC", "VPlayer", "RockPlaye Liter", "QQ影音", "凉腕播放器", "系统播放器"};
+        final int[] allValues = {PLAYER_BUILTIN, PLAYER_AUTO, PLAYER_MX_AD, PLAYER_MX_PRO, PLAYER_MOBO, PLAYER_VLC, PLAYER_VPLAYER, PLAYER_ROCKPLAYER, PLAYER_QQPLAYER, PLAYER_LIANGWAN, PLAYER_SYSTEM};
 
         // 低版本过滤掉内置播放器
         ArrayList filteredPlayers = new ArrayList();
@@ -1330,11 +1088,11 @@ public class SettingsActivity extends BaseActivity {
 
         if (isIjkHardwareSupported()) {
             // Android 4.1+ 显示三个选项
-            decoders = new String[]{"系统解码器", "IJK 硬解", "软件解码器"};
+            decoders = new String[]{"系统解码器", "IJK 硬解", "IJK 软解"};
             decoderValues = new int[]{DECODER_SYSTEM, DECODER_IJK_HARD, DECODER_IJK_SOFT};
         } else {
             // Android 4.1 以下只显示两个选项
-            decoders = new String[]{"系统解码器", "软件解码器"};
+            decoders = new String[]{"系统解码器", "IJK 软解"};
             decoderValues = new int[]{DECODER_SYSTEM, DECODER_IJK_SOFT};
         }
 

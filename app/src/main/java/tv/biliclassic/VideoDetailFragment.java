@@ -82,8 +82,6 @@ public class VideoDetailFragment extends Fragment {
     public VideoInfo videoInfo;
     private int currentPartIndex = 0;
     private String[] tags = {"", "", "", "", "", "", "", "", ""};
-    // 保存有效标签列表，供 Activity 焦点系统弹标签选择对话框
-    private ArrayList<String> mValidTags = new ArrayList<String>();
 
     private boolean mOfflineMode;
 
@@ -251,68 +249,12 @@ public class VideoDetailFragment extends Fragment {
         return tagView;
     }
 
-    public void searchTag(String keyword) {
+    private void searchTag(String keyword) {
         if (!isAdded() || getActivity() == null) return;
         if (keyword == null || keyword.length() == 0) return;
         Intent intent = new Intent(getActivity(), SearchActivity.class);
         intent.putExtra("keyword", keyword);
         startActivity(intent);
-    }
-
-    // ===== 供 Activity 焦点系统调用的接口 =====
-
-    public ArrayList<String> getValidTags() {
-        return mValidTags;
-    }
-
-    public int getPartCount() {
-        return partList != null ? partList.size() : 0;
-    }
-
-    public int getCurrentPartIndex() {
-        return currentPartIndex;
-    }
-
-    /**
-     * 选中某个分P（高亮 + 滚动可见），不触发播放。
-     */
-    public void selectPart(int position) {
-        if (partList == null || position < 0 || position >= partList.size()) {
-            return;
-        }
-        currentPartIndex = position;
-        if (partAdapter != null) {
-            partAdapter.setSelectedPosition(position);
-        }
-        if (lvParts != null) {
-            // setSelection 为 API 1，兼容 Android 2.x；smoothScrollToPosition 需 API 8
-            lvParts.setSelection(position);
-        }
-    }
-
-    /**
-     * 选中并播放某个分P。
-     */
-    public void playPart(int position) {
-        if (partList == null || position < 0 || position >= partList.size()) {
-            return;
-        }
-        currentPartIndex = position;
-        if (partAdapter != null) {
-            partAdapter.setSelectedPosition(position);
-        }
-        playVideo();
-    }
-
-    /**
-     * 返回本 Fragment 的根 ScrollView，供 Activity 焦点移动时联动滚动。
-     */
-    public ScrollView getScrollView() {
-        View v = getView();
-        if (v != null) {
-            return (ScrollView) v.findViewById(R.id.scroll_view);
-        }
-        return null;
     }
 
     public List<VideoPage> getVideoPages() {
@@ -642,11 +584,6 @@ public class VideoDetailFragment extends Fragment {
             String tagText = tags[i];
             if (tagText != null && tagText.length() > 0) validTags.add(tagText);
         }
-        mValidTags.clear();
-        mValidTags.addAll(validTags);
-        if (getActivity() instanceof VideoDetailActivity) {
-            ((VideoDetailActivity) getActivity()).notifyTagsUpdated();
-        }
 
         if (validTags.size() == 0) {
             TextView nullTag = createTagView("null");
@@ -955,67 +892,23 @@ public class VideoDetailFragment extends Fragment {
                                 public void run() {
                                     if (!isAdded() || getActivity() == null) return;
                                     if (videoUrl != null && videoUrl.length() > 0) {
-                                        int pref = tv.biliclassic.SettingsActivity.getPlayerPreference();
-                                        // Ostwind 播放器：直接进 Ostwind，不走 PlayerAnimActivity
-                                        if (pref == tv.biliclassic.SettingsActivity.PLAYER_OSTWIND) {
-                                            Intent wIntent = new Intent(getActivity(),
-                                                    tv.biliclassic.player.OstwindPlayerActivity.class);
-                                            wIntent.putExtra("video_url", videoUrl);
-                                            String cookie = tv.biliclassic.util.CookieGenerator.getCookieString(true);
-                                            if (cookie != null && cookie.length() > 0) {
-                                                wIntent.putExtra("cookie", cookie);
-                                            }
-                                            wIntent.putExtra("agent", tv.biliclassic.util.NetWorkUtil.USER_AGENT_WEB);
-                                            wIntent.putExtra("video_title", tempPartTitle);
-                                            wIntent.putExtra("aid", tempAid);
-                                            wIntent.putExtra("cid", targetCid);
-                                            isPlayButtonClicked = false;
-                                            startActivity(wIntent);
-                                            return;
-                                        }
-                                        // 内置播放器（PLAYER_BUILTIN 且 API>=9）才直接进 BiliPlayerActivity；
-                                        // 其余（外部/系统/自动）统一走 PlayerAnimActivity 分派，
-                                        // 由 PlayerAnimActivity 按播放器偏好处理在线播放（含本地代理跳外部）
-                                        // PLAYER_BUILTIN == 8
-                                        boolean useBuiltin = pref == 8
-                                                && tv.biliclassic.util.SdkHelper.getSdkInt() >= 9;
-                                        if (useBuiltin) {
-                                            Intent intent = new Intent(getActivity(), BiliPlayerActivity.class);
-                                            intent.putExtra("video_url", videoUrl);
-                                            intent.putExtra("video_title", tempPartTitle);
-                                            intent.putExtra("aid", tempAid);
-                                            intent.putExtra("cid", targetCid);
-                                            intent.putExtra("online_mode", true);
-                                            intent.putExtra("part_index", tempPartIndex);
-                                            if (videoInfo != null) {
-                                                intent.putExtra("cover_url", videoInfo.cover);
-                                            }
-                                            if (cidArray != null) {
-                                                intent.putExtra("cids", cidArray);
-                                                intent.putExtra("pagenames", partNameArray);
-                                            }
-                                            putQualityExtras(intent, playerData);
-                                            isPlayButtonClicked = false;
-                                            startActivity(intent);
-                                            return;
-                                        }
-                                        Intent pIntent = new Intent(getActivity(), PlayerAnimActivity.class);
-                                        pIntent.putExtra("video_url", videoUrl);
-                                        pIntent.putExtra("video_title", tempPartTitle);
-                                        pIntent.putExtra("aid", tempAid);
-                                        pIntent.putExtra("cid", targetCid);
-                                        pIntent.putExtra("online_mode", true);
-                                        pIntent.putExtra("part_index", tempPartIndex);
+                                        Intent intent = new Intent(getActivity(), BiliPlayerActivity.class);
+                                        intent.putExtra("video_url", videoUrl);
+                                        intent.putExtra("video_title", tempPartTitle);
+                                        intent.putExtra("aid", tempAid);
+                                        intent.putExtra("cid", targetCid);
+                                        intent.putExtra("online_mode", true);
+                                        intent.putExtra("part_index", tempPartIndex);
                                         if (videoInfo != null) {
-                                            pIntent.putExtra("cover_url", videoInfo.cover);
+                                            intent.putExtra("cover_url", videoInfo.cover);
                                         }
                                         if (cidArray != null) {
-                                            pIntent.putExtra("cids", cidArray);
-                                            pIntent.putExtra("pagenames", partNameArray);
+                                            intent.putExtra("cids", cidArray);
+                                            intent.putExtra("pagenames", partNameArray);
                                         }
-                                        putQualityExtras(pIntent, playerData);
+                                        putQualityExtras(intent, playerData);
                                         isPlayButtonClicked = false;
-                                        startActivity(pIntent);
+                                        startActivity(intent);
                                     } else {
                                         Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_83b7_1), Toast.LENGTH_SHORT).show();
                                         isPlayButtonClicked = false;
@@ -1198,8 +1091,9 @@ public class VideoDetailFragment extends Fragment {
             String pkg = SettingsActivity.getPlayerPackageName();
             if (pkg != null) {
                 try { Intent.class.getMethod("setPackage", String.class).invoke(extIntent, pkg); } catch (Exception ignored) {}
-                // 直接尝试启动；queryIntentActivities 对 FileProvider content URI 会因权限过滤误判 0，
-                // 导致装了播放器也被降级。改为 try-catch。
+                if (getActivity().getPackageManager().queryIntentActivities(extIntent, 0).size() == 0) {
+                    try { Intent.class.getMethod("setPackage", String.class).invoke(extIntent, new Object[]{null}); } catch (Exception ignored) {}
+                }
             }
             try {
                 if (getActivity() instanceof VideoDetailActivity) {

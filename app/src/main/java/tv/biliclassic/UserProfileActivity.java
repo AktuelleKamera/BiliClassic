@@ -143,7 +143,6 @@ public class UserProfileActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_user_profile);
-        initRoundTitleBar();
 
         mid = getIntent().getLongExtra("mid", 0);
 

@@ -77,7 +77,6 @@ public class DanmakuManager {
     private boolean mUseSimpleEngine;
 
     private IMediaPlayer mMediaPlayer;
-    private PositionProvider mPosProvider;
     private boolean mVideoPrepared;
     private boolean mSeekPending;
     private long mSeekTarget;
@@ -119,18 +118,6 @@ public class DanmakuManager {
     public void init() {
         mReleased = false;
         mUseSimpleEngine = isSimpleEngineEnabled();
-
-        // 应用内诊断日志（无需 adb，开关默认关）：记录引擎选择与设备关键信息，供卡顿/崩溃排查
-        try {
-            tv.biliclassic.util.LogFileUtil.diag("Danmaku",
-                    "sdk=" + tv.biliclassic.util.SdkHelper.getSdkInt()
-                            + " abi=" + getCpuAbi()
-                            + " simpleEngine=" + mUseSimpleEngine
-                            + " cpus=" + Runtime.getRuntime().availableProcessors()
-                            + " model=" + android.os.Build.MODEL
-                            + " release=" + android.os.Build.VERSION.RELEASE);
-        } catch (Throwable t) {
-        }
 
         if (mUseSimpleEngine) {
             initSimpleEngine();
@@ -233,57 +220,22 @@ public class DanmakuManager {
         mLoaded = false;
     }
 
-    public interface PositionProvider {
-        long getCurrentPosition();
-    }
-
     public void onVideoPrepared(IMediaPlayer mp) {
         mMediaPlayer = mp;
-        setPositionProvider(new PositionProvider() {
-            public long getCurrentPosition() {
-                try {
-                    return mMediaPlayer.getCurrentPosition();
-                } catch (Exception e) {
-                    android.util.Log.e("BT-5", "getCurrentPosition error: " + e.getMessage());
-                    return 0;
-                }
-            }
-        });
-    }
-
-    // 通用播放位置源（兼容系统 MediaPlayer 等非 IJK 播放器）
-    public void setPositionProvider(PositionProvider provider) {
-        mPosProvider = provider;
         mVideoPrepared = true;
         if (mSimpleEngine != null) {
             mSimpleEngine.setTimeProvider(new SimpleDanmakuEngine.VideoTimeProvider() {
                 public long getCurrentPosition() {
-                    long pos = getCurrentVideoPosition();
-                    return pos >= 0 ? pos : 0;
+                    try {
+                        long pos = mMediaPlayer.getCurrentPosition();
+                        return pos >= 0 ? pos : 0;
+                    } catch (Exception e) {
+                        android.util.Log.e("BT-5", "getCurrentPosition error: " + e.getMessage());
+                        return 0;
+                    }
                 }
             });
         }
-    }
-
-    // 当前弹幕时钟（ms）：全引擎返回视图时钟，简易引擎直接跟随视频位置
-    public long getCurrentTime() {
-        if (mSimpleEngine != null) {
-            return mVideoPrepared ? getCurrentVideoPosition() : 0;
-        }
-        if (mDanmakuView != null) {
-            return mDanmakuView.getCurrentTime();
-        }
-        return 0;
-    }
-
-    private long getCurrentVideoPosition() {
-        if (mPosProvider != null) {
-            try { return mPosProvider.getCurrentPosition(); } catch (Exception e) {}
-        }
-        if (mMediaPlayer != null) {
-            try { return mMediaPlayer.getCurrentPosition(); } catch (Exception e) {}
-        }
-        return 0;
     }
 
     public void seekTo(long positionMs) {
@@ -456,10 +408,12 @@ public class DanmakuManager {
         View root = mActivity.getWindow().getDecorView();
         mOptionsPanel.showAtLocation(root, Gravity.RIGHT, 0, 0);
         if (SdkHelper.getSdkInt() >= 28) {
-            tv.biliclassic.util.SdkHelper.onViewAttached(panel, new Runnable() {
-                public void run() {
+            panel.addOnAttachStateChangeListener(new android.view.View.OnAttachStateChangeListener() {
+                public void onViewAttachedToWindow(android.view.View v) {
                     tv.biliclassic.player.BiliPlayerActivity.applyPopupCutout(mOptionsPanel);
+                    v.removeOnAttachStateChangeListener(this);
                 }
+                public void onViewDetachedFromWindow(android.view.View v) {}
             });
         }
     }
@@ -758,15 +712,13 @@ public class DanmakuManager {
                 public void prepared() {
                     if (mReleased || mDanmakuView == null) return;
                     android.util.Log.e("DanmakuManager", "弹幕引擎准备完毕");
-                    try {
-                        tv.biliclassic.util.LogFileUtil.diag("Danmaku", "完整引擎准备完毕");
-                    } catch (Throwable t) {
-                    }
                     mLoaded = true;
                     if (mEnabled) {
-                        if (mVideoPrepared) {
-                            long pos = getCurrentVideoPosition();
-                            if (pos > 0) mDanmakuView.seekTo(pos);
+                        if (mVideoPrepared && mMediaPlayer != null) {
+                            try {
+                                long pos = mMediaPlayer.getCurrentPosition();
+                                if (pos > 0) mDanmakuView.seekTo(pos);
+                            } catch (Exception ignored) {}
                         }
                         mDanmakuView.start();
                     }
@@ -774,9 +726,9 @@ public class DanmakuManager {
 
                 @Override
                 public void updateTimer(DanmakuTimer timer) {
-                    if (mVideoPrepared && mSeekPending) {
+                    if (mMediaPlayer != null && mVideoPrepared && mSeekPending) {
                         try {
-                            long pos = getCurrentVideoPosition();
+                            long pos = mMediaPlayer.getCurrentPosition();
                             if (pos >= 0 && Math.abs(pos - mSeekTarget) < 500) {
                                 timer.update(pos);
                                 mSeekPending = false;
@@ -807,8 +759,8 @@ public class DanmakuManager {
             public void run() {
                 try {
                     long progress = 0;
-                    if (mVideoPrepared) {
-                        progress = getCurrentVideoPosition();
+                    if (mMediaPlayer != null && mVideoPrepared) {
+                        progress = mMediaPlayer.getCurrentPosition();
                     }
                     int result = DanmakuApi.sendVideoDanmakuByAid(
                             mCid, text, mAid, progress,
@@ -931,10 +883,12 @@ public class DanmakuManager {
         View root = mActivity.getWindow().getDecorView();
         mOptionsPanel.showAtLocation(root, Gravity.RIGHT, 0, 0);
         if (SdkHelper.getSdkInt() >= 28) {
-            tv.biliclassic.util.SdkHelper.onViewAttached(panel, new Runnable() {
-                public void run() {
+            panel.addOnAttachStateChangeListener(new android.view.View.OnAttachStateChangeListener() {
+                public void onViewAttachedToWindow(android.view.View v) {
                     tv.biliclassic.player.BiliPlayerActivity.applyPopupCutout(mOptionsPanel);
+                    v.removeOnAttachStateChangeListener(this);
                 }
+                public void onViewDetachedFromWindow(android.view.View v) {}
             });
         }
     }

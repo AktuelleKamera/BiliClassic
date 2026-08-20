@@ -53,7 +53,6 @@
             android:id="@+id/list_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#F5F5F5"
             android:divider="@null"
             android:dividerHeight="0dp"
             android:scrollbars="vertical" />

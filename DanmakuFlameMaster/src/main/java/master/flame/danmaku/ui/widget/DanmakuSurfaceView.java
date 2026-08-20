@@ -173,21 +173,14 @@ public class DanmakuSurfaceView extends SurfaceView implements IDanmakuView, IDa
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            // HandlerThread.quit() 是 API 18+，改用 Looper.quit()（API 1）
-            try {
-                mHandlerThread.getLooper().quit();
-            } catch (Throwable t) {
-            }
+            mHandlerThread.quit();
             mHandlerThread = null;
         }
     }
     
     protected Looper getLooper(int type){
         if (mHandlerThread != null) {
-            try {
-                mHandlerThread.getLooper().quit();
-            } catch (Throwable t) {
-            }
+            mHandlerThread.quit();
             mHandlerThread = null;
         }
         

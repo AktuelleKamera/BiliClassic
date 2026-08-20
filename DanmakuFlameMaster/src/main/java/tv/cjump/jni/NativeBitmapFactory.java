@@ -97,10 +97,10 @@ public class NativeBitmapFactory {
             bitmap = createNativeBitmap(2, 2, Bitmap.Config.ARGB_8888, true);
             boolean result = (bitmap != null && bitmap.getWidth() == 2 && bitmap.getHeight() == 2);
             if (result) {
-                if (getSdkInt() >= 17
-                        && !master.flame.danmaku.util.DanmakuCompat.V17.isPremultiplied(bitmap)) {
+                if (getSdkInt() >= 17 && !bitmap.isPremultiplied()) {
                     try {
-                        master.flame.danmaku.util.DanmakuCompat.V17.setPremultiplied(bitmap, true);
+                        java.lang.reflect.Method method = Bitmap.class.getMethod("setPremultiplied", boolean.class);
+                        method.invoke(bitmap, true);
                     } catch (Exception e) {
                     }
                 }
@@ -112,7 +112,7 @@ public class NativeBitmapFactory {
                         paint);
                 canvas.drawText("TestLib", 0, 0, paint);
                 if (getSdkInt() >= 17) {
-                    result = master.flame.danmaku.util.DanmakuCompat.V17.isPremultiplied(bitmap);
+                    result = bitmap.isPremultiplied();
                 }
             }
             return result;

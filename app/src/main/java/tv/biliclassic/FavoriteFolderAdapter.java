@@ -87,23 +87,6 @@ public class FavoriteFolderAdapter extends BaseAdapter {
         }
     }
 
-    // ===== 遥控器方向键选中的条目（-1 = 未选中），用于整行高亮 =====
-    private int selectedPosition = -1;
-    private boolean mHideHighlight = false;
-
-    public void setSelectedPosition(int position) {
-        this.selectedPosition = position;
-        notifyDataSetChanged();
-    }
-
-    public void setHideHighlight(boolean hide) {
-        if (this.mHideHighlight == hide) {
-            return;
-        }
-        this.mHideHighlight = hide;
-        notifyDataSetChanged();
-    }
-
     private void flushPendingBitmapSets() {
         if (pendingBitmapSets.isEmpty()) return;
         final java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
@@ -181,18 +164,6 @@ public class FavoriteFolderAdapter extends BaseAdapter {
             holder = (ViewHolder) convertView.getTag();
         }
 
-        // 遥控器光标高亮（选中：半透明粉色；未选中：恢复原点击效果背景）
-        if (position == selectedPosition && !mHideHighlight) {
-            convertView.setBackgroundColor(0x66D86DA5);
-        } else {
-            try {
-                convertView.setBackgroundDrawable(
-                        convertView.getResources().getDrawable(R.drawable.item_click_effect_white));
-            } catch (Exception e) {
-                convertView.setBackgroundColor(0xFFFFFFFF);
-            }
-        }
-
         holder.name.setText(item.name != null ? item.name : "");
         holder.count.setText((item.videoCount >= 0 ? item.videoCount : 0) + "个视频");
 
@@ -258,7 +229,7 @@ public class FavoriteFolderAdapter extends BaseAdapter {
             });
         }
 
-        // ====== 点击：直接使用本次 getView 绑定的 item（避免 convertView 复用 + fid 相同导致跳错） ======
+        // ====== 关键修改：点击时保存 fid，跳转时按 fid 查找 ======
         final long clickedFid = item.fid;
         final String clickedName = item.name;
         final int pos = position;
@@ -267,15 +238,12 @@ public class FavoriteFolderAdapter extends BaseAdapter {
             @Override
             public void onClick(View v) {
                 if (context instanceof FavoriteFolderListActivity) {
-                    // 优先用本次绑定的 item；若因 convertView 复用了旧监听再按 fid
-                    FavoriteFolder target = item;
-                    if (target == null || target.fid != clickedFid) {
-                        target = null;
-                        for (FavoriteFolder f : list) {
-                            if (f.fid == clickedFid) {
-                                target = f;
-                                break;
-                            }
+                    // 从 list 中按 fid 查找，确保准确
+                    FavoriteFolder target = null;
+                    for (FavoriteFolder f : list) {
+                        if (f.fid == clickedFid) {
+                            target = f;
+                            break;
                         }
                     }
                     System.out.println("Adapter点击: clickedFid=" + clickedFid + ", target=" + (target != null ? target.name : "null"));

@@ -66,7 +66,6 @@ public class SharedPreferencesUtil {
     public static final String DOWNLOAD_FORMAT = "download_format"; // "mp4" 或 "original"
     public static final String DIALOG_STYLE = "dialog_style";
     public static final String PLAY_STREAM_FORMAT = "play_stream_format"; // 1=MP4, 16=DASH
-    public static final String ROUND_SCREEN_CENTER = "round_screen_center";
 
     // CookieGenerator 需要的 key
     public static final String BUVid3 = "buvid3";
@@ -90,10 +89,6 @@ public class SharedPreferencesUtil {
 
     public static SharedPreferences getSharedPreferences() {
         return sharedPreferences;
-    }
-
-    public static Context getAppContext() {
-        return sAppContext;
     }
 
     public static SharedPreferences getDefaultSharedPreferences() {

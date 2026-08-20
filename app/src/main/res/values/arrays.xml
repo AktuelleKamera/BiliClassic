@@ -130,7 +130,7 @@
     <!-- decoder_entries -->
     <string-array name="decoder_entries">
         <item>系统硬解</item>
-        <item>软件解码器</item>
+        <item>IJK V3软解</item>
     </string-array>
     <string-array name="decoder_values">
         <item>0</item>

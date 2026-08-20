@@ -32,7 +32,6 @@ public class GestureController {
     private Handler mHandler;
     private View mGestureView;
     private View mTouchingView;
-    private View mBrightnessDimView;
     private ViewGroup mBrightnessBar;
     private ViewGroup mVolumeBar;
     private ProgressBar mBrightnessLevel;
@@ -46,11 +45,6 @@ public class GestureController {
     private int mBrightnessLevelStart;
     private int mLastBrightnessLevel = -1;
     private int mVolumeStart;
-    private int mTouchSlop;
-
-    // 方向锁定：一旦某次手势确定是水平/垂直，本次手势内不再翻转
-    private boolean mDirectionLocked;
-    private boolean mDirectionHorizontal;
 
     private boolean mInGestureSeekingMode;
     private boolean mInHorizontalMoving;
@@ -65,9 +59,6 @@ public class GestureController {
 
     private SeekBar mSeekBar;
     private TextView mTvCurrentTime;
-    // true = 注入的 SeekBar 进度单位是毫秒（如 Ostwind 的 setMax(dur)）；
-    // false = 千分制 0~1000（完整版 BiliPlayer）
-    private boolean mSeekBarUsesMillis = false;
 
     private PlayerToastMessageViewHolder mToastViewHolder;
     private String mProgreesFmt;
@@ -162,25 +153,8 @@ public class GestureController {
         mHandler = handler;
         mListener = listener;
         mProgreesFmt = activity.getString(R.string.PlayerController_toast_message_play_progress_fmt);
-        mTouchSlop = android.view.ViewConfiguration.get(activity).getScaledTouchSlop();
 
         mGestureView = rootView.findViewById(R.id.controller_underlay);
-        // SurfaceView 硬解走硬件 overlay 时 window.screenBrightness 不生效，
-        // 若布局提供了黑色遮罩层则用 alpha 模拟亮度
-        mBrightnessDimView = rootView.findViewById(R.id.brightness_dim_layer);
-        if (mBrightnessDimView != null) {
-            // 注意：API<9（Ostwind 目标设备）没有 View.setAlpha，XML 的 android:alpha
-            // 会被忽略导致遮罩全黑。默认必须隐藏遮罩（不调亮度=不遮挡），
-            // 并保证背景 alpha 透明。
-            try {
-                mBrightnessDimView.setVisibility(View.GONE);
-                android.graphics.drawable.Drawable bg = mBrightnessDimView.getBackground();
-                if (bg != null) {
-                    bg.setAlpha(0);
-                }
-            } catch (Throwable t) {
-            }
-        }
         View barsGroup = rootView.findViewById(R.id.vertically_bars_group);
         if (barsGroup != null) {
             mBrightnessBar = (ViewGroup) barsGroup.findViewById(R.id.brightness_bar);
@@ -195,6 +169,7 @@ public class GestureController {
 
         mSeekBar = (SeekBar) rootView.findViewById(R.id.seekbar);
         mTvCurrentTime = (TextView) rootView.findViewById(R.id.time_current);
+
         mToastViewHolder = new PlayerToastMessageViewHolder();
 
         initSpeedTipView(rootView);
@@ -211,10 +186,6 @@ public class GestureController {
                         if (newScale != mCurrentScale) {
                             mCurrentScale = newScale;
                             mIsScaling = true;
-                            // 缩放时清空平移：放大应居中，避免叠加之前单指拖动残留的
-                            // translate 导致画面偏移（"放大往左上角移出屏幕"）。
-                            mTranslateX = 0;
-                            mTranslateY = 0;
                             if (mScaleChangeListener != null) {
                                 mScaleChangeListener.onScaleChange(mCurrentScale, mTranslateX, mTranslateY);
                             }
@@ -323,20 +294,6 @@ public class GestureController {
         Log.d(TAG, "setDuration: " + duration + "ms");
     }
 
-    /** 注入 SeekBar / 时间 TextView（供复用布局 id 不一致的播放器，如 Ostwind） */
-    public void setSeekBar(SeekBar seekBar) {
-        this.mSeekBar = seekBar;
-    }
-
-    /** 声明注入的 SeekBar 是否以毫秒为单位（Ostwind 传 true，完整版默认 false=千分制） */
-    public void setSeekBarUsesMillis(boolean usesMillis) {
-        this.mSeekBarUsesMillis = usesMillis;
-    }
-
-    public void setCurrentTimeView(TextView tv) {
-        this.mTvCurrentTime = tv;
-    }
-
     public void setSeekBeginPosition(int position) {
         this.mSeekBeginPosition = position;
     }
@@ -352,7 +309,7 @@ public class GestureController {
         switch (decoderType) {
             case 0: typeName = "系统解码器"; break;
             case 1: typeName = "IJK硬解"; break;
-            case 2: typeName = "软件解码器"; break;
+            case 2: typeName = "IJK软解"; break;
             default: typeName = "未知";
         }
         Log.d(TAG, "setDecoderType: " + typeName);
@@ -658,13 +615,6 @@ public class GestureController {
         public boolean onDown(MotionEvent e) {
             Log.d(TAG, "onDown");
             mIsPinching = false;
-            // 新一次触摸：重置方向锁定，避免上次手势残留
-            mDirectionLocked = false;
-            mDirectionHorizontal = false;
-            mInHorizontalMoving = false;
-            mInVerticalMoving = false;
-            mInGestureSeekingMode = false;
-            mIsSeeking = false;
             if (!enableGesture) {
                 return true;
             }
@@ -681,9 +631,6 @@ public class GestureController {
         public boolean onSingleTapConfirmed(MotionEvent e) {
             Log.d(TAG, "onSingleTapConfirmed");
             mLongPressHandler.removeCallbacks(mLongPressRunnable);
-            if (!enableGesture) {
-                return true;
-            }
             if (mInGestureSeekingMode || mInHorizontalMoving || mInVerticalMoving ||
                     mIsScaling || mIsPinching || mIsDragging) {
                 return false;
@@ -697,16 +644,6 @@ public class GestureController {
         public boolean onDoubleTap(MotionEvent e) {
             Log.d(TAG, "onDoubleTap");
             mLongPressHandler.removeCallbacks(mLongPressRunnable);
-            // 双击：清除一切手势 seek/方向状态，避免第二次点击的轻微位移被当作 seek 提交
-            mInGestureSeekingMode = false;
-            mIsSeeking = false;
-            mInHorizontalMoving = false;
-            mInVerticalMoving = false;
-            mDirectionLocked = false;
-            mDirectionHorizontal = false;
-            if (!enableGesture) {
-                return true;
-            }
             if (mListener != null) {
                 mListener.onTogglePlayPause();
             }
@@ -743,56 +680,27 @@ public class GestureController {
                 }
             }
 
-            // 缩放为 1.0 时处理快进快退 / 亮度音量
+            // 缩放为 1.0 时处理快进快退
             if (mCurrentScale <= 1.0f) {
                 float startX = e1.getX();
                 if (startX < mGestureWidth * 0.01f || startX > mGestureWidth * 0.95f) return true;
                 float startY = e1.getY();
                 if (startY < mGestureHeight * 0.1f || startY > mGestureHeight * 0.95f) return true;
 
-                float totalDx = e2.getX() - e1.getX();
-                float totalDy = e2.getY() - e1.getY();
+                float moveDelta = Math.abs(distanceY) - Math.abs(distanceX);
 
-                // 未锁定方向时：位移必须超过触摸 slop 才判定方向，
-                // 否则（单击/双击抖动）一律不处理，避免误触发 seek
-                if (!mDirectionLocked) {
-                    float adx = Math.abs(totalDx);
-                    float ady = Math.abs(totalDy);
-                    if (adx < mTouchSlop && ady < mTouchSlop) {
+                if (moveDelta > 0f) {
+                    if (mInHorizontalMoving || mIsSeeking) {
                         return true;
                     }
-                    // 需要明显优势（1.2 倍）才锁定方向：既避免垂直滑动起始抖动被误判成水平，
-                    // 又不会因 1.5 倍门槛过严导致明显的水平滑动（尤其带轻微斜向时）永不锁定。
-                    if (adx > ady * 1.2f) {
-                        mDirectionLocked = true;
-                        mDirectionHorizontal = true;
-                        mInHorizontalMoving = true;
-                        mInVerticalMoving = false;
-                    } else if (ady > adx * 1.2f) {
-                        mDirectionLocked = true;
-                        mDirectionHorizontal = false;
-                        mInHorizontalMoving = false;
-                        mInVerticalMoving = true;
-                    } else {
-                        // 方向不明（接近对角）：暂不处理，等位移更大再判
-                        return true;
-                    }
-                }
-
-                if (mDirectionHorizontal) {
-                    // 水平手势：快进快退（仅当不是直播）
-                    if (isLiveStream) {
-                        return true;
-                    }
-                    if (mIsAdjustingBrightness || mIsAdjustingVolume) {
+                    mLongPressHandler.removeCallbacks(mLongPressRunnable);
+                    onVerticalMove(e1, e2, distanceX, distanceY);
+                } else if (moveDelta < 0f && !isLiveStream) {
+                    if (mInVerticalMoving || mIsAdjustingBrightness || mIsAdjustingVolume) {
                         return true;
                     }
                     mLongPressHandler.removeCallbacks(mLongPressRunnable);
                     onHorizontalMove(e1, e2, distanceX, distanceY);
-                } else {
-                    // 垂直手势：亮度/音量
-                    mLongPressHandler.removeCallbacks(mLongPressRunnable);
-                    onVerticalMove(e1, e2, distanceX, distanceY);
                 }
             }
             return true;
@@ -802,37 +710,22 @@ public class GestureController {
         private void onHorizontalMove(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
             if (mInVerticalMoving || mIsAdjustingBrightness || mIsAdjustingVolume || mSeekBar == null) return;
             float deltaFactorX = (e1.getX() - e2.getX()) / (float) mGestureWidth;
-            // 需要明确的水平拖动（>= 5% 屏宽）才开始进退，避免点击/双击抖动误触发
-            if (Math.abs(deltaFactorX) >= 0.05f || mInGestureSeekingMode) {
+            if (Math.abs(deltaFactorX) >= 0.02f || mInGestureSeekingMode) {
                 if (!mInGestureSeekingMode) {
                     mInGestureSeekingMode = true;
                     mIsSeeking = true;
                     mSeekBarStartProgress = mSeekBar.getProgress();
                     Log.d(TAG, "开始手势快进，起始进度: " + mSeekBarStartProgress);
                 }
-                int seekBarMax = mSeekBar.getMax();
-                // 统一换算成毫秒基准
-                long startMs = mSeekBarUsesMillis
-                        ? mSeekBarStartProgress
-                        : ((long) mSeekBarStartProgress) * mDuration / seekBarMax;
-                // 快退快进手感：全屏滑动按 10 分钟换算（与 Ostwind 原版 GESTURE_SEEK_RANGE_MS 一致），
-                // 避免全屏=整段视频导致轻轻一滑就跳到结尾。
-                // 注意：千分制（BiliPlayer seekbar max=1000）这里必须换算成毫秒范围再乘以 deltaFactorX，
-                // 不能直接用 1000（那是刻度范围，对长视频会算成只退 1 秒，导致"进退+0秒"）。
-                long seekRangeMs = Math.min(mDuration > 0 ? mDuration : 600000L, 600000L);
-                long targetMs = startMs - (long) (seekRangeMs * deltaFactorX);
-                if (targetMs < 0) targetMs = 0;
-                if (mDuration > 0 && targetMs > mDuration) targetMs = mDuration;
-                // 写回 SeekBar 显示
-                int progress = mSeekBarUsesMillis
-                        ? (int) targetMs
-                        : (int) (seekBarMax * targetMs / mDuration);
-                mSeekbarProgress = progress;
-                mSeekBar.setProgress(progress);
+                int maxSeekable = getMaxSeekableValue();  // 固定返回 1000
+                mSeekbarProgress = (int) (mSeekBarStartProgress - (maxSeekable * deltaFactorX));
+                mSeekbarProgress = Math.min(Math.max(mSeekbarProgress, 0), mSeekBar.getMax());
+                mSeekBar.setProgress(mSeekbarProgress);
                 if (mDuration > 0 && mTvCurrentTime != null) {
-                    mTvCurrentTime.setText(formatTime((int) targetMs));
+                    long newPosition = ((long) mSeekbarProgress) * mDuration / 1000;
+                    mTvCurrentTime.setText(formatTime((int) newPosition));
                 }
-                showSeekProgressHint((int) targetMs);
+                showSeekProgressHint(mSeekbarProgress);
                 if (!mInHorizontalMoving) mInHorizontalMoving = true;
             }
         }
@@ -895,24 +788,9 @@ public class GestureController {
     private void changeBrightness(float deltaFactorY) {
         int max = 15;
         int newLevel = (int) Math.floor(mBrightnessLevelStart + (0.8f * deltaFactorY * max));
-        // 最低 1 级：只能调到接近 0（很暗），不能全黑
-        newLevel = Math.min(Math.max(newLevel, 1), max);
+        newLevel = Math.min(Math.max(newLevel, 0), max);
         float brightness = newLevel / (float) max;
-        if (mBrightnessDimView != null) {
-            // 硬解 overlay：用黑色遮罩模拟亮度（1-亮度 为遮罩不透明度）。
-            // 注意 API<9（Ostwind 目标设备）没有 View.setAlpha，必须用背景 Drawable.setAlpha（API 1）
-            float dimAlpha = 1.0f - brightness;
-            try {
-                mBrightnessDimView.setVisibility(View.VISIBLE);
-                android.graphics.drawable.Drawable bg = mBrightnessDimView.getBackground();
-                if (bg != null) {
-                    bg.setAlpha((int) (dimAlpha * 255));
-                }
-            } catch (Throwable t) {
-            }
-        } else {
-            BrightnessHelper.setBrightness(mActivity, brightness);
-        }
+        BrightnessHelper.setBrightness(mActivity, brightness);
         mLastBrightnessLevel = newLevel;
         if (mBrightnessBar != null) {
             mBrightnessBar.setVisibility(View.VISIBLE);
@@ -937,16 +815,15 @@ public class GestureController {
         }
     }
 
-    private void showSeekProgressHint(int progressMs) {
+    private void showSeekProgressHint(int progress) {
         if (mToastViewHolder == null) return;
         android.widget.FrameLayout rootView = (android.widget.FrameLayout)
                 mActivity.findViewById(android.R.id.content);
         if (rootView == null) return;
         mToastViewHolder.initView(mActivity, rootView);
 
-        int beginMs = mSeekBarUsesMillis
-                ? mSeekBeginPosition
-                : (int) (((long) mSeekBeginPosition) * mDuration / (mSeekBar != null ? mSeekBar.getMax() : 1000));
+        int progressMs = (int) (((long) progress) * mDuration / 1000);
+        int beginMs = (int) (((long) mSeekBeginPosition) * mDuration / 1000);
         String timeText = formatTime(progressMs);
         String durationText = formatTime(mDuration);
 
@@ -968,10 +845,6 @@ public class GestureController {
         mIsPinching = false;
         mIsLongPressing = false;
         mIsDragging = false;
-        mDirectionLocked = false;
-        mDirectionHorizontal = false;
-        mInHorizontalMoving = false;
-        mInVerticalMoving = false;
 
         if ((mBrightnessBar != null && mBrightnessBar.isShown()) ||
                 (mVolumeBar != null && mVolumeBar.isShown())) {
@@ -982,11 +855,9 @@ public class GestureController {
         if (mInGestureSeekingMode) {
             mInGestureSeekingMode = false;
             if (mDuration > 0 && mListener != null) {
-                long finalMs = mSeekBarUsesMillis
-                        ? mSeekbarProgress
-                        : ((long) mSeekbarProgress) * mDuration / (mSeekBar != null ? mSeekBar.getMax() : 1000);
-                Log.d(TAG, "手势快进结束，跳转到: " + finalMs + "ms");
-                mListener.onSeekTo(finalMs);
+                long finalPosition = ((long) mSeekbarProgress) * mDuration / 1000;
+                Log.d(TAG, "手势快进结束，跳转到: " + finalPosition + "ms");
+                mListener.onSeekTo(finalPosition);
             }
         }
         mInHorizontalMoving = false;

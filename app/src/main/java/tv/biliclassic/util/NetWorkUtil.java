@@ -57,8 +57,6 @@ public class NetWorkUtil {
     private static final int CONNECT_TIMEOUT = 15000;
     private static final int READ_TIMEOUT = 15000;
     private static final int MAX_REDIRECT_COUNT = 5;
-    // 请求自动重试：网络异常/超时/空响应时重试次数（不含首次）
-    private static final int MAX_RETRY_COUNT = 2;
 
     // 根据当前语言设置返回 Accept-Language 值
     private static String getAcceptLanguage() {
@@ -367,34 +365,6 @@ public class NetWorkUtil {
     }
 
     private static String getInternal(String url, ArrayList headers, int retryCount) throws IOException {
-        IOException lastException = null;
-        for (int attempt = 0; attempt <= MAX_RETRY_COUNT; attempt++) {
-            if (attempt > 0) {
-                sleepBeforeRetry(attempt);
-            }
-            try {
-                String result = doGetOnce(url, headers, retryCount);
-                if (result == null || result.length() == 0) {
-                    // 空响应：非最终次则重试（可能是代理/连接池残留问题）
-                    if (attempt < MAX_RETRY_COUNT) {
-                        Log.w("NetDiag", "GET 空响应 " + hostOf(url) + " 将重试 (attempt=" + attempt + ")");
-                        continue;
-                    }
-                }
-                return result;
-            } catch (IOException e) {
-                lastException = e;
-                if (attempt < MAX_RETRY_COUNT && isRetryable(e)) {
-                    Log.w("NetDiag", "GET 重试 " + hostOf(url) + " " + e.getClass().getSimpleName() + " (attempt=" + attempt + ")");
-                    continue;
-                }
-                throw e;
-            }
-        }
-        throw lastException != null ? lastException : new IOException("请求失败");
-    }
-
-    private static String doGetOnce(String url, ArrayList headers, int retryCount) throws IOException {
         HttpURLConnection conn = null;
         BufferedReader reader = null;
         java.io.CharArrayWriter caw = null;
@@ -448,33 +418,6 @@ public class NetWorkUtil {
     }
 
     private static String postInternal(String url, String data, List headers, String contentType, int retryCount) throws IOException {
-        IOException lastException = null;
-        for (int attempt = 0; attempt <= MAX_RETRY_COUNT; attempt++) {
-            if (attempt > 0) {
-                sleepBeforeRetry(attempt);
-            }
-            try {
-                String result = doPostOnce(url, data, headers, contentType, retryCount);
-                if (result == null || result.length() == 0) {
-                    if (attempt < MAX_RETRY_COUNT) {
-                        Log.w("NetDiag", "POST 空响应 " + hostOf(url) + " 将重试 (attempt=" + attempt + ")");
-                        continue;
-                    }
-                }
-                return result;
-            } catch (IOException e) {
-                lastException = e;
-                if (attempt < MAX_RETRY_COUNT && isRetryable(e)) {
-                    Log.w("NetDiag", "POST 重试 " + hostOf(url) + " " + e.getClass().getSimpleName() + " (attempt=" + attempt + ")");
-                    continue;
-                }
-                throw e;
-            }
-        }
-        throw lastException != null ? lastException : new IOException("请求失败");
-    }
-
-    private static String doPostOnce(String url, String data, List headers, String contentType, int retryCount) throws IOException {
         HttpURLConnection conn = null;
         BufferedReader reader = null;
         java.io.CharArrayWriter caw = null;
@@ -724,64 +667,8 @@ public class NetWorkUtil {
         return result;
     }
 
-    // 重试前退避等待（简单递增，避免瞬时抖动连续失败）
-    private static void sleepBeforeRetry(int attempt) {
-        try {
-            Thread.sleep(300L * attempt);
-        } catch (InterruptedException e) {
-        }
-    }
-
-    // 可重试的异常：网络层/超时/服务器 5xx 等瞬时问题
-    private static boolean isRetryable(IOException e) {
-        if (e == null) {
-            return true;
-        }
-        String cls = e.getClass().getName();
-        String msg = e.getMessage();
-        if (msg != null) {
-            String low = msg.toLowerCase();
-            if (low.contains("timed out") || low.contains("timeout")
-                    || low.contains("refused") || low.contains("reset")
-                    || low.contains("broken pipe") || low.contains("unreachable")) {
-                return true;
-            }
-        }
-        if (cls.contains("SocketTimeout") || cls.contains("ConnectException")
-                || cls.contains("UnknownHost") || cls.contains("ConnectException")) {
-            return true;
-        }
-        return false;
-    }
-
     // 流式解析 JSON，避免大响应构造 String（byte[]+char[] 双倍内存）
     public static JSONObject getJsonStream(String url, ArrayList headers) throws IOException, JSONException {
-        IOException lastException = null;
-        for (int attempt = 0; attempt <= MAX_RETRY_COUNT; attempt++) {
-            if (attempt > 0) {
-                sleepBeforeRetry(attempt);
-            }
-            try {
-                return doGetJsonStreamOnce(url, headers);
-            } catch (JSONException e) {
-                if (attempt < MAX_RETRY_COUNT) {
-                    Log.w("NetDiag", "getJsonStream 空/异常响应 " + hostOf(url) + " 将重试 (attempt=" + attempt + ")");
-                    continue;
-                }
-                throw e;
-            } catch (IOException e) {
-                lastException = e;
-                if (attempt < MAX_RETRY_COUNT && isRetryable(e)) {
-                    Log.w("NetDiag", "getJsonStream 重试 " + hostOf(url) + " " + e.getClass().getSimpleName() + " (attempt=" + attempt + ")");
-                    continue;
-                }
-                throw e;
-            }
-        }
-        throw lastException != null ? lastException : new IOException("请求失败");
-    }
-
-    private static JSONObject doGetJsonStreamOnce(String url, ArrayList headers) throws IOException, JSONException {
         HttpURLConnection conn = null;
         InputStream is = null;
         try {

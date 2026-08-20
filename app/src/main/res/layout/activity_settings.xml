@@ -45,7 +45,6 @@
         android:contentDescription="@null" />
 
     <ScrollView
-        android:id="@+id/settings_scroll"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scrollbars="none">
@@ -55,58 +54,6 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="12dp">
-
-            <!-- 按键设置向导  -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/activity_settings_keyboard"
-                android:textColor="#333333"
-                android:textSize="15sp"
-                android:textStyle="bold" />
-
-            <!-- 按键绑定入口 -->
-            <LinearLayout
-                android:id="@+id/key_binding_item"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                android:background="#FFFFFF"
-                android:clickable="true"
-                android:orientation="horizontal"
-                android:padding="12dp">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/keybinding_restart_setting"
-                        android:textColor="#333333"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/keybinding_restart_setting_desc"
-                        android:textColor="#999999"
-                        android:textSize="11sp" />
-
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/activity_settings_df3d58c7d84b"
-                    android:src="@android:drawable/ic_menu_edit" />
-
-            </LinearLayout>
 
             <!-- 图片加载设置 -->
             <TextView
@@ -423,53 +370,7 @@
                 android:textColor="#FF6B35"
                 android:textSize="11sp" />
 
-            <LinearLayout
-                android:id="@+id/round_screen_center_item"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:background="#FFFFFF"
-                android:clickable="true"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="12dp">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/activity_settings_round_screen_center"
-                        android:textColor="#333333"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/activity_settings_round_screen_center_desc"
-                        android:textColor="#999999"
-                        android:textSize="11sp" />
-
-                </LinearLayout>
-
-                <CheckBox
-                    android:id="@+id/checkbox_round_screen_center"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:clickable="false"
-                    android:focusable="false"
-                    android:minHeight="0dp"
-                    android:padding="0dp" />
-
-            </LinearLayout>
-
-            <!-- 播放流格式选择 -->
+            <!-- 播放流格式选择（已隐藏） -->
             <LinearLayout
                 android:id="@+id/play_stream_format_item"
                 android:layout_width="match_parent"
@@ -478,7 +379,8 @@
                 android:background="#FFFFFF"
                 android:clickable="true"
                 android:orientation="horizontal"
-                android:padding="12dp">
+                android:padding="12dp"
+                android:visibility="gone">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -1382,73 +1284,6 @@
                 android:text="@string/activity_settings_dd3e5a44557b"
                 android:textColor="#999999"
                 android:textSize="11sp" />
-
-            <!-- 运行日志开关 -->
-            <LinearLayout
-                android:id="@+id/enable_run_log_item"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="#FFFFFF"
-                android:clickable="true"
-                android:orientation="horizontal"
-                android:padding="12dp">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/activity_settings_enable_run_log"
-                        android:textColor="#333333"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:text="@string/activity_settings_enable_run_log_desc"
-                        android:textColor="#999999"
-                        android:textSize="11sp" />
-
-                </LinearLayout>
-
-                <CheckBox
-                    android:id="@+id/checkbox_enable_run_log"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:clickable="false"
-                    android:focusable="false" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/view_log_item"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="#FFFFFF"
-                android:clickable="true"
-                android:orientation="horizontal"
-                android:padding="12dp">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/activity_settings_view_run_log"
-                    android:textColor="#333333"
-                    android:textSize="15sp" />
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/activity_settings_view_run_log"
-                    android:src="@android:drawable/ic_menu_view" />
-
-            </LinearLayout>
 
             <!-- 分隔线 -->
             <View

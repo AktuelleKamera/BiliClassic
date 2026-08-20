@@ -44,21 +44,9 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
 
     public static final String TAG = "DanmakuView";
 
-    private static int sSdkInt = -1;
-
     private static int getSdkInt() {
-        if (sSdkInt < 0) {
-            try {
-                sSdkInt = Build.VERSION.class.getField("SDK_INT").getInt(null);
-            } catch (Exception e) {
-                try {
-                    sSdkInt = Integer.parseInt(Build.VERSION.SDK);
-                } catch (Exception e2) {
-                    sSdkInt = 0;
-                }
-            }
-        }
-        return sSdkInt;
+        try { return Build.VERSION.class.getField("SDK_INT").getInt(null); }
+        catch (Exception e) { return Integer.parseInt(Build.VERSION.SDK); }
     }
 
     private Callback mCallback;
@@ -173,10 +161,10 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
                         ht.join();
                     } catch (InterruptedException e) {
                     }
-                    // HandlerThread.quit() 是 API 18+，直接引用会在 API<18 上 VerifyError。
-                    // Looper.quit() 自 API 1 就有，且功能等价。
+                    // 保留 HandlerThread.quit()（该引用仅在 API 18+ 路径被加载，
+                    // 但为兼容 minSdk 3，仍包在 try/catch 里防 VerifyError）
                     try {
-                        ht.getLooper().quit();
+                        ht.quit();
                     } catch (Throwable t) {
                     }
                 }
@@ -188,10 +176,7 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
     
     protected Looper getLooper(int type){
         if (mHandlerThread != null) {
-            try {
-                mHandlerThread.getLooper().quit();
-            } catch (Throwable t) {
-            }
+            mHandlerThread.quit();
             mHandlerThread = null;
         }
         
@@ -267,51 +252,22 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
     @SuppressLint("NewApi")
     private void postInvalidateCompat() {
         mRequestRender = true;
-        // 注意：postInvalidateOnAnimation() 依赖 Choreographer 的 VSYNC 帧回调。
-        // 在部分设备/ROM（如 I9508V, Android 5.0.1 ART）上 Choreographer 的 doFrame
-        // 回调异常延迟（每 ~700ms 才触发一次），导致 onDraw 被拖慢、弹幕+视频一起卡。
-        // 改用 postInvalidate()（走主线程消息队列，post 探测证实消息队列响应 <20ms），
-        // 不依赖 Choreographer VSYNC，绘制及时。API<16 本来就只能 postInvalidate。
-        this.postInvalidate();
+        if(getSdkInt() >= 16) {
+            this.postInvalidateOnAnimation();
+        } else {
+            this.postInvalidate();
+        }
     }
 
     private void lockCanvas() {
         if(mDanmakuVisible == false) {
             return;
         }
-        long tStart = System.currentTimeMillis();
         postInvalidateCompat();
-        // 诊断：探测主线程空闲度——post 一个任务到主线程，看它多久被调度执行
-        // 若延迟巨大，说明主线程被其他工作占满（Choreographer 排不上，onDraw 被推迟）
-        final long[] probeLatency = new long[]{-1};
-        try {
-            post(new Runnable() {
-                public void run() {
-                    probeLatency[0] = System.currentTimeMillis();
-                }
-            });
-        } catch (Throwable t) {
-        }
-        int waitRounds = 0;
         synchronized (mDrawMonitor) {
             while ((!mDrawFinished) && (handler != null)) {
                 try {
                     mDrawMonitor.wait(200);
-                    waitRounds++;
-                    if (waitRounds == 1 || waitRounds % 2 == 0) {
-                        // 等待超过 200ms 仍未完成：主线程 onDraw 被延迟，记录
-                        long probeLag = probeLatency[0] > 0 ? probeLatency[0] - tStart : -1;
-                        master.flame.danmaku.util.DiagLogger.diag("Danmaku",
-                                "lockWait round=" + waitRounds
-                                        + " elapsed=" + (System.currentTimeMillis() - tStart)
-                                        + "ms mRequestRender=" + mRequestRender
-                                        + " visible=" + mDanmakuVisible
-                                        + " mainThreadProbe=" + probeLag + "ms");
-                        // 主线程 probe 严重延迟时，dump 主线程调用栈定位阻塞点
-                        if (waitRounds >= 2 && probeLag > 300) {
-                            dumpMainThreadStack();
-                        }
-                    }
                 } catch (InterruptedException e) {
                     if (mDanmakuVisible == false || handler == null || handler.isStop()) {
                         break;
@@ -321,27 +277,6 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
                 }
             }
             mDrawFinished = false;
-        }
-    }
-
-    private void dumpMainThreadStack() {
-        try {
-            android.os.Looper mainLooper = android.os.Looper.getMainLooper();
-            if (mainLooper == null) return;
-            java.lang.Thread mainThread = mainLooper.getThread();
-            if (mainThread == null) return;
-            java.lang.StackTraceElement[] st = mainThread.getStackTrace();
-            if (st == null) return;
-            StringBuilder sb = new StringBuilder();
-            sb.append("MAIN_STACK thread=").append(mainThread.getName()).append(":\n");
-            for (int i = 0; i < st.length && i < 20; i++) {
-                sb.append("  at ").append(st[i].getClassName())
-                        .append(".").append(st[i].getMethodName())
-                        .append("(").append(st[i].getFileName())
-                        .append(":").append(st[i].getLineNumber()).append(")\n");
-            }
-            master.flame.danmaku.util.DiagLogger.diag("Danmaku", sb.toString());
-        } catch (Throwable t) {
         }
     }
     
@@ -359,7 +294,6 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
     
     @Override
     protected void onDraw(Canvas canvas) {
-        long tStart = System.currentTimeMillis();
         if ((!mDanmakuVisible) && (!mRequestRender)) {
             super.onDraw(canvas);
             return;
@@ -382,13 +316,6 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
         }
         mRequestRender = false;
         unlockCanvasAndPost();
-        // onDraw 自身耗时诊断：区分"调度延迟"与"绘制耗时"
-        long tDraw = System.currentTimeMillis() - tStart;
-        if (tDraw > 100) {
-            master.flame.danmaku.util.DiagLogger.diag("Danmaku",
-                    "onDrawCost=" + tDraw + "ms visible=" + mDanmakuVisible
-                            + " requestRender=" + mRequestRender);
-        }
     }
     
     @Override
@@ -556,15 +483,9 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
     @Override
     @SuppressLint("NewApi")
     public boolean isHardwareAccelerated() {
-        // >= 3.0（isHardwareAccelerated 是 API 11+ 方法，super 调用在 API<11 上会 VerifyError，
-        // 用反射绕过）
+        // >= 3.0
         if (getSdkInt() >= 11) {
-            try {
-                java.lang.reflect.Method m = android.view.View.class.getMethod("isHardwareAccelerated");
-                return ((Boolean) m.invoke(this)).booleanValue();
-            } catch (Throwable t) {
-            }
-            return false;
+            return super.isHardwareAccelerated();
         } else {
             return false;
         }

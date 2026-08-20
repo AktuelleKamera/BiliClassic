@@ -19,7 +19,6 @@ public class LoginActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_login);
-        initRoundTitleBar();
 
         loadingContainer = (LinearLayout) findViewById(R.id.loading_container);
         fragmentContainer = (FrameLayout) findViewById(R.id.fragment_container);
@@ -69,16 +68,5 @@ public class LoginActivity extends BaseActivity {
     protected void onDestroy() {
         super.onDestroy();
         handler.removeCallbacksAndMessages(null);
-    }
-
-    @Override
-    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
-        Fragment f = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
-        if (f instanceof QRLoginFragment) {
-            if (((QRLoginFragment) f).handleRemoteKey(event)) {
-                return true;
-            }
-        }
-        return super.dispatchKeyEvent(event);
     }
 }

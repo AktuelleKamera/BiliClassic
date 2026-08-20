@@ -25,7 +25,7 @@ public class PerfLog {
     private static final long VIEW_THRESHOLD_NS = 5 * 1000000L;
     private static final long FRAME_THRESHOLD_NS = 50 * 1000000L;
 
-    private static boolean sEnabled = true;
+    private static boolean sEnabled = false;
     private static boolean sGlobalWatcherAttached = false;
     private static String sPage = "";
     private static Map<String, Long> sLastLog = new HashMap<String, Long>();
@@ -33,9 +33,9 @@ public class PerfLog {
     private PerfLog() {
     }
 
-    /** 在 MainActivity.onCreate 调用：读取持久化开关（默认开） */
+    /** 在 MainActivity.onCreate 调用：读取持久化开关（默认关） */
     public static void init() {
-        sEnabled = SharedPreferencesUtil.getBoolean(KEY_ENABLED, true);
+        sEnabled = SharedPreferencesUtil.getBoolean(KEY_ENABLED, false);
         Log.i(TAG, sEnabled ? "PerfLog 已启用" : "PerfLog 未启用");
     }
 

@@ -26,7 +26,6 @@ public class WebViewActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_webview);
-        initRoundTitleBar();
 
         webView = (WebView) findViewById(R.id.webview);
         tvTitle = (TextView) findViewById(R.id.tv_title);

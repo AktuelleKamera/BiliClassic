@@ -124,29 +124,15 @@ public class AndroidDisplayer extends AbsDisplayer<Canvas> {
         BORDER_PAINT.setStrokeWidth(BORDER_WIDTH);
     }
 
-    private static int sSdkInt = -1;
-
     private static int getSdkInt() {
-        if (sSdkInt < 0) {
-            try {
-                sSdkInt = Build.VERSION.class.getField("SDK_INT").getInt(null);
-            } catch (Exception e) {
-                try {
-                    sSdkInt = Integer.parseInt(Build.VERSION.SDK);
-                } catch (Exception e2) {
-                    sSdkInt = 0;
-                }
-            }
-        }
-        return sSdkInt;
+        try { return Build.VERSION.class.getField("SDK_INT").getInt(null); }
+        catch (Exception e) { return Integer.parseInt(Build.VERSION.SDK); }
     }
 
     @SuppressLint("NewApi")
     private static final int getMaximumBitmapWidth(Canvas c) {
         if (getSdkInt() >= 14) {
-            // getMaximumBitmapWidth 是 API 14+，直接引用在 API<14 上 VerifyError。
-            // 封装进 DanmakuCompat.V14：VFY 安全 + 直接调用（无反射，不卡）。
-            return master.flame.danmaku.util.DanmakuCompat.V14.getMaximumBitmapWidth(c);
+            return c.getMaximumBitmapWidth();
         } else {
             return c.getWidth();
         }
@@ -155,7 +141,7 @@ public class AndroidDisplayer extends AbsDisplayer<Canvas> {
     @SuppressLint("NewApi")
     private static final int getMaximumBitmapHeight(Canvas c) {
         if (getSdkInt() >= 14) {
-            return master.flame.danmaku.util.DanmakuCompat.V14.getMaximumBitmapHeight(c);
+            return c.getMaximumBitmapHeight();
         } else {
             return c.getHeight();
         }

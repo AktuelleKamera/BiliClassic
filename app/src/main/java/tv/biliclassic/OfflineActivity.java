@@ -98,7 +98,6 @@ public class OfflineActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_offline);
-        initRoundTitleBar();
 
         initExecutor();
 
@@ -247,8 +246,9 @@ public class OfflineActivity extends BaseActivity {
         String preferredPlayer = SettingsActivity.getPlayerPackageName();
         if (preferredPlayer != null) {
             try { Intent.class.getMethod("setPackage", String.class).invoke(intent, new Object[]{preferredPlayer}); } catch (Exception ignored) {};
-            // 直接尝试启动；queryIntentActivities 对 FileProvider content URI 会因权限过滤误判 0，
-            // 导致装了播放器也被降级。改为 try-catch。
+            if (getPackageManager().queryIntentActivities(intent, 0).size() == 0) {
+                try { Intent.class.getMethod("setPackage", String.class).invoke(intent, new Object[]{null}); } catch (Exception ignored) {};
+            }
         }
         try {
             startActivity(intent);

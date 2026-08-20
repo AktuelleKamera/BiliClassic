@@ -1,33 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:orientation="vertical">
 
+    <!-- 顶部分割线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:background="#FCA3C5" />
+
+    <!-- 原有内容 -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
-
-        <!-- 顶部分割线 -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1px"
-            android:background="#FCA3C5" />
-
-        <!-- 原有内容 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:padding="16dp">
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="16dp">
 
         <TextView
             android:id="@+id/app_brief"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="@dimen/about_brief_text_size"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:gravity="center"
             android:lineSpacingExtra="4dp" />
@@ -37,7 +32,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:textSize="@dimen/about_link_text_size"
+            android:textSize="14sp"
             android:textColor="#666666" />
 
         <TextView
@@ -45,7 +40,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:textSize="@dimen/about_link_text_size"
+            android:textSize="14sp"
             android:textColor="#666666" />
 
         <TextView
@@ -53,7 +48,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:textSize="@dimen/about_link_text_size"
+            android:textSize="14sp"
             android:textColor="#666666" />
 
         <TextView
@@ -61,7 +56,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:textSize="@dimen/about_link_text_size"
+            android:textSize="14sp"
             android:textColor="#666666" />
 
         <TextView
@@ -69,11 +64,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:textSize="@dimen/about_link_text_size"
+            android:textSize="14sp"
             android:textColor="#666666" />
-
-        </LinearLayout>
 
     </LinearLayout>
 
-</ScrollView>
+</LinearLayout>

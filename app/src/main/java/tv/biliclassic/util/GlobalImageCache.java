@@ -96,11 +96,10 @@ public class GlobalImageCache {
         if (count != null && count > 0) {
             if (count == 1) {
                 refCounts.remove(key);
-                // 不主动 recycle：位图可能仍被某个 ImageView 绘制（ListView 滚动复用
-                // 行的 acquire/release 竞态会导致引用提前归零），recycle 后绘制即崩
-                //（"Canvas: trying to use a recycled bitmap"）。交给 inPurgeable+GC 自然回收，
-                // 与 releaseMemory/freeAllUnreferenced 的理念一致。
-                pendingRecycle.remove(key);
+                Bitmap pending = pendingRecycle.remove(key);
+                if (pending != null && !pending.isRecycled()) {
+                    pending.recycle();
+                }
             } else {
                 refCounts.put(key, count - 1);
             }
@@ -109,9 +108,11 @@ public class GlobalImageCache {
 
     public synchronized void clear() {
         cache.evictAll();
-        // 不主动 recycle：页面销毁瞬间 ImageView 可能仍在绘制最后一帧，
-        // recycle 后绘制即崩（"Canvas: trying to use a recycled bitmap"）。
-        // 位图为 inPurgeable，像素由系统 GC 自然回收。
+        for (Bitmap bmp : pendingRecycle.values()) {
+            if (bmp != null && !bmp.isRecycled()) {
+                bmp.recycle();
+            }
+        }
         pendingRecycle.clear();
         refCounts.clear();
     }
@@ -130,8 +131,10 @@ public class GlobalImageCache {
     public synchronized void remove(String key) {
         if (key != null) {
             cache.remove(key);
-            // 不主动 recycle，避免仍被绘制的位图崩溃（同 release/clear 注释）。
-            pendingRecycle.remove(key);
+            Bitmap pending = pendingRecycle.remove(key);
+            if (pending != null && !pending.isRecycled()) {
+                pending.recycle();
+            }
             refCounts.remove(key);
         }
     }

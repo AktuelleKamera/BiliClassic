@@ -10,16 +10,13 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
-import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 
-import tv.biliclassic.util.DeviceUtil;
+import tv.biliclassic.tv.util.TvUtil;
 import tv.biliclassic.util.LocaleHelper;
 import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SdkHelper;
@@ -73,13 +70,13 @@ public abstract class BaseActivity extends FragmentActivity {
 
         // 屏幕方向设置
         // TV 模式：横屏
-        if (DeviceUtil.isTv(this)) {
+        if (TvUtil.isTv(this)) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
         } else {
             // 判断是否为平板
-            boolean isTablet = SdkHelper.getBooleanResource(getResources(), R.bool.is_tablet);
+            boolean isTablet = getResources().getBoolean(R.bool.is_tablet);
             if (isTablet) {
                 // 平板：自动旋转（横竖屏都可）
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
@@ -111,74 +108,6 @@ public abstract class BaseActivity extends FragmentActivity {
      */
     public static Context getAppContext() {
         return appContext;
-    }
-
-    /**
-     * 圆形屏幕（手表）适配：隐藏返回按钮，标题居中并点击返回。
-     * 在子类 setContentView 之后调用；内部自动判断圆屏，非圆屏无副作用。
-     * 除 VideoDetailActivity（有独立按键导航布局）外的带返回栏页面使用。
-     */
-    protected void initRoundTitleBar() {
-        final View root = findViewById(android.R.id.content);
-        if (root == null) {
-            return;
-        }
-        root.post(new Runnable() {
-            @Override
-            public void run() {
-                if (tv.biliclassic.util.DeviceUtil.isRoundScreen(root)) {
-                    applyRoundTitleBar();
-                }
-            }
-        });
-    }
-
-    /**
-     * 圆屏：隐藏标题栏返回按钮，标题居中且点击返回。
-     */
-    private void applyRoundTitleBar() {
-        try {
-            final View back = findViewById(R.id.btn_back);
-            if (back == null) {
-                return;
-            }
-            final ViewGroup titleBar = (ViewGroup) back.getParent();
-            if (titleBar == null) {
-                return;
-            }
-            // 隐藏返回按钮
-            back.setVisibility(View.GONE);
-
-            // 标题居中
-            View title = null;
-            int n = titleBar.getChildCount();
-            for (int i = 0; i < n; i++) {
-                View v = titleBar.getChildAt(i);
-                if (v == back || v.getVisibility() == View.GONE) {
-                    continue;
-                }
-                if (v instanceof TextView) {
-                    title = v;
-                    break;
-                }
-            }
-            if (title != null) {
-                android.widget.RelativeLayout.LayoutParams tlp =
-                        (android.widget.RelativeLayout.LayoutParams) title.getLayoutParams();
-                tlp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_LEFT, 0);
-                tlp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_RIGHT, 0);
-                tlp.addRule(android.widget.RelativeLayout.CENTER_IN_PARENT);
-                title.setLayoutParams(tlp);
-                title.setClickable(true);
-                title.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        finish();
-                    }
-                });
-            }
-        } catch (Throwable t) {
-        }
     }
 
     /**
