@@ -20,11 +20,15 @@ public class PlayerApi {
 
     private static class CachedUrl {
         final String videoUrl;
+        final String audioUrl;
+        final int actualQn;
         final long timestamp;
         final String[] qnStrList;
         final int[] qnValueList;
-        CachedUrl(String videoUrl, long timestamp, String[] qnStrList, int[] qnValueList) {
+        CachedUrl(String videoUrl, String audioUrl, int actualQn, long timestamp, String[] qnStrList, int[] qnValueList) {
             this.videoUrl = videoUrl;
+            this.audioUrl = audioUrl;
+            this.actualQn = actualQn;
             this.timestamp = timestamp;
             this.qnStrList = qnStrList;
             this.qnValueList = qnValueList;
@@ -32,7 +36,45 @@ public class PlayerApi {
     }
 
     private static String buildCacheKey(PlayerData playerData) {
-        return playerData.aid + "_" + playerData.cid + "_" + playerData.qn + "_" + playerData.type;
+        int streamFormat = playerData.type == PlayerData.TYPE_VIDEO
+                ? tv.biliclassic.SettingsActivity.getPlayStreamFormat() : 1;
+        return playerData.aid + "_" + playerData.cid + "_" + playerData.qn + "_" + playerData.type + "_" + streamFormat;
+    }
+
+    /**
+     * 从 dash.video[] 中选出目标画质的码流。
+     * DASH 响应会一次性返回所有可用画质（qn 参数对 DASH 无效），必须客户端按 id 选择：
+     *  1. 目标画质存在 → 选它；不存在 → 降级到最接近且低于目标的画质；再没有 → 最低画质
+     *  2. 同画质组内编码优先级 AVC > HEVC > 其他（本 app 目标设备靠软解，
+     *     AVC 性能最好；AV1 老设备基本解不动，仅作兜底）
+     */
+    private static JSONObject selectDashVideoEntry(JSONArray video, int targetQn) throws JSONException {
+        int n = video.length();
+        int bestId = -1;
+        for (int i = 0; i < n; i++) {
+            int id = video.getJSONObject(i).optInt("id", -1);
+            if (id == targetQn) { bestId = targetQn; break; }
+            if (id < targetQn && id > bestId) bestId = id;
+        }
+        if (bestId < 0) {
+            // 所有可用画质都高于目标（目标过低），取最低档
+            for (int i = 0; i < n; i++) {
+                int id = video.getJSONObject(i).optInt("id", -1);
+                if (bestId < 0 || id < bestId) bestId = id;
+            }
+        }
+        JSONObject fallback = null;
+        JSONObject hevc = null;
+        for (int i = 0; i < n; i++) {
+            JSONObject v = video.getJSONObject(i);
+            if (v.optInt("id", -1) != bestId) continue;
+            if (fallback == null) fallback = v;
+            String codecs = v.optString("codecs", "");
+            if (codecs.startsWith("avc1") || codecs.startsWith("avc3")) return v;
+            if ((codecs.startsWith("hev1") || codecs.startsWith("hvc1")) && hevc == null) hevc = v;
+        }
+        if (hevc != null) return hevc;
+        return fallback;
     }
 
 /*
@@ -79,6 +121,11 @@ public class PlayerApi {
                     && System.currentTimeMillis() - cached.timestamp < URL_CACHE_TTL) {
                 android.util.Log.e("PlayerApi", "命中静态缓存: " + cached.videoUrl);
                 playerData.videoUrl = cached.videoUrl;
+                playerData.audioUrl = cached.audioUrl;
+                // DASH 下实际画质可能与请求不同（被降级），恢复真实值
+                if (cached.actualQn > 0) {
+                    playerData.qn = cached.actualQn;
+                }
                 playerData.qnStrList = cached.qnStrList;
                 playerData.qnValueList = cached.qnValueList;
                 playerData.timeStamp = System.currentTimeMillis();
@@ -129,34 +176,53 @@ public class PlayerApi {
         android.util.Log.e("PlayerApi", "data 对象存在");
 
         String videoUrl = null;
+        String audioUrl = "";
+        boolean dashRequested = !download && tv.biliclassic.SettingsActivity.getPlayStreamFormat() == 16;
 
-        // ========== 尝试解析 durl（MP4 格式） ==========
-        if (data.has("durl")) {
+        // ========== 优先解析 dash（DASH 音视频分离流，仅非下载模式） ==========
+        if (dashRequested && data.has("dash")) {
+            JSONObject dash = data.getJSONObject("dash");
+            android.util.Log.e("PlayerApi", "使用 dash 格式");
+            JSONArray video = dash.optJSONArray("video");
+            JSONArray audio = dash.optJSONArray("audio");
+            JSONObject videoEntry = null;
+            if (video != null && video.length() > 0) {
+                // DASH 响应会返回所有可用画质（qn 参数对 DASH 无效），
+                // 必须客户端按 id 选择目标画质，否则切画质永远无效
+                videoEntry = selectDashVideoEntry(video, playerData.qn);
+            }
+            if (videoEntry != null) {
+                android.util.Log.e("PlayerApi", "dash video codecs=" + videoEntry.optString("codecs", "?")
+                        + " id=" + videoEntry.optString("id", "?"));
+                videoUrl = videoEntry.optString("baseUrl", "");
+                JSONArray backupUrl = videoEntry.optJSONArray("backupUrl");
+                if ((videoUrl == null || videoUrl.length() == 0) && backupUrl != null && backupUrl.length() > 0) {
+                    videoUrl = backupUrl.getString(0);
+                }
+                // 实际画质以选中流为准（目标画质不可用时会被降级），回写保证 UI/续播一致
+                playerData.qn = videoEntry.optInt("id", playerData.qn);
+                android.util.Log.e("PlayerApi", "视频地址: " + videoUrl);
+            }
+            if (audio != null && audio.length() > 0) {
+                JSONObject firstAudio = audio.getJSONObject(0);
+                android.util.Log.e("PlayerApi", "dash audio codecs=" + firstAudio.optString("codecs", "?"));
+                audioUrl = firstAudio.optString("baseUrl", "");
+                JSONArray backupUrl = firstAudio.optJSONArray("backupUrl");
+                if ((audioUrl == null || audioUrl.length() == 0) && backupUrl != null && backupUrl.length() > 0) {
+                    audioUrl = backupUrl.getString(0);
+                }
+                android.util.Log.e("PlayerApi", "音频地址: " + audioUrl);
+            }
+        }
+
+        // ========== 尝试解析 durl（MP4 格式，作为回退） ==========
+        if ((videoUrl == null || videoUrl.length() == 0) && data.has("durl")) {
             JSONArray durl = data.getJSONArray("durl");
             android.util.Log.e("PlayerApi", "durl 数组长度: " + durl.length());
             if (durl.length() > 0) {
                 JSONObject videoUrlObj = durl.getJSONObject(0);
                 videoUrl = videoUrlObj.getString("url");
                 android.util.Log.e("PlayerApi", "使用 durl 格式, codec=" + videoUrlObj.optString("codecs", "?"));
-            }
-        }
-
-        // ========== 如果没有 durl，尝试解析 dash（仅非下载模式） ==========
-        if (videoUrl == null && data.has("dash") && !download) {
-            JSONObject dash = data.getJSONObject("dash");
-            android.util.Log.e("PlayerApi", "使用 dash 格式");
-            JSONArray video = dash.getJSONArray("video");
-            if (video.length() > 0) {
-                JSONObject firstVideo = video.getJSONObject(0);
-                android.util.Log.e("PlayerApi", "dash video codecs=" + firstVideo.optString("codecs", "?")
-                        + " id=" + firstVideo.optString("id", "?"));
-                JSONArray backupUrl = firstVideo.optJSONArray("backupUrl");
-                if (backupUrl != null && backupUrl.length() > 0) {
-                    videoUrl = backupUrl.getString(0);
-                } else {
-                    videoUrl = firstVideo.optString("baseUrl", "");
-                }
-                android.util.Log.e("PlayerApi", "视频地址: " + videoUrl);
             }
         }
 
@@ -169,8 +235,13 @@ public class PlayerApi {
         }
 
         playerData.videoUrl = videoUrl;
-        android.util.Log.e("PlayerApi", "videoUrl: " + playerData.videoUrl);
+        playerData.audioUrl = audioUrl;
+        playerData.durationMs = data.optLong("timelength", 0);
+        android.util.Log.e("PlayerApi", "videoUrl: " + playerData.videoUrl
+                + ", durationMs=" + playerData.durationMs);
 
+        // B 站 playurl 接口返回的 last_play_time 单位是「毫秒」，last_play_cid 是上次播放分P。
+        // progress<0 表示已看完（从 0 开始），=0 表示无历史（从 0 开始）。
         playerData.cidHistory = data.optLong("last_play_cid", 0);
         playerData.progress = data.optInt("last_play_time", 0);
         android.util.Log.e("PlayerApi", "cidHistory=" + playerData.cidHistory + ", progress=" + playerData.progress);
@@ -200,8 +271,8 @@ public class PlayerApi {
         // 写入静态缓存
         if (!download && videoUrl.length() > 0) {
             synchronized (sUrlCache) {
-                sUrlCache.put(cacheKey, new CachedUrl(videoUrl, System.currentTimeMillis(),
-                        qnStrList, qnValueList));
+                sUrlCache.put(cacheKey, new CachedUrl(videoUrl, audioUrl, playerData.qn,
+                        System.currentTimeMillis(), qnStrList, qnValueList));
             }
         }
 

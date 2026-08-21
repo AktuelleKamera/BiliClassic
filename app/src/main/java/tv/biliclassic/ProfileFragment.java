@@ -410,11 +410,12 @@ public class ProfileFragment extends Fragment {
                 mKeyNavItems.add(btnLogout);
             }
         }
-        addNavItem(itemRefresh);
+        addNavItem(itemFollowing);
         addNavItem(itemFavorites);
         addNavItem(itemHistory);
         addNavItem(itemOffline);
         addNavItem(itemSettings);
+        addNavItem(itemRefresh);
     }
 
     private void addNavItem(View v) {

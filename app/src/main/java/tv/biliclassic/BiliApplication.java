@@ -2,6 +2,9 @@ package tv.biliclassic;
 
 import android.app.Application;
 import android.os.Handler;
+import android.util.Log;
+
+import java.io.File;
 
 import tv.biliclassic.util.CrashHandler;
 import tv.biliclassic.util.LocaleHelper;
@@ -11,6 +14,27 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.UpdateCheckService;
 
 public class BiliApplication extends Application {
+
+    private tv.biliclassic.util.StorageFallbackContext mFallbackContext;
+
+    @Override
+    protected void attachBaseContext(android.content.Context base) {
+        // 注意：不能把这个 ContextWrapper 设为 base——framework（ActivityThread.handleReceiver）
+        // 会强转 app.getBaseContext() 为 ContextImpl，包装过会让所有 manifest receiver 崩溃。
+        // 这里保留原始 ContextImpl 给 framework，仅保留 wrapper 供 getCacheDir()/getFilesDir() 覆写用。
+        super.attachBaseContext(base);
+        mFallbackContext = new tv.biliclassic.util.StorageFallbackContext(base);
+    }
+
+    @Override
+    public java.io.File getCacheDir() {
+        return (mFallbackContext != null) ? mFallbackContext.getCacheDir() : super.getCacheDir();
+    }
+
+    @Override
+    public java.io.File getFilesDir() {
+        return (mFallbackContext != null) ? mFallbackContext.getFilesDir() : super.getFilesDir();
+    }
 
     @Override
     public void onCreate() {

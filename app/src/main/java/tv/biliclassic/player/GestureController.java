@@ -20,8 +20,6 @@ import tv.biliclassic.R;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import util.AudioManagerHelper;
 import util.BrightnessHelper;
-import util.PlayerToastMessageViewHolder;
-import android.view.ScaleGestureDetector;
 import tv.biliclassic.util.SdkHelper;
 
 public class GestureController {
@@ -39,7 +37,9 @@ public class GestureController {
     private ProgressBar mVolumeLevel;
 
     private GestureDetector mGestureScanner;
-    private ScaleGestureDetector mScaleDetector;
+    // ScaleGestureDetector 仅 Android 2.2(API8)+ 存在，低版本必须反射，否则类加载直接 VerifyError
+    private Object mScaleDetector;
+    private java.lang.reflect.Method mScaleOnTouchMethod;
 
     private int mGestureWidth;
     private int mGestureHeight;
@@ -69,7 +69,11 @@ public class GestureController {
     // false = 千分制 0~1000（完整版 BiliPlayer）
     private boolean mSeekBarUsesMillis = false;
 
-    private PlayerToastMessageViewHolder mToastViewHolder;
+    // 进度提示 ViewHolder：反射懒加载。
+    // 低版本系统(Android 1.5)的 verifier 可能拒绝该类的字节码(VerifyError: a/d)，
+    // 若硬引用会让整个 GestureController 加载失败、手势/控制栏全部失灵，故必须反射解耦。
+    private Object mToastViewHolder;
+    private boolean mToastViewHolderChecked;
     private String mProgreesFmt;
 
     private GestureListener mGestureListener;
@@ -195,48 +199,82 @@ public class GestureController {
 
         mSeekBar = (SeekBar) rootView.findViewById(R.id.seekbar);
         mTvCurrentTime = (TextView) rootView.findViewById(R.id.time_current);
-        mToastViewHolder = new PlayerToastMessageViewHolder();
 
         initSpeedTipView(rootView);
 
-        mScaleDetector = new android.view.ScaleGestureDetector(mActivity,
-                new android.view.ScaleGestureDetector.OnScaleGestureListener() {
-                    public boolean onScale(android.view.ScaleGestureDetector detector) {
-                        float scaleFactor = detector.getScaleFactor();
-                        float newScale = mCurrentScale * scaleFactor;
-
-                        if (newScale < mMinScale) newScale = mMinScale;
-                        if (newScale > mMaxScale) newScale = mMaxScale;
-
-                        if (newScale != mCurrentScale) {
-                            mCurrentScale = newScale;
-                            mIsScaling = true;
-                            // 缩放时清空平移：放大应居中，避免叠加之前单指拖动残留的
-                            // translate 导致画面偏移（"放大往左上角移出屏幕"）。
-                            mTranslateX = 0;
-                            mTranslateY = 0;
-                            if (mScaleChangeListener != null) {
-                                mScaleChangeListener.onScaleChange(mCurrentScale, mTranslateX, mTranslateY);
-                            }
-                        }
-                        return true;
-                    }
-
-                    public boolean onScaleBegin(android.view.ScaleGestureDetector detector) {
-                        mIsPinching = true;
-                        mIsScaling = true;
-                        mLongPressHandler.removeCallbacks(mLongPressRunnable);
-                        return true;
-                    }
-
-                    public void onScaleEnd(android.view.ScaleGestureDetector detector) {
-                        mIsPinching = false;
-                        mIsScaling = false;
-                    }
-                }
-        );
+        initScaleDetector();
 
         setupGestureDetector();
+    }
+
+    // ScaleGestureDetector 反射初始化（API8+ 才有；API4~7 直接禁用缩放）
+    private void initScaleDetector() {
+        if (SdkHelper.getSdkInt() < 8) {
+            Log.d(TAG, "SDK<8，跳过 ScaleGestureDetector");
+            return;
+        }
+        try {
+            final Class<?> detectorClass = Class.forName("android.view.ScaleGestureDetector");
+            final Class<?> listenerClass = Class.forName("android.view.ScaleGestureDetector$OnScaleGestureListener");
+            Object listener = java.lang.reflect.Proxy.newProxyInstance(
+                    listenerClass.getClassLoader(),
+                    new Class<?>[]{listenerClass},
+                    new java.lang.reflect.InvocationHandler() {
+                        public Object invoke(Object proxy, java.lang.reflect.Method method, Object[] args) {
+                            String name = method.getName();
+                            if ("onScale".equals(name)) {
+                                float scaleFactor;
+                                try {
+                                    java.lang.reflect.Method gsf = args[0].getClass().getMethod("getScaleFactor");
+                                    scaleFactor = ((Float) gsf.invoke(args[0])).floatValue();
+                                } catch (Exception e) {
+                                    return Boolean.TRUE;
+                                }
+                                float newScale = mCurrentScale * scaleFactor;
+                                if (newScale < mMinScale) newScale = mMinScale;
+                                if (newScale > mMaxScale) newScale = mMaxScale;
+                                if (newScale != mCurrentScale) {
+                                    mCurrentScale = newScale;
+                                    mIsScaling = true;
+                                    mTranslateX = 0;
+                                    mTranslateY = 0;
+                                    if (mScaleChangeListener != null) {
+                                        mScaleChangeListener.onScaleChange(mCurrentScale, mTranslateX, mTranslateY);
+                                    }
+                                }
+                                return Boolean.TRUE;
+                            } else if ("onScaleBegin".equals(name)) {
+                                mIsPinching = true;
+                                mIsScaling = true;
+                                mLongPressHandler.removeCallbacks(mLongPressRunnable);
+                                return Boolean.TRUE;
+                            } else if ("onScaleEnd".equals(name)) {
+                                mIsPinching = false;
+                                mIsScaling = false;
+                                return null;
+                            }
+                            return null;
+                        }
+                    });
+            java.lang.reflect.Constructor<?> ctor = detectorClass.getConstructor(
+                    android.content.Context.class, listenerClass);
+            mScaleDetector = ctor.newInstance(mActivity, listener);
+            mScaleOnTouchMethod = detectorClass.getMethod("onTouchEvent", android.view.MotionEvent.class);
+            Log.d(TAG, "ScaleGestureDetector 反射初始化成功");
+        } catch (Throwable t) {
+            Log.w(TAG, "ScaleGestureDetector 初始化失败: " + t.getMessage());
+            mScaleDetector = null;
+            mScaleOnTouchMethod = null;
+        }
+    }
+
+    private boolean handleScaleTouch(MotionEvent event) {
+        if (mScaleDetector == null || mScaleOnTouchMethod == null) return false;
+        try {
+            return ((Boolean) mScaleOnTouchMethod.invoke(mScaleDetector, event)).booleanValue();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     // 初始化速度提示 View
@@ -375,7 +413,7 @@ public class GestureController {
         mGestureListener = null;
         mListener = null;
         if (mToastViewHolder != null) {
-            mToastViewHolder.release();
+            toastHolderRelease(mToastViewHolder);
             mToastViewHolder = null;
         }
         mLongPressHandler.removeCallbacksAndMessages(null);
@@ -421,12 +459,11 @@ public class GestureController {
             public boolean onTouch(View v, MotionEvent event) {
                 mTouchingView = v;
                 // 先让 ScaleDetector 处理缩放
-                if (mScaleDetector != null && event.getPointerCount() >= 2) {
-                    mScaleDetector.onTouchEvent(event);
-                    return true;
+                if (mScaleDetector != null && getPointerCountCompat(event) >= 2) {
+                    return handleScaleTouch(event);
                 }
                 // 单指交给 GestureDetector
-                if (mGestureScanner != null && event.getPointerCount() == 1) {
+                if (mGestureScanner != null && getPointerCountCompat(event) == 1) {
                     return mGestureScanner.onTouchEvent(event);
                 }
                 return false;
@@ -438,11 +475,10 @@ public class GestureController {
             preloadingView.setOnTouchListener(new View.OnTouchListener() {
                 public boolean onTouch(View v, MotionEvent event) {
                     mTouchingView = v;
-                    if (mScaleDetector != null && event.getPointerCount() >= 2) {
-                        mScaleDetector.onTouchEvent(event);
-                        return true;
+                    if (mScaleDetector != null && getPointerCountCompat(event) >= 2) {
+                        return handleScaleTouch(event);
                     }
-                    if (mGestureScanner != null && event.getPointerCount() == 1) {
+                    if (mGestureScanner != null && getPointerCountCompat(event) == 1) {
                         return mGestureScanner.onTouchEvent(event);
                     }
                     return false;
@@ -607,7 +643,7 @@ public class GestureController {
                 break;
 
             case MotionEvent.ACTION_MOVE:
-                if (event.getPointerCount() >= 2) return;
+                if (getPointerCountCompat(event) >= 2) return;
 
                 float dx = (x - mLastTouchX) / mGestureWidth;
                 float dy = (y - mLastTouchY) / mGestureHeight;
@@ -722,7 +758,7 @@ public class GestureController {
             }
 
             // 拖拽模式（缩放 > 1.0 时）
-            if (mCurrentScale > 1.0f && e2.getPointerCount() == 1) {
+            if (mCurrentScale > 1.0f && getPointerCountCompat(e2) == 1) {
                 float dx = Math.abs(e2.getX() - e1.getX());
                 float dy = Math.abs(e2.getY() - e1.getY());
                 if (dx > 15 || dy > 15) {
@@ -801,6 +837,10 @@ public class GestureController {
         // 处理水平滑动（快进快退）
         private void onHorizontalMove(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
             if (mInVerticalMoving || mIsAdjustingBrightness || mIsAdjustingVolume || mSeekBar == null) return;
+            int seekBarMax = mSeekBar.getMax();
+            // 时长未知（DASH 元数据未就绪时 getDuration() 可能返回 0）时
+            // 千分制进度无法换算，直接忽略本次手势，避免除零崩溃
+            if (seekBarMax <= 0 || (!mSeekBarUsesMillis && mDuration <= 0)) return;
             float deltaFactorX = (e1.getX() - e2.getX()) / (float) mGestureWidth;
             // 需要明确的水平拖动（>= 5% 屏宽）才开始进退，避免点击/双击抖动误触发
             if (Math.abs(deltaFactorX) >= 0.05f || mInGestureSeekingMode) {
@@ -810,7 +850,6 @@ public class GestureController {
                     mSeekBarStartProgress = mSeekBar.getProgress();
                     Log.d(TAG, "开始手势快进，起始进度: " + mSeekBarStartProgress);
                 }
-                int seekBarMax = mSeekBar.getMax();
                 // 统一换算成毫秒基准
                 long startMs = mSeekBarUsesMillis
                         ? mSeekBarStartProgress
@@ -938,15 +977,17 @@ public class GestureController {
     }
 
     private void showSeekProgressHint(int progressMs) {
-        if (mToastViewHolder == null) return;
+        Object holder = getToastViewHolder();
+        if (holder == null) return;
         android.widget.FrameLayout rootView = (android.widget.FrameLayout)
                 mActivity.findViewById(android.R.id.content);
         if (rootView == null) return;
-        mToastViewHolder.initView(mActivity, rootView);
+        toastHolderInitView(holder, rootView);
 
         int beginMs = mSeekBarUsesMillis
                 ? mSeekBeginPosition
-                : (int) (((long) mSeekBeginPosition) * mDuration / (mSeekBar != null ? mSeekBar.getMax() : 1000));
+                : (int) (((long) mSeekBeginPosition) * mDuration
+                        / (mSeekBar != null && mSeekBar.getMax() > 0 ? mSeekBar.getMax() : 1000));
         String timeText = formatTime(progressMs);
         String durationText = formatTime(mDuration);
 
@@ -954,7 +995,67 @@ public class GestureController {
         String diffTime = (diff >= 0 ? "+" : "") + diff;
 
         String text = String.format(mProgreesFmt, timeText, durationText, diffTime);
-        mToastViewHolder.show(text, 500000, false);
+        toastHolderShow(holder, text, 500000, false);
+    }
+
+    // MotionEvent.getPointerCount 是 API5(Android 2.0)+ 才有的方法，
+    // 低版本(1.5/1.6)verifier 会因类里引用它而拒绝整个类，必须反射调用。
+    private static java.lang.reflect.Method sGetPointerCountMethod;
+
+    static {
+        try {
+            sGetPointerCountMethod = MotionEvent.class.getMethod("getPointerCount");
+        } catch (Throwable t) {
+            sGetPointerCountMethod = null;
+        }
+    }
+
+    private static int getPointerCountCompat(MotionEvent e) {
+        if (sGetPointerCountMethod != null) {
+            try {
+                return ((Integer) sGetPointerCountMethod.invoke(e)).intValue();
+            } catch (Throwable t) {
+            }
+        }
+        return 1;
+    }
+
+    // ===== PlayerToastMessageViewHolder 反射封装（低版本 verifier 兼容）=====
+    private Object getToastViewHolder() {
+        if (mToastViewHolder == null && !mToastViewHolderChecked) {
+            mToastViewHolderChecked = true;
+            try {
+                mToastViewHolder = Class.forName("util.PlayerToastMessageViewHolder").newInstance();
+                Log.d(TAG, "PlayerToastMessageViewHolder 反射初始化成功");
+            } catch (Throwable t) {
+                Log.w(TAG, "PlayerToastMessageViewHolder 反射初始化失败: " + t.getMessage());
+                mToastViewHolder = null;
+            }
+        }
+        return mToastViewHolder;
+    }
+
+    private void toastHolderInitView(Object holder, ViewGroup rootView) {
+        try {
+            holder.getClass().getMethod("initView", Activity.class, ViewGroup.class)
+                    .invoke(holder, mActivity, rootView);
+        } catch (Throwable t) {
+        }
+    }
+
+    private void toastHolderShow(Object holder, String text, int ms, boolean bottom) {
+        try {
+            holder.getClass().getMethod("show", String.class, int.class, boolean.class)
+                    .invoke(holder, text, ms, bottom);
+        } catch (Throwable t) {
+        }
+    }
+
+    private void toastHolderRelease(Object holder) {
+        try {
+            holder.getClass().getMethod("release").invoke(holder);
+        } catch (Throwable t) {
+        }
     }
 
     // 处理手势结束，重置所有状态
@@ -995,8 +1096,12 @@ public class GestureController {
     }
 
     private void hideToastHint() {
-        if (mToastViewHolder != null) {
-            mToastViewHolder.dismiss();
+        Object holder = getToastViewHolder();
+        if (holder != null) {
+            try {
+                holder.getClass().getMethod("dismiss").invoke(holder);
+            } catch (Throwable t) {
+            }
         }
     }
 

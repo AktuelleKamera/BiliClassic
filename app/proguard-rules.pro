@@ -27,3 +27,10 @@
     <fields>;
     <methods>;
 }
+
+# GestureController 通过 Class.forName 反射加载进度提示 ViewHolder，
+# ProGuard 混淆会重命名/删除仅被字符串引用的类，导致手势 seek 的进度提示静默消失，必须 keep
+-keep class util.PlayerToastMessageViewHolder {
+    <fields>;
+    <methods>;
+}

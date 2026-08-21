@@ -46,6 +46,7 @@ import java.util.Locale;
 
 import tv.biliclassic.api.PlayerApi;
 import tv.biliclassic.api.VideoInfoApi;
+import tv.biliclassic.download.VideoDownloadEnvironment;
 import tv.biliclassic.model.PlayerData;
 import tv.biliclassic.model.Stats;
 import tv.biliclassic.model.VideoInfo;
@@ -359,7 +360,26 @@ public class VideoDetailFragment extends Fragment {
                     playerData.qn = quality;
 
                     PlayerApi.getVideo(playerData, true);
-                    final String videoUrl = playerData.videoUrl;
+                    String videoUrl = playerData.videoUrl;
+                    final int dlQuality;
+                    final String dlQualityName;
+                    // 转码下载：转码开启时下载 240P 转码输出（老设备可播、体积小）
+                    if (tv.biliclassic.util.ConvertPlayUtil.isConvertEnabled()) {
+                        String conv = tv.biliclassic.util.ConvertPlayUtil.convertPlayUrl(videoUrl, page.title);
+                        if (conv != null && conv.length() > 0) {
+                            videoUrl = conv;
+                            dlQuality = 6; // 240P
+                            dlQualityName = VideoDownloadEnvironment.getQualityName(6);
+                        } else {
+                            dlQuality = quality;
+                            dlQualityName = qualityName;
+                        }
+                    } else {
+                        dlQuality = quality;
+                        dlQualityName = qualityName;
+                    }
+
+                    final String finalUrl = videoUrl;
 
                     final long tempAid = realAid;
                     final String tempTitle = mainTitle;
@@ -372,12 +392,12 @@ public class VideoDetailFragment extends Fragment {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
-                                if (videoUrl != null && videoUrl.length() > 0) {
+                                if (finalUrl != null && finalUrl.length() > 0) {
                                     if (getActivity() instanceof VideoDetailActivity) {
                                         ((VideoDetailActivity) getActivity()).startDownloadDirect(
-                                                videoUrl, tempTitle, tempPageTitle,
+                                                finalUrl, tempTitle, tempPageTitle,
                                                 tempAid, tempCid, tempPage,
-                                                quality, qualityName,
+                                                dlQuality, dlQualityName,
                                                 coverUrl, upName, bvidStr, desc, tagsStr);
                                     }
                                 } else {
@@ -402,6 +422,10 @@ public class VideoDetailFragment extends Fragment {
     }
 
     private int getSafeQuality() {
+        // 转码播放时强制 360P：老设备软解/转码性能有限，取更高画质反而白白增加转码耗时与流量
+        if (tv.biliclassic.util.ConvertPlayUtil.isConvertEnabled()) {
+            return 16; // 360P
+        }
         return SettingsActivity.getVideoQuality();
     }
 
@@ -949,15 +973,19 @@ public class VideoDetailFragment extends Fragment {
                     PlayerApi.getVideo(playerData, false);
                     reconcileQuality(playerData);
                     final String videoUrl = playerData.videoUrl;
-                        if (getActivity() != null) {
-                            getActivity().runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if (!isAdded() || getActivity() == null) return;
-                                    if (videoUrl != null && videoUrl.length() > 0) {
-                                        int pref = tv.biliclassic.SettingsActivity.getPlayerPreference();
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (!isAdded() || getActivity() == null) return;
+                                if (videoUrl != null && videoUrl.length() > 0) {
+                                    int pref = tv.biliclassic.SettingsActivity.getPlayerPreference();
+                                        final int resumeMs = computeResumeMs(playerData, targetCid);
+                                        boolean hasDashAudio = playerData.audioUrl != null
+                                                && playerData.audioUrl.length() > 0;
                                         // Ostwind 播放器：直接进 Ostwind，不走 PlayerAnimActivity
-                                        if (pref == tv.biliclassic.SettingsActivity.PLAYER_OSTWIND) {
+                                        // （DASH 音视频分离流 MediaPlayer 解析不了，回退内置播放器）
+                                        if (pref == tv.biliclassic.SettingsActivity.PLAYER_OSTWIND && !hasDashAudio) {
                                             Intent wIntent = new Intent(getActivity(),
                                                     tv.biliclassic.player.OstwindPlayerActivity.class);
                                             wIntent.putExtra("video_url", videoUrl);
@@ -969,6 +997,7 @@ public class VideoDetailFragment extends Fragment {
                                             wIntent.putExtra("video_title", tempPartTitle);
                                             wIntent.putExtra("aid", tempAid);
                                             wIntent.putExtra("cid", targetCid);
+                                            wIntent.putExtra("resume_position", resumeMs);
                                             isPlayButtonClicked = false;
                                             startActivity(wIntent);
                                             return;
@@ -982,6 +1011,12 @@ public class VideoDetailFragment extends Fragment {
                                         if (useBuiltin) {
                                             Intent intent = new Intent(getActivity(), BiliPlayerActivity.class);
                                             intent.putExtra("video_url", videoUrl);
+                                            if (hasDashAudio) {
+                                                intent.putExtra("audio_url", playerData.audioUrl);
+                                            }
+                                            if (playerData.durationMs > 0) {
+                                                intent.putExtra("duration_ms", playerData.durationMs);
+                                            }
                                             intent.putExtra("video_title", tempPartTitle);
                                             intent.putExtra("aid", tempAid);
                                             intent.putExtra("cid", targetCid);
@@ -995,12 +1030,19 @@ public class VideoDetailFragment extends Fragment {
                                                 intent.putExtra("pagenames", partNameArray);
                                             }
                                             putQualityExtras(intent, playerData);
+                                            intent.putExtra("resume_position", resumeMs);
                                             isPlayButtonClicked = false;
                                             startActivity(intent);
                                             return;
                                         }
                                         Intent pIntent = new Intent(getActivity(), PlayerAnimActivity.class);
                                         pIntent.putExtra("video_url", videoUrl);
+                                        if (hasDashAudio) {
+                                            pIntent.putExtra("audio_url", playerData.audioUrl);
+                                        }
+                                        if (playerData.durationMs > 0) {
+                                            pIntent.putExtra("duration_ms", playerData.durationMs);
+                                        }
                                         pIntent.putExtra("video_title", tempPartTitle);
                                         pIntent.putExtra("aid", tempAid);
                                         pIntent.putExtra("cid", targetCid);
@@ -1014,6 +1056,7 @@ public class VideoDetailFragment extends Fragment {
                                             pIntent.putExtra("pagenames", partNameArray);
                                         }
                                         putQualityExtras(pIntent, playerData);
+                                        pIntent.putExtra("resume_position", resumeMs);
                                         isPlayButtonClicked = false;
                                         startActivity(pIntent);
                                     } else {
@@ -1062,8 +1105,15 @@ public class VideoDetailFragment extends Fragment {
                                     if (getActivity() instanceof VideoDetailActivity) {
                                         ((VideoDetailActivity) getActivity()).setPausingForTransient(true);
                                     }
+                                    final int resumeMs = computeResumeMs(playerData, targetCid);
                                     Intent intent = new Intent(getActivity(), PlayerAnimActivity.class);
                                     intent.putExtra("video_url", videoUrl);
+                                    if (playerData.audioUrl != null && playerData.audioUrl.length() > 0) {
+                                        intent.putExtra("audio_url", playerData.audioUrl);
+                                    }
+                                    if (playerData.durationMs > 0) {
+                                        intent.putExtra("duration_ms", playerData.durationMs);
+                                    }
                                     intent.putExtra("video_title", tempPartTitle);
                                     intent.putExtra("aid", tempAid);
                                     intent.putExtra("cid", targetCid);
@@ -1076,6 +1126,7 @@ public class VideoDetailFragment extends Fragment {
                                         intent.putExtra("pagenames", partNameArray);
                                     }
                                     putQualityExtras(intent, playerData);
+                                    intent.putExtra("resume_position", resumeMs);
                                     isPlayButtonClicked = false;
                                     startActivity(intent);
                                 } else {
@@ -1214,6 +1265,23 @@ public class VideoDetailFragment extends Fragment {
         }
 
         startActivity(intent);
+    }
+
+    /**
+     * 断点续播：只有当 B 站返回的上次播放分P(last_play_cid)与当前分P一致时才恢复进度。
+     * B 站 playurl 接口的 last_play_time 单位已是「毫秒」，
+     * 这里直接作为毫秒进度返回，不再做任何换算。
+     */
+    private int computeResumeMs(PlayerData playerData, long targetCid) {
+        try {
+            if (playerData == null || targetCid == 0) return 0;
+            if (playerData.cidHistory != targetCid) return 0;
+            int ms = playerData.progress;
+            if (ms <= 0) return 0;
+            return ms;
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private void putQualityExtras(Intent intent, PlayerData playerData) {

@@ -192,19 +192,30 @@ public class SearchResultAdapter extends BaseAdapter {
             coverView.setTag(finalCoverUrl);
 
             boolean alreadySet = false;
-            SoftReference<Bitmap> softBitmap = imageCache.get(finalCoverUrl);
-            if (softBitmap != null) {
-                Bitmap cachedBitmap = softBitmap.get();
-                if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
-                    alreadySet = true;
-                    // 已是同一张位图则跳过，避免滚动中重复 invalidate
-                    android.graphics.drawable.Drawable cur = coverView.getDrawable();
-                    if (!(cur instanceof android.graphics.drawable.BitmapDrawable)
-                            || ((android.graphics.drawable.BitmapDrawable) cur).getBitmap() != cachedBitmap) {
-                        coverView.setImageBitmap(cachedBitmap);
+            // 先查全局缓存：首页/历史/收藏等页面加载过的同一封面直接复用，不再联网
+            Bitmap gCached = GlobalImageCache.getInstance().get(finalCoverUrl);
+            if (gCached != null && !gCached.isRecycled()) {
+                alreadySet = true;
+                android.graphics.drawable.Drawable cg = coverView.getDrawable();
+                if (!(cg instanceof android.graphics.drawable.BitmapDrawable)
+                        || ((android.graphics.drawable.BitmapDrawable) cg).getBitmap() != gCached) {
+                    coverView.setImageBitmap(gCached);
+                }
+            } else {
+                SoftReference<Bitmap> softBitmap = imageCache.get(finalCoverUrl);
+                if (softBitmap != null) {
+                    Bitmap cachedBitmap = softBitmap.get();
+                    if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
+                        alreadySet = true;
+                        // 已是同一张位图则跳过，避免滚动中重复 invalidate
+                        android.graphics.drawable.Drawable cur = coverView.getDrawable();
+                        if (!(cur instanceof android.graphics.drawable.BitmapDrawable)
+                                || ((android.graphics.drawable.BitmapDrawable) cur).getBitmap() != cachedBitmap) {
+                            coverView.setImageBitmap(cachedBitmap);
+                        }
+                    } else {
+                        imageCache.remove(finalCoverUrl);
                     }
-                } else {
-                    imageCache.remove(finalCoverUrl);
                 }
             }
 
@@ -220,6 +231,8 @@ public class SearchResultAdapter extends BaseAdapter {
                             loadingMap.remove(Integer.valueOf(currentPos));
 
                             if (bitmap != null && !bitmap.isRecycled()) {
+                                // 写透全局缓存，详情页/相关视频等共用，不再重复下载
+                                GlobalImageCache.getInstance().put(finalCoverUrl, bitmap);
                                 imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
                                 mainHandler.post(new Runnable() {
                                     @Override

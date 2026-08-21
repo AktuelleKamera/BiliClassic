@@ -279,6 +279,20 @@ public class OfflineActivity extends BaseActivity {
     private void showDeleteDialog(final OfflineItem item) {
         String displayTitle = (item.pageTitle != null && item.pageTitle.length() > 0)
                 ? item.pageTitle : item.title;
+        if (!item.isCompleted) {
+            new AlertDialog.Builder(DialogUtil.wrap(this))
+                    .setTitle(getString(R.string.offlineactivity_settitle_5220))
+                    .setMessage("确定要取消下载 \"" + displayTitle + "\" 吗？")
+                    .setPositiveButton("取消下载", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            deleteVideo(item);
+                        }
+                    })
+                    .setNegativeButton("继续下载", null)
+                    .show();
+            return;
+        }
         new AlertDialog.Builder(DialogUtil.wrap(this))
                 .setTitle(getString(R.string.offlineactivity_settitle_5220))
                 .setMessage("确定要删除 \"" + displayTitle + "\" 吗？")
@@ -299,7 +313,8 @@ public class OfflineActivity extends BaseActivity {
                 item.env.deleteEntry();
             } else if (!item.isCompleted) {
                 Intent cancelIntent = new Intent(this, VideoDownloadService.class);
-                cancelIntent.setAction(VideoDownloadService.ACTION_CANCEL);
+                cancelIntent.setAction(VideoDownloadService.ACTION_CANCEL_ONE);
+                cancelIntent.putExtra("key", item.getKey());
                 startService(cancelIntent);
                 if (item.env != null) {
                     item.env.deleteEntry();

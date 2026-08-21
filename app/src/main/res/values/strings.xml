@@ -136,7 +136,7 @@
     <string name="activity_settings_5f39_1">弹窗样式</string>
     <string name="activity_settings_5f39_2">弹窗设置</string>
     <string name="activity_settings_5f6d02b89271">TV模式</string>
-    <string name="activity_settings_5ff6c246223f">⚠ 实验性功能，开启后视频将直接在线播放而不缓存到本地，安卓2.3以下不可用</string>
+    <string name="activity_settings_5ff6c246223f">⚠ 实验性功能，开启后视频将直接在线播放而不缓存到本地</string>
     <string name="activity_settings_618e688f6a1c">缓存管理</string>
     <string name="activity_settings_69d96ab742b7">播放器设置</string>
     <string name="activity_settings_6c07bb6fd4b6">设备信息</string>
@@ -162,11 +162,19 @@
     <string name="activity_settings_a60148ee64f0">关于播放器</string>
     <string name="activity_settings_a938a37715ed">无图模式</string>
     <string name="activity_settings_aa627d9a1d4d">⚠ 实验性功能，强制开启TV模式可能导致布局异常，安卓4.0以下不可用</string>
+    <string name="activity_settings_convert_play">转码播放</string>
+    <string name="activity_settings_convert_play_desc">将视频在线转码为 240P H.264 Baseline 后播放，适合安卓 4.4 以下超低配置设备</string>
+    <string name="settingsactivity_toast_convert_play_on">已开启转码播放，播放时将视频转码为 240P</string>
+    <string name="settingsactivity_toast_convert_play_off">已关闭转码播放</string>
+    <string name="player_loading_step_get_url">获取播放地址……</string>
+    <string name="player_loading_step_loading_video">正在加载视频……</string>
+    <string name="player_loading_step_done">【完成】</string>
+    <string name="player_loading_step_fail">【失败】</string>
     <string name="activity_settings_adc353d548c8">0 MB</string>
     <string name="activity_settings_ade7763f1791">使用新版API获取更多番剧和放送信息</string>
     <string name="activity_settings_aee40e8b1d43">默认播放器</string>
     <string name="activity_settings_b64fc86a2b82">0 KB</string>
-    <string name="activity_settings_b88caea80965">• 系统播放器：依赖手机硬件解码。Android 6.0 以下系统不支持 H.264 High Profile 软解，部分视频可能无法播放或只有声音。</string>
+    <string name="activity_settings_b88caea80965">• 系统播放器：依赖手机硬件解码。不支持 H.264 High Profile 软解，部分视频可能无法播放或只有声音。</string>
     <string name="activity_settings_ba8681d27226">实验室</string>
     <string name="activity_settings_bb6d995724f4">管理</string>
     <string name="activity_settings_bce2377283c2">清除</string>
@@ -190,7 +198,7 @@
     <string name="activity_settings_e512c25c5a09">横屏适配</string>
     <string name="activity_settings_e85696350756">新番专题</string>
     <string name="activity_settings_e88ca343dda4">清除图片缓存</string>
-    <string name="activity_settings_e8a5788596ec">• 内置播放器：推荐使用，集成了软件解码器和系统硬解播放器，无需安装第三方应用。可在设置中切换解码方式（软件解码器/系统硬解）。软件解码器目前仅支持Android 2.3+。</string>
+    <string name="activity_settings_e8a5788596ec">• 内置播放器：推荐使用，集成了软件解码器和系统硬解播放器，无需安装第三方应用。可在设置中切换解码方式（软件解码器/系统硬解）。</string>
     <string name="activity_settings_e8ada398d92a">默认首页</string>
     <string name="activity_settings_ec35b2ba9bfe">实验性功能，直接在线播放视频（可能不稳定）</string>
     <string name="activity_settings_ed495078a9b9">无痕模式</string>
@@ -915,6 +923,6 @@
     <string name="ostwind_no_decoder_title">未找到软解解码器</string>
     <string name="ostwind_no_decoder_msg">当前设备没有可用的软解解码器，请安装 MoboPlayer 软解包后重试。可加群 754725037 下载。</string>
     <string name="ostwind_no_decoder_ok">确定</string>
-    <string name="ostwind_loading">正在加载...</string>
+    <string name="ostwind_loading">正在加载视频...</string>
     <string name="ostwind_error">播放失败，请检查网络或重新选择播放器</string>
 </resources>

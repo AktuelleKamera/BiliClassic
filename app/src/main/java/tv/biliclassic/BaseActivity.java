@@ -37,10 +37,12 @@ public abstract class BaseActivity extends FragmentActivity {
 
     @Override
     protected void attachBaseContext(Context newBase) {
+        // 先包存储回退（内部目录满时退 SD 卡），再包 Locale
+        Context wrapped = new tv.biliclassic.util.StorageFallbackContext(newBase);
         if (SdkHelper.getSdkInt() >= 17) {
-            super.attachBaseContext(LocaleHelper.wrapContext(newBase));
+            super.attachBaseContext(LocaleHelper.wrapContext(wrapped));
         } else {
-            super.attachBaseContext(newBase);
+            super.attachBaseContext(wrapped);
         }
     }
 
@@ -86,6 +88,9 @@ public abstract class BaseActivity extends FragmentActivity {
             } else if (shouldEnableLandscape()) {
                 // 横屏设备（如 ChaCha 等）：横屏
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            } else if (isHardwareKeyboardDevice()) {
+                // 带滑出式物理键盘的手机（HTC Dream/G1 等）：不锁定方向
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
             } else {
                 // 手机：强制竖屏
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
@@ -274,6 +279,20 @@ public abstract class BaseActivity extends FragmentActivity {
         }
 
         return false;
+    }
+
+    /**
+     * 检测是否带滑出式（或固定式）物理 QWERTY 键盘的手机，如 HTC Dream/G1。
+     * 这类设备在键盘滑出时系统会自动切横屏，前提是应用不锁定竖屏。
+     * 直接读运行时硬件键盘配置：存在物理 QWERTY 键盘即视为需要自动旋转。
+     */
+    protected boolean isHardwareKeyboardDevice() {
+        try {
+            Configuration cfg = getResources().getConfiguration();
+            return cfg.keyboard == Configuration.KEYBOARD_QWERTY;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     /**

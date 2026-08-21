@@ -128,7 +128,17 @@ public class PlayerQualityManager {
                     mQualityListView.getLocationOnScreen(listLoc);
                     int btnRight = btnLoc[0] + mQualityButton.getWidth();
                     int listRight = listLoc[0] + mQualityListView.getWidth();
-                    mQualityListView.setTranslationX(btnRight - listRight);
+                    int offset = btnRight - listRight;
+                    // setTranslationX 是 API 11 才加入；老设备用 Margin 对齐，避免 NoSuchMethodError
+                    if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 11) {
+                        mQualityListView.setTranslationX(offset);
+                    } else {
+                        android.view.ViewGroup.LayoutParams lp = mQualityListView.getLayoutParams();
+                        if (lp instanceof android.view.ViewGroup.MarginLayoutParams) {
+                            ((android.view.ViewGroup.MarginLayoutParams) lp).leftMargin = offset;
+                            mQualityListView.setLayoutParams(lp);
+                        }
+                    }
                 } catch (Exception e) {
                     // ignore
                 }

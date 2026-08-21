@@ -18,6 +18,18 @@ package tv.biliclassic.util;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Environment;
+import android.util.Log;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 
 /**
  * 被 luern0313 创建于 2020/5/4.
@@ -78,13 +90,52 @@ public class SharedPreferencesUtil {
     public static final String BUVid_FP = "buvid_fp";
     public static final String B_NUT = "b_nut";
 
+    private static final String TAG = "SharedPreferencesUtil";
+    private static final String PROBE_KEY = "__probe__";
+
     private static SharedPreferences sharedPreferences;
     private static Context sAppContext;
 
     public static void init(Context context) {
         sAppContext = context.getApplicationContext();
         if (sharedPreferences == null) {
-            sharedPreferences = sAppContext.getSharedPreferences("biliclassic", Context.MODE_PRIVATE);
+            SharedPreferences internal = sAppContext.getSharedPreferences("biliclassic", Context.MODE_PRIVATE);
+            if (probeWritable(internal)) {
+                // 内部存储正常：清掉探测残留，用系统实现
+                try {
+                    internal.edit().remove(PROBE_KEY).commit();
+                } catch (Throwable t) {
+                }
+                sharedPreferences = internal;
+            } else {
+                // 内部存储无法写入（如 /data 分区满），退回 SD 卡
+                Log.w(TAG, "内部存储不可写，偏好设置退回 SD 卡");
+                SharedPreferences sd = createSdPreferences();
+                sharedPreferences = (sd != null) ? sd : internal;
+            }
+        }
+    }
+
+    /**
+     * 探测内部存储是否真的可写：shared_prefs 目录建不了/空间不足时，
+     * commit() 会返回 false。
+     */
+    private static boolean probeWritable(SharedPreferences prefs) {
+        try {
+            return prefs.edit().putBoolean(PROBE_KEY, true).commit();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private static SharedPreferences createSdPreferences() {
+        try {
+            File dir = new File(Environment.getExternalStorageDirectory(), "BiliClassic");
+            File f = new File(dir, "prefs.properties");
+            return new SdSharedPreferences(f);
+        } catch (Throwable t) {
+            Log.e(TAG, "SD 卡偏好设置创建失败", t);
+            return null;
         }
     }
 
@@ -158,5 +209,267 @@ public class SharedPreferencesUtil {
     public static void removeValue(String key) {
         if (sharedPreferences == null) return;
         sharedPreferences.edit().remove(key).commit();
+    }
+
+    // ===== SD 卡文件背书的 SharedPreferences（内部存储满时的回退） =====
+
+    /**
+     * 用 Properties 文件持久化的极简 SharedPreferences。
+     * 仅当 /data 分区无法写入（G1 这类小存储设备）时启用，
+     * 保证设置/登录态/转码开关等在空间不足时仍能保存。
+     */
+    private static class SdSharedPreferences implements SharedPreferences {
+        private final File mFile;
+        private final Properties mProps = new Properties();
+        private final Map<String, Object> mValues = new HashMap<String, Object>();
+        private final Map<OnSharedPreferenceChangeListener, Boolean> mListeners =
+                new HashMap<OnSharedPreferenceChangeListener, Boolean>();
+
+        SdSharedPreferences(File file) {
+            mFile = file;
+            load();
+        }
+
+        private synchronized void load() {
+            mValues.clear();
+            try {
+                if (mFile.exists()) {
+                    FileInputStream fis = new FileInputStream(mFile);
+                    mProps.load(fis);
+                    fis.close();
+                }
+                Enumeration<?> en = mProps.propertyNames();
+                while (en.hasMoreElements()) {
+                    String key = (String) en.nextElement();
+                    Object v = decode(key, mProps.getProperty(key));
+                    if (v != null) mValues.put(key, v);
+                }
+            } catch (Throwable t) {
+                Log.e(TAG, "SD prefs load error", t);
+            }
+        }
+
+        private synchronized boolean persist() {
+            try {
+                File dir = mFile.getParentFile();
+                if (dir != null && !dir.exists()) {
+                    dir.mkdirs();
+                }
+                FileOutputStream fos = new FileOutputStream(mFile);
+                mProps.store(fos, "biliclassic prefs (sd fallback)");
+                fos.close();
+                return true;
+            } catch (Throwable t) {
+                Log.e(TAG, "SD prefs save error", t);
+                return false;
+            }
+        }
+
+        private String encode(String key, Object value) {
+            if (value instanceof Integer) return "@I:" + value;
+            if (value instanceof Long) return "@L:" + value;
+            if (value instanceof Boolean) return "@B:" + value;
+            if (value instanceof Float) return "@F:" + value;
+            if (value instanceof Set) {
+                StringBuilder sb = new StringBuilder("@SS:");
+                for (Object o : (Set<?>) value) {
+                    sb.append(o).append('\u0001');
+                }
+                return sb.toString();
+            }
+            return "@S:" + String.valueOf(value);
+        }
+
+        private Object decode(String key, String s) {
+            if (s == null) return null;
+            try {
+                if (s.startsWith("@I:")) return Integer.valueOf(s.substring(3));
+                if (s.startsWith("@L:")) return Long.valueOf(s.substring(3));
+                if (s.startsWith("@B:")) return Boolean.valueOf(s.substring(3));
+                if (s.startsWith("@F:")) return Float.valueOf(s.substring(3));
+                if (s.startsWith("@SS:")) {
+                    Set<String> set = new HashSet<String>();
+                    String body = s.substring(4);
+                    if (body.length() > 0) {
+                        String[] parts = body.split("\u0001");
+                        for (String p : parts) set.add(p);
+                    }
+                    return set;
+                }
+                if (s.startsWith("@S:")) return s.substring(3);
+            } catch (Throwable t) {
+                return s;
+            }
+            return s;
+        }
+
+        @Override
+        public synchronized Map<String, ?> getAll() {
+            return new HashMap<String, Object>(mValues);
+        }
+
+        @Override
+        public synchronized String getString(String key, String defValue) {
+            Object v = mValues.get(key);
+            return (v instanceof String) ? (String) v : defValue;
+        }
+
+        @Override
+        public synchronized Set<String> getStringSet(String key, Set<String> defValues) {
+            Object v = mValues.get(key);
+            if (v instanceof Set) {
+                return new HashSet<String>((Set<String>) v);
+            }
+            return defValues;
+        }
+
+        @Override
+        public synchronized int getInt(String key, int defValue) {
+            Object v = mValues.get(key);
+            return (v instanceof Integer) ? ((Integer) v).intValue() : defValue;
+        }
+
+        @Override
+        public synchronized long getLong(String key, long defValue) {
+            Object v = mValues.get(key);
+            return (v instanceof Long) ? ((Long) v).longValue() : defValue;
+        }
+
+        @Override
+        public synchronized float getFloat(String key, float defValue) {
+            Object v = mValues.get(key);
+            return (v instanceof Float) ? ((Float) v).floatValue() : defValue;
+        }
+
+        @Override
+        public synchronized boolean getBoolean(String key, boolean defValue) {
+            Object v = mValues.get(key);
+            return (v instanceof Boolean) ? ((Boolean) v).booleanValue() : defValue;
+        }
+
+        @Override
+        public synchronized boolean contains(String key) {
+            return mValues.containsKey(key);
+        }
+
+        @Override
+        public synchronized Editor edit() {
+            return new SdEditor();
+        }
+
+        @Override
+        public void registerOnSharedPreferenceChangeListener(OnSharedPreferenceChangeListener listener) {
+            synchronized (mListeners) {
+                mListeners.put(listener, Boolean.TRUE);
+            }
+        }
+
+        @Override
+        public void unregisterOnSharedPreferenceChangeListener(OnSharedPreferenceChangeListener listener) {
+            synchronized (mListeners) {
+                mListeners.remove(listener);
+            }
+        }
+
+        private void notifyChanged(String key) {
+            synchronized (mListeners) {
+                for (OnSharedPreferenceChangeListener l : mListeners.keySet()) {
+                    if (l != null) {
+                        try {
+                            l.onSharedPreferenceChanged(this, key);
+                        } catch (Throwable t) {
+                        }
+                    }
+                }
+            }
+        }
+
+        private class SdEditor implements Editor {
+            private final Map<String, Object> mModified = new HashMap<String, Object>();
+            private boolean mClear = false;
+
+            @Override
+            public Editor putString(String key, String value) {
+                mModified.put(key, value);
+                return this;
+            }
+
+            @Override
+            public Editor putStringSet(String key, Set<String> values) {
+                mModified.put(key, values);
+                return this;
+            }
+
+            @Override
+            public Editor putInt(String key, int value) {
+                mModified.put(key, Integer.valueOf(value));
+                return this;
+            }
+
+            @Override
+            public Editor putLong(String key, long value) {
+                mModified.put(key, Long.valueOf(value));
+                return this;
+            }
+
+            @Override
+            public Editor putFloat(String key, float value) {
+                mModified.put(key, Float.valueOf(value));
+                return this;
+            }
+
+            @Override
+            public Editor putBoolean(String key, boolean value) {
+                mModified.put(key, Boolean.valueOf(value));
+                return this;
+            }
+
+            @Override
+            public Editor remove(String key) {
+                mModified.put(key, null);
+                return this;
+            }
+
+            @Override
+            public Editor clear() {
+                mClear = true;
+                return this;
+            }
+
+            @Override
+            public boolean commit() {
+                synchronized (SdSharedPreferences.this) {
+                    if (mClear) {
+                        mValues.clear();
+                        mProps.clear();
+                    }
+                    for (Map.Entry<String, Object> e : mModified.entrySet()) {
+                        String key = e.getKey();
+                        Object value = e.getValue();
+                        if (value == null) {
+                            mValues.remove(key);
+                            mProps.remove(key);
+                        } else {
+                            mValues.put(key, value);
+                            mProps.setProperty(key, encode(key, value));
+                        }
+                    }
+                    boolean ok = persist();
+                    if (ok) {
+                        for (String key : mModified.keySet()) {
+                            notifyChanged(key);
+                        }
+                    }
+                    mModified.clear();
+                    mClear = false;
+                    return ok;
+                }
+            }
+
+            @Override
+            public void apply() {
+                commit();
+            }
+        }
     }
 }

@@ -38,6 +38,8 @@ public class LocalStreamProxy {
     private static final int BUFFER_SIZE = 8192;
 
     private final String remoteUrl;
+    private final String audioUrl;
+    private final long durationMs;
     private final Map<String, String> requestHeaders;
     private ServerSocket server;
     private String localUrl;
@@ -74,6 +76,28 @@ public class LocalStreamProxy {
 
     public LocalStreamProxy(String remoteUrl, Map<String, String> headers) {
         this.remoteUrl = remoteUrl;
+        this.audioUrl = null;
+        this.durationMs = 0;
+        this.requestHeaders = headers;
+    }
+
+    /**
+     * DASH 模式构造器：videoUrl/audioUrl 分别为音视频分离流的 m4s 直链。
+     * 代理会在 /manifest.mpd 生成聚合两者的 MPD，在 /video、/audio 转发对应流。
+     */
+    public LocalStreamProxy(String videoUrl, String audioUrl, Map<String, String> headers) {
+        this(videoUrl, audioUrl, 0, headers);
+    }
+
+    /**
+     * 同上，并携带视频总时长（毫秒）：极简 MPD 自身不含时长信息，
+     * 缺少 mediaPresentationDuration 时 ijkplayer getDuration() 返回 0，
+     * 进度条与手势 seek 都会异常。
+     */
+    public LocalStreamProxy(String videoUrl, String audioUrl, long durationMs, Map<String, String> headers) {
+        this.remoteUrl = videoUrl;
+        this.audioUrl = audioUrl;
+        this.durationMs = durationMs;
         this.requestHeaders = headers;
     }
 
@@ -87,7 +111,7 @@ public class LocalStreamProxy {
         server.bind(new InetSocketAddress(0));
         int port = server.getLocalPort();
         String host = getLocalIpAddress();
-        localUrl = "http://" + host + ":" + port + "/video";
+        localUrl = "http://" + host + ":" + port + (audioUrl != null ? "/manifest.mpd" : "/video");
         running = true;
 
         serverThread = new Thread(new Runnable() {
@@ -98,7 +122,7 @@ public class LocalStreamProxy {
                         activeClient = client;
                         new Thread(new Runnable() {
                             public void run() {
-                                handleClient(client);
+                                handleRequest(client);
                             }
                         }, "ProxyClient").start();
                     } catch (IOException e) {
@@ -160,14 +184,13 @@ public class LocalStreamProxy {
         return "127.0.0.1";
     }
 
-    private void handleClient(Socket client) {
+    private void handleRequest(Socket client) {
         try {
             client.setSoTimeout(60000);
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
             String requestLine = reader.readLine();
             if (requestLine == null) {
-                try { client.close(); } catch (Exception ignored) {}
                 return;
             }
 
@@ -179,29 +202,104 @@ public class LocalStreamProxy {
                 }
             }
 
-            OutputStream out = client.getOutputStream();
-            serveRaw(out, requestLine, rangeHeader);
+            if (audioUrl == null) {
+                serveTo(client, remoteUrl, requestLine, rangeHeader);
+                return;
+            }
 
-            out.flush();
-            out.close();
+            // DASH 模式：按路径分发 manifest / audio / video
+            String path = "/";
+            String[] parts = requestLine.split(" ");
+            if (parts.length > 1) path = parts[1];
+            Log.e(TAG, "request path=" + path);
+            if (path.startsWith("/manifest.mpd")) {
+                handleManifest(client);
+            } else if (path.startsWith("/audio")) {
+                serveTo(client, audioUrl, requestLine, rangeHeader);
+            } else {
+                serveTo(client, remoteUrl, requestLine, rangeHeader);
+            }
         } catch (Exception e) {
             if (!(e instanceof java.net.SocketException)) {
-                Log.e(TAG, "handleClient error", e);
+                Log.e(TAG, "handleRequest error", e);
             }
         } finally {
             try { client.close(); } catch (Exception ignored) {}
         }
     }
 
+    private void serveTo(Socket client, String targetUrl, String requestLine, String rangeHeader) throws IOException {
+        OutputStream out = client.getOutputStream();
+        serveRaw(out, targetUrl, requestLine, rangeHeader);
+        out.flush();
+        out.close();
+    }
+
+    /**
+     * 生成聚合音视频两路流的极简静态 MPD。
+     * ffmpeg 的 dash demuxer 会按 BaseURL 把 /video、/audio 当作单 segment 拉取，
+     * Range 转发由 serveRaw 透传完成。
+     */
+    private void handleManifest(Socket client) {
+        try {
+            StringBuilder manifest = new StringBuilder();
+            manifest.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+            manifest.append("<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\" type=\"static\"");
+            if (durationMs > 0) {
+                long whole = durationMs / 1000;
+                long frac = durationMs % 1000;
+                manifest.append(" mediaPresentationDuration=\"PT").append(whole);
+                if (frac > 0) {
+                    String fracStr = "00" + frac;
+                    manifest.append(".").append(fracStr.substring(fracStr.length() - 3));
+                }
+                manifest.append("S\"");
+            }
+            manifest.append(" profiles=\"urn:mpeg:dash:profile:isoff-on-demand:2011\"")
+                    .append(" minBufferTime=\"PT1S\">");
+            manifest.append("<Period id=\"0\">");
+            String base = localUrl.substring(0, localUrl.lastIndexOf('/'));
+            appendRepresentation(manifest, "video", "video", base + "/video");
+            appendRepresentation(manifest, "audio", "audio", base + "/audio");
+            manifest.append("</Period></MPD>");
+            byte[] body = manifest.toString().getBytes("UTF-8");
+            Log.e(TAG, "manifest response bytes=" + body.length);
+            OutputStream out = client.getOutputStream();
+            String headers = "HTTP/1.0 200 OK\r\nContent-Type: application/dash+xml\r\nContent-Length: "
+                    + body.length + "\r\nConnection: close\r\n\r\n";
+            out.write(headers.getBytes("US-ASCII"));
+            out.write(body);
+            out.flush();
+        } catch (Exception e) {
+            Log.e(TAG, "manifest error", e);
+        }
+    }
+
+    private static void appendRepresentation(StringBuilder manifest, String id, String type, String url) {
+        manifest.append("<AdaptationSet contentType=\"").append(type).append("\" mimeType=\"")
+                .append(type).append("/mp4\">");
+        manifest.append("<Representation id=\"").append(id).append("\" bandwidth=\"1000000\">");
+        manifest.append("<BaseURL>").append(escapeXml(url)).append("</BaseURL>");
+        manifest.append("</Representation></AdaptationSet>");
+    }
+
+    private static String escapeXml(String value) {
+        if (value == null) return "";
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;").replace("'", "&apos;");
+    }
+
     // ===== 原始直通 =====
-    private void serveRaw(OutputStream out, String requestLine, String rangeHeader) throws IOException {
+    private void serveRaw(OutputStream out, String targetUrl, String requestLine, String rangeHeader) throws IOException {
         // 始终带 Range 请求远端：客户端没带时就请求 bytes=0-，
         // 这样远端必然返回 Content-Range（含文件总长度）。
         String remoteRange = (rangeHeader != null) ? rangeHeader : "bytes=0-";
 
-        HttpURLConnection conn = openRemoteConnection(remoteRange);
+        HttpURLConnection conn = openRemoteConnection(targetUrl, remoteRange);
 
         int respCode = conn.getResponseCode();
+        Log.d(TAG, "remote response=" + respCode + " target="
+                + (targetUrl == audioUrl ? "audio" : "video"));
         String contentType = conn.getContentType();
         long contentLength = getContentLength(conn);
         String contentRange = conn.getHeaderField("Content-Range");
@@ -260,8 +358,27 @@ public class LocalStreamProxy {
         }
     }
 
-    private HttpURLConnection openRemoteConnection(String rangeHeader) throws IOException {
-        URL url = new URL(remoteUrl);
+    private HttpURLConnection openRemoteConnection(String targetUrl, String rangeHeader) throws IOException {
+        // 优先明文 HTTP：本 app 目标设备（Android 2.x~4.x）的 TLS 栈最高只支持
+        // TLS 1.0，B 站 CDN 要求 TLS 1.2+ 会直接拒绝握手；upos CDN 对明文 HTTP
+        // 完全可用（流地址为带签名的临时链接）。HTTP 失败时再回退 HTTPS。
+        String primary = targetUrl;
+        if (primary != null && primary.startsWith("https://")) {
+            primary = "http://" + primary.substring("https://".length());
+        }
+        try {
+            return openRemoteConnectionImpl(primary, rangeHeader);
+        } catch (IOException e) {
+            if (primary != null && !primary.equals(targetUrl)) {
+                Log.w(TAG, "HTTP fetch failed (" + e.getMessage() + "), retry over HTTPS");
+                return openRemoteConnectionImpl(targetUrl, rangeHeader);
+            }
+            throw e;
+        }
+    }
+
+    private HttpURLConnection openRemoteConnectionImpl(String targetUrl, String rangeHeader) throws IOException {
+        URL url = new URL(targetUrl);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
         if (conn instanceof HttpsURLConnection && trustAllFactory != null) {

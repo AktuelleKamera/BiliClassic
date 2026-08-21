@@ -209,7 +209,11 @@ public class FavoriteFolderAdapter extends BaseAdapter {
             final int currentPos = position;
             coverView.setTag(finalCoverUrl);
 
-            Bitmap cachedBitmap = null;
+            Bitmap cachedBitmap = GlobalImageCache.getInstance().get(finalCoverUrl);
+            if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
+                coverView.setImageBitmap(cachedBitmap);
+                return convertView;
+            }
             synchronized (imageCache) {
                 SoftReference<Bitmap> softBitmap = imageCache.get(finalCoverUrl);
                 if (softBitmap != null) {
@@ -236,6 +240,8 @@ public class FavoriteFolderAdapter extends BaseAdapter {
                     loadingMap.remove(currentPos);
 
                     if (bitmap != null && !bitmap.isRecycled()) {
+                        // 写透全局缓存，详情页等共用，不再重复下载
+                        GlobalImageCache.getInstance().put(finalCoverUrl, bitmap);
                         synchronized (imageCache) {
                             imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
                         }

@@ -131,7 +131,9 @@ public class UpdateUtil {
             }
 
             if (versions == null) {
-                showNoUpdate(context, currentName, callback);
+                // 兼容旧版单版本格式（顶层 version/version_code/download_url，
+                // 如备用源 7891vip.top）：不能当成"无更新"，否则会误报已是最新版
+                handleLegacyFlatResult(context, json, currentCode, currentName, callback);
                 return;
             }
 
@@ -206,6 +208,56 @@ public class UpdateUtil {
                 Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
             }
         }
+    }
+
+    /**
+     * 旧版扁平格式（无 versions 分支对象）：
+     * 顶层 version_code 优先比较，缺失时退化为版本名数值比较。
+     */
+    private static void handleLegacyFlatResult(Context context, JSONObject json,
+                                               int currentCode, String currentName,
+                                               UpdateCallback callback) {
+        int latestCode = json.optInt("version_code", 0);
+        String latestName = json.optString("version", "");
+
+        boolean hasUpdate;
+        if (latestCode > 0) {
+            hasUpdate = latestCode > currentCode;
+        } else {
+            hasUpdate = latestName.length() > 0 && latestName.equals(currentName) == false
+                    && compareVersionNames(currentName, latestName) < 0;
+        }
+
+        if (!hasUpdate) {
+            showNoUpdate(context, currentName, callback);
+            return;
+        }
+
+        String msg = context.getString(R.string.update_msg_current, currentName) + "\n" +
+                context.getString(R.string.update_msg_latest, latestName) + "\n\n" + getChangelog(json);
+        showUpdateDialog(context, latestName, msg,
+                json.optString("download_url", ""), json.optBoolean("force_update", false));
+        if (callback != null) {
+            callback.onCheckComplete(true, context.getString(R.string.update_dialog_title, latestName));
+        }
+    }
+
+    /** 按数值逐段比较版本名，忽略无法解析的段。 */
+    private static int compareVersionNames(String a, String b) {
+        String[] pa = a.split("\\.");
+        String[] pb = b.split("\\.");
+        int len = Math.max(pa.length, pb.length);
+        for (int i = 0; i < len; i++) {
+            int na = 0, nb = 0;
+            try {
+                if (i < pa.length) na = Integer.parseInt(pa[i]);
+            } catch (NumberFormatException e) {}
+            try {
+                if (i < pb.length) nb = Integer.parseInt(pb[i]);
+            } catch (NumberFormatException e) {}
+            if (na != nb) return na - nb;
+        }
+        return 0;
     }
 
     private static String parseMajorVersion(String version) {

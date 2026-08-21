@@ -465,7 +465,10 @@ public class RecommendGridAdapter extends BaseAdapter {
         loadingUrls.clear();
         pendingBitmapSets.clear();
         executor.shutdownNow();
-        GlobalImageCache.getInstance().clear();
+        // 注意：不调用 GlobalImageCache.clear()——那是全 App 共享缓存，
+        // 仅离开推荐页就清空会丢掉其他页面已加载的封面，破坏跨页复用。
+        // 缓存条目有界（LruCache 按内存上限淘汰），内存紧张时由
+        // onLowMemory / OOM 重试路径统一释放。
     }
 
     static class CellHolder {

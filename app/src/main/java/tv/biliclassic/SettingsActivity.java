@@ -39,6 +39,7 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.UpdateUtil;
 
 import tv.biliclassic.util.SdkHelper;
+import tv.biliclassic.util.DeviceInfoUtil;
 import tv.biliclassic.util.DialogUtil;
 public class SettingsActivity extends BaseActivity {
 
@@ -51,6 +52,14 @@ public class SettingsActivity extends BaseActivity {
     public static final String KEY_DECODER_TYPE = "decoder_type";
     private static final String KEY_BUILTIN_PLAYER = "use_builtin_player";
     private static final String KEY_ONLINE_PLAY = "online_play";
+    private static final String KEY_CONVERT_PLAY = "convert_play";
+
+    // 转码播放服务（SCF Web 函数，暂时直接使用默认地址，后续换自定义域名）
+    // 注意：必须用 http（非 https）——HTC G1 的 Android 1.6 证书库太老，
+    // 无法校验现代 HTTPS 证书链，https 会报 "Not trusted server certificate"
+    private static final String CONVERT_API_BASE = "http://1303002254-dja6s2xtn7.ap-hongkong.tencentscf.com";
+    private static final String CONVERT_BUCKET = "video-storage-1303002254";
+    private static final String CONVERT_REGION = "ap-hongkong";
 
     // 视频画质（B站 API 标准值）
     private static final int QUALITY_360P = 16;
@@ -346,6 +355,36 @@ public class SettingsActivity extends BaseActivity {
                         checkboxOnlinePlay.toggle();
                     }
                 });
+        }
+
+        // 转码播放开关 - 安卓5.0及以上、或有NEON的设备隐藏（仅老旧无NEON低配置设备可用）
+        LinearLayout convertPlayItem = (LinearLayout) findViewById(R.id.convert_play_item);
+        if (convertPlayItem != null) {
+            if (SdkHelper.getSdkInt() >= 21 || DeviceInfoUtil.hasNeon()) {
+                convertPlayItem.setVisibility(View.GONE);
+                SharedPreferencesUtil.putBoolean(KEY_CONVERT_PLAY, false);
+            } else {
+                final CheckBox checkboxConvertPlay = (CheckBox) findViewById(R.id.checkbox_convert_play);
+                if (checkboxConvertPlay != null) {
+                    checkboxConvertPlay.setChecked(SharedPreferencesUtil.getBoolean(KEY_CONVERT_PLAY, false));
+                    convertPlayItem.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            checkboxConvertPlay.toggle();
+                        }
+                    });
+                    checkboxConvertPlay.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                        @Override
+                        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                            SharedPreferencesUtil.putBoolean(KEY_CONVERT_PLAY, isChecked);
+                            Toast.makeText(SettingsActivity.this,
+                                    isChecked ? getString(R.string.settingsactivity_toast_convert_play_on)
+                                              : getString(R.string.settingsactivity_toast_convert_play_off),
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            }
         }
 
         // TV模式强制开关
@@ -907,6 +946,28 @@ public class SettingsActivity extends BaseActivity {
         boolean defaultEnabled = isBuiltinPlayerSupported();
         boolean online = SharedPreferencesUtil.getBoolean(KEY_ONLINE_PLAY, defaultEnabled);
         return online;
+    }
+
+    // 获取转码播放状态（转码播放服务地址）
+    public static boolean isConvertPlayEnabled() {
+        return SharedPreferencesUtil.getBoolean(KEY_CONVERT_PLAY, false);
+    }
+
+    // 转码播放服务地址（SCF Web 函数 /transcode）
+    public static String getConvertPlayApiBase() {
+        return CONVERT_API_BASE;
+    }
+
+    public static String getConvertPlayApiUrl() {
+        return CONVERT_API_BASE + "/transcode";
+    }
+
+    public static String getConvertPlayBucket() {
+        return CONVERT_BUCKET;
+    }
+
+    public static String getConvertPlayRegion() {
+        return CONVERT_REGION;
     }
 
     // 获取现代模式状态

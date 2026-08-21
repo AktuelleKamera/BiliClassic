@@ -87,6 +87,11 @@ public class OstwindPlayerActivity extends Activity
     // 加载动画（preloading 布局，动画由 AnimationDrawable 自动播放）
     private View mLoadingOverlay;
     private ImageView mLoadingIcon;
+    // 两阶段加载状态：都在左下角状态栏上，第一行（获取播放地址）显示在第二行（正在加载视频）上方
+    private TextView mLoadingStep1;
+    private String mLoadStep1Text;
+    private String mLoadStep2Text;
+    private boolean mUrlResolved = false;
     private Handler mUiHandler = new Handler();
 
     private String mVideoUrl;
@@ -97,6 +102,8 @@ public class OstwindPlayerActivity extends Activity
     private DanmakuManager mDanmaku;
     private long mAid;
     private long mCid;
+    // 断点续播：从 B 站获取的上次观看进度（毫秒），0 表示不续播
+    private int mResumePosition = 0;
 
     // 弹幕输入面板用：暂停/恢复播放器
     private final DanmakuManager.PlayControl mPlayControl = new DanmakuManager.PlayControl() {
@@ -183,6 +190,7 @@ public class OstwindPlayerActivity extends Activity
     private com.clov4r.android.nil.CMPlayer mSoftPlayer;
     private boolean mUseSoftDecode = false;
     private boolean mSoftFallbackTried = false;
+    private boolean mHardRetryTried = false;
     private boolean mSoftPlaying = false;
     // nativeOpen 成功后才为 true；失败时 native 内部状态未正确建立，
     // 后续调 nativeClose/nativePause 会访问 null 状态崩溃（cmplayer 0x58f8）。
@@ -297,6 +305,9 @@ public class OstwindPlayerActivity extends Activity
                 }
             } catch (Throwable t) {
             }
+            // 两阶段加载状态：都放在左下角状态栏（样式与「正在加载…」一致），
+            // 第一行"获取播放地址"显示在第二行"正在加载视频"上方。
+            mLoadingStep1 = (TextView) mLoadingOverlay.findViewById(R.id.video_preloading_status_bar);
         }
 
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
@@ -309,6 +320,7 @@ public class OstwindPlayerActivity extends Activity
         mAgent = intent.getStringExtra("agent");
         mAid = intent.getLongExtra("aid", 0);
         mCid = intent.getLongExtra("cid", 0);
+        mResumePosition = intent.getIntExtra("resume_position", 0);
         String title = intent.getStringExtra("video_title");
         if (title != null && title.length() > 0) {
             mTitle.setText(title);
@@ -389,7 +401,7 @@ public class OstwindPlayerActivity extends Activity
                     android.util.Log.e(TAG, "setSurfaceChanged in surfaceCreated failed", t);
                 }
             } else {
-                preparePlayer();
+                resolveAndPrepare();
             }
             return;
         }
@@ -412,7 +424,7 @@ public class OstwindPlayerActivity extends Activity
                 }
             }
         } else {
-            preparePlayer();
+            resolveAndPrepare();
         }
     }
 
@@ -447,6 +459,111 @@ public class OstwindPlayerActivity extends Activity
         }
     }
 
+    /**
+     * 取地址 + 加载序列：先在小电视动画里显示「获取播放地址……」，
+     * 需要转码时后台取 240P 地址，完成后标【完成】并显示「正在加载视频……」，再走 preparePlayer。
+     */
+    private void resolveAndPrepare() {
+        if (mFailed || mPreparing || mPlayer != null) {
+            preparePlayer();
+            return;
+        }
+        if (mVideoUrl == null || mVideoUrl.length() == 0) {
+            preparePlayer();
+            return;
+        }
+        // 需要转码且尚未解析：后台取地址
+        if (!mUrlResolved && !mIsLocalFile
+                && tv.biliclassic.util.ConvertPlayUtil.isConvertEnabled()) {
+            mUrlResolved = true;
+            showLoadingOverlay();
+            // 转码期间只显示「获取播放地址……」，成功拿到地址后再追加第二行「正在加载视频……」
+            setLoadingStep1(getString(R.string.player_loading_step_get_url));
+            setLoadingStep2(null);
+            final String rawUrl = mVideoUrl;
+            new Thread(new Runnable() {
+                public void run() {
+                    final String resolved = tv.biliclassic.util.ConvertPlayUtil.fetchTranscodedUrl(rawUrl, null);
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            if (resolved != null && resolved.length() > 0) {
+                                mVideoUrl = resolved;
+                            }
+                            setLoadingStep1(getString(R.string.player_loading_step_get_url)
+                                    + getString(R.string.player_loading_step_done));
+                            setLoadingStep2(getString(R.string.player_loading_step_loading_video));
+                            preparePlayer();
+                        }
+                    });
+                }
+            }).start();
+            return;
+        }
+        // 无需转码（或已解析）：直接进入加载阶段
+        if (!mIsLocalFile) {
+            showLoadingOverlay();
+            setLoadingStep1(getString(R.string.player_loading_step_get_url)
+                    + getString(R.string.player_loading_step_done));
+            setLoadingStep2(getString(R.string.player_loading_step_loading_video));
+        }
+        preparePlayer();
+    }
+
+    private void showLoadingOverlay() {
+        if (mLoadingOverlay != null) {
+            mLoadingOverlay.setVisibility(View.VISIBLE);
+            startLoadingAnimation();
+        }
+    }
+
+    private void setLoadingStep1(String text) {
+        mLoadStep1Text = text;
+        renderLoadingStatus();
+    }
+
+    private void setLoadingStep2(String text) {
+        mLoadStep2Text = text;
+        renderLoadingStatus();
+    }
+
+    private void markLoadingStep2Done() {
+        mLoadStep2Text = getString(R.string.player_loading_step_loading_video)
+                + getString(R.string.player_loading_step_done);
+        renderLoadingStatus();
+    }
+
+    /** 加载失败：状态栏显示「正在加载视频……【失败】」，小电视动画停下。 */
+    private void showLoadingFailed() {
+        String step2 = mLoadStep2Text;
+        if (step2 == null || step2.length() == 0) {
+            step2 = getString(R.string.player_loading_step_loading_video);
+        }
+        // 若已拼过【完成】则先去掉，避免出现「【完成】【失败】」
+        String done = getString(R.string.player_loading_step_done);
+        if (step2.endsWith(done)) {
+            step2 = step2.substring(0, step2.length() - done.length());
+        }
+        mLoadStep2Text = step2 + getString(R.string.player_loading_step_fail);
+        mLoadStep1Text = null;
+        renderLoadingStatus();
+        stopLoadingAnimation();
+    }
+
+    /** 把两行状态合并写进左下角状态栏：第一行（获取播放地址）在第二行（正在加载视频）上方。 */
+    private void renderLoadingStatus() {
+        if (mLoadingStep1 == null) return;
+        StringBuilder sb = new StringBuilder();
+        if (mLoadStep1Text != null && mLoadStep1Text.length() > 0) {
+            sb.append(mLoadStep1Text);
+        }
+        if (mLoadStep2Text != null && mLoadStep2Text.length() > 0) {
+            if (sb.length() > 0) sb.append('\n');
+            sb.append(mLoadStep2Text);
+        }
+        mLoadingStep1.setText(sb.toString());
+        mLoadingStep1.setVisibility(View.VISIBLE);
+    }
+
     private void preparePlayer() {
         if (mFailed || mPreparing) {
             android.util.Log.d(TAG, "preparePlayer skip, mFailed=" + mFailed
@@ -475,7 +592,8 @@ public class OstwindPlayerActivity extends Activity
         mPreparing = true;
         mErrorHandled = false;
         if (!mIsLocalFile) {
-            showStatus(getString(R.string.ostwind_loading));
+            showLoadingOverlay();
+            setLoadingStep2(getString(R.string.player_loading_step_loading_video));
         }
         android.util.Log.d(TAG, "preparePlayer url=" + mVideoUrl
                 + " hasCookie=" + (mCookie != null && mCookie.length() > 0)
@@ -496,7 +614,8 @@ public class OstwindPlayerActivity extends Activity
             }
 
             String playUrl = mVideoUrl;
-            if (mVideoUrl.startsWith("http://") || mVideoUrl.startsWith("https://")) {
+            if ((mVideoUrl.startsWith("http://") || mVideoUrl.startsWith("https://"))
+                    && shouldProxy(mVideoUrl)) {
                 // B 站 CDN 防盗链需要 Referer/Cookie 等请求头，MediaPlayer 在线播放无法传 headers
                 //（(Context,Uri,Map) 对 https 抛 No content provider，(String) 无 headers 参数），
                 // 所以用本地 HTTP 代理带请求头转发，MediaPlayer 连 127.0.0.1。
@@ -518,12 +637,19 @@ public class OstwindPlayerActivity extends Activity
             android.util.Log.e(TAG, "preparePlayer failed", e);
             mPreparing = false;
             mFailed = true;
-            showStatus(getString(R.string.ostwind_error));
+            showLoadingFailed();
             releasePlayer();
         }
     }
 
     // ===== 软解内核（MoboPlayer cmplayer + ffmpeg，MediaPlayer 失败时自动降级） =====
+
+    // COS 转码直链无需防盗链请求头，跳过 LocalStreamProxy 直接连，
+    // 避免代理(HTTP/1.0+Connection:close)让老 ffmpeg 读流一直 av_read_frame error
+    private boolean shouldProxy(String url) {
+        if (url == null) return false;
+        return !url.contains("myqcloud.com");
+    }
 
     /**
      * 软解准备：后台线程 nativeOpen + 轮询取视频尺寸，成功后 UI 线程绑定 Surface 并播放。
@@ -535,7 +661,8 @@ public class OstwindPlayerActivity extends Activity
         mPreparing = true;
         mErrorHandled = false;
         if (!mIsLocalFile) {
-            showStatus(getString(R.string.ostwind_loading));
+            showLoadingOverlay();
+            setLoadingStep2(getString(R.string.player_loading_step_loading_video));
         }
         if (!com.clov4r.android.nil.library.NativeLibrary.load()) {
             android.util.Log.e(TAG, "soft lib load failed");
@@ -549,7 +676,8 @@ public class OstwindPlayerActivity extends Activity
         // 本地代理复用同一逻辑：软解 native 端 ffmpeg 需要走 http/file 本地路径
         final String playUrl;
         String resolvedUrl = mVideoUrl;
-        if (mVideoUrl.startsWith("http://") || mVideoUrl.startsWith("https://")) {
+        if ((mVideoUrl.startsWith("http://") || mVideoUrl.startsWith("https://"))
+                && shouldProxy(mVideoUrl)) {
             Map<String, String> headers = new HashMap<String, String>();
             headers.put("User-Agent", mAgent);
             headers.put("Referer", "https://www.bilibili.com/");
@@ -631,7 +759,7 @@ public class OstwindPlayerActivity extends Activity
         android.util.Log.e(TAG, "onSoftOpenFailed thread=" + Thread.currentThread().getName());
         mPreparing = false;
         mFailed = true;
-        hideStatus();
+        showLoadingFailed();
         releasePlayer();
         Toast.makeText(this, getString(R.string.ostwind_error), Toast.LENGTH_SHORT).show();
         finishPlayer();
@@ -644,6 +772,7 @@ public class OstwindPlayerActivity extends Activity
         mPreparing = false;
         mPrepared = true;
         mSoftPlaying = true;
+        markLoadingStep2Done();
         hideStatus();
         // 与原始 MoboPlayer 一致：
         //  - setFixedSize = 视频原始尺寸 → native 画满整个 buffer
@@ -787,7 +916,17 @@ public class OstwindPlayerActivity extends Activity
                 }
             });
         }
+        // 加载完成：第二行状态标【完成】后再隐藏动画、开始播放
+        markLoadingStep2Done();
         hideStatus();
+        // 断点续播：跳转到上次观看位置
+        if (mResumePosition > 0) {
+            try {
+                mp.seekTo(mResumePosition);
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "resume seekTo failed", e);
+            }
+        }
         mp.start();
     }
 
@@ -1074,7 +1213,21 @@ public class OstwindPlayerActivity extends Activity
         }
         mErrorHandled = true;
         mPreparing = false;
-        // 自动降级：MediaPlayer 硬解失败 → 切换软解重试一次
+        // 硬解首次失败：自动重试一次硬解（不降级），多数情况第二次能成
+        if (!mUseSoftDecode && !mHardRetryTried) {
+            android.util.Log.e(TAG, "hard decode failed, retrying hard decode once");
+            mHardRetryTried = true;
+            releaseHardPlayer();
+            mFailed = false;
+            mErrorHandled = false;
+            if (mSurfaceReady) {
+                resolveAndPrepare();
+            } else {
+                hideStatus();
+            }
+            return true;
+        }
+        // 自动降级：MediaPlayer 硬解（重试后）仍失败 → 切换软解重试一次
         if (!mSoftFallbackTried) {
             android.util.Log.e(TAG, "hard decode failed, falling back to soft decode");
             mSoftFallbackTried = true;
@@ -1083,15 +1236,15 @@ public class OstwindPlayerActivity extends Activity
             mFailed = false;
             mErrorHandled = false;
             if (mSurfaceReady) {
-                preparePlayer();
+                resolveAndPrepare();
             } else {
                 hideStatus();
             }
             return true;
         }
         mFailed = true;
-        // 停止加载动画并释放播放器/代理，避免 MediaPlayer 在 error 状态反复回调导致动画一直转
-        hideStatus();
+        // 显示「正在加载视频……【失败】」并停下小电视，避免 error 状态动画一直转
+        showLoadingFailed();
         releasePlayer();
         Toast.makeText(this, getString(R.string.ostwind_error), Toast.LENGTH_SHORT).show();
         finishPlayer();
@@ -1174,6 +1327,14 @@ public class OstwindPlayerActivity extends Activity
     // 仅释放硬解 MediaPlayer/代理，保留软解尝试状态（自动降级用）
     private void releaseHardPlayer() {        mUiHandler.removeCallbacks(mTimeRunnable);
         if (mPlayer != null) {
+            try {
+                mPlayer.pause();
+            } catch (Exception e) {
+            }
+            try {
+                mPlayer.stop();
+            } catch (Exception e) {
+            }
             try {
                 mPlayer.release();
             } catch (Exception e) {
@@ -1369,6 +1530,14 @@ public class OstwindPlayerActivity extends Activity
             mSoftOpenOk = false;
         }
         if (mPlayer != null) {
+            try {
+                mPlayer.pause();
+            } catch (Exception e) {
+            }
+            try {
+                mPlayer.stop();
+            } catch (Exception e) {
+            }
             try {
                 mPlayer.release();
             } catch (Exception e) {

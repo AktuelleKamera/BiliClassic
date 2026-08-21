@@ -38,6 +38,11 @@ import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SdkHelper;
 public class PlayerAnimActivity extends Activity {
 
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        super.attachBaseContext(new tv.biliclassic.util.StorageFallbackContext(newBase));
+    }
+
     private ImageView ivTvAnim;
     private ProgressBar progressBar;
     private TextView tvProgress;
@@ -55,6 +60,8 @@ public class PlayerAnimActivity extends Activity {
     };
 
     private String videoUrl;
+    private String audioUrl;
+    private long mDurationMs;
     private String videoTitle;
     private String coverUrl;
     private long aid;
@@ -67,6 +74,9 @@ public class PlayerAnimActivity extends Activity {
     private String[] mQualityNames;
     private int[] mQualityValues;
     private int mCurrentQn;
+
+    // 断点续播：从 B 站拿到的上次播放进度（毫秒），透传给各播放器
+    private int resumePosition = 0;
 
     // 下载控制
     private volatile boolean isDownloadCancelled = false;
@@ -97,6 +107,8 @@ public class PlayerAnimActivity extends Activity {
         }
 
         videoUrl = getIntent().getStringExtra("video_url");
+        audioUrl = getIntent().getStringExtra("audio_url");
+        mDurationMs = getIntent().getLongExtra("duration_ms", 0);
         videoTitle = getIntent().getStringExtra("video_title");
         coverUrl = getIntent().getStringExtra("cover_url");
         aid = getIntent().getLongExtra("aid", 0);
@@ -108,6 +120,7 @@ public class PlayerAnimActivity extends Activity {
         mQualityNames = getIntent().getStringArrayExtra("qn_str_array");
         mQualityValues = getIntent().getIntArrayExtra("qn_value_array");
         mCurrentQn = getIntent().getIntExtra("current_qn", 0);
+        resumePosition = getIntent().getIntExtra("resume_position", 0);
 
         // 打印日志确认 videoUrl
         android.util.Log.e("PlayerAnim", "videoUrl: " + videoUrl);
@@ -131,6 +144,12 @@ public class PlayerAnimActivity extends Activity {
                 public void run() {
                     stopTvAnimation();
                     int pref = SettingsActivity.getPlayerPreference();
+                    if (audioUrl != null && audioUrl.length() > 0) {
+                        // DASH 音视频分离流：系统 MediaPlayer/外部播放器无法解析，
+                        // 强制走内置 IJK 播放路径
+                        playWithBuiltinPlayer(videoUrl);
+                        return;
+                    }
                     if (pref == SettingsActivity.PLAYER_OSTWIND) {
                         // Ostwind 简易播放器（MediaPlayer+本地代理，兼容 2.2 以下）
                         Intent wIntent = new Intent(PlayerAnimActivity.this,
@@ -144,6 +163,7 @@ public class PlayerAnimActivity extends Activity {
                         wIntent.putExtra("video_title", videoTitle);
                         wIntent.putExtra("aid", aid);
                         wIntent.putExtra("cid", cid);
+                        wIntent.putExtra("resume_position", resumePosition);
                         startActivity(wIntent);
                         finish();
                         return;
@@ -237,6 +257,13 @@ public class PlayerAnimActivity extends Activity {
         Intent intent = new Intent(this, BiliPlayerActivity.class);
         intent.putExtra("video_title", videoTitle);
         intent.putExtra("video_url", url);
+        if (audioUrl != null && audioUrl.length() > 0) {
+            intent.putExtra("audio_url", audioUrl);
+        }
+        if (mDurationMs > 0) {
+            intent.putExtra("duration_ms", mDurationMs);
+        }
+        intent.putExtra("resume_position", resumePosition);
         intent.putExtra("cache_path", (String) null);
         intent.putExtra("aid", aid);
         intent.putExtra("cid", cid);
@@ -322,7 +349,8 @@ public class PlayerAnimActivity extends Activity {
             if (cid > 0) {
                 extIntent.putExtra("danmaku", "https://comment.bilibili.com/" + cid + ".xml");
             }
-            extIntent.putExtra("progress", 0);
+            // 断点续播进度（毫秒）
+            extIntent.putExtra("progress", resumePosition);
             extIntent.putExtra("live_mode", false);
         } catch (Throwable t) {
         }

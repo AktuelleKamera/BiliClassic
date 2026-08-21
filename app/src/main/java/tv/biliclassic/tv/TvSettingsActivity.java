@@ -38,6 +38,11 @@ import tv.biliclassic.util.SdkHelper;
 import tv.biliclassic.util.DialogUtil;
 public class TvSettingsActivity extends FragmentActivity {
 
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        super.attachBaseContext(new tv.biliclassic.util.StorageFallbackContext(newBase));
+    }
+
     private Runnable mPendingStorageAction;
 
     private Button btnThreads, btnPlayer, btnDecoder, btnDecoderSettings, btnRendererType, btnDanmakuEngine;

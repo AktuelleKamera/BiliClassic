@@ -25,9 +25,15 @@ import tv.biliclassic.util.SdkHelper;
  */
 public class VideoDownloadService extends Service {
 
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        super.attachBaseContext(new tv.biliclassic.util.StorageFallbackContext(newBase));
+    }
+
     public static final String ACTION_PAUSE = "tv.biliclassic.action.PAUSE";
     public static final String ACTION_RESUME = "tv.biliclassic.action.RESUME";
     public static final String ACTION_CANCEL = "tv.biliclassic.action.CANCEL";
+    public static final String ACTION_CANCEL_ONE = "tv.biliclassic.action.CANCEL_ONE";
 
     private static final String EXTRA_ENTRY = "entry";
     private static final String EXTRA_VIDEO_URL = "video_url";
@@ -124,6 +130,11 @@ public class VideoDownloadService extends Service {
             } else if (mDownloadManager != null) {
                 mDownloadManager.resumeCurrent();
             }
+            return START_NOT_STICKY;
+        }
+        if (ACTION_CANCEL_ONE.equals(action)) {
+            long key = intent.getLongExtra("key", 0);
+            if (mDownloadManager != null) mDownloadManager.cancelByKey(key);
             return START_NOT_STICKY;
         }
         if (ACTION_CANCEL.equals(action)) {

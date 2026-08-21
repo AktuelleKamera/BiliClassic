@@ -447,8 +447,11 @@ public class VideoDetailActivity extends BaseActivity {
     private void safeSetAdapter(final android.support.v4.view.PagerAdapter adapter) {
         if (viewPager == null) return;
         try {
-            tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
-            System.gc();
+            // 仅在内存紧张时才释放全局图片缓存；
+            // 平时保留，让从推荐/搜索/相关视频/收藏等页面进入时封面直接命中内存，不再重新下载。
+            if (tv.biliclassic.util.GlobalImageCache.isMemoryLow()) {
+                tv.biliclassic.util.GlobalImageCache.getInstance().releaseMemory();
+            }
         } catch (Throwable t) {
         }
         for (int attempt = 0; attempt < 2; attempt++) {
@@ -1067,7 +1070,7 @@ public class VideoDetailActivity extends BaseActivity {
                         return true;
                     }
                 });
-                checkFavoriteState();
+                // 收藏状态初次加载与返回刷新统一由 onResume() 发起，避免此处与 onResume 重复请求
             }
         }
 

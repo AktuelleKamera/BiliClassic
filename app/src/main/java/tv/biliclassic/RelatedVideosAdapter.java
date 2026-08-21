@@ -243,9 +243,17 @@ public class RelatedVideosAdapter extends BaseAdapter {
             coverView.setTag(finalCoverUrl);
 
             boolean alreadySet = false;
-            SoftReference<Bitmap> softBitmap;
-            synchronized (imageCache) {
-                softBitmap = imageCache.get(finalCoverUrl);
+            // 先查全局缓存（跨页面共享），命中则不再走私有/网络
+            Bitmap gCached = GlobalImageCache.getInstance().get(finalCoverUrl);
+            if (gCached != null && !gCached.isRecycled()) {
+                alreadySet = true;
+                applyCover(coverView, finalCoverUrl, gCached);
+            }
+            SoftReference<Bitmap> softBitmap = null;
+            if (!alreadySet) {
+                synchronized (imageCache) {
+                    softBitmap = imageCache.get(finalCoverUrl);
+                }
             }
             if (softBitmap != null) {
                 Bitmap cachedBitmap = softBitmap.get();
@@ -271,6 +279,8 @@ public class RelatedVideosAdapter extends BaseAdapter {
                             loadingMap.remove(currentPos);
 
                             if (bitmap != null && !bitmap.isRecycled()) {
+                                // 写透全局缓存，详情页等共用，不再重复下载
+                                GlobalImageCache.getInstance().put(finalCoverUrl, bitmap);
                                 synchronized (imageCache) {
                                     imageCache.put(finalCoverUrl, new SoftReference<Bitmap>(bitmap));
                                 }

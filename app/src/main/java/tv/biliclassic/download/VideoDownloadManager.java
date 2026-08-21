@@ -114,6 +114,12 @@ public class VideoDownloadManager {
         mWorkHandler.sendMessage(msg);
     }
 
+    public void cancelByKey(long key) {
+        if (mWorkHandler == null) return;
+        Message msg = Message.obtain(mWorkHandler, MSG_CANCEL_TASK, Long.valueOf(key));
+        mWorkHandler.sendMessage(msg);
+    }
+
     public void cancelAll() {
         mPendingTasks.clear();
         mAllTaskKeys.clear();
@@ -234,11 +240,31 @@ public class VideoDownloadManager {
                 break;
             }
         }
-        if (toRemove != null) mPendingTasks.remove(toRemove);
+        if (toRemove != null) {
+            mPendingTasks.remove(toRemove);
+            mAllTaskKeys.remove(key);
+        }
+        // 取消暂停中的
+        VideoDownloadTask paused = null;
+        for (VideoDownloadTask t : mPausedTasks) {
+            if (t.entry.getKey() == key) {
+                paused = t;
+                break;
+            }
+        }
+        if (paused != null) {
+            mPausedTasks.remove(paused);
+            mAllTaskKeys.remove(key);
+            paused.cancel();
+        }
         if (mCurrentTask != null && mCurrentTask.entry.getKey() == key) {
+            mAllTaskKeys.remove(key);
             mCurrentTask.cancel();
             mCurrentTask = null;
             startNextTask();
+        }
+        if (mCurrentTask == null && mPendingTasks.size() == 0) {
+            cancelProgressNotification();
         }
     }
 
@@ -526,12 +552,14 @@ public class VideoDownloadManager {
         mAllTaskKeys.remove(task.entry.getKey());
         task.entry.state = VideoDownloadEntry.STATE_STOPPED;
         task.entry.lastErrorMessage = error;
-        mMainHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                mNotifHelper.notifyDownloadFailed(task.entry, error);
-            }
-        });
+        if (!task.isCancelled()) {
+            mMainHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mNotifHelper.notifyDownloadFailed(task.entry, error);
+                }
+            });
+        }
         if (mCurrentTask == task) mCurrentTask = null;
         if (mWorkHandler != null) {
             mWorkHandler.sendEmptyMessage(MSG_START_NEXT);

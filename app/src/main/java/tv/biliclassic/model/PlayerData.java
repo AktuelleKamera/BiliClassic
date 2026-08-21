@@ -26,6 +26,7 @@ public class PlayerData implements Serializable {
 
     public String title = "";
     public String videoUrl = "";
+    public String audioUrl = "";
     public String danmakuUrl = "";
     public int qn = -1;
     public String[] qnStrList;
@@ -35,6 +36,9 @@ public class PlayerData implements Serializable {
     public long mid;
     public int progress = 0;
     public long cidHistory = 0;
+    // 视频总时长（毫秒），来自 playurl 的 timelength；
+    // DASH 极简 MPD 不带时长，需要透传给本地代理生成 mediaPresentationDuration
+    public long durationMs = 0;
     public int type = 0;
     public long timeStamp;
 

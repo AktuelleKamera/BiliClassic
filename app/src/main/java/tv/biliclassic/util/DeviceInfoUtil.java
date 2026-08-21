@@ -368,6 +368,28 @@ public class DeviceInfoUtil {
     }
 
     /**
+     * CPU 是否支持 NEON 指令集：读 /proc/cpuinfo 的 Features 行。
+     * ARMv8 的 32 位兼容层报 asimd，同样视为支持。读取失败按不支持处理。
+     */
+    public static boolean hasNeon() {
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader("/proc/cpuinfo"));
+            try {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith("Features")) {
+                        return line.contains("neon") || line.contains("asimd");
+                    }
+                }
+            } finally {
+                reader.close();
+            }
+        } catch (Exception e) {
+        }
+        return false;
+    }
+
+    /**
      * 检测是否需要 Legacy 版本喵
      * 返回 true 表示需要 Legacy 版本（不弹窗）
      * 返回 false 表示不需要 Legacy 版本（弹窗提示）
@@ -431,16 +453,10 @@ public class DeviceInfoUtil {
         try {
             BufferedReader reader = new BufferedReader(new FileReader("/proc/cpuinfo"));
             String line;
-            boolean hasNeon = false;
             boolean isTegra2 = false;
             String hardware = "";
 
             while ((line = reader.readLine()) != null) {
-                if (line.startsWith("Features")) {
-                    if (line.contains("neon")) {
-                        hasNeon = true;
-                    }
-                }
                 if (line.startsWith("Hardware") || line.startsWith("Hardware\t")) {
                     String[] parts = line.split(":");
                     if (parts.length > 1) {
@@ -453,7 +469,7 @@ public class DeviceInfoUtil {
             }
             reader.close();
 
-            if (isTegra2 || !hasNeon) {
+            if (isTegra2 || !hasNeon()) {
                 return "ARMv7-A (无NEON)";
             }
             return "ARMv7-A (有NEON)";

@@ -37,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 import tv.biliclassic.api.UserInfoApi;
 import tv.biliclassic.model.UserInfo;
 import tv.biliclassic.model.VideoCard;
+import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class UserProfileActivity extends BaseActivity {
@@ -367,7 +368,13 @@ public class UserProfileActivity extends BaseActivity {
         final ImageView avatarView = ivAvatar;
         avatarView.setTag(finalUrl);
 
-        Bitmap cachedBitmap = imageCache.get(finalUrl);
+        Bitmap cachedBitmap = GlobalImageCache.getInstance().get(finalUrl);
+        if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
+            avatarView.setImageBitmap(cachedBitmap);
+            addAvatarBorder(avatarView);
+            return;
+        }
+        cachedBitmap = imageCache.get(finalUrl);
         if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
             avatarView.setImageBitmap(cachedBitmap);
             addAvatarBorder(avatarView);
@@ -385,6 +392,8 @@ public class UserProfileActivity extends BaseActivity {
                     }
                     final Bitmap bitmap = downloadImage(finalUrl, true);
                     if (bitmap != null && !bitmap.isRecycled()) {
+                        // 写透全局缓存，后续页面共用
+                        GlobalImageCache.getInstance().put(finalUrl, bitmap);
                         imageCache.put(finalUrl, bitmap);
                         mainHandler.post(new Runnable() {
                             @Override
@@ -761,14 +770,26 @@ public class UserProfileActivity extends BaseActivity {
                 final ImageView coverView = holder.cover;
 
                 boolean alreadySet = false;
-                Bitmap cached = imageCache.get(finalUrl);
+                // 先查全局缓存（跨页面共享），命中则不再走私有/网络
+                Bitmap cached = GlobalImageCache.getInstance().get(finalUrl);
                 if (cached != null && !cached.isRecycled()) {
                     alreadySet = true;
-                    // 已是同一张位图则跳过，避免滚动中重复 invalidate
                     android.graphics.drawable.Drawable cur = coverView.getDrawable();
                     if (!(cur instanceof android.graphics.drawable.BitmapDrawable)
                             || ((android.graphics.drawable.BitmapDrawable) cur).getBitmap() != cached) {
                         coverView.setImageBitmap(cached);
+                    }
+                }
+                if (!alreadySet) {
+                    cached = imageCache.get(finalUrl);
+                    if (cached != null && !cached.isRecycled()) {
+                        alreadySet = true;
+                        // 已是同一张位图则跳过，避免滚动中重复 invalidate
+                        android.graphics.drawable.Drawable cur = coverView.getDrawable();
+                        if (!(cur instanceof android.graphics.drawable.BitmapDrawable)
+                                || ((android.graphics.drawable.BitmapDrawable) cur).getBitmap() != cached) {
+                            coverView.setImageBitmap(cached);
+                        }
                     }
                 }
 
@@ -786,6 +807,8 @@ public class UserProfileActivity extends BaseActivity {
                                     final Bitmap bitmap = downloadImage(finalUrl, false);
                                     loadingMap.remove(currentPos);
                                     if (bitmap != null && !bitmap.isRecycled()) {
+                                        // 写透全局缓存，详情页等共用，不再重复下载
+                                        GlobalImageCache.getInstance().put(finalUrl, bitmap);
                                         imageCache.put(finalUrl, bitmap);
                                         mainHandler.post(new Runnable() {
                                             @Override

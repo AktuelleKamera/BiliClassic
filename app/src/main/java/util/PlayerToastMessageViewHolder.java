@@ -30,13 +30,33 @@ public class PlayerToastMessageViewHolder {
     private Runnable mDismissAction = new Runnable() {
         public void run() {
             if (mViewRoot != null && mViewRoot.isShown()) {
-                mAnimIn.cancel();
+                cancelAnimation(mAnimIn);
                 mViewRoot.startAnimation(mAnimOut);
             }
         }
     };
 
     private FAnimationListener animationListener = new FAnimationListener();
+
+    // Animation.cancel() 是 API8(Android 2.2)+ 才有的方法，
+    // 低版本(1.5/1.6)verifier 会因类里引用它而拒绝整个类，必须反射调用。
+    private static java.lang.reflect.Method sAnimationCancelMethod;
+
+    static {
+        try {
+            sAnimationCancelMethod = Animation.class.getMethod("cancel");
+        } catch (Throwable t) {
+            sAnimationCancelMethod = null;
+        }
+    }
+
+    private static void cancelAnimation(Animation a) {
+        if (a == null || sAnimationCancelMethod == null) return;
+        try {
+            sAnimationCancelMethod.invoke(a);
+        } catch (Throwable t) {
+        }
+    }
 
     private class FAnimationListener implements Animation.AnimationListener {
         int fadeMS = 100;
@@ -121,7 +141,7 @@ public class PlayerToastMessageViewHolder {
             setTipViewCenter(!showAtBottom);
             mTipTextView.setText(text);
             mViewRoot.clearAnimation();
-            mAnimIn.cancel();
+            cancelAnimation(mAnimIn);
             if (!mViewRoot.isShown() || isAnimationOut) {
                 isAnimationOut = false;
                 mViewRoot.startAnimation(mAnimIn);
@@ -151,11 +171,11 @@ public class PlayerToastMessageViewHolder {
 
     public void release() {
         if (mAnimIn != null) {
-            mAnimIn.cancel();
+            cancelAnimation(mAnimIn);
             mAnimIn = null;
         }
         if (mAnimOut != null) {
-            mAnimOut.cancel();
+            cancelAnimation(mAnimOut);
             mAnimOut = null;
         }
         if (mViewRoot != null && mParentView != null) {

@@ -45,6 +45,34 @@ public class VideoInfoApi {
     private static final int QUALITY_720P = 64;
     private static final int QUALITY_1080P = 80;
 
+    // 视频信息短缓存：VideoDetailActivity.checkAndSetup 与 VideoDetailFragment.loadVideoData
+    // 会在同一页面几乎同时各取一次视频信息，用 5 秒 TTL 去重，避免两条完全相同的请求。
+    private static VideoInfo sCachedInfo;
+    private static String sCachedKey;
+    private static long sCachedTime;
+
+    private static String cacheKey(long aid) {
+        return "aid:" + aid;
+    }
+
+    private static String cacheKey(String bvid) {
+        return "bvid:" + bvid;
+    }
+
+    private static synchronized VideoInfo fromCache(String key) {
+        if (sCachedInfo != null && key.equals(sCachedKey)
+                && System.currentTimeMillis() - sCachedTime < 5000) {
+            return sCachedInfo;
+        }
+        return null;
+    }
+
+    private static synchronized void toCache(String key, VideoInfo info) {
+        sCachedKey = key;
+        sCachedInfo = info;
+        sCachedTime = System.currentTimeMillis();
+    }
+
     // toWan
     private static String toWanLocal(long num) {
         if (num >= 100000000) {
@@ -74,10 +102,14 @@ public class VideoInfoApi {
      * 通过 bvid 获取视频信息
      */
     public static VideoInfo getVideoInfo(String bvid) throws IOException, JSONException {
+        String key = cacheKey(bvid);
+        VideoInfo cached = fromCache(key);
+        if (cached != null) return cached;
         String url = "https://api.bilibili.com/x/web-interface/view?bvid=" + bvid;
         JSONObject result = NetWorkUtil.getJson(url);
         if (!result.has("data")) return null;
         VideoInfo videoInfo = getInfoByJson(result.getJSONObject("data"));
+        toCache(key, videoInfo);
         return videoInfo;
     }
 
@@ -85,10 +117,14 @@ public class VideoInfoApi {
      * 通过 aid 获取视频信息
      */
     public static VideoInfo getVideoInfo(long aid) throws IOException, JSONException {
+        String key = cacheKey(aid);
+        VideoInfo cached = fromCache(key);
+        if (cached != null) return cached;
         String url = "https://api.bilibili.com/x/web-interface/view?aid=" + aid;
         JSONObject result = NetWorkUtil.getJson(url);
         if (!result.has("data")) return null;
         VideoInfo videoInfo = getInfoByJson(result.getJSONObject("data"));
+        toCache(key, videoInfo);
         return videoInfo;
     }
 

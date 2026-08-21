@@ -155,6 +155,8 @@ public class BiliPlayerActivity extends Activity implements
     private BatteryView2 batteryView;
 
     private String videoUrl;
+    private String audioUrl;
+    private long mProxyDurationMs;
     private String videoTitle;
     private String cachePath;
     private boolean isLiveStream;
@@ -294,6 +296,11 @@ public class BiliPlayerActivity extends Activity implements
     // 加载动画（preloading 布局，动画由 AnimationDrawable 自动播放）
     private View mLoadingOverlay;
     private ImageView mLoadingIcon;
+    // 两阶段加载状态：都在左下角状态栏上，第一行（获取播放地址）显示在第二行（正在加载视频）上方
+    private TextView mLoadingStep1;
+    private String mLoadStep1Text;
+    private String mLoadStep2Text;
+    private boolean mUrlResolved = false;
 
     private Object createSurfaceTextureListener() {
         return new TextureView.SurfaceTextureListener() {
@@ -302,7 +309,7 @@ public class BiliPlayerActivity extends Activity implements
                 surfaceReady = true;
                 if (pendingPrepare) {
                     pendingPrepare = false;
-                    preparePlayer();
+                    resolveAndPrepare();
                 } else if (mediaPlayer != null) {
                     if (isPrepared && videoWidth > 0 && videoHeight > 0) {
                         st.setDefaultBufferSize(videoWidth, videoHeight);
@@ -392,6 +399,8 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         videoUrl = getIntent().getStringExtra("video_url");
+        audioUrl = getIntent().getStringExtra("audio_url");
+        mProxyDurationMs = getIntent().getLongExtra("duration_ms", 0);
         videoTitle = getIntent().getStringExtra("video_title");
         cachePath = getIntent().getStringExtra("cache_path");
         final String coverUrl = getIntent().getStringExtra("cover_url");
@@ -430,6 +439,14 @@ public class BiliPlayerActivity extends Activity implements
         isLiveStream = getIntent().getBooleanExtra("live", false);
         boolean onlineMode = getIntent().getBooleanExtra("online_mode", false);
         decoderType = SettingsActivity.getDecoderType();
+        // 系统 MediaPlayer 无法解析 MPEG-DASH（音视频分离流）。
+        // 在线 DASH 时即使解码器偏好选了"系统"也强制走内置 IJK 路径：
+        // Android 4.1+（MediaCodec 可用）优先硬解，硬解失败会自动回退软解；
+        // 更老设备直接用软解。
+        if (onlineMode && SettingsActivity.getPlayStreamFormat() == 16
+                && decoderType == DECODER_SYSTEM) {
+            decoderType = SdkHelper.getSdkInt() >= 16 ? DECODER_IJK_HARD : DECODER_IJK_SOFT;
+        }
         mRendererType = SettingsActivity.getRendererType();
         if (mRendererType == RENDERER_TEXTUREVIEW && SdkHelper.getSdkInt() < 14) {
             mRendererType = RENDERER_SURFACEVIEW;
@@ -452,7 +469,8 @@ public class BiliPlayerActivity extends Activity implements
             int pref = SettingsActivity.getPlayerPreference();
             if (pref != 8) {
                 String playerPkg = SettingsActivity.getPlayerPackageName();
-                if (videoUrl != null && videoUrl.length() > 0) {
+                // DASH（音视频分离）只有内置 IJK 能播，不转交 Ostwind/外部播放器
+                if (videoUrl != null && videoUrl.length() > 0 && (audioUrl == null || audioUrl.length() == 0)) {
                     if ("tv.biliclassic.ostwind".equals(playerPkg)) {
                         // Ostwind 简易播放器：本 App 内 Activity，MediaPlayer + 自定义请求头
                         Intent wIntent = new Intent(this, OstwindPlayerActivity.class);
@@ -541,6 +559,11 @@ public class BiliPlayerActivity extends Activity implements
 
         mSeekWhenPrepared = sPendingSeekPosition;
         sPendingSeekPosition = 0;
+        // 断点续播：从 B 站播放地址接口带回的上次进度（毫秒）作为默认 seek 位置。
+        // 仅在没有任何其他待跳转位置（如画质切换/后台恢复）时生效；直播不续播。
+        if (mSeekWhenPrepared <= 0 && !isLiveStream) {
+            mSeekWhenPrepared = getIntent().getIntExtra("resume_position", 0);
+        }
         enableGesture = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.ENABLE_GESTURE, true);
         keepBackground = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.KEEP_BACKGROUND, true);
         completionAction = SharedPreferencesUtil.getInt(SharedPreferencesUtil.COMPLETION_ACTION, COMPLETION_ACTION_PAUSE);
@@ -595,8 +618,8 @@ public class BiliPlayerActivity extends Activity implements
             if (mCid > 0) {
                 extIntent.putExtra("danmaku", "https://comment.bilibili.com/" + mCid + ".xml");
             }
-            // 在线跳转时无进度恢复，传 0；若未来支持断点续播可传当前进度
-            extIntent.putExtra("progress", 0);
+            // 断点续播进度（毫秒）：从 B 站获取的上次观看位置
+            extIntent.putExtra("progress", getIntent().getIntExtra("resume_position", 0));
             extIntent.putExtra("live_mode", false);
         } catch (Throwable t) {
         }
@@ -627,8 +650,8 @@ public class BiliPlayerActivity extends Activity implements
             extIntent.putExtra("cookie", (java.io.Serializable) headers);
 
             extIntent.putExtra("agent", NetWorkUtil.USER_AGENT_WEB);
-            // 续播进度（毫秒），在线跳转默认 0
-            extIntent.putExtra("progress", 0L);
+            // 续播进度（毫秒）：从 B 站获取的上次观看位置
+            extIntent.putExtra("progress", (long) getIntent().getIntExtra("resume_position", 0));
         } catch (Throwable t) {
         }
     }
@@ -662,18 +685,14 @@ public class BiliPlayerActivity extends Activity implements
         mLoadingOverlay.setLayoutParams(new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         mLoadingIcon = (ImageView) mLoadingOverlay.findViewById(R.id.tv_chan_animation);
+        // 两阶段加载状态：都放在左下角状态栏（样式与「正在加载…」一致），
+        // 第一行"获取播放地址"显示在第二行"正在加载视频"上方。
+        mLoadingStep1 = (TextView) mLoadingOverlay.findViewById(R.id.video_preloading_status_bar);
         // preloading 布局里用不到的杂项元素（重试/返回/随机提示等）一律隐藏，
         // 加载失败由本 Activity 自己的逻辑处理
         hidePreloadingExtraViews(mLoadingOverlay);
-        // 底部状态栏文字：preloading 布局默认空，这里设为"正在加载…"
-        try {
-            TextView statusBar = (TextView) mLoadingOverlay.findViewById(R.id.video_preloading_status_bar);
-            if (statusBar != null) {
-                statusBar.setText(R.string.ostwind_loading);
-                statusBar.setVisibility(View.VISIBLE);
-            }
-        } catch (Throwable t) {
-        }
+        // 底部状态栏文字：默认"正在加载视频……"，转码/准备阶段再逐行覆盖
+        setLoadingStep2(getString(R.string.player_loading_step_loading_video));
         root.addView(mLoadingOverlay);
         startLoadingAnimation();
     }
@@ -2028,6 +2047,8 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     private void switchQuality(final int newQn) {
+        // 转码播放时强制 360P：不允许切到更高画质，避免白白增加转码耗时与流量
+        final int effectiveQn = tv.biliclassic.util.ConvertPlayUtil.isConvertEnabled() ? 16 : newQn;
         if (mediaPlayer != null && isPrepared) {
             try {
                 mQualitySwitchSeekPos = (int) mediaPlayer.getCurrentPosition();
@@ -2044,11 +2065,15 @@ public class BiliPlayerActivity extends Activity implements
                     PlayerData playerData = new PlayerData();
                     playerData.aid = mAid;
                     playerData.cid = mCid;
-                    playerData.qn = newQn;
+                    playerData.qn = effectiveQn;
                     playerData.timeStamp = 0;
 
                     PlayerApi.getVideo(playerData, false);
                     final String newUrl = playerData.videoUrl;
+                    final String newAudioUrl = playerData.audioUrl;
+                    final long newDurationMs = playerData.durationMs;
+                    // DASH 下实际画质可能与请求不同（目标画质不可用时被降级）
+                    final int actualQn = playerData.qn;
 
                     if (newUrl != null && newUrl.length() > 0) {
                         final String[] newQnStrs = playerData.qnStrList;
@@ -2057,13 +2082,15 @@ public class BiliPlayerActivity extends Activity implements
                         runOnUiThread(new Runnable() {
                             public void run() {
                                 videoUrl = newUrl;
-                                mCurrentQn = newQn;
+                                audioUrl = newAudioUrl;
+                                mProxyDurationMs = newDurationMs;
+                                mCurrentQn = actualQn;
                                 if (newQnStrs != null && newQnVals != null) {
                                     mQualityNames = newQnStrs;
                                     mQualityValues = newQnVals;
                                 }
                                 if (mQualityManager != null) {
-                                    mQualityManager.updateCurrentQuality(newQn);
+                                    mQualityManager.updateCurrentQuality(actualQn);
                                 }
                                 if (decoderType == DECODER_SYSTEM) {
                                     releasePlayer();
@@ -2071,7 +2098,13 @@ public class BiliPlayerActivity extends Activity implements
                                     mQualitySwitchSeekPos = 0;
                                     Intent intent = getIntent();
                                     intent.putExtra("video_url", newUrl);
-                                    intent.putExtra("current_qn", newQn);
+                                    if (newAudioUrl != null && newAudioUrl.length() > 0) {
+                                        intent.putExtra("audio_url", newAudioUrl);
+                                    }
+                                    if (newDurationMs > 0) {
+                                        intent.putExtra("duration_ms", newDurationMs);
+                                    }
+                                    intent.putExtra("current_qn", actualQn);
                                     if (newQnStrs != null) {
                                         intent.putExtra("qn_str_array", newQnStrs);
                                     }
@@ -2132,6 +2165,9 @@ public class BiliPlayerActivity extends Activity implements
 
                     PlayerApi.getVideo(playerData, false);
                     final String newUrl = playerData.videoUrl;
+                    final String newAudioUrl = playerData.audioUrl;
+                    final long newDurationMs = playerData.durationMs;
+                    final int actualQn = playerData.qn;
 
                     if (newUrl != null && newUrl.length() > 0) {
                         final String[] newQnStrs = playerData.qnStrList;
@@ -2140,6 +2176,9 @@ public class BiliPlayerActivity extends Activity implements
                         runOnUiThread(new Runnable() {
                             public void run() {
                                 videoUrl = newUrl;
+                                audioUrl = newAudioUrl;
+                                mProxyDurationMs = newDurationMs;
+                                mCurrentQn = actualQn;
                                 videoTitle = newTitle;
                                 if (mediaSessionHelper != null) {
                                     mediaSessionHelper.setMetadata(videoTitle, "");
@@ -2164,6 +2203,12 @@ public class BiliPlayerActivity extends Activity implements
                                     sPendingSeekPosition = 0;
                                     Intent intent = getIntent();
                                     intent.putExtra("video_url", newUrl);
+                                    if (newAudioUrl != null && newAudioUrl.length() > 0) {
+                                        intent.putExtra("audio_url", newAudioUrl);
+                                    }
+                                    if (newDurationMs > 0) {
+                                        intent.putExtra("duration_ms", newDurationMs);
+                                    }
                                     intent.putExtra("video_title", newTitle);
                                     intent.putExtra("cid", newCid);
                                     intent.putExtra("part_index", newPartIndex);
@@ -2298,7 +2343,7 @@ public class BiliPlayerActivity extends Activity implements
                 }
 
                 if (surfaceReady) {
-                    preparePlayer();
+                    resolveAndPrepare();
                 } else {
                     pendingPrepare = true;
                 }
@@ -2310,10 +2355,106 @@ public class BiliPlayerActivity extends Activity implements
         showBuffering(true);
 
         if (surfaceReady) {
-            preparePlayer();
+            resolveAndPrepare();
         } else {
             pendingPrepare = true;
         }
+    }
+
+    /**
+     * 取地址 + 加载序列：需要转码时先在小电视动画里显示「获取播放地址……」，
+     * 后台取到 240P 地址后标【完成】并显示「正在加载视频……」，再走 preparePlayer。
+     */
+    private void resolveAndPrepare() {
+        if (mediaPlayer != null) {
+            preparePlayer();
+            return;
+        }
+        if (videoUrl == null || videoUrl.length() == 0) {
+            preparePlayer();
+            return;
+        }
+        if (!mUrlResolved && videoUrl.startsWith("http")
+                && tv.biliclassic.util.ConvertPlayUtil.isConvertEnabled()) {
+            mUrlResolved = true;
+            showBuffering(true);
+            // 转码期间只显示「获取播放地址……」，成功拿到地址后再追加第二行「正在加载视频……」
+            setLoadingStep1(getString(R.string.player_loading_step_get_url));
+            setLoadingStep2(null);
+            final String rawUrl = videoUrl;
+            new Thread(new Runnable() {
+                public void run() {
+                    final String resolved = tv.biliclassic.util.ConvertPlayUtil.fetchTranscodedUrl(rawUrl, null);
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            if (resolved != null && resolved.length() > 0) {
+                                videoUrl = resolved;
+                            }
+                            setLoadingStep1(getString(R.string.player_loading_step_get_url)
+                                    + getString(R.string.player_loading_step_done));
+                            setLoadingStep2(getString(R.string.player_loading_step_loading_video));
+                            preparePlayer();
+                        }
+                    });
+                }
+            }).start();
+            return;
+        }
+        if (videoUrl.startsWith("http")) {
+            showBuffering(true);
+            setLoadingStep1(getString(R.string.player_loading_step_get_url)
+                    + getString(R.string.player_loading_step_done));
+            setLoadingStep2(getString(R.string.player_loading_step_loading_video));
+        }
+        preparePlayer();
+    }
+
+    private void setLoadingStep1(String text) {
+        mLoadStep1Text = text;
+        renderLoadingStatus();
+    }
+
+    private void setLoadingStep2(String text) {
+        mLoadStep2Text = text;
+        renderLoadingStatus();
+    }
+
+    private void markLoadingStep2Done() {
+        mLoadStep2Text = getString(R.string.player_loading_step_loading_video)
+                + getString(R.string.player_loading_step_done);
+        renderLoadingStatus();
+    }
+
+    /** 加载失败：状态栏显示「正在加载视频……【失败】」，小电视动画停下。 */
+    private void showLoadingFailed() {
+        String step2 = mLoadStep2Text;
+        if (step2 == null || step2.length() == 0) {
+            step2 = getString(R.string.player_loading_step_loading_video);
+        }
+        // 若已拼过【完成】则先去掉，避免出现「【完成】【失败】」
+        String done = getString(R.string.player_loading_step_done);
+        if (step2.endsWith(done)) {
+            step2 = step2.substring(0, step2.length() - done.length());
+        }
+        mLoadStep2Text = step2 + getString(R.string.player_loading_step_fail);
+        mLoadStep1Text = null;
+        renderLoadingStatus();
+        stopLoadingAnimation();
+    }
+
+    /** 把两行状态合并写进左下角状态栏：第一行（获取播放地址）在第二行（正在加载视频）上方。 */
+    private void renderLoadingStatus() {
+        if (mLoadingStep1 == null) return;
+        StringBuilder sb = new StringBuilder();
+        if (mLoadStep1Text != null && mLoadStep1Text.length() > 0) {
+            sb.append(mLoadStep1Text);
+        }
+        if (mLoadStep2Text != null && mLoadStep2Text.length() > 0) {
+            if (sb.length() > 0) sb.append('\n');
+            sb.append(mLoadStep2Text);
+        }
+        mLoadingStep1.setText(sb.toString());
+        mLoadingStep1.setVisibility(View.VISIBLE);
     }
 
     private void preparePlayer() {
@@ -2328,7 +2469,11 @@ public class BiliPlayerActivity extends Activity implements
         String actualUrl = videoUrl;
         if (isNetworkUrl) {
             Map<String, String> proxyHeaders = getProxyHeaders();
-            localProxy = new LocalStreamProxy(videoUrl, proxyHeaders);
+            if (audioUrl != null && audioUrl.length() > 0) {
+                localProxy = new LocalStreamProxy(videoUrl, audioUrl, mProxyDurationMs, proxyHeaders);
+            } else {
+                localProxy = new LocalStreamProxy(videoUrl, proxyHeaders);
+            }
             try {
                 actualUrl = localProxy.start();
             } catch (IOException e) {
@@ -2415,6 +2560,7 @@ public class BiliPlayerActivity extends Activity implements
                 mediaPlayer.prepareAsync();
             } catch (Exception e) {
                 Toast.makeText(this, "准备播放失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                showLoadingFailed();
                 finish();
             }
             return;
@@ -2437,8 +2583,13 @@ public class BiliPlayerActivity extends Activity implements
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "opensles",
                 DecoderSettingsActivity.isOpenSLESEnabled() ? 1L : 0L);
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "enable-accurate-seek", 1L);
-        ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "framedrop",
-                (long) DecoderSettingsActivity.getFramedrop());
+        int framedrop = DecoderSettingsActivity.getFramedrop();
+        // DASH 音视频分离流：seek 后视频从关键帧（最多落后一个 GOP）追赶音频，
+        // 不丢帧的话慢设备上永远追不上，表现为持续音画不同步
+        if (audioUrl != null && audioUrl.length() > 0 && framedrop < 1) {
+            framedrop = 1;
+        }
+        ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "framedrop", (long) framedrop);
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "max-fps",
                 (long) DecoderSettingsActivity.getMaxFps());
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "video-pictq-size",
@@ -2510,6 +2661,7 @@ public class BiliPlayerActivity extends Activity implements
             mediaPlayer.prepareAsync();
         } catch (Exception e) {
             Toast.makeText(this, "准备播放失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            showLoadingFailed();
             finish();
         }
     }
@@ -2523,7 +2675,7 @@ public class BiliPlayerActivity extends Activity implements
         }
         if (pendingPrepare) {
             pendingPrepare = false;
-            preparePlayer();
+            resolveAndPrepare();
         } else if (mediaPlayer != null) {
             if (isPrepared && videoWidth > 0 && videoHeight > 0) {
                 holder.setFixedSize(videoWidth, videoHeight);
@@ -2557,6 +2709,7 @@ public class BiliPlayerActivity extends Activity implements
     @Override
     public void onPrepared(IMediaPlayer mp) {
         isPrepared = true;
+        markLoadingStep2Done();
         showBuffering(false);
         hideLoadingOverlay();
 
@@ -2591,8 +2744,14 @@ public class BiliPlayerActivity extends Activity implements
         updateTopBarForOrientation();
 
         if (mSeekWhenPrepared > 0 && mDuration > 0) {
-            mp.seekTo(mSeekWhenPrepared);
-            if (mDanmakuManager != null) mDanmakuManager.seekTo(mSeekWhenPrepared);
+            // 防御：断点位置超出视频总长（如接口返回异常值）时，从 0 开始，避免被夹到结尾
+            if (mSeekWhenPrepared <= mDuration) {
+                mp.seekTo(mSeekWhenPrepared);
+                if (mDanmakuManager != null) mDanmakuManager.seekTo(mSeekWhenPrepared);
+            } else {
+                mp.seekTo(0);
+                if (mDanmakuManager != null) mDanmakuManager.seekTo(0L);
+            }
         }
         mp.start();
         isPlaying = true;
@@ -2782,6 +2941,8 @@ public class BiliPlayerActivity extends Activity implements
                 mErrorToastShown = true;
                 Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_64ad), Toast.LENGTH_LONG).show();
             }
+            // 加载失败：显示「正在加载视频……【失败】」并停下小电视
+            showLoadingFailed();
             finish();
             return true;
         }
@@ -2827,7 +2988,7 @@ public class BiliPlayerActivity extends Activity implements
                 }
 
                 if (surfaceReady) {
-                    preparePlayer();
+                    resolveAndPrepare();
                 } else {
                     pendingPrepare = true;
                 }
@@ -3951,6 +4112,14 @@ public class BiliPlayerActivity extends Activity implements
                 } else {
                     mediaPlayer.setDisplay(null);
                 }
+            } catch (Exception e) {}
+            // 先 stop 再 reset/release：崩溃/出错后原生解码线程可能还在向 OpenSLES/AudioTrack
+            // 喂音频，只调 reset/release（且抛异常被吞掉时）音频会一直放不出去。
+            try {
+                mediaPlayer.pause();
+            } catch (Exception e) {}
+            try {
+                mediaPlayer.stop();
             } catch (Exception e) {}
             try {
                 mediaPlayer.reset();
