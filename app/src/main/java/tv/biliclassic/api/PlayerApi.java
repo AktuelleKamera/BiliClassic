@@ -20,11 +20,13 @@ public class PlayerApi {
 
     private static class CachedUrl {
         final String videoUrl;
+        final String audioUrl;
         final long timestamp;
         final String[] qnStrList;
         final int[] qnValueList;
-        CachedUrl(String videoUrl, long timestamp, String[] qnStrList, int[] qnValueList) {
+        CachedUrl(String videoUrl, String audioUrl, long timestamp, String[] qnStrList, int[] qnValueList) {
             this.videoUrl = videoUrl;
+            this.audioUrl = audioUrl;
             this.timestamp = timestamp;
             this.qnStrList = qnStrList;
             this.qnValueList = qnValueList;
@@ -32,7 +34,9 @@ public class PlayerApi {
     }
 
     private static String buildCacheKey(PlayerData playerData) {
-        return playerData.aid + "_" + playerData.cid + "_" + playerData.qn + "_" + playerData.type;
+        int streamFormat = playerData.type == PlayerData.TYPE_VIDEO
+                ? tv.biliclassic.SettingsActivity.getPlayStreamFormat() : 1;
+        return playerData.aid + "_" + playerData.cid + "_" + playerData.qn + "_" + playerData.type + "_" + streamFormat;
     }
 
 /*
@@ -79,6 +83,7 @@ public class PlayerApi {
                     && System.currentTimeMillis() - cached.timestamp < URL_CACHE_TTL) {
                 android.util.Log.e("PlayerApi", "命中静态缓存: " + cached.videoUrl);
                 playerData.videoUrl = cached.videoUrl;
+                playerData.audioUrl = cached.audioUrl;
                 playerData.qnStrList = cached.qnStrList;
                 playerData.qnValueList = cached.qnValueList;
                 playerData.timeStamp = System.currentTimeMillis();
@@ -126,9 +131,33 @@ public class PlayerApi {
         android.util.Log.e("PlayerApi", "data 对象存在");
 
         String videoUrl = null;
+        String audioUrl = "";
+        boolean dashRequested = !download && tv.biliclassic.SettingsActivity.getPlayStreamFormat() == 16;
 
         // ========== 尝试解析 durl（MP4 格式） ==========
-        if (data.has("durl")) {
+        if (dashRequested && data.has("dash")) {
+            JSONObject dash = data.getJSONObject("dash");
+            JSONArray video = dash.optJSONArray("video");
+            JSONArray audio = dash.optJSONArray("audio");
+            if (video != null && video.length() > 0) {
+                JSONObject firstVideo = video.getJSONObject(0);
+                videoUrl = firstVideo.optString("baseUrl", "");
+                JSONArray backupUrl = firstVideo.optJSONArray("backupUrl");
+                if ((videoUrl == null || videoUrl.length() == 0) && backupUrl != null && backupUrl.length() > 0) {
+                    videoUrl = backupUrl.getString(0);
+                }
+            }
+            if (audio != null && audio.length() > 0) {
+                JSONObject firstAudio = audio.getJSONObject(0);
+                audioUrl = firstAudio.optString("baseUrl", "");
+                JSONArray backupUrl = firstAudio.optJSONArray("backupUrl");
+                if ((audioUrl == null || audioUrl.length() == 0) && backupUrl != null && backupUrl.length() > 0) {
+                    audioUrl = backupUrl.getString(0);
+                }
+            }
+        }
+
+        if ((videoUrl == null || videoUrl.length() == 0) && data.has("durl")) {
             JSONArray durl = data.getJSONArray("durl");
             android.util.Log.e("PlayerApi", "durl 数组长度: " + durl.length());
             if (durl.length() > 0) {
@@ -164,6 +193,7 @@ public class PlayerApi {
         }
 
         playerData.videoUrl = videoUrl;
+        playerData.audioUrl = audioUrl;
         android.util.Log.e("PlayerApi", "videoUrl: " + playerData.videoUrl);
 
         playerData.cidHistory = data.optLong("last_play_cid", 0);
@@ -195,7 +225,7 @@ public class PlayerApi {
         // 写入静态缓存
         if (!download && videoUrl.length() > 0) {
             synchronized (sUrlCache) {
-                sUrlCache.put(cacheKey, new CachedUrl(videoUrl, System.currentTimeMillis(),
+                sUrlCache.put(cacheKey, new CachedUrl(videoUrl, audioUrl, System.currentTimeMillis(),
                         qnStrList, qnValueList));
             }
         }

@@ -50,6 +50,7 @@ public class PlayerAnimActivity extends Activity {
     };
 
     private String videoUrl;
+    private String audioUrl;
     private String videoTitle;
     private String coverUrl;
     private long aid;
@@ -78,6 +79,7 @@ public class PlayerAnimActivity extends Activity {
         tvStatus = (TextView) findViewById(R.id.tv_status);
 
         videoUrl = getIntent().getStringExtra("video_url");
+        audioUrl = getIntent().getStringExtra("audio_url");
         videoTitle = getIntent().getStringExtra("video_title");
         coverUrl = getIntent().getStringExtra("cover_url");
         aid = getIntent().getLongExtra("aid", 0);
@@ -194,6 +196,9 @@ public class PlayerAnimActivity extends Activity {
         Intent intent = new Intent(this, BiliPlayerActivity.class);
         intent.putExtra("video_title", videoTitle);
         intent.putExtra("video_url", url);
+        if (audioUrl != null && audioUrl.length() > 0) {
+            intent.putExtra("audio_url", audioUrl);
+        }
         intent.putExtra("cache_path", (String) null);
         intent.putExtra("aid", aid);
         intent.putExtra("cid", cid);

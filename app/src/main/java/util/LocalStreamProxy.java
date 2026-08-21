@@ -27,6 +27,7 @@ public class LocalStreamProxy {
     private static final int BUFFER_SIZE = 8192;
 
     private final String remoteUrl;
+    private final String audioUrl;
     private final Map<String, String> requestHeaders;
     private ServerSocket server;
     private String localUrl;
@@ -64,6 +65,13 @@ public class LocalStreamProxy {
 
     public LocalStreamProxy(String remoteUrl, Map<String, String> headers) {
         this.remoteUrl = remoteUrl;
+        this.audioUrl = null;
+        this.requestHeaders = headers;
+    }
+
+    public LocalStreamProxy(String videoUrl, String audioUrl, Map<String, String> headers) {
+        this.remoteUrl = videoUrl;
+        this.audioUrl = audioUrl;
         this.requestHeaders = headers;
     }
 
@@ -76,8 +84,11 @@ public class LocalStreamProxy {
         server.setReuseAddress(true);
         server.bind(new InetSocketAddress(0));
         int port = server.getLocalPort();
+        // Use the device's reachable IPv4 address. Some Android 2.x builds
+        // bind ServerSocket's wildcard endpoint to IPv6 only, so 127.0.0.1
+        // cannot reach the server even though the socket was created.
         String host = getLocalIpAddress();
-        localUrl = "http://" + host + ":" + port + "/video";
+        localUrl = "http://" + host + ":" + port + (audioUrl != null ? "/manifest.mpd" : "/video");
         running = true;
 
         serverThread = new Thread(new Runnable() {
@@ -85,11 +96,10 @@ public class LocalStreamProxy {
                 while (running) {
                     try {
                         final Socket client = server.accept();
-                        closePrevious();
                         activeClient = client;
                         new Thread(new Runnable() {
                             public void run() {
-                                handleClient(client);
+                                handleRequest(client);
                             }
                         }, "ProxyClient").start();
                     } catch (IOException e) {
@@ -102,6 +112,78 @@ public class LocalStreamProxy {
 
         Log.e(TAG, "Proxy started: " + localUrl + " -> " + remoteUrl);
         return localUrl;
+    }
+
+    private void handleRequest(Socket client) {
+        if (audioUrl == null) {
+            handleClient(client, remoteUrl);
+            return;
+        }
+        try {
+            client.setSoTimeout(30000);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
+            String requestLine = reader.readLine();
+            if (requestLine == null) return;
+            String path = "/";
+            String[] parts = requestLine.split(" ");
+            if (parts.length > 1) path = parts[1];
+            Log.e(TAG, "request path=" + path);
+            if (path.startsWith("/manifest.mpd")) {
+                handleManifest(client, reader);
+            } else if (path.startsWith("/audio")) {
+                handleClient(client, audioUrl, reader);
+            } else {
+                handleClient(client, remoteUrl, reader);
+            }
+        } catch (Exception e) {
+            if (!(e instanceof java.net.SocketException)) Log.e(TAG, "request error", e);
+            try { client.close(); } catch (Exception ignored) {}
+        }
+    }
+
+    private void handleManifest(Socket client, BufferedReader reader) {
+        try {
+            String line;
+            while ((line = reader.readLine()) != null && line.length() > 0) {
+                // Consume request headers before writing the MPD.
+            }
+            StringBuilder manifest = new StringBuilder();
+            manifest.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+            manifest.append("<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\" type=\"static\"")
+                    .append(" profiles=\"urn:mpeg:dash:profile:isoff-on-demand:2011\"")
+                    .append(" minBufferTime=\"PT1S\">");
+            manifest.append("<Period id=\"0\">");
+            String base = localUrl.substring(0, localUrl.lastIndexOf('/'));
+            appendRepresentation(manifest, "video", "video", base + "/video");
+            appendRepresentation(manifest, "audio", "audio", base + "/audio");
+            manifest.append("</Period></MPD>");
+            byte[] body = manifest.toString().getBytes("UTF-8");
+            Log.e(TAG, "manifest response bytes=" + body.length);
+            OutputStream out = client.getOutputStream();
+            String headers = "HTTP/1.0 200 OK\r\nContent-Type: application/dash+xml\r\nContent-Length: "
+                    + body.length + "\r\nConnection: close\r\n\r\n";
+            out.write(headers.getBytes("US-ASCII"));
+            out.write(body);
+            out.flush();
+        } catch (Exception e) {
+            Log.e(TAG, "manifest error", e);
+        } finally {
+            try { client.close(); } catch (Exception ignored) {}
+        }
+    }
+
+    private static void appendRepresentation(StringBuilder manifest, String id, String type, String url) {
+        manifest.append("<AdaptationSet contentType=\"").append(type).append("\" mimeType=\"")
+                .append(type).append("/mp4\">");
+        manifest.append("<Representation id=\"").append(id).append("\" bandwidth=\"1000000\">");
+        manifest.append("<BaseURL>").append(escapeXml(url)).append("</BaseURL>");
+        manifest.append("</Representation></AdaptationSet>");
+    }
+
+    private static String escapeXml(String value) {
+        if (value == null) return "";
+        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;").replace("'", "&apos;");
     }
 
     /**
@@ -166,17 +248,9 @@ public class LocalStreamProxy {
         } catch (Exception ignored) {}
     }
 
-    private void handleClient(Socket client) {
+    private void handleClient(Socket client, String targetUrl, BufferedReader reader) {
         try {
             client.setSoTimeout(30000);
-
-            BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
-            String requestLine = reader.readLine();
-            if (requestLine == null) {
-                try { client.close(); } catch (Exception ignored) {}
-                return;
-            }
-
             String rangeHeader = null;
             String line;
             while ((line = reader.readLine()) != null && line.length() > 0) {
@@ -185,10 +259,12 @@ public class LocalStreamProxy {
                 }
             }
 
-            HttpURLConnection conn = openRemoteConnection(rangeHeader);
+            HttpURLConnection conn = openRemoteConnection(targetUrl, rangeHeader);
             activeRemote = conn;
 
             int respCode = conn.getResponseCode();
+            Log.e(TAG, "remote response=" + respCode + " target="
+                    + (targetUrl == audioUrl ? "audio" : "video"));
             String contentType = conn.getContentType();
             int contentLength = conn.getContentLength();
             String contentRange = conn.getHeaderField("Content-Range");
@@ -249,8 +325,19 @@ public class LocalStreamProxy {
         }
     }
 
-    private HttpURLConnection openRemoteConnection(String rangeHeader) throws IOException {
-        URL url = new URL(remoteUrl);
+    private void handleClient(Socket client, String targetUrl) {
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(client.getInputStream()));
+            if (reader.readLine() == null) return;
+            handleClient(client, targetUrl, reader);
+        } catch (Exception e) {
+            if (!(e instanceof java.net.SocketException)) Log.e(TAG, "client request error", e);
+            try { client.close(); } catch (Exception ignored) {}
+        }
+    }
+
+    private HttpURLConnection openRemoteConnection(String targetUrl, String rangeHeader) throws IOException {
+        URL url = new URL(targetUrl);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
         if (conn instanceof HttpsURLConnection && trustAllFactory != null) {

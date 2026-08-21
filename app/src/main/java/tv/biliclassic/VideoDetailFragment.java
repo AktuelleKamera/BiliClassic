@@ -894,6 +894,9 @@ public class VideoDetailFragment extends Fragment {
                                     if (videoUrl != null && videoUrl.length() > 0) {
                                         Intent intent = new Intent(getActivity(), BiliPlayerActivity.class);
                                         intent.putExtra("video_url", videoUrl);
+                                        if (playerData.audioUrl != null && playerData.audioUrl.length() > 0) {
+                                            intent.putExtra("audio_url", playerData.audioUrl);
+                                        }
                                         intent.putExtra("video_title", tempPartTitle);
                                         intent.putExtra("aid", tempAid);
                                         intent.putExtra("cid", targetCid);
@@ -957,6 +960,9 @@ public class VideoDetailFragment extends Fragment {
                                     }
                                     Intent intent = new Intent(getActivity(), PlayerAnimActivity.class);
                                     intent.putExtra("video_url", videoUrl);
+                                    if (playerData.audioUrl != null && playerData.audioUrl.length() > 0) {
+                                        intent.putExtra("audio_url", playerData.audioUrl);
+                                    }
                                     intent.putExtra("video_title", tempPartTitle);
                                     intent.putExtra("aid", tempAid);
                                     intent.putExtra("cid", targetCid);

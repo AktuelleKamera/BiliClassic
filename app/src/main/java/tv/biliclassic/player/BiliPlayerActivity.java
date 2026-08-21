@@ -153,6 +153,7 @@ public class BiliPlayerActivity extends Activity implements
     private BatteryView2 batteryView;
 
     private String videoUrl;
+    private String audioUrl;
     private String videoTitle;
     private String cachePath;
     private boolean isLiveStream;
@@ -408,6 +409,7 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         videoUrl = getIntent().getStringExtra("video_url");
+        audioUrl = getIntent().getStringExtra("audio_url");
         videoTitle = getIntent().getStringExtra("video_title");
         cachePath = getIntent().getStringExtra("cache_path");
         final String coverUrl = getIntent().getStringExtra("cover_url");
@@ -446,6 +448,12 @@ public class BiliPlayerActivity extends Activity implements
         isLiveStream = getIntent().getBooleanExtra("live", false);
         boolean onlineMode = getIntent().getBooleanExtra("online_mode", false);
         decoderType = SettingsActivity.getDecoderType();
+        // Android's platform MediaPlayer cannot parse MPEG-DASH. Keep DASH on
+        // the bundled IJK path even when the saved decoder preference is System.
+        if (onlineMode && SettingsActivity.getPlayStreamFormat() == 16
+                && decoderType == DECODER_SYSTEM) {
+            decoderType = DECODER_IJK_SOFT;
+        }
         mRendererType = SettingsActivity.getRendererType();
         if (mRendererType == RENDERER_TEXTUREVIEW && SdkHelper.getSdkInt() < 14) {
             mRendererType = RENDERER_SURFACEVIEW;
@@ -468,7 +476,7 @@ public class BiliPlayerActivity extends Activity implements
             int pref = SettingsActivity.getPlayerPreference();
             if (pref != 8) {
                 String playerPkg = SettingsActivity.getPlayerPackageName();
-                if (videoUrl != null && videoUrl.length() > 0) {
+                if (videoUrl != null && videoUrl.length() > 0 && (audioUrl == null || audioUrl.length() == 0)) {
                     Intent extIntent;
                     // 在线播放：给所有外部播放器传本地代理地址（代理带 Referer/Cookie/UA 请求头
                     // 转发，外部播放器无法携带请求头，B 站 CDN 会 403 拒绝直连）
@@ -2285,7 +2293,11 @@ public class BiliPlayerActivity extends Activity implements
         String actualUrl = videoUrl;
         if (isNetworkUrl) {
             Map<String, String> proxyHeaders = getProxyHeaders();
-            localProxy = new LocalStreamProxy(videoUrl, proxyHeaders);
+            if (audioUrl != null && audioUrl.length() > 0) {
+                localProxy = new LocalStreamProxy(videoUrl, audioUrl, proxyHeaders);
+            } else {
+                localProxy = new LocalStreamProxy(videoUrl, proxyHeaders);
+            }
             try {
                 actualUrl = localProxy.start();
             } catch (IOException e) {

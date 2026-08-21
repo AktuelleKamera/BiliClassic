@@ -26,6 +26,7 @@ public class PlayerData implements Serializable {
 
     public String title = "";
     public String videoUrl = "";
+    public String audioUrl = "";
     public String danmakuUrl = "";
     public int qn = -1;
     public String[] qnStrList;

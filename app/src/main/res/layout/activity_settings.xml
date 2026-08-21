@@ -370,7 +370,7 @@
                 android:textColor="#FF6B35"
                 android:textSize="11sp" />
 
-            <!-- 播放流格式选择（已隐藏） -->
+            <!-- 播放流格式选择 -->
             <LinearLayout
                 android:id="@+id/play_stream_format_item"
                 android:layout_width="match_parent"
@@ -380,7 +380,7 @@
                 android:clickable="true"
                 android:orientation="horizontal"
                 android:padding="12dp"
-                android:visibility="gone">
+                android:visibility="visible">
 
                 <LinearLayout
                     android:layout_width="0dp"
