@@ -61,6 +61,12 @@ public abstract class BaseActivity extends FragmentActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // 夜间模式：替换窗口背景纹理（bili_texture_1 -> bili_texture_2）
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NIGHT_MODE, false)) {
+            setTheme(R.style.AppThemeNight);
+        }
+
         // 防止有心人直接跳转到 BaseActivity
         if (getClass() == BaseActivity.class) {
             Toast.makeText(this, this.getString(R.string.baseactivity_toast_65e0), Toast.LENGTH_SHORT).show();
@@ -89,7 +95,7 @@ public abstract class BaseActivity extends FragmentActivity {
                 // 横屏设备（如 ChaCha 等）：横屏
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
             } else if (isHardwareKeyboardDevice()) {
-                // 带滑出式物理键盘的手机（HTC Dream/G1 等）：不锁定方向
+                // 带滑出式物理键盘的手机（HTC Dream 等）：不锁定方向
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
             } else {
                 // 手机：强制竖屏
@@ -108,6 +114,69 @@ public abstract class BaseActivity extends FragmentActivity {
                 setColor.invoke(window, 0x33000000);
             } catch (Exception e) {
             }
+        }
+
+        // 布局延伸到系统栏
+        applyEdgeToEdge();
+    }
+
+    /**
+     * 让应用内容绘制到系统栏之下（edge-to-edge）。
+     * 不设置 LAYOUT 标志、也不加顶部 padding，避免多出一截状态栏空白。
+     * 启用时：底部延伸到手势/导航区（LAYOUT_HIDE_NAVIGATION），并把内容顶部下移状态栏高度，
+     * 顶部标题不会被状态栏遮挡；API 21+ 导航栏透明。
+     */
+    protected void applyEdgeToEdge() {
+        if (SdkHelper.getSdkInt() < 28) return; // 仅手势导航设备启用
+        try {
+            int flags = android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    | android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+            android.view.View.class.getMethod("setSystemUiVisibility", int.class)
+                    .invoke(getWindow().getDecorView(), Integer.valueOf(flags));
+        } catch (Throwable t) {
+        }
+        if (SdkHelper.getSdkInt() >= 21) {
+            try {
+                android.view.Window.class.getMethod("setNavigationBarColor", int.class)
+                        .invoke(getWindow(), Integer.valueOf(0));
+            } catch (Throwable t) {
+            }
+        }
+        // 状态栏会叠在内容上：把内容顶部下移状态栏高度，标题才不会被挡住（底部保持延伸到手势区）
+        final android.view.View content = getWindow().getDecorView().findViewById(android.R.id.content);
+        if (content != null) {
+            content.setPadding(0, getStatusBarHeight(), 0, 0);
+        } else {
+            getWindow().getDecorView().post(new Runnable() {
+                @Override
+                public void run() {
+                    android.view.View c = getWindow().getDecorView().findViewById(android.R.id.content);
+                    if (c != null) c.setPadding(0, getStatusBarHeight(), 0, 0);
+                }
+            });
+        }
+    }
+
+    /** 状态栏高度（px）；读取失败回退 24dp。 */
+    private int getStatusBarHeight() {
+        try {
+            int id = getResources().getIdentifier("status_bar_height", "dimen", "android");
+            if (id > 0) {
+                return getResources().getDimensionPixelSize(id);
+            }
+        } catch (Throwable t) {
+        }
+        return Math.round(getResources().getDisplayMetrics().density * 24f);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 夜间模式：实时切换窗口背景纹理（返回已打开的界面时也生效）
+        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NIGHT_MODE, false)) {
+            getWindow().setBackgroundDrawableResource(R.drawable.bili_texture_background_night);
+        } else {
+            getWindow().setBackgroundDrawableResource(R.drawable.bili_texture_background);
         }
     }
 

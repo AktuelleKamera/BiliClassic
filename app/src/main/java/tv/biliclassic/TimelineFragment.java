@@ -183,7 +183,7 @@ public class TimelineFragment extends Fragment {
             public void run() {
                 final List<timelineDay> cachedItems = loadLocalCache();
                 if (getActivity() == null) return;
-                getActivity().runOnUiThread(new Runnable() {
+                runUi(new Runnable() {
                     @Override
                     public void run() {
                         // 先尝试加载缓存
@@ -233,7 +233,7 @@ public class TimelineFragment extends Fragment {
             String jsonStr = NetWorkUtil.get(url);
             if (jsonStr == null || jsonStr.length() == 0) {
                 if (getActivity() == null) return;
-                getActivity().runOnUiThread(new Runnable() {
+                runUi(new Runnable() {
                     @Override
                     public void run() {
                         showError("数据为空");
@@ -248,7 +248,7 @@ public class TimelineFragment extends Fragment {
 
             if (getActivity() == null) return;
 
-            getActivity().runOnUiThread(new Runnable() {
+            runUi(new Runnable() {
                 @Override
                 public void run() {
                     hideAllLoading();
@@ -271,7 +271,7 @@ public class TimelineFragment extends Fragment {
             e.printStackTrace();
             if (getActivity() == null) return;
             if (!isNetworkAvailable()) {
-                getActivity().runOnUiThread(new Runnable() {
+                runUi(new Runnable() {
                     @Override
                     public void run() {
                         showNoNetwork();
@@ -279,14 +279,14 @@ public class TimelineFragment extends Fragment {
                 });
             } else if (retryCount < MAX_RETRY) {
                 retryCount++;
-                getActivity().runOnUiThread(new Runnable() {
+                runUi(new Runnable() {
                     @Override
                     public void run() {
                         doLoadtimeline();
                     }
                 });
             } else {
-                getActivity().runOnUiThread(new Runnable() {
+                runUi(new Runnable() {
                     @Override
                     public void run() {
                         showError("加载失败: " + e.getMessage());
@@ -401,7 +401,7 @@ public class TimelineFragment extends Fragment {
 
     private void showNoNetwork() {
         if (getActivity() == null) return;
-        getActivity().runOnUiThread(new Runnable() {
+        runUi(new Runnable() {
             @Override
             public void run() {
                 hideAllLoading();
@@ -414,7 +414,7 @@ public class TimelineFragment extends Fragment {
 
     private void showError(final String msg) {
         if (getActivity() == null) return;
-        getActivity().runOnUiThread(new Runnable() {
+        runUi(new Runnable() {
             @Override
             public void run() {
                 hideAllLoading();
@@ -435,5 +435,11 @@ public class TimelineFragment extends Fragment {
 
     public static class timelineItem {
         public String title;
+    }
+    /** UI 线程安全执行：单次读取 getActivity()，避免后台线程两次调用间被置空导致 NPE */
+    private void runUi(java.lang.Runnable r) {
+        android.support.v4.app.FragmentActivity a = getActivity();
+        if (a != null) a.runOnUiThread(r);
     }
+
 }

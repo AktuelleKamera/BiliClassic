@@ -143,8 +143,9 @@ public class BangumiDetailFragment extends Fragment {
             public void run() {
                 try {
                     final Bangumi result = BangumiApi.getBangumi(mediaId);
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
+                    android.support.v4.app.FragmentActivity uiAct1 = getActivity();
+        if (uiAct1 != null) {
+                        uiAct1.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 if (result != null && result.info != null) {
@@ -159,8 +160,9 @@ public class BangumiDetailFragment extends Fragment {
                     }
                 } catch (final Exception e) {
                     e.printStackTrace();
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
+                    android.support.v4.app.FragmentActivity uiAct2 = getActivity();
+        if (uiAct2 != null) {
+                        uiAct2.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 showLoading(false);
@@ -328,8 +330,9 @@ public class BangumiDetailFragment extends Fragment {
                     is.close();
                     if (bitmap != null && !bitmap.isRecycled()) {
                         cache.put(finalUrl, bitmap);
-                        if (getActivity() != null) {
-                            getActivity().runOnUiThread(new Runnable() {
+                        android.support.v4.app.FragmentActivity uiAct3 = getActivity();
+        if (uiAct3 != null) {
+                            uiAct3.runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
                                     ivCover.setImageBitmap(bitmap);

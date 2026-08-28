@@ -14,11 +14,14 @@ public class GlobalImageCache {
 
     private GlobalImageCache() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        // Android 2.x 位图存放在独立的外部堆（约 13MB），且不支持 largeHeap。
-        // 按 Java 堆 1/8 设置缓存会把外部堆撑爆：32MB 堆以下用更保守的 1/16，
-        // 只有 32MB 堆以上的设备才用 1/8 的大缓存。
+        // Android 2.x 位图像素存放在独立的 ~13MB native 堆（不支持 largeHeap）。
+        // 旧逻辑按 Java 堆比例（1/8）分配：LT26i 等 Java 堆≥32MB 的 2.x 设备会占 4MB+ 像素，
+        // 叠加窗口背景/列表行等资源位图极易撑爆 13MB native 堆 → OOM
+        //（"bitmap size exceeds VM budget"）。故 2.x 直接给一个很小的绝对上限。
         int cacheSize;
-        if (maxMemory < 32768) {
+        if (SdkHelper.getSdkInt() < 11) {
+            cacheSize = Math.min(maxMemory / 16, 2048);
+        } else if (maxMemory < 32768) {
             cacheSize = maxMemory / 16;
         } else {
             cacheSize = maxMemory / 8;

@@ -32,6 +32,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import tv.biliclassic.util.AnnouncementUtil;
+import tv.biliclassic.metro.MetroHomeActivity;
+import tv.biliclassic.metro.MetroSetupActivity;
 import tv.biliclassic.util.DeviceInfoUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.PermissionUtil;
@@ -125,13 +127,13 @@ public class MainActivity extends BaseActivity {
         }
 
         if (!setupShown) {
-            Intent intent = new Intent(this, SetupActivity.class);
+            Intent intent = new Intent(this, MetroSetupActivity.class);
             intent.putExtra("mode", "first");
             startActivity(intent);
             finish();
             return;
         } else if (lastVersionCode > 0 && currentVersionCode > lastVersionCode) {
-            Intent intent = new Intent(this, SetupActivity.class);
+            Intent intent = new Intent(this, MetroSetupActivity.class);
             intent.putExtra("mode", "upgrade");
             startActivity(intent);
             finish();
@@ -141,10 +143,14 @@ public class MainActivity extends BaseActivity {
         NetWorkUtil.refreshHeaders();
         int sdkInt = getSdkInt();
 
-        // Android 4.0+ 正常检测 TV 模式
-        if (sdkInt >= 14 && tv.biliclassic.util.DeviceUtil.isTv(this)) {
-            Intent intent = new Intent(this, tv.biliclassic.tv.TvMainActivity.class);
+        // 主题设置：Metro → 打开 MetroHome；Classic → 进入经典主界面（默认）
+        if (SettingsActivity.getUiTheme() == SettingsActivity.THEME_METRO) {
+            Intent intent = new Intent(this, MetroHomeActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
+            // 只去掉 MainActivity 这一步的"退出"动画，保留 MetroHome 的单一进入动画（淡入），避免开屏动画被卡没
+            tv.biliclassic.player.PlayerCompat.overridePendingTransition(this,
+                    android.R.anim.fade_in, 0);
             finish();
             return;
         }
@@ -229,8 +235,28 @@ public class MainActivity extends BaseActivity {
         addTab(getString(R.string.mainactivity_tab_home), HomeFragment.class);
         addTab(getString(R.string.mainactivity_tab_newanime), NewAnimeFragment.class);
         addTab(getString(R.string.mainactivity_tab_timeline), TimelineFragment.class);
-        addTab(getString(R.string.mainactivity_tab_recommend), RecommendFragment.class);
+        if (SettingsActivity.isPortraitModeEnabled()) {
+            addTab(getString(R.string.mainactivity_tab_recommend), RecommendVerticalFragment.class);
+        } else {
+            addTab(getString(R.string.mainactivity_tab_recommend), RecommendFragment.class);
+        }
+        addTab(getString(R.string.mainactivity_tab_dynamic), DynamicFragment.class);
         addTab(getString(R.string.mainactivity_tab_about), AboutFragment.class);
+
+        mPager.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
+            @Override
+            public void onPageSelected(int position) {
+                updateOrientationForTab();
+            }
+
+            @Override
+            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
+            }
+
+            @Override
+            public void onPageScrollStateChanged(int state) {
+            }
+        });
 
         int targetTab = getIntent().getIntExtra("tab_index", -1);
         if (targetTab >= 0 && targetTab < mFragments.size()) {
@@ -239,6 +265,7 @@ public class MainActivity extends BaseActivity {
             int defaultTab = SettingsActivity.getDefaultTab();
             mPager.setCurrentItem(defaultTab);
         }
+        updateOrientationForTab();
 
         ImageView btnSearch = (ImageView) findViewById(R.id.btn_search);
         btnSearch.setOnClickListener(new View.OnClickListener() {
@@ -442,7 +469,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void showAutoUpdateDialog(String versionName, String changelog, final String downloadUrl, boolean forceUpdate) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(this));
+        AlertDialog.Builder builder = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)));
         builder.setTitle("发现新版本: " + versionName);
 
         String message = "当前: " + currentVersionName + "\n" +
@@ -658,7 +685,7 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        new AlertDialog.Builder(DialogUtil.wrap(this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.mainactivity_settitle_4e0a))
                 .setMessage(getString(R.string.mainactivity_setmessage_7a0b))
                 .setPositiveButton("查看", new DialogInterface.OnClickListener() {
@@ -809,7 +836,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void showLandscapeTipDialog() {
-        new AlertDialog.Builder(DialogUtil.wrap(this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.mainactivity_settitle_8bbe))
                 .setMessage(getString(R.string.mainactivity_setmessage_60a8))
                 .setPositiveButton("知道了", new DialogInterface.OnClickListener() {
@@ -970,6 +997,7 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        updateOrientationForTab();
     }
 
     private void addTab(String title, Class<? extends Fragment> clss) {
@@ -981,7 +1009,38 @@ public class MainActivity extends BaseActivity {
 
     public void setCurrentTab(int index) {
         if (mPager != null) {
-            mPager.setCurrentItem(index);
+            final int idx = index;
+            mPager.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (mPager != null) {
+                        mPager.setCurrentItem(idx);
+                    }
+                }
+            });
+        }
+    }
+
+    private void updateOrientationForTab() {
+        if (mPager == null) return;
+        int cur = mPager.getCurrentItem();
+        boolean recommendTab = cur >= 0 && cur < mFragments.size()
+                && RecommendVerticalFragment.class.equals(mFragments.get(cur).clss);
+        if (SettingsActivity.isPortraitModeEnabled() && recommendTab) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            return;
+        }
+        // 非竖屏推荐页：恢复 BaseActivity 的设备默认方向，不强制横屏
+        if (tv.biliclassic.util.DeviceUtil.isTv(this)) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        } else if (tv.biliclassic.util.SdkHelper.getBooleanResource(getResources(), R.bool.is_tablet)) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
+        } else if (shouldEnableLandscape()) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        } else if (isHardwareKeyboardDevice()) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        } else {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         }
     }
 
@@ -1036,7 +1095,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void showMenuLogoutDialog() {
-        new AlertDialog.Builder(DialogUtil.wrap(this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.mainactivity_settitle_771f))
                 .setMessage(getString(R.string.mainactivity_setmessage_545c))
                 .setPositiveButton("留下来", new DialogInterface.OnClickListener() {
@@ -1061,7 +1120,7 @@ public class MainActivity extends BaseActivity {
         if (DeviceInfoUtil.isLegacy) {
             boolean isLegacyDevice = DeviceInfoUtil.isLegacyDevice();
             if (!isLegacyDevice) {
-                new AlertDialog.Builder(DialogUtil.wrap(this))
+                new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                         .setTitle(getString(R.string.mainactivity_settitle_7248))
                         .setMessage(getString(R.string.mainactivity_setmessage_68c0))
                         .setPositiveButton("立即下载", new DialogInterface.OnClickListener() {
@@ -1121,8 +1180,9 @@ public class MainActivity extends BaseActivity {
 
         @Override
         public void destroyItem(ViewGroup container, int position, Object object) {
-            // 首页/个人中心/番剧/时间线/推荐内容较重，保留不销毁，避免划回时重建卡顿
-            if (position == 0 || position == 1 || position == 2 || position == 3 || position == 4) {
+            // 首页/个人中心/番剧/时间线/推荐/动态内容较重，保留不销毁，避免划回时重建卡顿
+            if (position == 0 || position == 1 || position == 2 || position == 3
+                    || position == 4 || position == 5) {
                 return;
             }
             super.destroyItem(container, position, object);

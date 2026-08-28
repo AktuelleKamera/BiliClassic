@@ -193,6 +193,6 @@ public class CookieGenerator {
     private static String genBuvidFp() {
         return String.format("%016x%016x",
                 System.currentTimeMillis() ^ 0x52DCE729L,
-                System.nanoTime() ^ 0x38495AB5L);
+                System.currentTimeMillis() ^ 0x38495AB5L);
     }
 }

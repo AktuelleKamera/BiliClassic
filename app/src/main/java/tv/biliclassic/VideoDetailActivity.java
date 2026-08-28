@@ -761,7 +761,7 @@ public class VideoDetailActivity extends BaseActivity {
                 getString(R.string.videodetail_share),
                 getString(R.string.videodetail_triple)
         };
-        new AlertDialog.Builder(DialogUtil.wrap(this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.videodetail_action_menu))
                 .setItems(items, new DialogInterface.OnClickListener() {
                     @Override
@@ -799,7 +799,7 @@ public class VideoDetailActivity extends BaseActivity {
         for (int i = 0; i < tags.size(); i++) {
             arr[i] = tags.get(i);
         }
-        new AlertDialog.Builder(DialogUtil.wrap(this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.videodetail_tag_choice))
                 .setItems(arr, new DialogInterface.OnClickListener() {
                     @Override
@@ -1147,17 +1147,24 @@ public class VideoDetailActivity extends BaseActivity {
         mIsPausingForTransient = false;
         cleanupHandler.removeCallbacksAndMessages(null);
         isCleaned = false;
-        if (viewPager != null && viewPager.getAdapter() == null) {
-            if (isBangumi) {
-                safeSetAdapter(new BangumiPagerAdapter(getSupportFragmentManager()));
-            } else {
-                if (mBangumiMediaId > 0) {
-                    safeSetAdapter(new TwoTabPagerAdapter(getSupportFragmentManager()));
-                } else {
-                    safeSetAdapter(new VideoDetailPagerAdapter(getSupportFragmentManager()));
+        if (viewPager != null && viewPager.getAdapter() == null && !isFinishing()) {
+            final int restorePos = currentPagePosition;
+            viewPager.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (viewPager == null || isFinishing() || viewPager.getAdapter() != null) return;
+                    if (isBangumi) {
+                        safeSetAdapter(new BangumiPagerAdapter(getSupportFragmentManager()));
+                    } else {
+                        if (mBangumiMediaId > 0) {
+                            safeSetAdapter(new TwoTabPagerAdapter(getSupportFragmentManager()));
+                        } else {
+                            safeSetAdapter(new VideoDetailPagerAdapter(getSupportFragmentManager()));
+                        }
+                    }
+                    viewPager.setCurrentItem(restorePos, false);
                 }
-            }
-            viewPager.setCurrentItem(currentPagePosition, false);
+            });
         }
         if (!mOfflineMode && btnFavorite != null) {
             checkFavoriteState();
@@ -1229,7 +1236,7 @@ public class VideoDetailActivity extends BaseActivity {
                 getString(R.string.videodetail_share_to),
                 getString(R.string.videodetail_cancel)
         };
-        new AlertDialog.Builder(DialogUtil.wrap(this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.videodetailactivity_settitle_5206))
                 .setItems(shareOptions, new DialogInterface.OnClickListener() {
                     @Override
@@ -1334,16 +1341,12 @@ public class VideoDetailActivity extends BaseActivity {
             public void onClick(View v) {
                 input.setText("");
                 input.requestFocus();
-                android.view.inputmethod.InputMethodManager imm =
-                        (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (imm != null) {
-                    imm.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
-                }
+                tv.biliclassic.util.SdkHelper.showSoftInput(input, 1);
             }
         });
         layout.addView(clearText, lp);
 
-        final AlertDialog dialog = new AlertDialog.Builder(DialogUtil.wrap(this))
+        final AlertDialog dialog = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.videodetailactivity_settitle_53d1))
                 .setView(layout)
                 .setPositiveButton(getString(R.string.videodetail_send_comment), new DialogInterface.OnClickListener() {
@@ -1367,7 +1370,8 @@ public class VideoDetailActivity extends BaseActivity {
                     (int) (getResources().getDisplayMetrics().widthPixels * 0.9),
                     android.view.WindowManager.LayoutParams.WRAP_CONTENT);
         }
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
+        android.widget.Button positiveBtn = tv.biliclassic.util.SdkHelper.getDialogButton(dialog, AlertDialog.BUTTON_POSITIVE);
+        if (positiveBtn != null) positiveBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 String text = input.getText().toString().trim();
@@ -1529,7 +1533,7 @@ public class VideoDetailActivity extends BaseActivity {
     }
 
     private void showEmojiPicker(final EditText input) {
-        final AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(this));
+        final AlertDialog.Builder builder = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)));
         builder.setTitle(getString(R.string.videodetailactivity_settitle_9009_2));
 
         final android.widget.ScrollView scroll = new android.widget.ScrollView(this);
@@ -1691,7 +1695,7 @@ public class VideoDetailActivity extends BaseActivity {
                 getString(R.string.videodetail_favorite),
                 getString(R.string.videodetail_triple)
         };
-        new AlertDialog.Builder(DialogUtil.wrap(VideoDetailActivity.this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(VideoDetailActivity.this)))
                 .setTitle(getString(R.string.videodetailactivity_settitle_4e92))
                 .setItems(items, new DialogInterface.OnClickListener() {
                     @Override
@@ -1726,7 +1730,7 @@ public class VideoDetailActivity extends BaseActivity {
                             }).start();
                         } else if (which == 1) {
                             final String[] coinItems = {"1枚硬币", "2枚硬币"};
-                            new AlertDialog.Builder(DialogUtil.wrap(VideoDetailActivity.this))
+                            new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(VideoDetailActivity.this)))
                                     .setTitle(getString(R.string.videodetailactivity_settitle_6295))
                                     .setItems(coinItems, new DialogInterface.OnClickListener() {
                                         @Override
@@ -1879,14 +1883,14 @@ public class VideoDetailActivity extends BaseActivity {
                                 }
                             };
 
-                            new AlertDialog.Builder(DialogUtil.wrap(VideoDetailActivity.this))
+                            new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(VideoDetailActivity.this)))
                                     .setTitle(getString(R.string.videodetailactivity_settitle_9009_1))
                                     .setAdapter(adapter, new DialogInterface.OnClickListener() {
                                         @Override
                                         public void onClick(DialogInterface dialog, int which) {
                                             final long fid = folderIds[which];
                                             if (favStates[which]) {
-                                                new AlertDialog.Builder(DialogUtil.wrap(VideoDetailActivity.this))
+                                                new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(VideoDetailActivity.this)))
                                                         .setTitle(getString(R.string.videodetailactivity_settitle_5220))
                                                         .setMessage(getString(R.string.videodetailactivity_setmessage_662f))
                                                         .setPositiveButton(getString(R.string.videodetail_delete), new DialogInterface.OnClickListener() {
@@ -2022,7 +2026,7 @@ public class VideoDetailActivity extends BaseActivity {
                 title = getString(R.string.videodetail_this_video);
             }
         }
-        new AlertDialog.Builder(DialogUtil.wrap(this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.videodetailactivity_settitle_5220_1))
                 .setMessage(getString(R.string.videodetail_confirm_delete_cache, title))
                 .setPositiveButton(getString(R.string.videodetail_delete), new DialogInterface.OnClickListener() {
@@ -2124,7 +2128,7 @@ public class VideoDetailActivity extends BaseActivity {
         final PageListAdapter adapter = new PageListAdapter();
         listView.setAdapter(adapter);
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(this));
+        AlertDialog.Builder builder = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)));
         builder.setTitle(getString(R.string.videodetailactivity_settitle_9009));
         builder.setView(dialogView);
         builder.setPositiveButton(getString(R.string.videodetail_download), new DialogInterface.OnClickListener() {

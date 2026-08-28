@@ -401,7 +401,7 @@ public class HomeFragment extends Fragment {
         if (pendingBitmapSets.isEmpty()) return;
         final java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
         pendingBitmapSets.clear();
-        // 分批应用（每帧最多 2 张），避免停下瞬间一次性 setImageBitmap 全部封面造成整帧卡顿
+        // 分批应用（每帧最多 2 张）
         final int[] idx = {0};
         final Runnable drain = new Runnable() {
             @Override

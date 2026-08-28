@@ -74,25 +74,83 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
         catch (Exception e) { return Integer.parseInt(Build.VERSION.SDK); }
     }
 
-    @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
     @Override
     public void setSurface(Surface surface) {
-        if (getSdkInt() >= 14) {
-            mInternalMediaPlayer.setSurface(surface);
+        // 实测部分老平台（API<=4）没有 MediaPlayer.setSurface(Surface)，
+        // 硬失败校验下直接引用会拒载整类；反射调用，方法不存在时静默跳过。
+        // 该路径仅服务 TextureView 渲染（API 14+），老平台本就走 SurfaceHolder
+        try {
+            mInternalMediaPlayer.getClass()
+                    .getMethod("setSurface", Surface.class)
+                    .invoke(mInternalMediaPlayer, surface);
+        } catch (Throwable t) {
         }
     }
 
     @Override
     public void setDataSource(Context context, Uri uri)
             throws IOException, IllegalArgumentException, SecurityException, IllegalStateException {
-        mInternalMediaPlayer.setDataSource(context, uri);
+        setDataSourceCompat(context, uri, null);
     }
 
-    @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
     @Override
     public void setDataSource(Context context, Uri uri, Map<String, String> headers)
             throws IOException, IllegalArgumentException, SecurityException, IllegalStateException {
-        mInternalMediaPlayer.setDataSource(context, uri, headers);
+        setDataSourceCompat(context, uri, headers);
+    }
+
+    /**
+     * MediaPlayer.setDataSource(Context,Uri[,Map]) 分别是 API 14/8 才加入的方法。
+     * Android 2.1 及以下 Dalvik 校验器为硬失败模式：字节码里直接引用会让本类
+     * 在安装期 dexopt 就被标记拒绝、实例化时抛 VerifyError，运行时守卫无效，
+     * 因此必须走反射；老平台无该重载时退化为 setDataSource(String)——
+     * http 渐进式流播放自 API 1 即支持。
+     */
+    @SuppressWarnings("unchecked")
+    private void setDataSourceCompat(Context context, Uri uri, Map<String, String> headers)
+            throws IOException, IllegalArgumentException, SecurityException, IllegalStateException {
+        java.lang.reflect.Method m = null;
+        if (headers != null) {
+            try {
+                m = MediaPlayer.class.getMethod("setDataSource",
+                        Context.class, Uri.class, Map.class);
+            } catch (NoSuchMethodException e) {
+                m = null;
+            }
+        }
+        if (m == null) {
+            try {
+                m = MediaPlayer.class.getMethod("setDataSource", Context.class, Uri.class);
+            } catch (NoSuchMethodException e) {
+                m = null;
+            }
+        }
+        if (m == null) {
+            // 最老平台：直接按字符串路径设置（本地代理 URL / 直链均可）
+            mInternalMediaPlayer.setDataSource(uri.toString());
+            return;
+        }
+        try {
+            if (headers != null && m.getParameterTypes().length == 3) {
+                m.invoke(mInternalMediaPlayer, context, uri, headers);
+            } else {
+                m.invoke(mInternalMediaPlayer, context, uri);
+            }
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof IOException) throw (IOException) cause;
+            if (cause instanceof IllegalArgumentException) throw (IllegalArgumentException) cause;
+            if (cause instanceof SecurityException) throw (SecurityException) cause;
+            if (cause instanceof IllegalStateException) throw (IllegalStateException) cause;
+            if (cause instanceof RuntimeException) throw (RuntimeException) cause;
+            if (cause instanceof Error) throw (Error) cause;
+            // 注意：IOException(Throwable)/IllegalStateException(Throwable) 构造器
+            // 是 API 9+ 才有的，老平台上字节码直接引用会再次导致整类被拒，
+            // 这里只能用 String 版构造器（API 1 即有）
+            throw new IOException(String.valueOf(cause));
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException(e.toString());
+        }
     }
 
     @Override
@@ -258,7 +316,16 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
 
     @Override
     public int getAudioSessionId() {
-        return mInternalMediaPlayer.getAudioSessionId();
+        // getAudioSessionId 是 API 9+ 方法：硬失败校验平台（2.1 及以下）上
+        // 字节码直接引用会导致整类被 dexopt 拒载、实例化时抛 VerifyError，
+        // 运行时守卫无效，必须反射；低版本返回 0（无音频会话语义）
+        try {
+            Object r = MediaPlayer.class.getMethod("getAudioSessionId")
+                    .invoke(mInternalMediaPlayer);
+            return ((Integer) r).intValue();
+        } catch (Throwable t) {
+            return 0;
+        }
     }
 
     @Override

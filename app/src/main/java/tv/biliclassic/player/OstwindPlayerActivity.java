@@ -1431,7 +1431,7 @@ public class OstwindPlayerActivity extends Activity
     // 软解解码器未找到：提示安装 MoboPlayer 软解包（可加群 754725037 下载）
     private void showNoDecoderDialog() {
         try {
-            new android.app.AlertDialog.Builder(DialogUtil.wrap(this))
+            new android.app.AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                     .setTitle(getString(R.string.ostwind_no_decoder_title))
                     .setMessage(getString(R.string.ostwind_no_decoder_msg))
                     .setCancelable(false)

@@ -129,15 +129,21 @@ public class PlayerQualityManager {
                     int btnRight = btnLoc[0] + mQualityButton.getWidth();
                     int listRight = listLoc[0] + mQualityListView.getWidth();
                     int offset = btnRight - listRight;
-                    // setTranslationX 是 API 11 才加入；老设备用 Margin 对齐，避免 NoSuchMethodError
-                    if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 11) {
-                        mQualityListView.setTranslationX(offset);
-                    } else {
+                    // setTranslationX 是 API 11 才加入。注意 2.1 及以下 Dalvik 校验器为
+                    // 硬失败模式，字节码里保留直接引用会导致整类被拒载（运行时守卫无效），
+                    // 必须走反射：低版本抛 NoSuchMethodException 后用 Margin 对齐
+                    try {
+                        mQualityListView.getClass()
+                                .getMethod("setTranslationX", float.class)
+                                .invoke(mQualityListView, Float.valueOf(offset));
+                    } catch (NoSuchMethodException e) {
                         android.view.ViewGroup.LayoutParams lp = mQualityListView.getLayoutParams();
                         if (lp instanceof android.view.ViewGroup.MarginLayoutParams) {
                             ((android.view.ViewGroup.MarginLayoutParams) lp).leftMargin = offset;
                             mQualityListView.setLayoutParams(lp);
                         }
+                    } catch (Exception e) {
+                        // ignore
                     }
                 } catch (Exception e) {
                     // ignore

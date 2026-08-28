@@ -13,6 +13,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.StatFs;
 import android.util.Log;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -43,6 +45,7 @@ import java.util.regex.Matcher;
 import tv.biliclassic.download.VideoDownloadEntry;
 import tv.biliclassic.download.VideoDownloadEnvironment;
 import tv.biliclassic.download.VideoDownloadService;
+import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.FileProviderCompat;
 import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
@@ -69,6 +72,7 @@ public class OfflineActivity extends BaseActivity {
     private File mDownloadDir;
     private Handler mRefreshHandler = new Handler();
     private Runnable mRefreshRunnable;
+    private boolean mInteracting = false;
     private static final int REFRESH_INTERVAL = 2000;
 
     private boolean isLowMemoryDevice() {
@@ -125,10 +129,10 @@ public class OfflineActivity extends BaseActivity {
             @Override
             public void onScrollStateChanged(AbsListView view, int scrollState) {
                 if (scrollState == SCROLL_STATE_IDLE) {
-                    isScrolling = false;
+                    ImageLoader.setScrolling(false);
                     adapter.notifyDataSetChanged();
                 } else {
-                    isScrolling = true;
+                    ImageLoader.setScrolling(true);
                 }
             }
 
@@ -137,20 +141,45 @@ public class OfflineActivity extends BaseActivity {
             }
         });
 
-        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+        // 长按删除改为在每个 item 视图上自行检测（见 OfflineAdapter.getView），更稳定，不受列表刷新影响
+        // 交互（含长按）期间暂停自动刷新，避免每 2 秒 notifyDataSetChanged 重置列表状态、打断长按手势
+        listView.setOnTouchListener(new View.OnTouchListener() {
             @Override
-            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                if (position < 0 || position >= videoList.size()) return false;
-                final OfflineItem item = videoList.get(position);
-                if (item != null) {
-                    showDeleteDialog(item);
-                    return true;
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        mInteracting = true;
+                        stopAutoRefresh();
+                        break;
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        mInteracting = false;
+                        startAutoRefreshIfNeeded();
+                        break;
                 }
                 return false;
             }
         });
 
         refreshList();
+    }
+
+    // 遥控器 OK 键长按：弹出删除（TV 上没有触摸长按，长按指按键长按）
+    @Override
+    public boolean onKeyLongPress(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER
+                || keyCode == KeyEvent.KEYCODE_ENTER
+                || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
+            int pos = listView.getSelectedItemPosition();
+            if (pos >= 0 && pos < videoList.size()) {
+                OfflineItem item = videoList.get(pos);
+                if (item != null) {
+                    showDeleteDialog(item);
+                    return true;
+                }
+            }
+        }
+        return super.onKeyLongPress(keyCode, event);
     }
 
     @Override
@@ -280,29 +309,41 @@ public class OfflineActivity extends BaseActivity {
         String displayTitle = (item.pageTitle != null && item.pageTitle.length() > 0)
                 ? item.pageTitle : item.title;
         if (!item.isCompleted) {
-            new AlertDialog.Builder(DialogUtil.wrap(this))
+            new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                     .setTitle(getString(R.string.offlineactivity_settitle_5220))
-                    .setMessage("确定要取消下载 \"" + displayTitle + "\" 吗？")
-                    .setPositiveButton("取消下载", new DialogInterface.OnClickListener() {
+                    .setMessage("确定要取消下载\"" + displayTitle + "\" 吗？已下载的内容也会一并清除。")
+                    .setPositiveButton("取消", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
                             deleteVideo(item);
+                            startAutoRefreshIfNeeded();
                         }
                     })
-                    .setNegativeButton("继续下载", null)
+                    .setNegativeButton("继续", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            startAutoRefreshIfNeeded();
+                        }
+                    })
                     .show();
             return;
         }
-        new AlertDialog.Builder(DialogUtil.wrap(this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.offlineactivity_settitle_5220))
                 .setMessage("确定要删除 \"" + displayTitle + "\" 吗？")
                 .setPositiveButton("删除", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         deleteVideo(item);
+                        startAutoRefreshIfNeeded();
                     }
                 })
-                .setNegativeButton("取消", null)
+                .setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        startAutoRefreshIfNeeded();
+                    }
+                })
                 .show();
     }
 
@@ -383,6 +424,7 @@ public class OfflineActivity extends BaseActivity {
 
     // 静默刷新
     private void refreshListSilent() {
+        if (mInteracting) return;
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -808,63 +850,6 @@ public class OfflineActivity extends BaseActivity {
         return name;
     }
 
-    // 加载封面
-    private void loadCoverFromLocal(final OfflineItem item, final ImageView coverView, final int position) {
-        if (item == null || coverView == null) return;
-        if (isScrolling) return;
-
-        String cacheKey = item.getCacheKey();
-        SoftReference<Bitmap> softBitmap = imageCache.get(cacheKey);
-        if (softBitmap != null) {
-            Bitmap cachedBitmap = softBitmap.get();
-            if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
-                coverView.setImageBitmap(cachedBitmap);
-                return;
-            } else {
-                imageCache.remove(cacheKey);
-            }
-        }
-
-        if (item.coverFile == null || !item.coverFile.exists()) {
-            coverView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
-            return;
-        }
-
-        Boolean isLoading = loadingMap.get(position);
-        if (isLoading != null && isLoading) {
-            return;
-        }
-
-        loadingMap.put(position, true);
-        final ImageView imageView = coverView;
-        final String key = cacheKey;
-
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    BitmapFactory.Options options = new BitmapFactory.Options();
-                    options.inSampleSize = 2;
-                    options.inPreferredConfig = Bitmap.Config.RGB_565;
-                    final Bitmap bitmap = BitmapFactory.decodeFile(item.coverFile.getAbsolutePath(), options);
-                    loadingMap.remove(position);
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        imageCache.put(key, new SoftReference<Bitmap>(bitmap));
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                imageView.setImageBitmap(bitmap);
-                            }
-                        });
-                    }
-                } catch (Exception e) {
-                    loadingMap.remove(position);
-                } catch (OutOfMemoryError e) {
-                    loadingMap.remove(position);
-                }
-            }
-        });
-    }
 
     // Adapter
     class OfflineAdapter extends BaseAdapter {
@@ -1000,9 +985,17 @@ public class OfflineActivity extends BaseActivity {
                 }
             }
 
-            holder.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
-            if (item != null && !isScrolling) {
-                loadCoverFromLocal(item, holder.cover, position);
+            if (item != null && item.coverFile != null && item.coverFile.exists()) {
+                try {
+                    ImageLoader.bind(holder.cover,
+                            FileProviderCompat.getUriForFile(OfflineActivity.this, item.coverFile),
+                            R.drawable.bili_default_image_tv_with_bg, 88, 56);
+                } catch (Exception e) {
+                    ImageLoader.bind(holder.cover, item.coverFile,
+                            R.drawable.bili_default_image_tv_with_bg, 88, 56);
+                }
+            } else {
+                holder.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
             }
 
             final int pos = position;
@@ -1011,6 +1004,16 @@ public class OfflineActivity extends BaseActivity {
                 @Override
                 public void onClick(View v) {
                     onOfflineItemClick(clickItem, pos);
+                }
+            });
+
+            // 触摸长按删除：直接给 item 视图设置长按监听（与相关视频列表方案一致）
+            convertView.setLongClickable(true);
+            convertView.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    showDeleteDialog(clickItem);
+                    return true;
                 }
             });
 

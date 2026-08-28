@@ -1,4 +1,4 @@
-package tv.biliclassic;
+package tv.biliclassic.metro;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -31,14 +31,21 @@ import android.widget.TextView;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import tv.biliclassic.BaseActivity;
+import tv.biliclassic.MainActivity;
+import tv.biliclassic.R;
 import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
-public class SetupActivity extends BaseActivity {
+public class MetroSetupActivity extends BaseActivity {
 
     private View mPageWelcome;
     private View mPageTiles;
     private View mPageBinding;
+    private View mPageTheme;
+    // 主题选择页所处的页态与进入前的上一页（用于 BACK 返回）
+    private boolean mOnTheme = false;
+    private ViewGroup mPrevPage;
     private int mSelectedTab = -1;
     private FrameLayout mLastSelectedTile = null;
     private boolean mAnimating = false;
@@ -133,7 +140,7 @@ public class SetupActivity extends BaseActivity {
             rootLayout.post(new Runnable() {
                 @Override
                 public void run() {
-                    Animation anim = AnimationUtils.loadAnimation(SetupActivity.this, R.anim.fade_slide_up);
+                    Animation anim = AnimationUtils.loadAnimation(MetroSetupActivity.this, R.anim.fade_slide_up);
                     if (anim != null) {
                         rootLayout.startAnimation(anim);
                     }
@@ -155,8 +162,26 @@ public class SetupActivity extends BaseActivity {
         mPageWelcome = findViewById(R.id.page_welcome);
         mPageTiles = findViewById(R.id.page_tiles);
         mPageBinding = findViewById(R.id.page_binding);
+        mPageTheme = findViewById(R.id.page_theme);
 
         initBindingPage();
+        initThemePage();
+
+        // 右下角小电视水印：与 MetroHome 完全一致的尺寸算法（70% 屏幕长边 + 12% 溢出）
+        ImageView wm = (ImageView) findViewById(R.id.tv_watermark);
+        if (wm != null) {
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            int longSidePx = Math.max(dm.widthPixels, dm.heightPixels);
+            int size = Math.round(longSidePx * 0.70f);
+            int over = Math.round(longSidePx * 0.12f);
+            android.widget.FrameLayout.LayoutParams lp =
+                    (android.widget.FrameLayout.LayoutParams) wm.getLayoutParams();
+            lp.width = size;
+            lp.height = size;
+            lp.rightMargin = -over;
+            lp.bottomMargin = -over;
+            wm.setLayoutParams(lp);
+        }
 
         TextView btnNext = (TextView) findViewById(R.id.btn_next);
         btnNext.setOnClickListener(new View.OnClickListener() {
@@ -177,48 +202,40 @@ public class SetupActivity extends BaseActivity {
 
         final TextView btnStart = (TextView) findViewById(R.id.btn_start);
         mBtnStart = btnStart;
-        // 触屏机：磁贴页按钮为"开始使用"（选完直接开始）；按键机：为"下一页"（选完进入按键绑定）
-        boolean hasHardwareKeys = tv.biliclassic.util.DeviceUtil.hasHardwareKeys(SetupActivity.this);
-        btnStart.setText(hasHardwareKeys
-                ? getString(R.string.activity_setup_4e0b)
-                : getString(R.string.activity_setup_5f00));
+        // 现在点"下一页"总是进入下一页（需绑定则绑定页，否则直接主题选择），统一用"下一页"
+        boolean hasHardwareKeys = tv.biliclassic.util.DeviceUtil.hasHardwareKeys(MetroSetupActivity.this);
+        btnStart.setText(getString(R.string.activity_setup_4e0b));
         btnStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (mAnimating) return;
-                // 首次启动（非升级）、设备有物理按键且尚未绑定任何按键 → 滑入绑定页
+                // 首次启动（非升级）、设备有物理按键且尚未绑定任何按键 → 滑入绑定页（其后进入主题选择）
                 boolean isUpgrade = "upgrade".equals(getIntent().getStringExtra("mode"));
                 boolean needBinding = !isUpgrade && !KeyBindingUtil.anyBound()
-                        && tv.biliclassic.util.DeviceUtil.hasHardwareKeys(SetupActivity.this);
+                        && tv.biliclassic.util.DeviceUtil.hasHardwareKeys(MetroSetupActivity.this);
                 if (needBinding) {
                     slideToBinding();
                 } else {
-                    mAnimating = true;
-                    final int h = mPageTiles.getHeight();
-                    if (h > 0) {
-                        TranslateAnimation exit = new TranslateAnimation(0, 0, 0, h);
-                        exit.setDuration(400);
-                        exit.setInterpolator(new AccelerateInterpolator());
-                        exit.setFillAfter(true);
-                        exit.setAnimationListener(new Animation.AnimationListener() {
-                            @Override
-                            public void onAnimationStart(Animation animation) {
-                            }
-                            @Override
-                            public void onAnimationEnd(Animation animation) {
-                                finishSetup(btnStart);
-                            }
-                            @Override
-                            public void onAnimationRepeat(Animation animation) {
-                            }
-                        });
-                        mPageTiles.startAnimation(exit);
-                    } else {
-                        finishSetup(btnStart);
-                    }
+                    // 先进入下一页（主题选择），向导完成标志在选完主题后才记录
+                    slideToTheme();
                 }
             }
         });
+    }
+
+    /** 记录首启完成与默认标签：在选择主题前保存（之后进入主界面）。 */
+    private void saveSetupDefaults() {
+        if (mSelectedTab >= 0) {
+            SharedPreferencesUtil.putInt("default_tab", TAB_VALUES[mSelectedTab]);
+        }
+        SharedPreferencesUtil.putBoolean("setup_shown", true);
+        int versionCode = 0;
+        try {
+            versionCode = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
+        SharedPreferencesUtil.putInt("last_version_code", versionCode);
     }
 
     /**
@@ -246,24 +263,8 @@ public class SetupActivity extends BaseActivity {
         }
     }
 
-    private void finishSetup(View btnStart) {
-        if (btnStart != null) btnStart.setEnabled(false);
-        if (mSelectedTab >= 0) {
-            SharedPreferencesUtil.putInt("default_tab", TAB_VALUES[mSelectedTab]);
-        }
-        SharedPreferencesUtil.putBoolean("setup_shown", true);
-        int versionCode = 0;
-        try {
-            versionCode = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
-        } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
-        }
-        SharedPreferencesUtil.putInt("last_version_code", versionCode);
-        enterMain();
-    }
-
     private void enterMain() {
-        Intent intent = new Intent(SetupActivity.this, MainActivity.class);
+        Intent intent = new Intent(MetroSetupActivity.this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
@@ -303,6 +304,232 @@ public class SetupActivity extends BaseActivity {
                     finishBinding();
                 }
             });
+        }
+    }
+
+    /**
+     * 初始化主题选择页（首启进入主界面前）：Metro / Classic 二选一，点击即保存并进入主界面。
+     */
+    private void initThemePage() {
+        if (mPageTheme == null) return;
+        TextView btnMetro = (TextView) findViewById(R.id.btn_theme_metro);
+        TextView btnClassic = (TextView) findViewById(R.id.btn_theme_classic);
+        if (btnMetro != null) {
+            btnMetro.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (mAnimating) return;
+                    tv.biliclassic.util.SharedPreferencesUtil.putInt(
+                            tv.biliclassic.SettingsActivity.KEY_UI_THEME,
+                            tv.biliclassic.SettingsActivity.THEME_METRO);
+                    leaveToMainFromTheme();
+                }
+            });
+        }
+        if (btnClassic != null) {
+            btnClassic.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (mAnimating) return;
+                    tv.biliclassic.util.SharedPreferencesUtil.putInt(
+                            tv.biliclassic.SettingsActivity.KEY_UI_THEME,
+                            tv.biliclassic.SettingsActivity.THEME_CLASSIC);
+                    leaveToMainFromTheme();
+                }
+            });
+        }
+    }
+
+    /** 主题选择后：无缝进主页 —— Setup 淡出、主页放大飞入（两屏小电视水印交叉过渡）。 */
+    private void leaveToMainFromTheme() {
+        // 向导完成标志：选完主题（Metro/Classic）才真正完成
+        saveSetupDefaults();
+        if (mAnimating) return;
+
+        int theme = tv.biliclassic.util.SharedPreferencesUtil.getInt(
+                tv.biliclassic.SettingsActivity.KEY_UI_THEME,
+                tv.biliclassic.SettingsActivity.THEME_CLASSIC);
+        Intent intent = (theme == tv.biliclassic.SettingsActivity.THEME_METRO)
+                ? new Intent(this, MetroHomeActivity.class)
+                : new Intent(this, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 5) {
+            try {
+                // 交叉淡入淡出：替代系统默认"打开动画"，实现最无缝的切换
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+            } catch (Throwable t) {
+            }
+        }
+        finish();
+    }
+
+    /**
+     * 绑定/磁贴页 → 主题选择页：主题页元素从右滑入（盖过上一页），完成后上一页隐藏。
+     */
+    /** 上一页向左滑出：跳过磁贴滚动块，磁贴行逐行错峰/其余块逐块错峰。返回平移单元数。 */
+    private int animatePageLeftOut(ViewGroup page, int width, int base) {
+        if (page == null) return 0;
+        boolean tiles = (page == mPageTiles);
+        int disp = 0;
+        for (int i = 0; i < page.getChildCount(); i++) {
+            View c = page.getChildAt(i);
+            if (tiles && c instanceof ScrollView) continue;
+            TranslateAnimation a = new TranslateAnimation(0, -width, 0, 0);
+            a.setDuration(360); a.setStartOffset(base + disp * 60);
+            a.setInterpolator(new AccelerateInterpolator()); a.setFillAfter(true);
+            c.startAnimation(a); disp++;
+        }
+        if (tiles) {
+            LinearLayout tc = (LinearLayout) findViewById(R.id.tile_container);
+            if (tc != null) {
+                for (int r = 0; r < tc.getChildCount(); r++) {
+                    View row = tc.getChildAt(r);
+                    TranslateAnimation a = new TranslateAnimation(0, -width, 0, 0);
+                    a.setDuration(300); a.setStartOffset(base + disp * 60);
+                    a.setInterpolator(new AccelerateInterpolator()); a.setFillAfter(true);
+                    row.startAnimation(a); disp++;
+                }
+            }
+        }
+        return disp;
+    }
+
+    /** 上一页从左滑入：磁贴行逐行错峰/其余块逐块错峰。返回平移单元数。 */
+    private int animatePageLeftIn(ViewGroup page, int width, int base) {
+        if (page == null) return 0;
+        boolean tiles = (page == mPageTiles);
+        int disp = 0;
+        for (int i = 0; i < page.getChildCount(); i++) {
+            View c = page.getChildAt(i);
+            if (tiles && c instanceof ScrollView) continue;
+            TranslateAnimation a = new TranslateAnimation(-width, 0, 0, 0);
+            a.setDuration(360); a.setStartOffset(base + disp * 60);
+            a.setInterpolator(new DecelerateInterpolator()); a.setFillAfter(true);
+            c.startAnimation(a); disp++;
+        }
+        if (tiles) {
+            LinearLayout tc = (LinearLayout) findViewById(R.id.tile_container);
+            if (tc != null) {
+                for (int r = 0; r < tc.getChildCount(); r++) {
+                    View row = tc.getChildAt(r);
+                    TranslateAnimation a = new TranslateAnimation(-width, 0, 0, 0);
+                    a.setDuration(300); a.setStartOffset(base + disp * 60);
+                    a.setInterpolator(new DecelerateInterpolator()); a.setFillAfter(true);
+                    row.startAnimation(a); disp++;
+                }
+            }
+        }
+        return disp;
+    }
+
+    private void slideToTheme() {
+        if (mAnimating) return;
+        mAnimating = true;
+        // 绑定页可能是首次出现（未测量），用磁贴页宽/屏幕宽作为动画宽度
+        int width = mPageTiles != null ? mPageTiles.getWidth() : 0;
+        if (width <= 0) width = getResources().getDisplayMetrics().widthPixels;
+        if (width <= 0) { mAnimating = false; enterMain(); return; }
+
+        final ViewGroup themeGroup = (ViewGroup) mPageTheme;
+        themeGroup.setVisibility(View.VISIBLE);
+        themeGroup.bringToFront();
+        // 判断要隐藏的上一页（绑定页或磁贴页）
+        final ViewGroup prevPage = (mPageBinding != null && mPageBinding.getVisibility() == View.VISIBLE)
+                ? (ViewGroup) mPageBinding : (ViewGroup) mPageTiles;
+        mPrevPage = prevPage;
+
+        // 上一页向左逐行/逐块滑出，先让长标题走掉，主题页随后从右滑入（避免两标题在中间相撞）
+        int prevUnits = animatePageLeftOut(prevPage, width, 0);
+        final int baseDelay = prevUnits * 60 + 120;
+
+        final int childCount = themeGroup.getChildCount();
+        int lastIdx = childCount - 1;
+        for (int i = 0; i < childCount; i++) {
+            View child = themeGroup.getChildAt(i);
+            TranslateAnimation a = new TranslateAnimation(width, 0, 0, 0);
+            a.setDuration(420);
+            a.setStartOffset(baseDelay + i * 80);
+            a.setInterpolator(new DecelerateInterpolator());
+            a.setFillAfter(true);
+            if (i == lastIdx) {
+                a.setAnimationListener(new Animation.AnimationListener() {
+                    @Override public void onAnimationStart(Animation animation) {}
+                    @Override public void onAnimationEnd(Animation animation) {
+                        mAnimating = false;
+                        mOnPage2 = false;
+                        mOnPage3 = false;
+                        mOnTheme = true;
+                        if (prevPage != null) prevPage.setVisibility(View.GONE);
+                        clearChildAnimations(themeGroup);
+                        if (prevPage != null) clearChildAnimations(prevPage);
+                    }
+                    @Override public void onAnimationRepeat(Animation animation) {}
+                });
+            }
+            child.startAnimation(a);
+        }
+    }
+
+    /** 主题选择页按 BACK：主题页向右滑出、上一页从左滑入 —— 同时进行（slideToTheme 的逆动画）。 */
+    private void slideBackFromTheme() {
+        if (mAnimating) return;
+        int width = mPageTiles != null ? mPageTiles.getWidth() : 0;
+        if (width <= 0) width = getResources().getDisplayMetrics().widthPixels;
+        if (width <= 0) { mOnTheme = false; super.onBackPressed(); return; }
+
+        mAnimating = true;
+        final ViewGroup themeGroup = (ViewGroup) mPageTheme;
+        final ViewGroup prev = mPrevPage;
+        if (prev != null) prev.setVisibility(View.VISIBLE); // 上一页（下方）
+        final int childCount = themeGroup.getChildCount();
+        int lastIdx = childCount - 1;
+        final ViewGroup finalPrev = prev;
+        final int baseDelay = childCount * 60 + 120; // 主题页先滑走，上一页随后从左滑入
+        for (int i = 0; i < childCount; i++) {
+            View child = themeGroup.getChildAt(i);
+            TranslateAnimation a = new TranslateAnimation(0, width, 0, 0);
+            a.setDuration(350);
+            a.setStartOffset(i * 60);
+            a.setInterpolator(new AccelerateInterpolator());
+            a.setFillAfter(true);
+            if (i == lastIdx) {
+                a.setAnimationListener(new Animation.AnimationListener() {
+                    @Override public void onAnimationStart(Animation animation) {}
+                    @Override public void onAnimationEnd(Animation animation) {
+                        mAnimating = false;
+                        mOnTheme = false;
+                        themeGroup.setVisibility(View.GONE);
+                        clearChildAnimations(themeGroup);
+                        if (finalPrev != null) clearChildAnimations(finalPrev);
+                        restorePrevPage(finalPrev);
+                    }
+                    @Override public void onAnimationRepeat(Animation animation) {}
+                });
+            }
+            child.startAnimation(a);
+        }
+        animatePageLeftIn(prev, width, baseDelay);
+    }
+
+    /** 恢复返回后所在页的页态与按钮可用性。 */
+    private void restorePrevPage(ViewGroup prev) {
+        if (prev == mPageTiles) {
+            mOnPage2 = true;
+            mOnPage3 = false;
+            findViewById(R.id.btn_start).setEnabled(true);
+            findViewById(R.id.btn_next).setEnabled(false);
+        } else if (prev == mPageBinding) {
+            mOnPage3 = true;
+            mOnPage2 = false;
+            findViewById(R.id.btn_yes).setEnabled(true);
+            findViewById(R.id.btn_no).setEnabled(true);
+            findViewById(R.id.btn_exit).setEnabled(true);
+        } else { // 默认回到磁贴页
+            mOnPage2 = true;
+            mOnPage3 = false;
+            findViewById(R.id.btn_start).setEnabled(true);
+            findViewById(R.id.btn_next).setEnabled(false);
         }
     }
 
@@ -351,7 +578,7 @@ public class SetupActivity extends BaseActivity {
         int rowBase = tileContainer.getChildCount() * 60 + 80;
 
         // 磁贴页标题、按钮向左滑出（分割线、ScrollView 不动）
-        int[] skipIdx = {1, 2};
+        int[] skipIdx = {1};
         int tileIdx = 0;
         for (int i = 0; i < tilesGroup.getChildCount(); i++) {
             if (contains(skipIdx, i)) continue;
@@ -471,7 +698,7 @@ public class SetupActivity extends BaseActivity {
         int rowBase = bindIdx * 60 + 80;
 
         // 磁贴页标题、按钮从左滑入（分割线不动，磁贴容器单独处理）
-        int[] skipIdx = {1, 2};
+        int[] skipIdx = {1};
         int tileIdx = 0;
         for (int i = 0; i < tilesGroup.getChildCount(); i++) {
             if (contains(skipIdx, i)) continue;
@@ -570,17 +797,12 @@ public class SetupActivity extends BaseActivity {
     }
 
     private void finishBinding() {
-        SharedPreferencesUtil.putBoolean("setup_shown", true);
-        try {
-            int versionCode = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
-            SharedPreferencesUtil.putInt("last_version_code", versionCode);
-        } catch (Exception e) {
-        }
         if (mAnimating) {
-            enterMain();
+            mAnimating = false;
+            slideToTheme();
             return;
         }
-        // 与磁贴页"开始使用"完成时一致：整页向下滑出后再进主界面
+        // 与磁贴页"开始使用"完成时一致：整页向下滑出后再进入主题选择
         mAnimating = true;
         final int h = mPageBinding != null ? mPageBinding.getHeight() : 0;
         if (h > 0) {
@@ -594,7 +816,8 @@ public class SetupActivity extends BaseActivity {
                 }
                 @Override
                 public void onAnimationEnd(Animation animation) {
-                    enterMain();
+                    mAnimating = false; // 关键：复位后再进主题页，否则 slideToTheme 会直接返回不播放
+                    slideToTheme();
                 }
                 @Override
                 public void onAnimationRepeat(Animation animation) {
@@ -602,7 +825,8 @@ public class SetupActivity extends BaseActivity {
             });
             mPageBinding.startAnimation(exit);
         } else {
-            enterMain();
+            mAnimating = false;
+            slideToTheme();
         }
     }
 
@@ -695,6 +919,10 @@ public class SetupActivity extends BaseActivity {
     @Override
     public void onBackPressed() {
         if (mAnimating) return;
+        if (mOnTheme) {
+            slideBackFromTheme();
+            return;
+        }
         if (mOnPage3) {
             // 录制中按 BACK：退出向导（dispatchKeyEvent 已处理，但还是保留XD）
             if (mRecording) {
@@ -957,7 +1185,7 @@ public class SetupActivity extends BaseActivity {
         final ViewGroup tilesGroup = (ViewGroup) mPageTiles;
 
         // 第1页各元素向左滑出，逐行延迟（分割线不动）
-        int[] outDurs = {500, 0, 380, 320};
+        int[] outDurs = {500, 420, 380, 320};
         for (int i = 0; i < welcomeGroup.getChildCount() && i < outDurs.length; i++) {
             if (outDurs[i] == 0) continue;
             View child = welcomeGroup.getChildAt(i);
@@ -972,7 +1200,7 @@ public class SetupActivity extends BaseActivity {
         int baseDelay = welcomeGroup.getChildCount() * 80 + 120;
 
         // 第2页标题、按钮滑入（分割线不动，磁贴容器单独处理）
-        int[] skipIdx = {1, 2};
+        int[] skipIdx = {1};
         int tileIdx = 0;
         for (int i = 0; i < tilesGroup.getChildCount(); i++) {
             if (contains(skipIdx, i)) continue;
@@ -1075,7 +1303,7 @@ public class SetupActivity extends BaseActivity {
         mPendingChangelog = null;
         mPendingChangelogFailed = false;
         if (changelog == null) {
-            TextView errorText = new TextView(SetupActivity.this);
+            TextView errorText = new TextView(MetroSetupActivity.this);
             errorText.setText("\u83B7\u53D6\u66F4\u65B0\u65E5\u5FD7\u5931\u8D25");
             errorText.setTextColor(0xFF999999);
             errorText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,
@@ -1093,12 +1321,12 @@ public class SetupActivity extends BaseActivity {
         for (int i = 0; i < changelog.length(); i++) {
             String line = changelog.optString(i, "");
             if (line.length() == 0) {
-                View spacer = new View(SetupActivity.this);
+                View spacer = new View(MetroSetupActivity.this);
                 spacer.setLayoutParams(new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(12)));
                 container.addView(spacer);
             } else if (line.startsWith("-")) {
-                TextView tv = new TextView(SetupActivity.this);
+                TextView tv = new TextView(MetroSetupActivity.this);
                 tv.setText(line);
                 tv.setTextColor(textColor);
                 tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,
@@ -1109,7 +1337,7 @@ public class SetupActivity extends BaseActivity {
                         LinearLayout.LayoutParams.WRAP_CONTENT));
                 container.addView(tv);
             } else {
-                TextView tv = new TextView(SetupActivity.this);
+                TextView tv = new TextView(MetroSetupActivity.this);
                 tv.setText(line);
                 tv.setTextColor(pinkColor);
                 tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,
@@ -1221,7 +1449,7 @@ public class SetupActivity extends BaseActivity {
         int rowBase = tileContainer.getChildCount() * 60 + 80;
 
         // 第2页标题、按钮滑出（分割线不动）
-        int[] skipIdx = {1, 2};
+        int[] skipIdx = {1};
         int tileIdx = 0;
         for (int i = 0; i < tilesGroup.getChildCount(); i++) {
             if (contains(skipIdx, i)) continue;
@@ -1238,7 +1466,7 @@ public class SetupActivity extends BaseActivity {
         int baseDelay = rowBase + tileIdx * 60 + 80;
 
         // 第1页各元素从左滑入（分割线不动）
-        int[] inDurs = {450, 0, 350, 300};
+        int[] inDurs = {450, 400, 350, 300};
         for (int i = 0; i < welcomeGroup.getChildCount() && i < inDurs.length; i++) {
             if (inDurs[i] == 0) continue;
             View child = welcomeGroup.getChildAt(i);

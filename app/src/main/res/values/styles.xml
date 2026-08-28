@@ -12,7 +12,18 @@
         <item name="android:tabStripEnabled">true</item>
     </style>
 
+    <style name="AppThemeNight" parent="@style/AppTheme">
+        <item name="android:windowBackground">@drawable/bili_texture_background_night</item>
+    </style>
+
     <style name="PlayerTheme" parent="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+    </style>
+
+    <!-- 弹窗自包含主题：API 1-10 使用。API 1 上直接用 Activity 的 context 建对话框会继承
+         Activity 深色主题的白字，渲染成白底白字。这里用 ContextThemeWrapper 强制套 Theme.Dialog，
+         得到经典浅底深字弹窗（含 EditText 也是浅底深字），保证可读。对应 2012rs 的做法。 -->
+    <style name="AppDialog" parent="@android:style/Theme.Dialog">
+        <item name="android:alertDialogTheme">@style/AppDialog</item>
     </style>
 
 

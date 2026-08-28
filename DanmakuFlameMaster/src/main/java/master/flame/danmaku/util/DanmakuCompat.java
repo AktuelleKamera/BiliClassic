@@ -10,7 +10,7 @@ import android.view.View;
  * Dalvik/ART 按类懒验证：只有类真正被加载/验证时，其方法体内引用的高版本 API 才会被检查。
  * 因此把调用高版本 API 的方法拆到带版本后缀的独立类，主类按 SDK_INT 判断只在对应版本
  * 加载调用：
- *  - 低版本设备永不加载这些类 → 不触发 VerifyError（VFY 安全，Android 1.5 可用）
+ *  - 低版本设备永不加载这些类 → 不触发 VerifyError
  *  - 高版本设备加载后是普通静态直接调用 → 无反射开销（不卡顿）
  */
 public final class DanmakuCompat {

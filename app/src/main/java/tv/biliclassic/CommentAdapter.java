@@ -210,7 +210,7 @@ public class CommentAdapter extends BaseAdapter {
                                     if (itemMid == mMid && mMid != 0) {
                                         final long oid = h.oid;
                                         final long rpid = h.rpid;
-                                        AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(context));
+                                        AlertDialog.Builder builder = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(context)));
                                         builder.setItems(new String[]{"复制评论", "删除评论"}, new DialogInterface.OnClickListener() {
                                             @Override
                                             public void onClick(DialogInterface dialog, int which) {
@@ -227,7 +227,7 @@ public class CommentAdapter extends BaseAdapter {
                                     }
                                 }
                             };
-                            mainHandler.postDelayed(h.longPressRunnable, ViewConfiguration.getLongPressTimeout());
+                            mainHandler.postDelayed(h.longPressRunnable, android.support.v4.view.ViewConfigHelper.getStaticInt("getLongPressTimeout", 500));
                             break;
                         case MotionEvent.ACTION_UP:
                         case MotionEvent.ACTION_CANCEL:

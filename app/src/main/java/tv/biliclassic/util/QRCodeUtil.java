@@ -58,6 +58,7 @@ public class QRCodeUtil {
         }
 
         try {
+
             Qrcode qrcode = new Qrcode();
             qrcode.setQrcodeErrorCorrect('L');
             qrcode.setQrcodeEncodeMode('B');

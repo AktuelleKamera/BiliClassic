@@ -361,7 +361,7 @@ public class NewAnimeFragment extends Fragment {
 
     private void showNoNetwork() {
         if (getActivity() == null) return;
-        getActivity().runOnUiThread(new Runnable() {
+        runUi(new Runnable() {
             @Override
             public void run() {
                 hideAllLoading();
@@ -390,7 +390,7 @@ public class NewAnimeFragment extends Fragment {
 
     private void showLoadError() {
         if (getActivity() == null) return;
-        getActivity().runOnUiThread(new Runnable() {
+        runUi(new Runnable() {
             @Override
             public void run() {
                 hideAllLoading();
@@ -597,7 +597,7 @@ public class NewAnimeFragment extends Fragment {
                 // 避免默认小图(220x165)放大绘制 + 逐张异步回填造成的重渲染冻结
                 preloadCoverCache(cachedItems);
                 if (getActivity() == null || isDestroyed) return;
-                getActivity().runOnUiThread(new Runnable() {
+                runUi(new Runnable() {
                     @Override
                     public void run() {
                         if (isDestroyed) return;
@@ -647,7 +647,7 @@ public class NewAnimeFragment extends Fragment {
             final String jsonStr = NetWorkUtil.get(url);
             if (jsonStr == null || jsonStr.length() == 0) {
                 if (getActivity() == null || isDestroyed) return;
-                getActivity().runOnUiThread(new Runnable() {
+                runUi(new Runnable() {
                     @Override
                     public void run() {
                         showLoadError();
@@ -669,7 +669,7 @@ public class NewAnimeFragment extends Fragment {
             final List<AnimeItem> items = parseAnimeJson(jsonStr);
 
             if (getActivity() != null && !isDestroyed) {
-                getActivity().runOnUiThread(new Runnable() {
+                runUi(new Runnable() {
                     @Override
                     public void run() {
                         if (isDestroyed) return;
@@ -688,7 +688,7 @@ public class NewAnimeFragment extends Fragment {
             e.printStackTrace();
             if (getActivity() == null || isDestroyed) return;
             if (!isNetworkAvailable()) {
-                getActivity().runOnUiThread(new Runnable() {
+                runUi(new Runnable() {
                     @Override
                     public void run() {
                         List<AnimeItem> cached = loadLocalCache();
@@ -701,14 +701,14 @@ public class NewAnimeFragment extends Fragment {
                 });
             } else if (retryCount < MAX_RETRY) {
                 retryCount++;
-                getActivity().runOnUiThread(new Runnable() {
+                runUi(new Runnable() {
                     @Override
                     public void run() {
                         doLoadAnimeData();
                     }
                 });
             } else {
-                getActivity().runOnUiThread(new Runnable() {
+                runUi(new Runnable() {
                     @Override
                     public void run() {
                         showLoadError();
@@ -1337,7 +1337,7 @@ public class NewAnimeFragment extends Fragment {
         if (pendingBitmapSets.isEmpty()) return;
         final ArrayList<Runnable> pending = new ArrayList<Runnable>(pendingBitmapSets);
         pendingBitmapSets.clear();
-        // 分批应用（每帧最多 2 张），避免停下瞬间一次性 setImageBitmap 全部封面造成整帧卡顿
+        // 分批应用（每帧最多 2 张）
         final int[] idx = {0};
         final Runnable drain = new Runnable() {
             @Override
@@ -1777,4 +1777,11 @@ public class NewAnimeFragment extends Fragment {
             return items.get(idx);
         }
     }
+
+    /** UI 线程安全执行：单次读取 getActivity()，避免后台线程两次调用间被置空导致 NPE */
+    private void runUi(java.lang.Runnable r) {
+        android.support.v4.app.FragmentActivity a = getActivity();
+        if (a != null) a.runOnUiThread(r);
+    }
+
 }

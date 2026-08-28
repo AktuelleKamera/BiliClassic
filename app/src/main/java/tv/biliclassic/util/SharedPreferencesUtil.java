@@ -48,6 +48,7 @@ public class SharedPreferencesUtil {
     public static final String NO_VIP_COLOR = "no_vip_color";
     public static final String NO_MEDAL = "no_medal";
     public static final String REPLY_MARQUEE_NAME = "reply_marquee_name";
+    public static final String NIGHT_MODE = "night_mode";
 
     public static final String cookies = "cookies";
     public static final String mid = "mid";
@@ -75,6 +76,7 @@ public class SharedPreferencesUtil {
     public static final String PRIVACY_MODE = "privacy_mode";
     public static final String INCOGNITO_MODE = "incognito_mode";
     public static final String ENABLE_GESTURE = "player_enable_gesture";
+    public static final String COMMENT_SWIPE_ENABLE = "player_comment_swipe";
     public static final String DOWNLOAD_FORMAT = "download_format"; // "mp4" 或 "original"
     public static final String DIALOG_STYLE = "dialog_style";
     public static final String PLAY_STREAM_FORMAT = "play_stream_format"; // 1=MP4, 16=DASH
@@ -108,10 +110,16 @@ public class SharedPreferencesUtil {
                 }
                 sharedPreferences = internal;
             } else {
-                // 内部存储无法写入（如 /data 分区满），退回 SD 卡
-                Log.w(TAG, "内部存储不可写，偏好设置退回 SD 卡");
+                // 内部存储无法写入（如 /data 分区满），尝试退回 SD 卡
+                Log.w(TAG, "内部存储不可写，尝试 SD 卡回退");
                 SharedPreferences sd = createSdPreferences();
-                sharedPreferences = (sd != null) ? sd : internal;
+                if (sd != null && probeWritable(sd)) {
+                    sharedPreferences = sd;
+                } else {
+                    // SD 也不可用：退回内部存储尽力而为（偏好设置可能无法持久化，但不再刷 SD 错误）
+                    Log.w(TAG, "SD 卡回退不可用，继续使用内部存储（偏好设置可能无法持久化）");
+                    sharedPreferences = internal;
+                }
             }
         }
     }
@@ -130,6 +138,12 @@ public class SharedPreferencesUtil {
 
     private static SharedPreferences createSdPreferences() {
         try {
+            // 先确认 SD 卡确实可写，避免在不支持外部存储的设备上无谓地抛 FileNotFoundException
+            String state = Environment.getExternalStorageState();
+            if (!Environment.MEDIA_MOUNTED.equals(state)) {
+                Log.w(TAG, "SD 卡不可用（state=" + state + "），跳过 SD 偏好设置回退");
+                return null;
+            }
             File dir = new File(Environment.getExternalStorageDirectory(), "BiliClassic");
             File f = new File(dir, "prefs.properties");
             return new SdSharedPreferences(f);

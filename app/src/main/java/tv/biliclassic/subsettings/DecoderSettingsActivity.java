@@ -59,19 +59,18 @@ public class DecoderSettingsActivity extends BaseActivity {
 
     // 按当前解码方式动态显示/隐藏设置项：
     //   - 软解(2, IJK软解/cmplayer): 全部显示
-    //   - IJK硬解(1): 隐藏"软件解码"分类(IJK软解专用项)
+    //   - IJK硬解(1): 隐藏"软件解码"分类(avcodec 层的 pictq/skip_* 仅软解有效)；
+    //     framedrop/max-fps 是 player 层选项，硬解同样生效，归入"播放控制"始终显示
     //   - 系统解码器(0): 隐藏"软件解码"与"音频输出"分类，但保留"播放控制"分类，
     //     避免整个设置页空白（禁用视频/音频对系统解码器同样适用）
     private void updateVisibilityByDecoder() {
         int decoderType = tv.biliclassic.SettingsActivity.getDecoderType();
         boolean showSwDecode = (decoderType == 2);
-        boolean showPlayCtl = true; // 系统解码器也保留：禁用视频/音频是通用控制
+        boolean showPlayCtl = true; // 全解码器保留：framedrop/max-fps/禁用视频/音频通用
         boolean showAudio = (decoderType == 1 || decoderType == 2);
 
         setVisible(R.id.category_sw_decode, showSwDecode);
         setVisible(R.id.item_pictq_size, showSwDecode);
-        setVisible(R.id.item_maxfps, showSwDecode);
-        setVisible(R.id.item_framedrop, showSwDecode);
         setVisible(R.id.item_skip_loop_filter, showSwDecode);
         setVisible(R.id.item_skip_frame, showSwDecode);
 
@@ -153,7 +152,7 @@ public class DecoderSettingsActivity extends BaseActivity {
             }
         }
 
-        new AlertDialog.Builder(DialogUtil.wrap(this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(title)
                 .setSingleChoiceItems(entries, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override

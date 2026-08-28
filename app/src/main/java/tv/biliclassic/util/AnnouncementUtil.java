@@ -207,7 +207,7 @@ public class AnnouncementUtil {
         }
 
         // 显示公告对话框
-        AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(context));
+        AlertDialog.Builder builder = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(context)));
         builder.setTitle(announcement.title);
         builder.setMessage(announcement.getDisplayContent());
 

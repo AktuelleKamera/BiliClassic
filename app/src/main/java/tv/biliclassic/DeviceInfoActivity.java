@@ -240,7 +240,7 @@ public class DeviceInfoActivity extends BaseActivity {
     private void showEvaluateDialog() {
         final String evaluateText = getEasterEggComment();
 
-        new AlertDialog.Builder(DialogUtil.wrap(this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.deviceinfoactivity_settitle_8bbe))
                 .setMessage(evaluateText + "\n\n觉得这个评价准确吗？")
                 .setPositiveButton("准确", new DialogInterface.OnClickListener() {

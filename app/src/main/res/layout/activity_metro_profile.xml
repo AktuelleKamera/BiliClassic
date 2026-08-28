@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/white"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- 页标题（大字，作为内容的一部分，无顶栏） -->
+        <TextView
+            android:id="@+id/page_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="24dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="10dp"
+            android:text="个人中心"
+            android:textSize="44sp"
+            android:textColor="#D86DA5"/>
+
+        <!-- 内容区 -->
+        <ScrollView
+            android:id="@+id/content_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:paddingLeft="24dp"
+            android:paddingTop="0dp"
+            android:paddingRight="24dp"
+            android:layout_weight="1"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="20dp">
+
+                <!-- 登录视图（未登录）：透明，中间显示二维码 -->
+                <LinearLayout
+                    android:id="@+id/login_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingTop="40dp"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/qr_image"
+                        android:layout_width="240dp"
+                        android:layout_height="240dp"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/bili_default_image_tv_with_bg"
+                        android:contentDescription="登录二维码" />
+
+                    <TextView
+                        android:id="@+id/qr_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="正在获取二维码…"
+                        android:textSize="14sp"
+                        android:textColor="#D86DA5"
+                        android:gravity="center" />
+
+                </LinearLayout>
+
+                <!-- 用户视图（已登录） -->
+                <LinearLayout
+                    android:id="@+id/user_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <!-- 头部：头像 + 大名字 + 统计 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:id="@+id/iv_avatar"
+                            android:layout_width="64dp"
+                            android:layout_height="64dp"
+                            android:scaleType="centerCrop"
+                            android:src="@drawable/bili_default_avatar"
+                            android:contentDescription="@null" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginLeft="16dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tv_user_name"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="昵称"
+                                android:textSize="32sp"
+                                android:textColor="#D86DA5"
+                                android:textStyle="bold"
+                                android:maxWidth="300dp"
+                                android:ellipsize="end"
+                                android:maxLines="1" />
+
+                            <TextView
+                                android:id="@+id/tv_user_stat"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:text="粉丝 0 · 关注 0 · LV0"
+                                android:textSize="16sp"
+                                android:textColor="#999999" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tv_user_sign"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="个性签名"
+                        android:textSize="15sp"
+                        android:textColor="#666666"
+                        android:maxLines="2"
+                        android:ellipsize="end" />
+
+                    <!-- 功能列表：大字、透明 item -->
+                    <TextView
+                        android:id="@+id/row_following"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:paddingTop="16dp"
+                        android:paddingBottom="16dp"
+                        android:text="关注的人"
+                        android:textSize="28sp"
+                        android:textColor="#D86DA5"
+                        android:textStyle="bold"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/row_favorites"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="16dp"
+                        android:paddingBottom="16dp"
+                        android:text="我的收藏"
+                        android:textSize="28sp"
+                        android:textColor="#D86DA5"
+                        android:textStyle="bold"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/row_history"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="16dp"
+                        android:paddingBottom="16dp"
+                        android:text="播放历史"
+                        android:textSize="28sp"
+                        android:textColor="#D86DA5"
+                        android:textStyle="bold"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/row_offline"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="16dp"
+                        android:paddingBottom="16dp"
+                        android:text="离线管理"
+                        android:textSize="28sp"
+                        android:textColor="#D86DA5"
+                        android:textStyle="bold"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/row_settings"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="16dp"
+                        android:paddingBottom="16dp"
+                        android:text="设置"
+                        android:textSize="28sp"
+                        android:textColor="#D86DA5"
+                        android:textStyle="bold"
+                        android:focusable="true" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </ScrollView>
+
+    </LinearLayout>
+
+</FrameLayout>

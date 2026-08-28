@@ -211,7 +211,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
     }
 
     private void showDeleteConfirm(final int position) {
-        new AlertDialog.Builder(DialogUtil.wrap(this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.favoritevideolistactivity_settitle_63d0))
                 .setMessage(getString(R.string.favoritevideolistactivity_setmessage_786e))
                 .setPositiveButton("确定", new DialogInterface.OnClickListener() {

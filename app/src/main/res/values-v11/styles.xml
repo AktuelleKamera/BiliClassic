@@ -8,4 +8,14 @@
         <item name="android:windowMinWidthMajor">0dp</item>
         <item name="android:windowMinWidthMinor">0dp</item>
     </style>
+
+    <!-- API 11+ 下 dialogContext 不会裹此主题（沿用 Activity 的 alertDialogTheme），
+         这里仍定义一份与 2012rs 对齐的深色弹窗，供需要时直接引用。 -->
+    <style name="AppDialog" parent="@android:style/Theme.Holo.Dialog">
+        <item name="android:windowBackground">@drawable/dialog_dark_bg</item>
+        <item name="android:textColor">#FFFFFFFF</item>
+        <item name="android:textColorPrimary">#FFFFFFFF</item>
+        <item name="android:textColorSecondary">#FFB2B2B2</item>
+        <item name="android:textColorHint">#FF888888</item>
+    </style>
 </resources>

@@ -114,106 +114,6 @@
 
             </LinearLayout>
 
-            <!-- 最大帧率 -->
-            <LinearLayout
-                android:id="@+id/item_maxfps"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="#FFFFFF"
-                android:padding="12dp"
-                android:clickable="true"
-                android:layout_marginTop="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/decoder_title_maxfps"
-                        android:textSize="15sp"
-                        android:textColor="#333333" />
-
-                    <TextView
-                        android:id="@+id/text_maxfps"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="13sp"
-                        android:textColor="#999999"
-                        android:layout_marginRight="8dp" />
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="@string/activity_decoder_settings_9009" />
-
-                </LinearLayout>
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="@string/decoder_summary_maxfps"
-                    android:textSize="12sp"
-                    android:textColor="#999999" />
-
-            </LinearLayout>
-
-            <!-- 丢帧策略 -->
-            <LinearLayout
-                android:id="@+id/item_framedrop"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="#FFFFFF"
-                android:padding="12dp"
-                android:clickable="true"
-                android:layout_marginTop="1dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/decoder_title_framedrop"
-                        android:textSize="15sp"
-                        android:textColor="#333333" />
-
-                    <TextView
-                        android:id="@+id/text_framedrop"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="13sp"
-                        android:textColor="#999999"
-                        android:layout_marginRight="8dp" />
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="@string/activity_decoder_settings_9009" />
-
-                </LinearLayout>
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="@string/decoder_summary_framedrop"
-                    android:textSize="12sp"
-                    android:textColor="#999999" />
-
-            </LinearLayout>
-
             <!-- 跳过循环滤波 -->
             <LinearLayout
                 android:id="@+id/item_skip_loop_filter"
@@ -332,6 +232,106 @@
                 android:textSize="15sp"
                 android:textColor="#D86DA5"
                 android:textStyle="bold" />
+
+            <!-- 最大帧率（player 层选项，硬解同样生效） -->
+            <LinearLayout
+                android:id="@+id/item_maxfps"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#FFFFFF"
+                android:padding="12dp"
+                android:clickable="true"
+                android:layout_marginTop="6dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/decoder_title_maxfps"
+                        android:textSize="15sp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:id="@+id/text_maxfps"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="13sp"
+                        android:textColor="#999999"
+                        android:layout_marginRight="8dp" />
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_menu_edit"
+                        android:contentDescription="@string/activity_decoder_settings_9009" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/decoder_summary_maxfps"
+                    android:textSize="12sp"
+                    android:textColor="#999999" />
+
+            </LinearLayout>
+
+            <!-- 丢帧策略（player 层选项，硬解同样生效） -->
+            <LinearLayout
+                android:id="@+id/item_framedrop"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#FFFFFF"
+                android:padding="12dp"
+                android:clickable="true"
+                android:layout_marginTop="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/decoder_title_framedrop"
+                        android:textSize="15sp"
+                        android:textColor="#333333" />
+
+                    <TextView
+                        android:id="@+id/text_framedrop"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="13sp"
+                        android:textColor="#999999"
+                        android:layout_marginRight="8dp" />
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_menu_edit"
+                        android:contentDescription="@string/activity_decoder_settings_9009" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/decoder_summary_framedrop"
+                    android:textSize="12sp"
+                    android:textColor="#999999" />
+
+            </LinearLayout>
 
             <!-- 禁用视频 -->
             <LinearLayout

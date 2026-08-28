@@ -14,7 +14,6 @@
 
     <!-- SetupActivity 低 DPI 适配：默认尺寸（mdpi 及以上） -->
     <dimen name="setup_title_text_size">40sp</dimen>
-    <dimen name="setup_divider_height">2dp</dimen>
     <dimen name="setup_content_text_size">18sp</dimen>
     <dimen name="setup_button_text_size">18sp</dimen>
     <dimen name="setup_button_padding">8dp</dimen>

@@ -358,7 +358,7 @@ public class UpdateUtil {
                                          String message,
                                          final String downloadUrl,
                                          boolean forceUpdate) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(context));
+        AlertDialog.Builder builder = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(context)));
         builder.setTitle(context.getString(R.string.update_dialog_title, versionName));
         builder.setMessage(message);
 
@@ -392,7 +392,7 @@ public class UpdateUtil {
         msg.append(context.getString(R.string.update_msg_latest_version, latest.latest)).append("\n");
         msg.append(latest.changelog);
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(context));
+        AlertDialog.Builder builder = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(context)));
         builder.setTitle(context.getString(R.string.update_notify_found_title));
         builder.setMessage(msg.toString());
 

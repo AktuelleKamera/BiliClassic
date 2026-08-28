@@ -399,7 +399,7 @@ public class ReplyListActivity extends BaseActivity {
                                     final String text = rootCommentMessage;
                                     if (text != null && text.length() > 0) {
                                         if (rootMid == finalMid && finalMid != 0) {
-                                            AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(ReplyListActivity.this));
+                                            AlertDialog.Builder builder = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(ReplyListActivity.this)));
                                             builder.setItems(new String[]{"复制评论", "删除评论"}, new DialogInterface.OnClickListener() {
                                                 @Override
                                                 public void onClick(DialogInterface dialog, int which) {
@@ -429,7 +429,7 @@ public class ReplyListActivity extends BaseActivity {
                                     }
                                 }
                             };
-                            mainHandler.postDelayed(mLongPressRunnable, ViewConfiguration.getLongPressTimeout());
+                            mainHandler.postDelayed(mLongPressRunnable, android.support.v4.view.ViewConfigHelper.getStaticInt("getLongPressTimeout", 500));
                             break;
                         case MotionEvent.ACTION_UP:
                         case MotionEvent.ACTION_CANCEL:
@@ -1195,18 +1195,14 @@ public class ReplyListActivity extends BaseActivity {
             public void onClick(View v) {
                 input.setText("");
                 input.requestFocus();
-                android.view.inputmethod.InputMethodManager imm =
-                        (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (imm != null) {
-                    imm.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
-                }
+                tv.biliclassic.util.SdkHelper.showSoftInput(input, 1);
             }
         });
         layout.addView(clearText, lp);
 
         final long parentRpid = reply != null ? reply.rpid : 0;
 
-        new AlertDialog.Builder(DialogUtil.wrap(this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.replylistactivity_settitle_53d1))
                 .setView(layout)
                 .setPositiveButton("发送", new DialogInterface.OnClickListener() {
@@ -1231,7 +1227,7 @@ public class ReplyListActivity extends BaseActivity {
     }
 
     private void showEmojiPicker(final EditText input) {
-        final AlertDialog.Builder builder = new AlertDialog.Builder(DialogUtil.wrap(this));
+        final AlertDialog.Builder builder = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)));
         builder.setTitle(getString(R.string.replylistactivity_settitle_9009));
 
         final android.widget.ScrollView scroll = new android.widget.ScrollView(this);

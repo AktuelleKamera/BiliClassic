@@ -126,9 +126,9 @@ public class SwipeRefreshLayout extends ViewGroup {
                 SwipeRefreshLayout.this.animateOffsetToStartPosition(SwipeRefreshLayout.this.mCurrentTargetOffsetTop + SwipeRefreshLayout.this.getPaddingTop(), SwipeRefreshLayout.this.mReturnToStartPositionListener);
             }
         };
-        this.mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
-        this.mMediumAnimationDuration = Math.max(
-                getResources().getInteger(R.integer.config_mediumAnimTime), 300);
+        android.view.ViewConfiguration vc = android.support.v4.view.ViewConfigHelper.get(context);
+        this.mTouchSlop = android.support.v4.view.ViewConfigHelper.getScaledTouchSlop(vc);
+        this.mMediumAnimationDuration = 400;
         setWillNotDraw(false);
         this.mProgressBar = new SwipeProgressBar(this);
         DisplayMetrics metrics = getResources().getDisplayMetrics();
@@ -211,7 +211,7 @@ public class SwipeRefreshLayout extends ViewGroup {
 
     private void ensureTarget() {
         if (this.mTarget == null) {
-            if (getChildCount() > 1 && !isInEditMode()) {
+            if (getChildCount() > 1) {
                 throw new IllegalStateException("SwipeRefreshLayout can host only one direct child");
             }
             this.mTarget = getChildAt(0);
@@ -247,7 +247,7 @@ public class SwipeRefreshLayout extends ViewGroup {
     @Override
     public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        if (getChildCount() > 1 && !isInEditMode()) {
+        if (getChildCount() > 1) {
             throw new IllegalStateException("SwipeRefreshLayout can host only one direct child");
         }
         if (getChildCount() > 0) {

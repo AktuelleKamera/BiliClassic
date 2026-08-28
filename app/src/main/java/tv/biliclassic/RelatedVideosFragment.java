@@ -230,7 +230,7 @@ public class RelatedVideosFragment extends Fragment {
 
                     if (getActivity() == null) return;
 
-                    getActivity().runOnUiThread(new Runnable() {
+                    runUi(new Runnable() {
                         @Override
                         public void run() {
                             mIsFavoriteUpdating = false;
@@ -247,7 +247,7 @@ public class RelatedVideosFragment extends Fragment {
                                 folderIds[i] = folder.fid;
                             }
 
-                            new AlertDialog.Builder(DialogUtil.wrap(getActivity()))
+                            new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(getActivity())))
                                     .setTitle(getString(R.string.relatedvideosfragment_settitle_9009))
                                     .setItems(folderNames, new DialogInterface.OnClickListener() {
                                         @Override
@@ -264,7 +264,7 @@ public class RelatedVideosFragment extends Fragment {
                 } catch (final Exception e) {
                     e.printStackTrace();
                     if (getActivity() == null) return;
-                    getActivity().runOnUiThread(new Runnable() {
+                    runUi(new Runnable() {
                         @Override
                         public void run() {
                             mIsFavoriteUpdating = false;
@@ -289,7 +289,7 @@ public class RelatedVideosFragment extends Fragment {
 
                     if (getActivity() == null) return;
 
-                    getActivity().runOnUiThread(new Runnable() {
+                    runUi(new Runnable() {
                         @Override
                         public void run() {
                             mIsFavoriteUpdating = false;
@@ -309,7 +309,7 @@ public class RelatedVideosFragment extends Fragment {
                 } catch (final Exception e) {
                     e.printStackTrace();
                     if (getActivity() == null) return;
-                    getActivity().runOnUiThread(new Runnable() {
+                    runUi(new Runnable() {
                         @Override
                         public void run() {
                             mIsFavoriteUpdating = false;
@@ -411,7 +411,7 @@ public class RelatedVideosFragment extends Fragment {
                 } catch (final Exception e) {
                     final String errorMsg = e.getMessage();
                     if (isAdded()) {
-                        getActivity().runOnUiThread(new Runnable() {
+                        runUi(new Runnable() {
                             @Override
                             public void run() {
                                 if (!isAdded() || getView() == null) {
@@ -474,7 +474,7 @@ public class RelatedVideosFragment extends Fragment {
 
         if (getActivity() == null) return;
 
-        getActivity().runOnUiThread(new Runnable() {
+        runUi(new Runnable() {
             @Override
             public void run() {
                 progressBar.setVisibility(View.GONE);
@@ -496,7 +496,7 @@ public class RelatedVideosFragment extends Fragment {
 
     private void showError(final String msg) {
         if (getActivity() == null) return;
-        getActivity().runOnUiThread(new Runnable() {
+        runUi(new Runnable() {
             @Override
             public void run() {
                 if (getActivity() == null) return;
@@ -510,7 +510,7 @@ public class RelatedVideosFragment extends Fragment {
 
     private void showEmptyResult(final String msg) {
         if (getActivity() == null) return;
-        getActivity().runOnUiThread(new Runnable() {
+        runUi(new Runnable() {
             @Override
             public void run() {
                 if (getActivity() == null) return;
@@ -519,5 +519,11 @@ public class RelatedVideosFragment extends Fragment {
                 emptyView.setVisibility(View.VISIBLE);
             }
         });
+    }
+    /** UI 线程安全执行：单次读取 getActivity()，避免后台线程两次调用间被置空导致 NPE */
+    private void runUi(java.lang.Runnable r) {
+        android.support.v4.app.FragmentActivity a = getActivity();
+        if (a != null) a.runOnUiThread(r);
     }
+
 }

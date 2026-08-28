@@ -20,7 +20,7 @@ public class ConvertPlayUtil {
     private static boolean sTokenLoaded;
     private static boolean sTooLarge;
 
-    /** AUTH_MASKED = "da2e0efd51c3d601f629e9e878aa5c3218419d5aeb459c6355c4f1674b3bb2de" 逐字符 XOR 0x5A，
+    /** AUTH_MASKED 逐字符 XOR 0x5A，
         避免密钥明文直接出现在 dex 字符串里（仅防随手窃取，非强加密）。 */
     private static final int[] AUTH_MASKED = {
         62,59,104,63,106,63,60,62,111,107,57,105,62,108,106,107,60,108,104,99,63,99,63,98,

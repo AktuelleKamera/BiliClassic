@@ -367,63 +367,6 @@
                 android:textSize="11sp" />
 
             <LinearLayout
-                android:id="@+id/force_tv_mode_item"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:background="#FFFFFF"
-                android:clickable="true"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="12dp">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/activity_settings_5f6d02b89271"
-                        android:textColor="#333333"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/activity_settings_4ea2688bdaa0"
-                        android:textColor="#999999"
-                        android:textSize="11sp" />
-
-                </LinearLayout>
-
-                <CheckBox
-                    android:id="@+id/checkbox_force_tv_mode"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:clickable="false"
-                    android:focusable="false"
-                    android:minHeight="0dp"
-                    android:padding="0dp" />
-
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/force_tv_mode_warning"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="12dp"
-                android:layout_marginRight="12dp"
-                android:layout_marginTop="4dp"
-                android:text="@string/activity_settings_aa627d9a1d4d"
-                android:textColor="#FF6B35"
-                android:textSize="11sp" />
-
-            <LinearLayout
                 android:id="@+id/convert_play_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -505,6 +448,100 @@
 
                 <CheckBox
                     android:id="@+id/checkbox_round_screen_center"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:minHeight="0dp"
+                    android:padding="0dp" />
+
+            </LinearLayout>
+
+            <!-- 竖屏模式（推荐流） -->
+            <LinearLayout
+                android:id="@+id/portrait_mode_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="#FFFFFF"
+                android:clickable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="竖屏模式（推荐流）"
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="推荐页变为上下滑动的单视频流，开启后重启生效"
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+                <CheckBox
+                    android:id="@+id/checkbox_portrait_mode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:minHeight="0dp"
+                    android:padding="0dp" />
+
+            </LinearLayout>
+
+            <!-- 夜间模式开关 -->
+            <LinearLayout
+                android:id="@+id/night_mode_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="#FFFFFF"
+                android:clickable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/activity_settings_night_mode"
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/activity_settings_night_mode_desc"
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+                <CheckBox
+                    android:id="@+id/checkbox_night_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
@@ -777,6 +814,80 @@
                     android:layout_gravity="center_vertical"
                     android:layout_marginRight="8dp"
                     android:text="@string/activity_settings_dbd2f1e3dc97"
+                    android:textColor="#999999"
+                    android:textSize="13sp" />
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center_vertical"
+                    android:contentDescription="@string/activity_settings_c11330b85234"
+                    android:src="@android:drawable/ic_menu_edit" />
+
+            </LinearLayout>
+
+            <!-- 主题设置：Metro / Classic -->
+            <LinearLayout
+                android:id="@+id/theme_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:background="#FFFFFF"
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/activity_settings_theme_label"
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/theme_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginRight="8dp"
+                    android:textColor="#999999"
+                    android:textSize="13sp" />
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center_vertical"
+                android:contentDescription="@string/activity_settings_c11330b85234"
+                android:src="@android:drawable/ic_menu_edit" />
+
+            </LinearLayout>
+
+            <!-- Metro 背景图片：自定义，自动拉伸铺满 -->
+            <LinearLayout
+                android:id="@+id/metro_bg_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:background="#FFFFFF"
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/activity_settings_metro_bg_label"
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/metro_bg_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginRight="8dp"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 

@@ -91,7 +91,8 @@ final class SwipeProgressBar {
                 float pct = finishProgress / 100.0f;
                 float clearRadius = (width / 2) * INTERPOLATOR.getInterpolation(pct);
                 this.mClipRect.set(cx - clearRadius, 0.0f, cx + clearRadius, height);
-                canvas.saveLayerAlpha(this.mClipRect, 0, 0);
+                canvas.save();
+                canvas.clipRect(this.mClipRect);
                 drawTriggerWhileFinishing = true;
             }
             if (iterations == 0) {

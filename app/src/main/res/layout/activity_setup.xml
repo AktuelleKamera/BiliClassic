@@ -2,77 +2,25 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root_layout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@android:color/white"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <!-- 小电视水印 -->
+    <ImageView
+        android:id="@+id/tv_watermark"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginRight="-40dp"
+        android:layout_marginBottom="-40dp"
+        android:src="@drawable/bilibili_tv"
+        android:scaleType="fitCenter"
+        android:adjustViewBounds="true"
+        android:contentDescription="@null" />
 
     <!-- Page 1: Welcome -->
-    <LinearLayout
-        android:id="@+id/page_welcome"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:visibility="visible">
-
-        <LinearLayout
-            android:id="@+id/welcome_title_row"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="@dimen/setup_page_padding">
-
-            <TextView
-                android:id="@+id/title_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/activity_setup_521d"
-                android:textSize="@dimen/setup_title_text_size"
-                android:textColor="#D86DA5" />
-
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="@dimen/setup_divider_height"
-            android:background="#D86DA5" />
-
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1">
-
-            <TextView
-                android:id="@+id/btn_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:text="@string/activity_setup_6b22"
-                android:textSize="@dimen/setup_content_text_size"
-                android:textColor="#666666" />
-
-        </FrameLayout>
-
-        <LinearLayout
-            android:id="@+id/welcome_bottom_row"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="right"
-            android:padding="@dimen/setup_page_padding"
-            android:layout_marginBottom="@dimen/setup_page_padding">
-
-            <TextView
-                android:id="@+id/btn_next"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/activity_setup_4e0b"
-                android:textSize="@dimen/setup_button_text_size"
-                android:textColor="#D86DA5"
-                android:padding="@dimen/setup_button_padding"
-                android:clickable="true"
-                android:focusable="true" />
-
-        </LinearLayout>
-
-    </LinearLayout>
 
     <!-- Page 2: Tile Selection -->
     <LinearLayout
@@ -99,10 +47,6 @@
 
         </LinearLayout>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="@dimen/setup_divider_height"
-            android:background="#D86DA5" />
 
         <ScrollView
             android:id="@+id/tile_scroll"
@@ -177,10 +121,6 @@
 
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/setup_divider_height"
-                android:background="#D86DA5" />
 
             <FrameLayout
                 android:layout_width="match_parent"
@@ -276,10 +216,6 @@
 
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/setup_divider_height"
-                android:background="#D86DA5" />
 
             <FrameLayout
                 android:layout_width="match_parent"
@@ -330,6 +266,151 @@
                 android:textSize="@dimen/setup_hint_text_size"
                 android:textColor="#999999"
                 android:layout_marginBottom="@dimen/setup_page_padding" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/page_welcome"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="visible">
+
+        <LinearLayout
+            android:id="@+id/welcome_title_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="@dimen/setup_page_padding">
+
+            <TextView
+                android:id="@+id/title_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/activity_setup_521d"
+                android:textColor="#D86DA5"
+                android:textSize="@dimen/setup_title_text_size" />
+
+        </LinearLayout>
+
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <TextView
+                android:id="@+id/btn_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/activity_setup_6b22"
+                android:textColor="#666666"
+                android:textSize="@dimen/setup_content_text_size" />
+
+        </FrameLayout>
+
+        <LinearLayout
+            android:id="@+id/welcome_bottom_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/setup_page_padding"
+            android:gravity="right"
+            android:orientation="horizontal"
+            android:padding="@dimen/setup_page_padding">
+
+            <TextView
+                android:id="@+id/btn_next"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="@dimen/setup_button_padding"
+                android:text="@string/activity_setup_4e0b"
+                android:textColor="#D86DA5"
+                android:textSize="@dimen/setup_button_text_size" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/page_theme"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/theme_title_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="@dimen/setup_page_padding">
+
+            <TextView
+                android:id="@+id/theme_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="选择主题"
+                android:textColor="#D86DA5"
+                android:textSize="@dimen/setup_title_text_size" />
+
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <TextView
+                android:id="@+id/theme_hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:text="选择你喜欢的界面风格"
+                android:textColor="#666666"
+                android:textSize="@dimen/setup_content_text_size" />
+
+        </FrameLayout>
+
+        <LinearLayout
+            android:id="@+id/theme_bottom_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:padding="@dimen/setup_page_padding"
+            android:layout_marginBottom="@dimen/setup_page_padding">
+
+            <TextView
+                android:id="@+id/btn_theme_metro"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Metro"
+                android:textColor="#FFFFFF"
+                android:textSize="@dimen/setup_button_text_size"
+                android:background="@drawable/setup_ask_yes_bg"
+                android:padding="@dimen/setup_button_padding"
+                android:layout_marginRight="@dimen/setup_page_padding"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/btn_theme_classic"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Classic"
+                android:textColor="#D86DA5"
+                android:textSize="@dimen/setup_button_text_size"
+                android:background="@drawable/setup_ask_no_bg"
+                android:padding="@dimen/setup_button_padding"
+                android:clickable="true"
+                android:focusable="true" />
 
         </LinearLayout>
 

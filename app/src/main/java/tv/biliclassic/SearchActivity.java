@@ -7,7 +7,6 @@ import android.os.Vibrator;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.EditText;
@@ -28,6 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import tv.biliclassic.api.ConfInfoApi;
+import tv.biliclassic.metro.MetroHomeActivity;
 import tv.biliclassic.api.BilibiliIDConverter;
 import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.NetWorkUtil;
@@ -196,9 +196,9 @@ public class SearchActivity extends BaseActivity {
             }
         });
 
-        searchEdit.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+        tv.biliclassic.util.SdkHelper.setOnEditorActionListener(searchEdit, new tv.biliclassic.util.SdkHelper.EditorActionHandler() {
             @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+            public boolean onEditorAction(int actionId, KeyEvent event) {
                 if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                     performSearch();
                     return true;
@@ -217,7 +217,11 @@ public class SearchActivity extends BaseActivity {
         // TV 模式：搜索框也要能聚焦
         searchEdit.setFocusable(true);
         searchEdit.setFocusableInTouchMode(true);
-        searchEdit.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+        try {
+            java.lang.reflect.Method m = searchEdit.getClass().getMethod("setImeOptions", int.class);
+            m.invoke(searchEdit, EditorInfo.IME_ACTION_SEARCH);
+        } catch (Throwable t) {
+        }
         searchEdit.setSingleLine(true);
 
         String keyword = getIntent().getStringExtra("keyword");
@@ -553,9 +557,8 @@ public class SearchActivity extends BaseActivity {
         currentKeyword = keyword;
         currentPage = 1;
 
-        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         if (getCurrentFocus() != null) {
-            imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+            tv.biliclassic.util.SdkHelper.hideSoftInputFromWindow(this, getCurrentFocus().getWindowToken(), 0);
         }
 
         showFirstLoading();

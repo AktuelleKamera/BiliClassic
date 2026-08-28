@@ -34,3 +34,7 @@
     <fields>;
     <methods>;
 }
+
+# Metro 主题：自定义 View（布局 XML android:name 按类名反射恢复）与 Fragment，
+# 混淆会把它们改成单字母类名（如 a），导致 setContentView / FragmentManager 恢复失败；整包 keep
+-keep class tv.biliclassic.metro.** { *; }

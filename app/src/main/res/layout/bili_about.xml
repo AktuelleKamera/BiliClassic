@@ -253,16 +253,29 @@
                     android:text="@string/bili_about_wcxawa" />
                 <TextView
                     style="@style/AboutTableText"
-                    android:text="@string/bili_about_skyler1n" />
+                    android:text="@string/bili_about_gunmu" />
             </TableRow>
             <TableRow>
                 <TextView
                     style="@style/AboutTableText"
+                    android:text="@string/bili_about_steven" />
+                <TextView
+                    style="@style/AboutTableText"
                     android:text="@string/bili_about_8001" />
             </TableRow>
+            <TableRow>
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_greybro" />
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_skyler1n" />
+            </TableRow>
+            <TableRow></TableRow>
         </TableLayout>
 
         <!-- 监督区域 -->
+
         <LinearLayout
             android:orientation="vertical"
             android:id="@+id/director"

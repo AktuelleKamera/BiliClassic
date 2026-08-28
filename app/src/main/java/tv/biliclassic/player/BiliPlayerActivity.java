@@ -25,7 +25,6 @@ import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStub;
@@ -216,6 +215,8 @@ public class BiliPlayerActivity extends Activity implements
 
     private int completionAction = COMPLETION_ACTION_PAUSE;
     private boolean enableGesture = true;
+    // 右边缘侧滑呼出评论区开关（可在播放选项面板关闭）
+    private boolean commentSwipeEnabled = true;
     private boolean keepBackground;
     private boolean autoRotation;
     private boolean portraitRotation;
@@ -262,6 +263,21 @@ public class BiliPlayerActivity extends Activity implements
     private static final int MAX_HARDWARE_RETRY = 5;
     private boolean mIsDragging;
 
+    // 流式播放缓冲水位看门狗：预取垫即将耗尽时主动暂停攒数据（转圈），
+    // 恢复到安全水位后续播，避免 OpenCore 因数据停滞报错退出
+    private boolean mRebuffering = false;
+    private static final int PF_PAUSE_AHEAD_BYTES = 48 * 1024;
+    private static final int PF_RESUME_AHEAD_BYTES = 320 * 1024;
+
+    private final Runnable mRebufferWatchdog = new Runnable() {
+        public void run() {
+            maybeRebuffer();
+            if (localProxy != null && isPrepared) {
+                handler.postDelayed(this, 700);
+            }
+        }
+    };
+
     private PlayerQualityManager mQualityManager;
     private String[] mQualityNames;
     private int[] mQualityValues;
@@ -302,17 +318,20 @@ public class BiliPlayerActivity extends Activity implements
     private String mLoadStep2Text;
     private boolean mUrlResolved = false;
 
-    private Object createSurfaceTextureListener() {
-        return new TextureView.SurfaceTextureListener() {
-            public void onSurfaceTextureAvailable(android.graphics.SurfaceTexture st, int width, int height) {
-                mVideoSurface = new Surface(st);
+    private PlayerCompat.SurfaceTextureCallback createSurfaceTextureListener() {
+        return new PlayerCompat.SurfaceTextureCallback() {
+            public void onSurfaceTextureAvailable(Object st, int width, int height) {
+                mVideoSurface = PlayerCompat.createSurfaceFromTexture(st);
                 surfaceReady = true;
                 if (pendingPrepare) {
                     pendingPrepare = false;
                     resolveAndPrepare();
                 } else if (mediaPlayer != null) {
                     if (isPrepared && videoWidth > 0 && videoHeight > 0) {
-                        st.setDefaultBufferSize(videoWidth, videoHeight);
+                        try {
+                            st.getClass().getMethod("setDefaultBufferSize", int.class, int.class)
+                                    .invoke(st, Integer.valueOf(videoWidth), Integer.valueOf(videoHeight));
+                        } catch (Throwable t) {}
                     }
                     try {
                         mediaPlayer.setSurface(mVideoSurface);
@@ -323,7 +342,7 @@ public class BiliPlayerActivity extends Activity implements
                 }
             }
 
-            public void onSurfaceTextureSizeChanged(android.graphics.SurfaceTexture st, int width, int height) {
+            public void onSurfaceTextureSizeChanged(Object st, int width, int height) {
                 if (mediaPlayer != null) {
                     try {
                         mediaPlayer.setSurface(mVideoSurface);
@@ -331,7 +350,7 @@ public class BiliPlayerActivity extends Activity implements
                 }
             }
 
-            public boolean onSurfaceTextureDestroyed(android.graphics.SurfaceTexture st) {
+            public boolean onSurfaceTextureDestroyed(Object st) {
                 surfaceReady = false;
                 if (mediaPlayer != null && mRendererType != RENDERER_SURFACEVIEW) {
                     if (isPrepared) {
@@ -347,7 +366,7 @@ public class BiliPlayerActivity extends Activity implements
                 return true;
             }
 
-            public void onSurfaceTextureUpdated(android.graphics.SurfaceTexture st) {}
+            public void onSurfaceTextureUpdated(Object st, int width, int height) {}
         };
     }
 
@@ -368,28 +387,16 @@ public class BiliPlayerActivity extends Activity implements
         }
         if (SdkHelper.getSdkInt() >= 19) {
             hideSystemUI();
-            getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(
-                new android.view.View.OnSystemUiVisibilityChangeListener() {
-                    public void onSystemUiVisibilityChange(int visibility) {
-                        if ((visibility & android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION) == 0) {
-                            handler.removeCallbacks(mRehideNavRunnable);
-                            handler.postDelayed(mRehideNavRunnable, 3000);
-                        }
-                    }
-                });
+            // OnSystemUiVisibilityChangeListener 是 API 11+ 接口，硬失败平台上
+            // 匿名实现会导致整类拒载，统一走 PlayerCompat 的 Proxy 实现
+            PlayerCompat.setAutoRehideSystemUiListener(
+                    getWindow().getDecorView(), handler, mRehideNavRunnable);
         }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF000000));
         // API 21+ 消费所有系统窗口插入，防止旋转后安全区/挖孔推回布局
-        if (SdkHelper.getSdkInt() >= 21) {
-            getWindow().getDecorView().setOnApplyWindowInsetsListener(
-                new android.view.View.OnApplyWindowInsetsListener() {
-                    public android.view.WindowInsets onApplyWindowInsets(
-                            android.view.View v, android.view.WindowInsets insets) {
-                        return insets.consumeSystemWindowInsets();
-                    }
-                });
-        }
+        // （WindowInsets 为 API 20+ 类，同样必须经 PlayerCompat 反射）
+        PlayerCompat.consumeSystemWindowInsets(getWindow());
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         setContentView(R.layout.bili_app_player_view_new);
@@ -565,6 +572,7 @@ public class BiliPlayerActivity extends Activity implements
             mSeekWhenPrepared = getIntent().getIntExtra("resume_position", 0);
         }
         enableGesture = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.ENABLE_GESTURE, true);
+        commentSwipeEnabled = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.COMMENT_SWIPE_ENABLE, true);
         keepBackground = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.KEEP_BACKGROUND, true);
         completionAction = SharedPreferencesUtil.getInt(SharedPreferencesUtil.COMPLETION_ACTION, COMPLETION_ACTION_PAUSE);
         autoRotation = SharedPreferencesUtil.getBoolean(
@@ -575,7 +583,7 @@ public class BiliPlayerActivity extends Activity implements
 
         if (DeviceInfoUtil.isUnsupportedCpu()) {
             if (!DeviceInfoUtil.isLegacy) {
-        new AlertDialog.Builder(DialogUtil.wrap(this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.biliplayeractivity_settitle_8bbe))
                 .setMessage("ARMv5TE 或无 VFP 的 ARMv6 设备无法使用内置播放器，请关闭\"在线播放\"后下载视频，使用第三方播放器播放。")
                 .setPositiveButton("继续尝试", null)
@@ -887,8 +895,8 @@ public class BiliPlayerActivity extends Activity implements
         }
        // TextureView
         if (mRendererType == RENDERER_TEXTUREVIEW) {
-            final TextureView tv = (TextureView) videoView;
-            if (tv.getSurfaceTexture() == null) return;
+            // TextureView 是 API 14+ 类，check-cast/getSurfaceTexture 都不能直接出现在字节码里
+            if (PlayerCompat.getSurfaceTexture(videoView) == null) return;
 
             final FrameLayout tvContainer = (FrameLayout) findViewById(R.id.video_container);
             if (tvContainer == null) return;
@@ -897,7 +905,7 @@ public class BiliPlayerActivity extends Activity implements
             final float fTranslateX = translateX;
             final float fTranslateY = translateY;
 
-            tv.post(new Runnable() {
+            videoView.post(new Runnable() {
                 @Override
                 public void run() {
                     int containerWidth = tvContainer.getWidth();
@@ -944,7 +952,7 @@ public class BiliPlayerActivity extends Activity implements
 
                     // 布局尺寸固定为基础尺寸（容器适配），避免尺寸变化触发
                     // onSurfaceTextureSizeChanged → Surface 重建 → 放大抖动
-                    FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) tv.getLayoutParams();
+                    FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) videoView.getLayoutParams();
                     if (lp == null) {
                         lp = new FrameLayout.LayoutParams(baseWidth, baseHeight);
                     }
@@ -955,7 +963,7 @@ public class BiliPlayerActivity extends Activity implements
                     lp.topMargin = 0;
                     lp.rightMargin = 0;
                     lp.bottomMargin = 0;
-                    tv.setLayoutParams(lp);
+                    videoView.setLayoutParams(lp);
 
                     // 缩放/平移走 View 变换层（不改变布局尺寸、不触发 surface 重建）
                     float userScale = fScale;
@@ -976,15 +984,14 @@ public class BiliPlayerActivity extends Activity implements
                         finalTranslateY = 0;
                     }
 
-                    // pivot 设在视图中心：缩放围绕中心，不产生位置偏移
-                    tv.setPivotX(baseWidth / 2.0f);
-                    tv.setPivotY(baseHeight / 2.0f);
-                    tv.setScaleX(userScale);
-                    tv.setScaleY(userScale);
-                    tv.setTranslationX(finalTranslateX);
-                    tv.setTranslationY(finalTranslateY);
-                    tv.setRotation(0);
-                    tv.requestLayout();
+                    // pivot 设在视图中心：缩放围绕中心，不产生位置偏移。
+                    // setPivotX/setScaleX/setTranslationX 等是 API 11+ 方法，
+                    // 经 PlayerCompat 反射调用，老平台自动跳过
+                    PlayerCompat.setViewTransform(videoView,
+                            baseWidth / 2.0f, baseHeight / 2.0f,
+                            userScale, userScale,
+                            finalTranslateX, finalTranslateY);
+                    videoView.requestLayout();
                 }
             });
             return;
@@ -1100,10 +1107,15 @@ public class BiliPlayerActivity extends Activity implements
 
         container.removeAllViews();
 
-        if (mRendererType == RENDERER_TEXTUREVIEW && SdkHelper.getSdkInt() >= 14) {
-            TextureView tv = new TextureView(this);
-            tv.setSurfaceTextureListener(
-                    (TextureView.SurfaceTextureListener) createSurfaceTextureListener());
+        // TextureView 是 API 14+ 类，new-instance 直接出现在字节码里会让
+        // 硬失败平台拒载整类，统一经 PlayerCompat 反射创建
+        View tv = null;
+        boolean useTextureView = mRendererType == RENDERER_TEXTUREVIEW && SdkHelper.getSdkInt() >= 14;
+        if (useTextureView) {
+            tv = PlayerCompat.createTextureView(this, createSurfaceTextureListener());
+            useTextureView = tv != null;
+        }
+        if (useTextureView) {
             videoView = tv;
             surfaceHolder = null;
             mVideoSurface = null;
@@ -1114,9 +1126,8 @@ public class BiliPlayerActivity extends Activity implements
             mVideoSurface = null;
             surfaceHolder = sv.getHolder();
             if (decoderType == DECODER_SYSTEM) {
-                if (SdkHelper.getSdkInt() >= 5) {
-                    sv.setZOrderMediaOverlay(true);
-                }
+                // setZOrderMediaOverlay 是 API 5+ 方法，经 PlayerCompat 反射调用
+                PlayerCompat.setZOrderMediaOverlay(sv, true);
                 surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
             }
             surfaceHolder.addCallback(this);
@@ -1496,8 +1507,8 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     private boolean handleCommentTouch(MotionEvent event) {
-        float x = event.getRawX();
-        float y = event.getRawY();
+                float x = PlayerCompat.getRawX(event);
+                float y = PlayerCompat.getRawY(event);
         final View panel = commentOverlay.findViewById(R.id.comment_panel);
 
         switch (event.getAction()) {
@@ -1523,8 +1534,9 @@ public class BiliPlayerActivity extends Activity implements
                         // 通过透明度变化实现淡出效果（使用 setAlpha 的兼容方式）
                         float progress = offset / (float) panel.getWidth();
                         int alpha = (int) (255 * (1.0f - progress * 0.6f));
+                        // View.setAlpha 是 API 11+ 方法，经 PlayerCompat 反射调用
                         if (commentScrim != null) {
-                            commentScrim.setAlpha(alpha);
+                            PlayerCompat.setAlpha(commentScrim, alpha);
                         }
                     }
                     return true;
@@ -1568,8 +1580,9 @@ public class BiliPlayerActivity extends Activity implements
                             public void onAnimationEnd(android.view.animation.Animation animation) {
                                 panel.clearAnimation();
                                 panel.layout(0, panel.getTop(), panel.getWidth(), panel.getBottom());
+                                // View.setAlpha 是 API 11+ 方法，经 PlayerCompat 反射调用
                                 if (commentScrim != null) {
-                                    commentScrim.setAlpha(255);
+                                    PlayerCompat.setAlpha(commentScrim, 255);
                                 }
                             }
                             @Override
@@ -2111,10 +2124,10 @@ public class BiliPlayerActivity extends Activity implements
                                     if (newQnVals != null) {
                                         intent.putExtra("qn_value_array", newQnVals);
                                     }
-                                    overridePendingTransition(0, 0);
+                                    PlayerCompat.overridePendingTransition(BiliPlayerActivity.this, 0, 0);
                                     finish();
                                     startActivity(intent);
-                                    overridePendingTransition(0, 0);
+                                    PlayerCompat.overridePendingTransition(BiliPlayerActivity.this, 0, 0);
                                 } else {
                                     cleanupAndRestartWithQuality();
                                 }
@@ -2214,10 +2227,10 @@ public class BiliPlayerActivity extends Activity implements
                                     intent.putExtra("part_index", newPartIndex);
                                     if (newQnStrs != null) intent.putExtra("qn_str_array", newQnStrs);
                                     if (newQnVals != null) intent.putExtra("qn_value_array", newQnVals);
-                                    overridePendingTransition(0, 0);
+                                    PlayerCompat.overridePendingTransition(BiliPlayerActivity.this, 0, 0);
                                     finish();
                                     startActivity(intent);
-                                    overridePendingTransition(0, 0);
+                                    PlayerCompat.overridePendingTransition(BiliPlayerActivity.this, 0, 0);
                                 } else {
                                     cleanupAndRestartWithQuality();
                                 }
@@ -2249,7 +2262,7 @@ public class BiliPlayerActivity extends Activity implements
         for (int i = 0; i < mCids.length; i++) {
             items[i] = (i + 1) + ". " + (mPartNames != null && i < mPartNames.length ? mPartNames[i] : "P" + (i + 1));
         }
-        new AlertDialog.Builder(DialogUtil.wrap(this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.biliplayeractivity_settitle_9009))
                 .setSingleChoiceItems(items, mCurrentPartIndex, new android.content.DialogInterface.OnClickListener() {
                     public void onClick(android.content.DialogInterface dialog, int which) {
@@ -2274,10 +2287,13 @@ public class BiliPlayerActivity extends Activity implements
             container.removeView(videoView);
         }
 
-        if (mRendererType == RENDERER_TEXTUREVIEW && SdkHelper.getSdkInt() >= 14) {
-            TextureView tv = new TextureView(this);
-            tv.setSurfaceTextureListener(
-                    (TextureView.SurfaceTextureListener) createSurfaceTextureListener());
+        View tv = null;
+        boolean useTextureView = mRendererType == RENDERER_TEXTUREVIEW && SdkHelper.getSdkInt() >= 14;
+        if (useTextureView) {
+            tv = PlayerCompat.createTextureView(this, createSurfaceTextureListener());
+            useTextureView = tv != null;
+        }
+        if (useTextureView) {
             videoView = tv;
             surfaceHolder = null;
             mVideoSurface = null;
@@ -2288,9 +2304,7 @@ public class BiliPlayerActivity extends Activity implements
             mVideoSurface = null;
             surfaceHolder = sv.getHolder();
             if (decoderType == DECODER_SYSTEM) {
-                if (SdkHelper.getSdkInt() >= 5) {
-                    sv.setZOrderMediaOverlay(true);
-                }
+                PlayerCompat.setZOrderMediaOverlay(sv, true);
                 surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
             }
             surfaceHolder.addCallback(this);
@@ -2500,7 +2514,18 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         if (decoderType == DECODER_SYSTEM) {
-            AndroidMediaPlayer androidPlayer = new AndroidMediaPlayer();
+            AndroidMediaPlayer androidPlayer;
+            try {
+                androidPlayer = new AndroidMediaPlayer();
+            } catch (Throwable t) {
+                // 老平台上 ijk 的 Java 包装类可能未通过安装期 dexopt 验证，
+                // 首次实例化时抛 VerifyError；此处无更多回退手段，只能报错退出
+                android.util.Log.w("BiliPlayer", "系统播放器初始化失败: " + t);
+                Toast.makeText(this, "系统播放器初始化失败", Toast.LENGTH_LONG).show();
+                showLoadingFailed();
+                finish();
+                return;
+            }
             mediaPlayer = androidPlayer;
 
             try {
@@ -2566,8 +2591,19 @@ public class BiliPlayerActivity extends Activity implements
             return;
         }
 
-        IjkMediaPlayer ijkPlayer = new IjkMediaPlayer();
-        IjkMediaPlayer.native_setLogLevel(IjkMediaPlayer.IJK_LOG_SILENT);
+        IjkMediaPlayer ijkPlayer;
+        try {
+            ijkPlayer = new IjkMediaPlayer();
+            IjkMediaPlayer.native_setLogLevel(IjkMediaPlayer.IJK_LOG_SILENT);
+        } catch (Throwable t) {
+            // tryLoadIjkLibrary 只覆盖 native 库加载；ijk 的 Java 类在老平台
+            // （2.1 及以下硬失败校验）可能未通过 dexopt 验证，实例化时抛 VerifyError。
+            // 捕获后降级系统解码器并重走一遍准备流程（decoderType 已是 SYSTEM，不会死循环）
+            android.util.Log.w("BiliPlayer", "IJK 初始化失败，回退到系统播放器: " + t);
+            decoderType = DECODER_SYSTEM;
+            preparePlayer();
+            return;
+        }
         mediaPlayer = ijkPlayer;
 
         boolean enableHardware = (decoderType == DECODER_IJK_HARD);
@@ -2578,6 +2614,12 @@ public class BiliPlayerActivity extends Activity implements
             ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-auto-rotate", 1L);
             ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-handle-resolution-change", 1L);
             ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-timeout", 10000L);
+            // legacy OMX 节点：API < 16 无 MediaCodec，novfp 老库内置的
+            // ffpipenode_android_omx_vdec 可直连厂商 OMX 组件（如高通 QCvdec）。
+            // 选择逻辑在 native 侧：API>=16 走 MediaCodec，<16 才尝试 OMX，互不干扰；
+            // 无可用 OMX 解码器时管线自动落回软解
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "omx-all-videos", 1L);
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "omx-avc", 1L);
         }
 
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "opensles",
@@ -2712,6 +2754,10 @@ public class BiliPlayerActivity extends Activity implements
         markLoadingStep2Done();
         showBuffering(false);
         hideLoadingOverlay();
+
+        // 启动缓冲水位看门狗
+        handler.removeCallbacks(mRebufferWatchdog);
+        handler.post(mRebufferWatchdog);
 
         setDisplayOnPlayer();
 
@@ -2876,6 +2922,8 @@ public class BiliPlayerActivity extends Activity implements
     @Override
     public boolean onError(IMediaPlayer mp, int what, int extra) {
         showBuffering(false);
+        mRebuffering = false;
+        handler.removeCallbacks(mRebufferWatchdog);
 
         int sdkInt = SdkHelper.getSdkInt();
 
@@ -2956,6 +3004,8 @@ public class BiliPlayerActivity extends Activity implements
 
     private void cleanupAndRestart() {
         mHardwareDecodeRetryCount = 0;
+        mRebuffering = false;
+        handler.removeCallbacks(mRebufferWatchdog);
 
         if (mediaPlayer != null && isPrepared) {
             try { mSeekWhenPrepared = (int) mediaPlayer.getCurrentPosition(); } catch (Exception e) {}
@@ -3320,6 +3370,18 @@ public class BiliPlayerActivity extends Activity implements
             });
         }
 
+        final CheckBox commentSwipeCb = (CheckBox) panel.findViewById(
+                R.id.player_options_comment_swipe);
+        if (commentSwipeCb != null) {
+            commentSwipeCb.setChecked(commentSwipeEnabled);
+            commentSwipeCb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    commentSwipeEnabled = isChecked;
+                    SharedPreferencesUtil.putBoolean(SharedPreferencesUtil.COMMENT_SWIPE_ENABLE, isChecked);
+                }
+            });
+        }
+
         if (keepBackgroundCb != null) {
             keepBackgroundCb.setChecked(keepBackground);
             keepBackgroundCb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -3384,8 +3446,8 @@ public class BiliPlayerActivity extends Activity implements
         mPlayerOptionsPannel.setAnimationStyle(R.style.Animation_SidePannel);
         mPlayerOptionsPannel.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(
                 android.graphics.Color.TRANSPARENT));
-        mPlayerOptionsPannel.setOnDismissListener(new PopupWindow.OnDismissListener() {
-            public void onDismiss() {
+        tv.biliclassic.util.SdkHelper.setOnDismissListener(mPlayerOptionsPannel, new Runnable() {
+            public void run() {
                 mPlayerOptionsPannel = null;
             }
         });
@@ -3427,7 +3489,8 @@ public class BiliPlayerActivity extends Activity implements
             java.lang.reflect.Field decorField = PopupWindow.class.getDeclaredField("mDecorView");
             decorField.setAccessible(true);
             android.view.View decor = (android.view.View) decorField.get(popup);
-            if (decor != null && decor.isAttachedToWindow()) {
+            // isAttachedToWindow 是 API 19+ 方法，经 PlayerCompat 反射调用
+            if (decor != null && PlayerCompat.isAttachedToWindow(decor)) {
                 android.view.WindowManager wm = (android.view.WindowManager) decor.getContext()
                         .getSystemService(android.content.Context.WINDOW_SERVICE);
                 wm.updateViewLayout(decor, wlp);
@@ -3439,7 +3502,8 @@ public class BiliPlayerActivity extends Activity implements
 
     private void toggleScreenOrientation() {
         int current = getRequestedOrientation();
-        if (current == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE) {
+        // REVERSE_LANDSCAPE 是 API 9+ 才识别的方向值，2.2 上会被当 unspecified，直接用横屏
+        if (SdkHelper.getSdkInt() >= 9 && current == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
         } else {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
@@ -3458,6 +3522,12 @@ public class BiliPlayerActivity extends Activity implements
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
             }
         } else {
+            if (SdkHelper.getSdkInt() < 9) {
+                // 清单里的 sensorLandscape 在 Android 2.2 及以下不生效（按 unspecified 处理），
+                // 若按当前配置判断会错误锁成竖屏，这里直接降级为固定横屏
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+                return;
+            }
             int orientation = getResources().getConfiguration().orientation;
             if (orientation == Configuration.ORIENTATION_PORTRAIT) {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
@@ -3509,7 +3579,7 @@ public class BiliPlayerActivity extends Activity implements
             msg.append("时长: ").append(duration);
         }
 
-        new AlertDialog.Builder(DialogUtil.wrap(this))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.biliplayeractivity_settitle_89c6))
                 .setMessage(msg.toString())
                 .setPositiveButton("确定", null)
@@ -3611,15 +3681,15 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     private void hideSystemUI() {
-        if (SdkHelper.getSdkInt() >= 19) {
-            getWindow().getDecorView().setSystemUiVisibility(
-                    android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    | android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    | android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    | android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
-                    | android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    | android.view.View.SYSTEM_UI_FLAG_IMMERSIVE);
-        }
+        // SYSTEM_UI_FLAG_* 是编译期内联常量，可直接参与运算；
+        // setSystemUiVisibility 是 API 11+ 方法，经 PlayerCompat 反射调用
+        PlayerCompat.setSystemUiVisibility(getWindow().getDecorView(),
+                android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                | android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | android.view.View.SYSTEM_UI_FLAG_IMMERSIVE);
     }
 
     private void updatePlayPauseButton() {
@@ -3726,6 +3796,37 @@ public class BiliPlayerActivity extends Activity implements
         }
     }
 
+    /** 流式播放缓冲水位看门狗：低水位暂停攒数据，高水位续播 */
+    private void maybeRebuffer() {
+        try {
+            if (!isPrepared || isLiveStream || mediaPlayer == null || localProxy == null) return;
+            long ahead = localProxy.getBufferedAhead();
+            if (ahead < 0) return; // 非预取模式（DASH 等）
+            boolean eof = localProxy.isPfEof();
+            if (mRebuffering) {
+                if (eof || ahead >= PF_RESUME_AHEAD_BYTES) {
+                    mRebuffering = false;
+                    showBuffering(false);
+                    try { mediaPlayer.start(); } catch (Exception e) { return; }
+                    isPlaying = true;
+                    updatePlayPauseButton();
+                    if (mDanmakuManager != null) mDanmakuManager.resume();
+                    handler.sendEmptyMessage(MSG_UPDATE_PROGRESS);
+                }
+                return;
+            }
+            if (isPlaying && !eof && ahead <= PF_PAUSE_AHEAD_BYTES) {
+                mRebuffering = true;
+                showBuffering(true);
+                try { mediaPlayer.pause(); } catch (Exception e) {}
+                isPlaying = false;
+                updatePlayPauseButton();
+                if (mDanmakuManager != null) mDanmakuManager.pause();
+            }
+        } catch (Throwable t) {
+        }
+    }
+
     private void showBuffering(boolean show) {
         if (bufferingGroup != null) {
             bufferingGroup.setVisibility(show ? View.VISIBLE : View.GONE);
@@ -3795,12 +3896,32 @@ public class BiliPlayerActivity extends Activity implements
             conn.setReadTimeout(8000);
             conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
             conn.connect();
-            is = conn.getInputStream();
+            is = new java.io.BufferedInputStream(conn.getInputStream(), 8192);
+
+            // 老设备（Android 2.x）bitmap 堆预算极小（4~16MB），大封面按原始
+            // 尺寸解码会直接 "bitmap size exceeds VM budget"。封面只用于媒体
+            // 通知小图，目标最长边 <=256px：两阶段解码计算采样率，
+            // OutOfMemoryError 时逐级加倍采样重试。
+            byte[] data = readAllBytes(is, 8 * 1024 * 1024);
+            if (data == null) return null;
+
             BitmapFactory.Options opts = new BitmapFactory.Options();
-            opts.inSampleSize = 2;
+            opts.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(data, 0, data.length, opts);
+
+            opts.inJustDecodeBounds = false;
+            opts.inSampleSize = computeCoverInSampleSize(opts, 256);
             opts.inPreferredConfig = Bitmap.Config.RGB_565;
-            return BitmapFactory.decodeStream(is, null, opts);
-        } catch (Exception e) {
+
+            while (true) {
+                try {
+                    return BitmapFactory.decodeByteArray(data, 0, data.length, opts);
+                } catch (OutOfMemoryError e) {
+                    if (opts.inSampleSize >= 32) return null;
+                    opts.inSampleSize *= 2;
+                }
+            }
+        } catch (Throwable t) {
             return null;
         } finally {
             if (is != null) { try { is.close(); } catch (Exception ignored) {} }
@@ -3808,9 +3929,37 @@ public class BiliPlayerActivity extends Activity implements
         }
     }
 
+    /** 读满整个流（带大小上限），便于两阶段解码复用同一份字节 */
+    private static byte[] readAllBytes(InputStream is, int maxLen) throws IOException {
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream(16384);
+        byte[] buf = new byte[8192];
+        int n;
+        while ((n = is.read(buf)) != -1) {
+            bos.write(buf, 0, n);
+            if (bos.size() > maxLen) {
+                throw new IOException("cover too large");
+            }
+        }
+        return bos.toByteArray();
+    }
+
+    /** 计算封面采样率：缩到最长边约等于 target 后不再加档 */
+    private static int computeCoverInSampleSize(BitmapFactory.Options opts, int target) {
+        int w = opts.outWidth;
+        int h = opts.outHeight;
+        if (w <= 0 || h <= 0) return 1;
+        int sample = 1;
+        int longest = Math.max(w, h);
+        while (longest / (sample * 2) >= target) {
+            sample *= 2;
+        }
+        return sample;
+    }
+
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (commentOverlay != null && commentOverlay.getVisibility() != View.VISIBLE) {
+        if (commentSwipeEnabled
+                && commentOverlay != null && commentOverlay.getVisibility() != View.VISIBLE) {
             int edgeThreshold = (int) (getResources().getDisplayMetrics().density * 30);
             int screenWidth = getWindow().getWindowManager().getDefaultDisplay().getWidth();
 
@@ -3872,11 +4021,11 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         if (isPrepared && !isLiveStream && mGestureController != null) {
-            if (ev.getPointerCount() >= 2) {
+            if (PlayerCompat.getPointerCount(ev) >= 2) {
                 int[] location = new int[2];
                 videoView.getLocationOnScreen(location);
-                float touchX = ev.getRawX();
-                float touchY = ev.getRawY();
+                float touchX = PlayerCompat.getRawX(ev);
+                float touchY = PlayerCompat.getRawY(ev);
                 if (touchX >= location[0] && touchX <= location[0] + videoView.getWidth() &&
                         touchY >= location[1] && touchY <= location[1] + videoView.getHeight()) {
                     mGestureController.onTouchEvent(ev);
@@ -3887,7 +4036,7 @@ public class BiliPlayerActivity extends Activity implements
 
         // 单指手势交给 GestureController（只在非评论滑动时）
         // 未准备完成（加载动画/缓冲中）禁用手势，避免小电视动画期间左右滑动进退。
-        if (mGestureController != null && isPrepared && ev.getPointerCount() == 1 && touchStartX == 0) {
+        if (mGestureController != null && isPrepared && PlayerCompat.getPointerCount(ev) == 1 && touchStartX == 0) {
             // 如果用户启用手势，恢复因边缘滑动暂时禁用的状态
             if (enableGesture && !mGestureController.isGestureEnabled()) {
                 mGestureController.setEnableGesture(true);
@@ -4025,7 +4174,7 @@ public class BiliPlayerActivity extends Activity implements
             // 控制栏有聚焦按钮时，确认键触发该按钮（高亮项点击有效），否则切换播放/暂停
             View focused = getCurrentFocus();
             if (focused != null && focused.isFocusable()
-                    && focused.isShown() && focused.hasOnClickListeners()) {
+                    && focused.isShown() && hasClickListenersCompat(focused)) {
                 focused.performClick();
                 return true;
             }
@@ -4041,10 +4190,24 @@ public class BiliPlayerActivity extends Activity implements
         return super.dispatchKeyEvent(event);
     }
 
+    /**
+     * View.hasOnClickListeners 是 API 15+ 方法，直接引用会在老平台被 verifier
+     * 补丁成运行时异常，统一走反射；API 15 以下返回 false。
+     */
+    private static boolean hasClickListenersCompat(View v) {
+        try {
+            java.lang.reflect.Method m = View.class.getMethod("hasOnClickListeners");
+            return ((Boolean) m.invoke(v)).booleanValue();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         stopLoadingAnimation();
+        handler.removeCallbacks(mRebufferWatchdog);
         if (localProxy != null) {
             localProxy.stop();
             localProxy = null;

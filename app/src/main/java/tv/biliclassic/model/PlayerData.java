@@ -32,6 +32,7 @@ public class PlayerData implements Serializable {
     public String[] qnStrList;
     public int[] qnValueList;
     public long aid;
+    public String bvid; // bvid 优先：非空时 playurl 用 bvid= 参数代替 avid=
     public long cid;
     public long mid;
     public int progress = 0;

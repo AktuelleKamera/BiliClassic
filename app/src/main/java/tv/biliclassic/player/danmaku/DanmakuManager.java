@@ -135,7 +135,14 @@ public class DanmakuManager {
         if (mUseSimpleEngine) {
             initSimpleEngine();
         } else {
-            initFullEngine();
+            try {
+                initFullEngine();
+            } catch (Throwable t) {
+                // 完整版引擎（DFM）在老平台可能因 TextureView/SurfaceTexture 等
+                // 依赖无法通过类校验/链接，降级到 BT-5 简易引擎
+                mUseSimpleEngine = true;
+                initSimpleEngine();
+            }
         }
 
         if (mCid > 0) {
@@ -449,8 +456,8 @@ public class DanmakuManager {
                 ViewGroup.LayoutParams.MATCH_PARENT, true);
         mOptionsPanel.setAnimationStyle(R.style.Animation_SidePannel);
         mOptionsPanel.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
-        mOptionsPanel.setOnDismissListener(new PopupWindow.OnDismissListener() {
-            public void onDismiss() { mOptionsPanel = null; }
+        tv.biliclassic.util.SdkHelper.setOnDismissListener(mOptionsPanel, new Runnable() {
+            public void run() { mOptionsPanel = null; }
         });
 
         View root = mActivity.getWindow().getDecorView();
@@ -924,8 +931,8 @@ public class DanmakuManager {
                 ViewGroup.LayoutParams.MATCH_PARENT, true);
         mOptionsPanel.setAnimationStyle(R.style.Animation_SidePannel);
         mOptionsPanel.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
-        mOptionsPanel.setOnDismissListener(new PopupWindow.OnDismissListener() {
-            public void onDismiss() { mOptionsPanel = null; }
+        tv.biliclassic.util.SdkHelper.setOnDismissListener(mOptionsPanel, new Runnable() {
+            public void run() { mOptionsPanel = null; }
         });
 
         View root = mActivity.getWindow().getDecorView();

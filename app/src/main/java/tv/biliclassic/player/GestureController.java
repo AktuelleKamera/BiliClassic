@@ -70,7 +70,6 @@ public class GestureController {
     private boolean mSeekBarUsesMillis = false;
 
     // 进度提示 ViewHolder：反射懒加载。
-    // 低版本系统(Android 1.5)的 verifier 可能拒绝该类的字节码(VerifyError: a/d)，
     // 若硬引用会让整个 GestureController 加载失败、手势/控制栏全部失灵，故必须反射解耦。
     private Object mToastViewHolder;
     private boolean mToastViewHolderChecked;
@@ -166,7 +165,10 @@ public class GestureController {
         mHandler = handler;
         mListener = listener;
         mProgreesFmt = activity.getString(R.string.PlayerController_toast_message_play_progress_fmt);
-        mTouchSlop = android.view.ViewConfiguration.get(activity).getScaledTouchSlop();
+        // ViewConfiguration.get(Context) 与 getScaledTouchSlop() 均为 API 3 方法，API 1 不存在；
+        // 直接引用会被 dalvik 严格校验器拒绝整类（VerifyError），改用 jar 内反射辅助类。
+        android.view.ViewConfiguration vc = android.support.v4.view.ViewConfigHelper.get(activity);
+        mTouchSlop = android.support.v4.view.ViewConfigHelper.getScaledTouchSlop(vc);
 
         mGestureView = rootView.findViewById(R.id.controller_underlay);
         // SurfaceView 硬解走硬件 overlay 时 window.screenBrightness 不生效，
@@ -453,7 +455,7 @@ public class GestureController {
         }
 
         mGestureListener = new GestureListener();
-        mGestureScanner = new GestureDetector(mActivity, mGestureListener);
+        mGestureScanner = tv.biliclassic.util.SdkHelper.newGestureDetector(mActivity, mGestureListener);
 
         mGestureView.setOnTouchListener(new View.OnTouchListener() {
             public boolean onTouch(View v, MotionEvent event) {
@@ -701,6 +703,7 @@ public class GestureController {
             mInVerticalMoving = false;
             mInGestureSeekingMode = false;
             mIsSeeking = false;
+            syncGestureDims();
             if (!enableGesture) {
                 return true;
             }
@@ -910,6 +913,25 @@ public class GestureController {
         }
     }
 
+    /**
+     * 按下时从实际触摸视图同步手势区域尺寸。
+     * setupGestureDetector 在 onCreate 时执行，老平台（2.2）此刻旋转尚未生效，
+     * DisplayMetrics/getWidth 会给到竖屏值（如 320x480），与横屏后的真实
+     * 视图尺寸（480x320）错位，导致亮度/音量分区判定漂移甚至失效。
+     */
+    private void syncGestureDims() {
+        try {
+            int w = mGestureView != null ? mGestureView.getWidth() : 0;
+            int h = mGestureView != null ? mGestureView.getHeight() : 0;
+            if (w > 0 && h > 0 && (w != mGestureWidth || h != mGestureHeight)) {
+                Log.d(TAG, "手势区域同步(实际视图): " + w + "x" + h);
+                mGestureWidth = w;
+                mGestureHeight = h;
+            }
+        } catch (Throwable t) {
+        }
+    }
+
     private void startBrightnessChange() {
         if (mLastBrightnessLevel >= 0) {
             mBrightnessLevelStart = mLastBrightnessLevel;
@@ -937,9 +959,20 @@ public class GestureController {
         // 最低 1 级：只能调到接近 0（很暗），不能全黑
         newLevel = Math.min(Math.max(newLevel, 1), max);
         float brightness = newLevel / (float) max;
-        if (mBrightnessDimView != null) {
-            // 硬解 overlay：用黑色遮罩模拟亮度（1-亮度 为遮罩不透明度）。
-            // 注意 API<9（Ostwind 目标设备）没有 View.setAlpha，必须用背景 Drawable.setAlpha（API 1）
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 8) {
+            // API 8+：窗口级 screenBrightness（真实背光）可用。
+            // 注意 SurfaceView 是穿透式硬件 overlay，黑色遮罩视图盖不住视频
+            // 画面（表现为"出条了但没用"），必须走真实亮度。
+            try {
+                if (mBrightnessDimView != null) {
+                    mBrightnessDimView.setVisibility(View.GONE);
+                }
+            } catch (Throwable t) {
+            }
+            BrightnessHelper.setBrightness(mActivity, brightness);
+        } else if (mBrightnessDimView != null) {
+            // API < 8 没有 screenBrightness：用黑色遮罩模拟（1-亮度 为遮罩不透明度），
+            // 用背景 Drawable.setAlpha（API 1），不能用 View.setAlpha
             float dimAlpha = 1.0f - brightness;
             try {
                 mBrightnessDimView.setVisibility(View.VISIBLE);
@@ -966,13 +999,19 @@ public class GestureController {
         int max = AudioManagerHelper.getStreamMaxVolume(mActivity, android.media.AudioManager.STREAM_MUSIC);
         int newVol = (int) Math.floor(mVolumeStart + (1.5f * deltaFactorY * max));
         newVol = Math.min(Math.max(newVol, 0), max);
-        AudioManagerHelper.setStreamVolume(mActivity, android.media.AudioManager.STREAM_MUSIC, newVol, 0);
+        // 先更新 UI 再调系统：个别 ROM setStreamVolume 会抛安全异常，
+        // 放在前面会连音量条都看不到，且异常被上层吞掉无从排查
         if (mVolumeBar != null) {
             mVolumeBar.setVisibility(View.VISIBLE);
         }
         if (mVolumeLevel != null) {
             mVolumeLevel.setMax(max);
             mVolumeLevel.setProgress(newVol);
+        }
+        try {
+            AudioManagerHelper.setStreamVolume(mActivity, android.media.AudioManager.STREAM_MUSIC, newVol, 0);
+        } catch (Throwable t) {
+            Log.w(TAG, "setStreamVolume failed: " + t);
         }
     }
 

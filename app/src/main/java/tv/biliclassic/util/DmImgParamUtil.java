@@ -1,7 +1,5 @@
 package tv.biliclassic.util;
 
-import android.util.Base64;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -10,6 +8,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
+/**
+ * 注意：本类会被 Android 1.5/2.1（API < 8）设备加载，
+ * 不能引用 android.util.Base64（API 8 才有），否则 dalvik 校验器
+ * 会拒绝整个类（VerifyError）。Base64 用下方纯 Java 实现。
+ */
 public class DmImgParamUtil {
 
     public static Map<String, String> getDmImgParams() {
@@ -117,7 +120,7 @@ public class DmImgParamUtil {
         int[] xyz2 = f514(width, height);
         ds.put(new JSONObject()
                 .put("t", random.nextInt(6))
-                .put("c", Base64.encodeToString((classNames[random.nextInt(classNames.length)] + " " + classNames[random.nextInt(classNames.length)]).getBytes(), Base64.DEFAULT))
+                .put("c", base64Encode((classNames[random.nextInt(classNames.length)] + " " + classNames[random.nextInt(classNames.length)]).getBytes()))
                 .put("p", new JSONArray().put(xyz1[0]).put(xyz1[2]).put(xyz1[1]))
                 .put("s", new JSONArray().put(xyz2[2]).put(xyz2[0]).put(xyz2[1])));
         result.put("ds", ds);
@@ -132,5 +135,25 @@ public class DmImgParamUtil {
         }
         Random random = new Random();
         return random.nextInt((max - min) + 1) + min;
+    }
+
+    /** RFC 4648 Base64（带填充，等价 android.util.Base64.DEFAULT），兼容 API < 8 */
+    private static final char[] BASE64_CHARS =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".toCharArray();
+
+    private static String base64Encode(byte[] data) {
+        if (data == null) return "";
+        StringBuffer sb = new StringBuffer((data.length + 2) / 3 * 4);
+        int i = 0;
+        while (i < data.length) {
+            int b0 = data[i++] & 0xFF;
+            int b1 = i < data.length ? data[i++] & 0xFF : -1;
+            int b2 = i < data.length ? data[i++] & 0xFF : -1;
+            sb.append(BASE64_CHARS[b0 >> 2]);
+            sb.append(BASE64_CHARS[((b0 & 0x03) << 4) | (b1 == -1 ? 0 : (b1 >> 4))]);
+            sb.append(b1 == -1 ? '=' : BASE64_CHARS[((b1 & 0x0F) << 2) | (b2 == -1 ? 0 : (b2 >> 6))]);
+            sb.append(b2 == -1 ? '=' : BASE64_CHARS[b2 & 0x3F]);
+        }
+        return sb.toString();
     }
 }

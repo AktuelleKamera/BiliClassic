@@ -1,55 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:background="@android:color/white"
+    android:clipChildren="false"
+    android:clipToPadding="false">
 
-    <LinearLayout
+    <!-- 两个页面叠放（都满屏），从而实现真正的"书页转门"重叠翻转 -->
+    <FrameLayout
+        android:id="@+id/page_holder"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp"
-        android:paddingTop="24dp">
+        android:layout_height="match_parent"
+        android:clipChildren="false"
+        android:clipToPadding="false">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/activity_metro_home_63a8"
-            android:textSize="36sp"
-            android:textColor="#D86DA5" />
-
-    </LinearLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="2dp"
-        android:background="#D86DA5" />
-
-    <TextView
-        android:id="@+id/tv_loading"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:text="@string/activity_metro_home_6b63"
-        android:textSize="16sp"
-        android:textColor="#999999"
-        android:gravity="center" />
-
-    <ScrollView
-        android:id="@+id/tile_scroll"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:padding="8dp"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:id="@+id/tile_container"
+        <!-- 主页（封面）：标题 + 菜单作为一个整体 -->
+        <tv.biliclassic.metro.TurnLayout
+            android:id="@+id/home_page"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:clipChildren="false"
+            android:clipToPadding="false">
 
-    </ScrollView>
+            <TextView
+                android:id="@+id/title_home"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="24dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="10dp"
+                android:text="@string/metro_home_title"
+                android:textSize="44sp"
+                android:textColor="#D86DA5"/>
 
-</LinearLayout>
+            <ScrollView
+                android:id="@+id/menu_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_marginLeft="40dp"
+                android:layout_marginRight="16dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="16dp"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/metro_menu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+            </ScrollView>
+
+        </tv.biliclassic.metro.TurnLayout>
+
+        <!-- 详情页（封底）：内容由各 Fragment 提供（含各自标题）；默认隐藏 -->
+        <tv.biliclassic.metro.TurnLayout
+            android:id="@+id/recommend_page"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:visibility="invisible">
+
+            <FrameLayout
+                android:id="@+id/metro_fragment_container"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipChildren="false"
+                android:clipToPadding="false" />
+
+        </tv.biliclassic.metro.TurnLayout>
+
+    </FrameLayout>
+
+    <!-- 右下角小电视水印（bilibili_tv） -->
+    <ImageView
+        android:id="@+id/tv_watermark"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginRight="-40dp"
+        android:layout_marginBottom="-40dp"
+        android:src="@drawable/bilibili_tv"
+        android:scaleType="fitCenter"
+        android:adjustViewBounds="true"
+        android:contentDescription="@null" />
+
+</FrameLayout>

@@ -328,7 +328,13 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
         try {
             android.os.Looper mainLooper = android.os.Looper.getMainLooper();
             if (mainLooper == null) return;
-            java.lang.Thread mainThread = mainLooper.getThread();
+            java.lang.Thread mainThread = null;
+            try {
+                java.lang.reflect.Method gt = android.os.Looper.class.getMethod("getThread");
+                mainThread = (java.lang.Thread) gt.invoke(mainLooper);
+            } catch (Throwable t) {
+                mainThread = null;
+            }
             if (mainThread == null) return;
             java.lang.StackTraceElement[] st = mainThread.getStackTrace();
             if (st == null) return;

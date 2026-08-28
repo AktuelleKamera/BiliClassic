@@ -2,7 +2,7 @@
 
 <img width="1366" height="767" alt="Android 2" src="https://github.com/user-attachments/assets/52277284-e776-496c-886d-12351b15cc00" />
 
-一个面向各种旧设备的 Bilibili 客户端，支持 Android 1.5+、Windows Mobile 6.0+、webOS 3.0。致力于还原 2013 年前后的经典界面与交互体验，让那些被遗忘在抽屉里的老设备重新获得观看 Bilibili 视频的能力。
+一个面向各种旧设备的 Bilibili 客户端，支持 Android 1.0+、Windows Mobile 6.0+、webOS 3.0。致力于还原 2013 年前后的经典界面与交互体验，让那些被遗忘在抽屉里的老设备重新获得观看 Bilibili 视频的能力。
 
 ---
 
@@ -32,8 +32,8 @@
 
 ## Android 版已实现功能
 
-- 轻量适配 Android 1.5+ 设备
-- 完美适配 Android 2.3+ 设备（带IJK播放器）
+- 轻量适配 Android 1.0+ 设备
+- 完美适配 Android 2.1+ 设备（带IJK播放器）
 - 扫码登录 / Cookie 登录 / 手动输入 Cookie
 - 视频搜索（支持 AV / BV 号快捷跳转）
 - 播放历史记录
@@ -55,11 +55,11 @@
 
 ## 技术路线
 
-- 最低支持 API 3 (Android 1.5)，目标 API 26
+- 最低支持 API 1 (Android 1.0)，目标 API 28
 - 纯 Java 6 实现，兼容古早 Dalvik 虚拟机
 - 二维码生成使用 SwetakeQRCode 魔改
 - 参考 Bilibili 官方 API 文档实现数据获取
-- 独家魔改support-v4库，支持安卓1.5
+- 独家魔改support-v4库，支持安卓1.0
 - WBI 签名算法已迫真适配
 
 ---
@@ -93,7 +93,7 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 | 特性 | Ostwind（东风） | IJK（内置播放器） |
 |------|-------------------|-------------------|
 | 播放内核 | 系统 MediaPlayer / ffmpeg | IjkMediaPlayer（ffmpeg/IJK硬解） |
-| 最低系统 | Android 1.5（API 3） | Android 2.3（API 9+） |
+| 最低系统 | Android 1.0（API 1） | Android 2.1（API 7+） |
 | 解码方式 | 软解 / 硬解可切换 | 软解 / 硬解可切换 |
 | 防盗链 | 本地代理 LocalStreamProxy 转发 Referer/Cookie | 原生自定义请求头 |
 | 弹幕 | DanmakuManager（完整 / 简易双引擎） | DanmakuManager（完整 / 简易双引擎） |
@@ -101,11 +101,11 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 | 渲染 | SurfaceView + SURFACE_TYPE_PUSH_BUFFERS | TextureView / SurfaceView |
 | 控制栏 | 风味控制栏（比例循环 / 横滑快进 / 双击暂停） | 完整控制器（手势缩放 / 清晰度 / 弹幕发送） |
 | 包体积 | 仅含 ffmpeg相关so | 含 ijkffmpeg/ijkplayer.so |
-| 推荐设备 | Android 2.3以下 | Android 2.3+ |
+| 推荐设备 | Android 2.3以下 | Android 2.1+ |
 
-**Ostwind 播放器**是本项目为 Android 2.2 及以下支持硬解的设备专门设计的在线播放器。基于系统 MediaPlayer 和 MoboPlayer，通过本地 HTTP 代理携带 B 站防盗链请求头；使用 PUSH_BUFFERS 表面规避 QComHardwareOverlayRenderer 崩溃。支持清朝B站风味控制栏、横滑快进、双击暂停、画面比例循环、弹幕与播放历史上报等功能。
+**Ostwind 播放器**是本项目为 Android 2.1 及以下支持硬解的设备专门设计的在线播放器。基于系统 MediaPlayer 和 MoboPlayer，通过本地 HTTP 代理携带 B 站防盗链请求头；使用 PUSH_BUFFERS 表面规避 QComHardwareOverlayRenderer 崩溃。支持清朝B站风味控制栏、横滑快进、双击暂停、画面比例循环、弹幕与播放历史上报等功能。
 
-**IJK 播放器**基于 ffmpeg/ffplay，支持软解与硬解切换，在 Android 2.3+ 设备上提供更完整的播放体验，包括手势缩放、清晰度切换、弹幕发送等完整控制器功能。
+**IJK 播放器**基于 ffmpeg/ffplay，支持软解与硬解切换，在 Android 2.1+ 设备上提供更完整的播放体验，包括手势缩放、清晰度切换、弹幕发送等完整控制器功能。当然，本项目也对 IJK 播放器进行了魔改，否则是不会能在 Android 2.1+ 运行的（
 
 ### (Ostwind 自行防空炮)
 <img width="610" height="458" alt="xrpaiYN" src="https://github.com/user-attachments/assets/02f6c6f1-0919-46a5-a66e-948d2c397501" />
@@ -129,7 +129,7 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 - 物理内存: 256 MB
 
 #### 最低配置
-- 系统: Android 1.5 (Donut) 及以上
+- 系统: Android 1.0 及以上
 - 处理器: ARMv5TE
 - 物理内存: 64 MB
 

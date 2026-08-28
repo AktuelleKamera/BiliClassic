@@ -27,18 +27,13 @@ import java.util.concurrent.TimeUnit;
 
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.GlobalImageCache;
+import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class HistoryAdapter extends BaseAdapter {
 
     private Context context;
     private List<VideoCard> list;
-    private ExecutorService executor;
-    private Handler mainHandler = new Handler(Looper.getMainLooper());
-
-    private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
-    private boolean isScrolling = false;
-    private final java.util.ArrayList<Runnable> pendingBitmapSets = new java.util.ArrayList<Runnable>();
 
     // 遥控器方向键选中的条目（-1 = 未选中），用于整行高亮
     private int selectedPosition = -1;
@@ -58,73 +53,13 @@ public class HistoryAdapter extends BaseAdapter {
         notifyDataSetChanged();
     }
 
-    private boolean isLowMemoryDevice() {
-        int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        return maxMemory < 24576;
-    }
-
-    private int getConfiguredThreadCount() {
-        return tv.biliclassic.util.SdkHelper.getImageLoadThreads();
-    }
-
-    private void initExecutor() {
-        if (executor != null && !executor.isShutdown()) {
-            executor.shutdownNow();
-        }
-
-        int threadCount = getConfiguredThreadCount();
-        if (threadCount <= 1) {
-            executor = Executors.newSingleThreadExecutor();
-        } else {
-            executor = new ThreadPoolExecutor(threadCount, threadCount, 60L, TimeUnit.SECONDS,
-                    new LinkedBlockingQueue<Runnable>());
-        }
-    }
-
     public HistoryAdapter(Context context, List<VideoCard> list) {
         this.context = context;
         this.list = list;
-        initExecutor();
     }
 
     public void setScrolling(boolean scrolling) {
-        this.isScrolling = scrolling;
-        if (!scrolling) {
-            flushPendingBitmapSets();
-        }
-    }
-
-    private void flushPendingBitmapSets() {
-        if (pendingBitmapSets.isEmpty()) return;
-        final java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
-        pendingBitmapSets.clear();
-        // 分批应用（每帧最多 2 张），避免停下瞬间一次性 setImageBitmap 全部封面造成整帧卡顿
-        final int[] idx = {0};
-        final Runnable drain = new Runnable() {
-            @Override
-            public void run() {
-                if (executor == null || executor.isShutdown()) {
-                    return;
-                }
-                int applied = 0;
-                while (idx[0] < pending.size() && applied < 2) {
-                    try {
-                        pending.get(idx[0]).run();
-                    } catch (Throwable t) {
-                    }
-                    idx[0]++;
-                    applied++;
-                }
-                if (idx[0] < pending.size()) {
-                    mainHandler.postDelayed(this, 16);
-                }
-            }
-        };
-        drain.run();
-    }
-
-    public void reloadExecutor() {
-        initExecutor();
+        ImageLoader.setScrolling(scrolling);
     }
 
     @Override
@@ -178,55 +113,7 @@ public class HistoryAdapter extends BaseAdapter {
         holder.upName.setText(item.upName);
         holder.progress.setText(item.view);
 
-        if (item.cover != null && item.cover.length() > 0) {
-            String coverUrl = item.cover;
-            if (coverUrl.startsWith("https://")) {
-                coverUrl = "http://" + coverUrl.substring(8);
-            }
-
-            final String finalCoverUrl = coverUrl;
-            final ImageView coverView = holder.cover;
-
-            coverView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
-            coverView.setTag(finalCoverUrl);
-
-            Bitmap cachedBitmap = GlobalImageCache.getInstance().get(finalCoverUrl);
-            if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
-                coverView.setImageBitmap(cachedBitmap);
-            } else {
-                Boolean isLoading = loadingMap.get(currentPos);
-                if (isLoading == null || !isLoading) {
-                    loadingMap.put(currentPos, true);
-                    executor.execute(new Runnable() {
-                        @Override
-                        public void run() {
-                            final Bitmap bitmap = downloadImage(finalCoverUrl);
-                            loadingMap.remove(currentPos);
-
-                            if (bitmap != null && !bitmap.isRecycled()) {
-                                GlobalImageCache.getInstance().put(finalCoverUrl, bitmap);
-                                mainHandler.post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        if (isScrolling) {
-                                            // 滚动中暂缓应用，避免每张图到达都整屏软件重绘
-                                            pendingBitmapSets.add(this);
-                                            return;
-                                        }
-                                        Object currentTag = coverView.getTag();
-                                        if (currentTag != null && currentTag.equals(finalCoverUrl)) {
-                                            coverView.setImageBitmap(bitmap);
-                                        }
-                                    }
-                                });
-                            }
-                        }
-                    });
-                }
-            }
-        } else {
-            holder.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
-        }
+        ImageLoader.bind(holder.cover, item.cover, R.drawable.bili_default_image_tv_with_bg, 76, 56);
 
         final int pos = position;
         final VideoCard clickItem = item;
@@ -242,65 +129,13 @@ public class HistoryAdapter extends BaseAdapter {
         return convertView;
     }
 
-    private Bitmap downloadImage(String urlStr) {
-        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
-        HttpURLConnection conn = null;
-        java.io.File tempFile = null;
-        try {
-            if (urlStr != null && urlStr.startsWith("https://")) {
-                urlStr = "http://" + urlStr.substring(8);
-            }
-
-            URL url = new URL(urlStr);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(10000);
-            conn.setReadTimeout(10000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.setRequestProperty("Accept-Encoding", "identity");
-            conn.connect();
-
-            tempFile = new java.io.File(context.getCacheDir(), "his_" + urlStr.hashCode() + ".tmp");
-            InputStream is = conn.getInputStream();
-            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
-            byte[] buffer = new byte[8192];
-            int len;
-            while ((len = is.read(buffer)) != -1) {
-                fos.write(buffer, 0, len);
-            }
-            is.close();
-            fos.close();
-
-            if (!tempFile.exists() || tempFile.length() == 0) return null;
-
-            // 按实际显示尺寸解码（封面 76x56dp），1:1 绘制无需软件缩放滤镜
-            float density = context.getResources().getDisplayMetrics().density;
-            return GlobalImageCache.decodeFileSafely(tempFile,
-                    (int) (76 * density + 0.5f), (int) (56 * density + 0.5f), 2);
-        } catch (OutOfMemoryError e) {
-            // 不显式 System.gc()
-            return null;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        } finally {
-            if (conn != null) {
-                try { conn.disconnect(); } catch (Exception e) {}
-            }
-            if (tempFile != null && tempFile.exists()) {
-                try { tempFile.delete(); } catch (Exception e) {}
-            }
-        }
-    }
-
     public void updateData(List<VideoCard> newList) {
         this.list = newList;
-        loadingMap.clear();
         notifyDataSetChanged();
     }
 
     public void clearCache() {
-        pendingBitmapSets.clear();
-        loadingMap.clear();
+        ImageLoader.clearCache();
     }
 
     static class ViewHolder {

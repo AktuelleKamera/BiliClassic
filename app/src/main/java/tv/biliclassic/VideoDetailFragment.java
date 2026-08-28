@@ -387,8 +387,9 @@ public class VideoDetailFragment extends Fragment {
                     final long tempCid = page.cid;
                     final int tempPage = page.page;
 
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
+                    android.support.v4.app.FragmentActivity uiAct1 = getActivity();
+        if (uiAct1 != null) {
+                        uiAct1.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
@@ -407,8 +408,9 @@ public class VideoDetailFragment extends Fragment {
                         });
                     }
                 } catch (final Exception e) {
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
+                    android.support.v4.app.FragmentActivity uiAct2 = getActivity();
+        if (uiAct2 != null) {
+                        uiAct2.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
@@ -455,8 +457,9 @@ public class VideoDetailFragment extends Fragment {
                         videoInfo = VideoInfoApi.getVideoInfo(finalBvid);
                         loadTags(finalBvid);
                     } else {
-                        if (getActivity() != null) {
-                            getActivity().runOnUiThread(new Runnable() {
+                        android.support.v4.app.FragmentActivity uiAct3 = getActivity();
+        if (uiAct3 != null) {
+                            uiAct3.runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
                                     if (!isAdded() || getActivity() == null) return;
@@ -468,8 +471,9 @@ public class VideoDetailFragment extends Fragment {
                         return;
                     }
 
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
+                    android.support.v4.app.FragmentActivity uiAct4 = getActivity();
+        if (uiAct4 != null) {
+                        uiAct4.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
@@ -478,8 +482,9 @@ public class VideoDetailFragment extends Fragment {
                         });
                     }
                 } catch (final Exception e) {
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
+                    android.support.v4.app.FragmentActivity uiAct5 = getActivity();
+        if (uiAct5 != null) {
+                        uiAct5.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
@@ -549,8 +554,9 @@ public class VideoDetailFragment extends Fragment {
                         videoInfo.cids.add(0L);
                     }
 
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
+                    android.support.v4.app.FragmentActivity uiAct6 = getActivity();
+        if (uiAct6 != null) {
+                        uiAct6.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
@@ -566,8 +572,9 @@ public class VideoDetailFragment extends Fragment {
                         });
                     }
                 } catch (final Exception e) {
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
+                    android.support.v4.app.FragmentActivity uiAct7 = getActivity();
+        if (uiAct7 != null) {
+                        uiAct7.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
@@ -593,8 +600,9 @@ public class VideoDetailFragment extends Fragment {
                         }
                         if (videoInfo != null) videoInfo.tags = tagsStr;
                     }
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
+                    android.support.v4.app.FragmentActivity uiAct8 = getActivity();
+        if (uiAct8 != null) {
+                        uiAct8.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
@@ -604,8 +612,9 @@ public class VideoDetailFragment extends Fragment {
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
+                    android.support.v4.app.FragmentActivity uiAct9 = getActivity();
+        if (uiAct9 != null) {
+                        uiAct9.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
@@ -631,8 +640,9 @@ public class VideoDetailFragment extends Fragment {
                         }
                         if (videoInfo != null) videoInfo.tags = tagsStr;
                     }
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
+                    android.support.v4.app.FragmentActivity uiAct10 = getActivity();
+        if (uiAct10 != null) {
+                        uiAct10.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
@@ -642,8 +652,9 @@ public class VideoDetailFragment extends Fragment {
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
+                    android.support.v4.app.FragmentActivity uiAct11 = getActivity();
+        if (uiAct11 != null) {
+                        uiAct11.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
@@ -849,7 +860,7 @@ public class VideoDetailFragment extends Fragment {
 
                 GlobalImageCache.getInstance().put(finalUrl, bitmap);
                 final Bitmap resultBitmap = bitmap;
-                getActivity().runOnUiThread(new Runnable() {
+                runUi(new Runnable() {
                     @Override
                     public void run() {
                         if (!isAdded() || getActivity() == null) return;
@@ -973,8 +984,9 @@ public class VideoDetailFragment extends Fragment {
                     PlayerApi.getVideo(playerData, false);
                     reconcileQuality(playerData);
                     final String videoUrl = playerData.videoUrl;
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
+                    android.support.v4.app.FragmentActivity uiAct12 = getActivity();
+        if (uiAct12 != null) {
+                        uiAct12.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
@@ -1002,12 +1014,11 @@ public class VideoDetailFragment extends Fragment {
                                             startActivity(wIntent);
                                             return;
                                         }
-                                        // 内置播放器（PLAYER_BUILTIN 且 API>=9）才直接进 BiliPlayerActivity；
+                                        // 内置播放器（PLAYER_BUILTIN）直接进 BiliPlayerActivity；
                                         // 其余（外部/系统/自动）统一走 PlayerAnimActivity 分派，
                                         // 由 PlayerAnimActivity 按播放器偏好处理在线播放（含本地代理跳外部）
                                         // PLAYER_BUILTIN == 8
-                                        boolean useBuiltin = pref == 8
-                                                && tv.biliclassic.util.SdkHelper.getSdkInt() >= 9;
+                                        boolean useBuiltin = pref == 8;
                                         if (useBuiltin) {
                                             Intent intent = new Intent(getActivity(), BiliPlayerActivity.class);
                                             intent.putExtra("video_url", videoUrl);
@@ -1067,8 +1078,9 @@ public class VideoDetailFragment extends Fragment {
                             });
                         }
                     } catch (final Exception e) {
-                        if (getActivity() != null) {
-                            getActivity().runOnUiThread(new Runnable() {
+                        android.support.v4.app.FragmentActivity uiAct13 = getActivity();
+        if (uiAct13 != null) {
+                            uiAct13.runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
                                     if (!isAdded() || getActivity() == null) return;
@@ -1096,8 +1108,9 @@ public class VideoDetailFragment extends Fragment {
                     PlayerApi.getVideo(playerData, false);
                     reconcileQuality(playerData);
                     final String videoUrl = playerData.videoUrl;
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
+                    android.support.v4.app.FragmentActivity uiAct14 = getActivity();
+        if (uiAct14 != null) {
+                        uiAct14.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
@@ -1137,8 +1150,9 @@ public class VideoDetailFragment extends Fragment {
                         });
                     }
                 } catch (final Exception e) {
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(new Runnable() {
+                    android.support.v4.app.FragmentActivity uiAct15 = getActivity();
+        if (uiAct15 != null) {
+                        uiAct15.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
@@ -1327,5 +1341,11 @@ public class VideoDetailFragment extends Fragment {
                 }
             }
         }
+    }
+    /** UI 线程安全执行：单次读取 getActivity()，避免后台线程两次调用间被置空导致 NPE */
+    private void runUi(java.lang.Runnable r) {
+        android.support.v4.app.FragmentActivity a = getActivity();
+        if (a != null) a.runOnUiThread(r);
     }
+
 }

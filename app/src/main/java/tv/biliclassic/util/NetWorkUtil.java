@@ -57,7 +57,7 @@ public class NetWorkUtil {
     private static final int CONNECT_TIMEOUT = 15000;
     private static final int READ_TIMEOUT = 15000;
     private static final int MAX_REDIRECT_COUNT = 5;
-    // 请求自动重试：网络异常/超时/空响应时重试次数（不含首次）
+    // 请求自动重试
     private static final int MAX_RETRY_COUNT = 2;
 
     // 根据当前语言设置返回 Accept-Language 值
@@ -525,7 +525,6 @@ public class NetWorkUtil {
             if (sslFactory != null) {
                 ((HttpsURLConnection) conn).setSSLSocketFactory(sslFactory);
                 ((HttpsURLConnection) conn).setHostnameVerifier(TRUST_ALL_HOSTNAMES);
-                Log.d("NetDiag", "已应用兼容SSL工厂: " + sslFactory.getClass().getName() + " for " + hostOf(url));
             } else {
                 Log.e("NetDiag", "SSL工厂为null, 将使用系统默认 for " + hostOf(url));
             }

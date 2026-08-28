@@ -46,7 +46,7 @@ public class PlayerApi {
      * DASH 响应会一次性返回所有可用画质（qn 参数对 DASH 无效），必须客户端按 id 选择：
      *  1. 目标画质存在 → 选它；不存在 → 降级到最接近且低于目标的画质；再没有 → 最低画质
      *  2. 同画质组内编码优先级 AVC > HEVC > 其他（本 app 目标设备靠软解，
-     *     AVC 性能最好；AV1 老设备基本解不动，仅作兜底）
+     *     AVC 性能最好；AV1 老设备只能赤石英雄了）
      */
     private static JSONObject selectDashVideoEntry(JSONArray video, int targetQn) throws JSONException {
         int n = video.length();
@@ -145,8 +145,12 @@ public class PlayerApi {
         boolean html5 = !download && "mtvPlayer".equals(SharedPreferencesUtil.getString("player", ""));
         android.util.Log.e("PlayerApi", "html5模式=" + html5);
 
+        // bvid 优先（推荐流卡片没有 aid，avid=0 会被 API 拒绝 -400）
+        String idParam = (playerData.bvid != null && playerData.bvid.length() > 0)
+                ? "&bvid=" + playerData.bvid
+                : "&avid=" + playerData.aid;
         String url = "https://api.bilibili.com/x/player/wbi/playurl?"
-                + "&avid=" + playerData.aid
+                + idParam
                 + "&cid=" + playerData.cid
                 + (html5 ? "&high_quality=1" : "")
                 + "&qn=" + playerData.qn
@@ -277,6 +281,47 @@ public class PlayerApi {
         }
 
         android.util.Log.e("PlayerApi", "========== getVideo 结束，videoUrl=" + playerData.videoUrl + " ==========");
+    }
+
+    /**
+     * 获取视频播放地址（强制 MP4 / fnval=1，便于内置 MediaPlayer 直接播放）。
+     * 解析 durl[0].url 填入 playerData.videoUrl。
+     */
+    public static void getVideoMp4(PlayerData playerData) throws JSONException, IOException {
+        playerData.danmakuUrl = "https://comment.bilibili.com/" + playerData.cid + ".xml";
+        // bvid 优先（推荐流卡片没有 aid，avid=0 会被 API 拒绝 -400）
+        String idParam = (playerData.bvid != null && playerData.bvid.length() > 0)
+                ? "&bvid=" + playerData.bvid
+                : "&avid=" + playerData.aid;
+        String url = "https://api.bilibili.com/x/player/wbi/playurl?"
+                + idParam
+                + "&cid=" + playerData.cid
+                + "&qn=" + playerData.qn
+                + "&fnval=1"
+                + "&fnver=0"
+                + "&platform=pc"
+                + "&voice_balance=1"
+                + "&gaia_source=pre-load"
+                + "&isGaiaAvoided=true";
+        url = ConfInfoApi.signWBI(url);
+        JSONObject body = NetWorkUtil.getJson(url, NetWorkUtil.webHeaders);
+        int code = body.optInt("code", -1);
+        if (code != 0) {
+            throw new JSONException("API错误: " + body.optString("message", "未知错误"));
+        }
+        JSONObject data = body.getJSONObject("data");
+        String videoUrl = null;
+        if (data.has("durl")) {
+            JSONArray durl = data.getJSONArray("durl");
+            if (durl.length() > 0) {
+                JSONObject videoUrlObj = durl.getJSONObject(0);
+                videoUrl = videoUrlObj.getString("url");
+            }
+        }
+        if (videoUrl == null || videoUrl.length() == 0) {
+            throw new JSONException("无法获取 MP4 视频地址");
+        }
+        playerData.videoUrl = videoUrl;
     }
 
     /**

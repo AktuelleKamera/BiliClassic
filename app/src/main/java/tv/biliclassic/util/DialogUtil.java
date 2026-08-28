@@ -19,7 +19,7 @@ public class DialogUtil {
         }
     }
 
-    /** 给 Context 裹上弹窗样式主题，用在 new AlertDialog.Builder(wrap(this)) 中 */
+    /** 给 Context 裹上弹窗样式主题，用在 new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(wrap(this))) 中 */
     public static Context wrap(Context base) {
         int val = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DIALOG_STYLE, 0);
         if (val == 1) return base; // 经典样式 = 系统默认

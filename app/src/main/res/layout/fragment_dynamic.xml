@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:background="#FCA3C5" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp">
+
+        <TextView
+            android:id="@+id/btn_send_dynamic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/dynamicfragment_btn_send"
+            android:textSize="13sp"
+            android:textColor="#FFFFFF"
+            android:background="#D86DA5"
+            android:paddingLeft="14dp"
+            android:paddingRight="14dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/btn_refresh_dynamic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/dynamicfragment_btn_refresh"
+            android:textSize="13sp"
+            android:textColor="#D86DA5"
+            android:background="@drawable/item_click_effect"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp" />
+
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/dynamic_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <android.support.v4.widget.SwipeRefreshLayout
+            android:id="@+id/swipe_refresh_dynamic"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <ListView
+                android:id="@+id/dynamic_list"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent"
+                android:divider="#E0E0E0"
+                android:dividerHeight="2px"
+                android:listSelector="@android:color/transparent"
+                android:cacheColorHint="@android:color/transparent"
+                android:fadingEdge="none"
+                android:overScrollMode="never" />
+
+        </android.support.v4.widget.SwipeRefreshLayout>
+
+        <ProgressBar
+            android:id="@+id/dynamic_progress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/dynamic_empty"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="@string/dynamicfragment_settext_6682"
+            android:textSize="14sp"
+            android:textColor="#999999"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+</LinearLayout>

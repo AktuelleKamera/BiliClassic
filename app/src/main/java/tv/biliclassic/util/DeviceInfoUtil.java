@@ -12,9 +12,12 @@ public class DeviceInfoUtil {
     }
 
     public static String getDeviceInfo() {
-        if (SdkHelper.getSdkInt() < 4) {
-            return "Android 1.5\n诶？这是什么上古设备喵？\n旧到无法获取详细设备信息的说……";
-        }
+        // 真实系统版本号（API 1 也能通过 Build.VERSION.SDK 拿到，见 SdkHelper.getSdkInt）
+        StringBuilder sb = new StringBuilder();
+        String release = getBuildField("RELEASE");
+        sb.append("Android ").append(release == null ? ("API " + SdkHelper.getSdkInt()) : release)
+                .append(" (API ").append(SdkHelper.getSdkInt()).append(")\n");
+
         // 调试日志：打印设备信息
         String manufacturer = getBuildField("MANUFACTURER");
         String device = getBuildField("DEVICE");
@@ -27,7 +30,6 @@ public class DeviceInfoUtil {
         android.util.Log.e("DeviceInfoUtil", "product = [" + product + "]");
         android.util.Log.e("DeviceInfoUtil", "cpu_abi = [" + cpu_abi + "]");
 
-        StringBuilder sb = new StringBuilder();
 
         String abi = cpu_abi;
         String model = Build.MODEL;
@@ -387,6 +389,122 @@ public class DeviceInfoUtil {
         } catch (Exception e) {
         }
         return false;
+    }
+
+    /**
+     * 是否高通（Qualcomm）/ 联发科（MediaTek）芯片组设备。
+     * 老设备 Build.HARDWARE / Build.BOARD 常是机型代号（如 HTC saga），不含芯片型号，
+     * 所以不能只靠单个 Build 字段，需联查多项 Build 字段 + 扫描 /proc/cpuinfo 全文。
+     * 用于 2.1-4.0 老设备上 IJK 硬解选项的显示条件。
+     */
+    public static boolean isQualcommOrMtk() {
+        // 组合多项 Build 字段一次性判断
+        StringBuilder sb = new StringBuilder();
+        String[] fields = {"HARDWARE", "BOARD", "DEVICE", "MANUFACTURER", "BRAND", "MODEL", "PRODUCT", "CPU_ABI"};
+        for (String f : fields) {
+            String v = getBuildField(f);
+            if (v != null) sb.append(v).append(' ');
+        }
+        String buildText = sb.toString().toLowerCase();
+        boolean buildHit = isQualcommText(buildText) || isMtkText(buildText);
+        if (buildHit) {
+            android.util.Log.e("DeviceInfoUtil", "isQualcommOrMtk: Build字段已命中, [" + buildText + "]");
+            return true;
+        }
+
+        // /proc/cpuinfo 全文扫描（覆盖 Hardware / model name / Processor / CPU implementer 等行）
+        String cpuinfo = readCpuInfo();
+        if (cpuinfo != null) {
+            String c = cpuinfo.toLowerCase();
+            boolean cpuHit = isQualcommText(c) || isMtkText(c) || isQualcommByCpuId(cpuinfo);
+            android.util.Log.e("DeviceInfoUtil", "isQualcommOrMtk: cpuinfo命中=" + cpuHit
+                    + " 关键行=[" + extractCpuChipLine(cpuinfo) + "]");
+            if (cpuHit) return true;
+        }
+
+        android.util.Log.e("DeviceInfoUtil", "isQualcommOrMtk: 未识别到高通/MTK 芯片组");
+        return false;
+    }
+
+    // 高通特征：qualcomm / snapdragon / msm / qcom / qsd / scorpion / krait
+    private static boolean isQualcommText(String s) {
+        return s.contains("qualcomm") || s.contains("snapdragon")
+                || s.contains("msm") || s.contains("qcom") || s.contains("qsd")
+                || s.contains("scorpion") || s.contains("krait");
+    }
+
+    // 最可靠信号：内核从 CPU MIDR 寄存器读出的 implementer。
+    // ARM 公版 Cortex = 0x41；高通自研 Scorpion/Krait = 0x51
+    // （MTK 用 ARM 公版 Cortex，implementer 同为 0x41，因此 MTK 只能靠名称关键字判断）。
+    private static boolean isQualcommByCpuId(String cpuinfo) {
+        if (cpuinfo == null) return false;
+        String implementer = getCpuInfoField(cpuinfo, "cpu implementer");
+        String part = getCpuInfoField(cpuinfo, "cpu part");
+        // implementer 0x51 = Qualcomm（Scorpion：part 0x02d0；Krait 家族同理）
+        if ("51".equals(implementer)) {
+            return true;
+        }
+        // 兼容部分老内核：implementer 虽报 0x41（被误判为 ARM 公版），但 part 为 0x02d0 即为 Scorpion
+        return "41".equals(implementer) && ("2d0".equals(part) || "002d0".equals(part));
+    }
+
+    // 提取 cpuinfo 中某字段的值（如 "cpu implementer : 0x51" -> "51"）
+    private static String getCpuInfoField(String cpuinfo, String fieldName) {
+        if (cpuinfo == null) return null;
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile(
+                "\\b" + java.util.regex.Pattern.quote(fieldName) + "\\s*\\:\\s*(0x[0-9A-Fa-f]+|\\d+)");
+        java.util.regex.Matcher m = p.matcher(cpuinfo.toLowerCase());
+        if (m.find()) {
+            String v = m.group(1);
+            if (v.startsWith("0x") || v.startsWith("0x")) {
+                v = v.substring(2);
+            }
+            return v.trim();
+        }
+        return null;
+    }
+
+    // 联发科特征：mediatek / mtk / mt65xx / mt66xx / mt67xx / mt81xx / mt83xx / helio
+    private static boolean isMtkText(String s) {
+        return s.contains("mediatek") || s.contains("mtk") || s.contains("helio")
+                || s.contains("mt65") || s.contains("mt66")
+                || s.contains("mt67") || s.contains("mt81") || s.contains("mt83")
+                || s.contains("mt85");
+    }
+
+    private static String readCpuInfo() {
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader("/proc/cpuinfo"));
+            try {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line).append('\n');
+                }
+                return sb.toString();
+            } finally {
+                reader.close();
+            }
+        } catch (Exception e) {
+        }
+        return null;
+    }
+
+    // 提取 cpuinfo 中与芯片相关的行（用于日志排查）
+    private static String extractCpuChipLine(String cpuinfo) {
+        if (cpuinfo == null) return "";
+        String[] lines = cpuinfo.split("\\n");
+        StringBuilder res = new StringBuilder();
+        for (String line : lines) {
+            String low = line.toLowerCase();
+            if (low.startsWith("hardware") || low.startsWith("model name")
+                    || low.startsWith("processor") || low.startsWith("features")
+                    || low.startsWith("cpu implementer") || low.startsWith("cpu part")) {
+                if (res.length() > 0) res.append(" | ");
+                res.append(line);
+            }
+        }
+        return res.length() > 300 ? res.substring(0, 300) : res.toString();
     }
 
     /**

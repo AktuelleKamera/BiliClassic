@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.Uri;
@@ -85,6 +86,11 @@ public class PlayerAnimActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // sensorLandscape 是 API 9+ 的清单值，Android 2.2 及以下不生效（按 unspecified 处理），
+        // 动态降级为固定横屏
+        if (SdkHelper.getSdkInt() < 9) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        }
         setContentView(R.layout.activity_player_anim);
 
         ivTvAnim = (ImageView) findViewById(R.id.iv_tv_anim);

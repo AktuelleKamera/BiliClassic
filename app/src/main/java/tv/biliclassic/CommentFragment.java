@@ -488,8 +488,9 @@ public class CommentFragment extends Fragment {
     private void loadComments() {
         if (aid == 0 && (bvid == null || bvid.length() == 0)) {
             Log.e(TAG, "aid 和 bvid 都无效，无法加载评论");
-            if (getActivity() != null) {
-                getActivity().runOnUiThread(new Runnable() {
+            android.support.v4.app.FragmentActivity uiAct1 = getActivity();
+        if (uiAct1 != null) {
+                uiAct1.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         emptyView.setText(getString(R.string.commentfragment_settext_65e0));
@@ -663,8 +664,9 @@ public class CommentFragment extends Fragment {
             showError("加载失败: " + e.getMessage());
         } finally {
             isLoading = false;
-            if (getActivity() != null) {
-                getActivity().runOnUiThread(new Runnable() {
+            android.support.v4.app.FragmentActivity uiAct2 = getActivity();
+        if (uiAct2 != null) {
+                uiAct2.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         progressBar.setVisibility(View.GONE);
@@ -676,7 +678,7 @@ public class CommentFragment extends Fragment {
 
     private void applyCommentList(final List<CommentItem> items) {
         if (getActivity() == null) return;
-        getActivity().runOnUiThread(new Runnable() {
+        runUi(new Runnable() {
             @Override
             public void run() {
                 commentList.clear();
@@ -1017,7 +1019,7 @@ public class CommentFragment extends Fragment {
 
         if (getActivity() == null) return;
 
-        getActivity().runOnUiThread(new Runnable() {
+        runUi(new Runnable() {
             @Override
             public void run() {
                 commentList.addAll(items);
@@ -1136,7 +1138,7 @@ public class CommentFragment extends Fragment {
         });
         layout.addView(clearText, lp);
 
-        final AlertDialog dialog = new AlertDialog.Builder(DialogUtil.wrap(getActivity()))
+        final AlertDialog dialog = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(getActivity())))
                 .setTitle(isNewComment ? "发评论" : "发送回复")
                 .setView(layout)
                 .setPositiveButton("发送", new DialogInterface.OnClickListener() {
@@ -1154,7 +1156,8 @@ public class CommentFragment extends Fragment {
                 .create();
 
         dialog.show();
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
+        android.widget.Button positiveBtn = tv.biliclassic.util.SdkHelper.getDialogButton(dialog, AlertDialog.BUTTON_POSITIVE);
+        if (positiveBtn != null) positiveBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 String text = input.getText().toString().trim();
@@ -1228,7 +1231,7 @@ public class CommentFragment extends Fragment {
     }
 
     private void showEmojiPicker(final EditText input) {
-        final android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(DialogUtil.wrap(getActivity()));
+        final android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(getActivity())));
         builder.setTitle(getString(R.string.commentfragment_settitle_9009));
 
         final android.widget.ScrollView scroll = new android.widget.ScrollView(getActivity());
@@ -1305,7 +1308,7 @@ public class CommentFragment extends Fragment {
 
     private void showError(final String msg) {
         if (getActivity() == null) return;
-        getActivity().runOnUiThread(new Runnable() {
+        runUi(new Runnable() {
             @Override
             public void run() {
                 isLoading = false;
@@ -1319,7 +1322,7 @@ public class CommentFragment extends Fragment {
 
     private void showEmpty(final String msg) {
         if (getActivity() == null) return;
-        getActivity().runOnUiThread(new Runnable() {
+        runUi(new Runnable() {
             @Override
             public void run() {
                 isLoading = false;
@@ -1332,7 +1335,7 @@ public class CommentFragment extends Fragment {
 
     private void showEnd() {
         if (getActivity() == null) return;
-        getActivity().runOnUiThread(new Runnable() {
+        runUi(new Runnable() {
             @Override
             public void run() {
                 if (footerProgressBar != null) {
@@ -1350,7 +1353,7 @@ public class CommentFragment extends Fragment {
 
     private void showLoadMoreError(final String msg) {
         if (getActivity() == null) return;
-        getActivity().runOnUiThread(new Runnable() {
+        runUi(new Runnable() {
             @Override
             public void run() {
                 footerProgressBar.setVisibility(View.GONE);
@@ -1585,5 +1588,11 @@ public class CommentFragment extends Fragment {
         public int replyCount;
         public List<String> pictureList;
         public List<ReplyItem> replies;
+    }
+    /** UI 线程安全执行：单次读取 getActivity()，避免后台线程两次调用间被置空导致 NPE */
+    private void runUi(java.lang.Runnable r) {
+        android.support.v4.app.FragmentActivity a = getActivity();
+        if (a != null) a.runOnUiThread(r);
     }
+
 }

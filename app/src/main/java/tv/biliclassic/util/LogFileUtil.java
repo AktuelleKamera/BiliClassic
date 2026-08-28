@@ -186,7 +186,7 @@ public class LogFileUtil {
         if (logs == null || logs.trim().length() == 0) {
             logs = ctx.getString(R.string.activity_settings_run_log_empty);
         }
-        new android.app.AlertDialog.Builder(ctx)
+        new android.app.AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(ctx))
                 .setTitle(ctx.getString(R.string.activity_settings_run_log_title))
                 .setMessage(logs.length() > 60000 ? logs.substring(0, 60000) : logs)
                 .setPositiveButton(ctx.getString(R.string.activity_settings_run_log_share),

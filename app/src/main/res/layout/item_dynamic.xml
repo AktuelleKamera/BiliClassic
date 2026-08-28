@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="10dp"
+    android:background="@drawable/item_click_effect"
+    android:clickable="true"
+    android:focusable="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/dyn_avatar"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/bili_default_avatar"
+            android:background="@drawable/avatar_border_overlay"
+            android:padding="2dp"
+            android:scaleType="centerCrop" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingLeft="10dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/dyn_name"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textSize="14sp"
+                    android:textColor="#333333"
+                    android:textStyle="bold"
+                    android:singleLine="true"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/dyn_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="10sp"
+                    android:textColor="#999999" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/dyn_content"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="14sp"
+                android:textColor="#555555"
+                android:lineSpacingExtra="2dp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/dyn_pics_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginLeft="52dp"
+        android:layout_marginTop="6dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/dyn_pic1"
+            android:layout_width="0dp"
+            android:layout_height="80dp"
+            android:layout_weight="1"
+            android:scaleType="centerCrop"
+            android:src="@drawable/bili_default_image_tv_with_bg" />
+
+        <ImageView
+            android:id="@+id/dyn_pic2"
+            android:layout_width="0dp"
+            android:layout_height="80dp"
+            android:layout_weight="1"
+            android:layout_marginLeft="4dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/bili_default_image_tv_with_bg" />
+
+        <ImageView
+            android:id="@+id/dyn_pic3"
+            android:layout_width="0dp"
+            android:layout_height="80dp"
+            android:layout_weight="1"
+            android:layout_marginLeft="4dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/bili_default_image_tv_with_bg" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/dyn_pics_more"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="52dp"
+        android:layout_marginTop="2dp"
+        android:textSize="11sp"
+        android:textColor="#999999"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/dyn_card_box"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginLeft="52dp"
+        android:layout_marginTop="6dp"
+        android:padding="6dp"
+        android:background="@android:color/transparent"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/dyn_card_cover"
+            android:layout_width="96dp"
+            android:layout_height="60dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/bili_default_image_tv_with_bg" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingLeft="8dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/dyn_card_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:textColor="#333333"
+                android:maxLines="2"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/dyn_card_info"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textSize="11sp"
+                android:textColor="#999999" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/dyn_forward_box"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginLeft="52dp"
+        android:layout_marginTop="6dp"
+        android:padding="8dp"
+        android:background="@android:color/transparent"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/dyn_forward_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="#D86DA5"
+            android:singleLine="true"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/dyn_forward_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="13sp"
+            android:textColor="#666666"
+            android:lineSpacingExtra="2dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/dyn_forward_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textSize="12sp"
+            android:textColor="#999999"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginLeft="52dp"
+        android:layout_marginTop="6dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/dyn_like"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="#D86DA5"
+            android:background="@drawable/item_click_effect"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp" />
+
+        <TextView
+            android:id="@+id/dyn_delete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:textSize="12sp"
+            android:textColor="#999999"
+            android:background="@drawable/item_click_effect"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</LinearLayout>

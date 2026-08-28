@@ -72,7 +72,13 @@ public class DanmakuSurfaceView extends SurfaceView implements IDanmakuView, IDa
     }
 
     private void init() {
-        setZOrderMediaOverlay(true);
+        // setZOrderMediaOverlay 是 API 5+ 方法，反射调用以兼容硬失败校验的
+        // 老平台（API<5 上字节码直接引用会导致本类被拒载）
+        try {
+            getClass().getMethod("setZOrderMediaOverlay", boolean.class)
+                    .invoke(this, Boolean.TRUE);
+        } catch (Throwable t) {
+        }
         setWillNotCacheDrawing(true);
         setDrawingCacheEnabled(false);
         setWillNotDraw(true);

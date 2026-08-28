@@ -113,7 +113,9 @@ public class WebViewActivity extends BaseActivity {
         // 缩放 (API 1 就有)
         try {
             webView.getSettings().setSupportZoom(true);
-            webView.getSettings().setBuiltInZoomControls(true);
+            java.lang.reflect.Method setBuiltInZoomControls = webView.getSettings().getClass()
+                    .getMethod("setBuiltInZoomControls", boolean.class);
+            setBuiltInZoomControls.invoke(webView.getSettings(), true);
         } catch (Exception e) {}
     }
 

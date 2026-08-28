@@ -806,7 +806,7 @@ public class ProfileFragment extends Fragment {
     }
 
     private void showLogoutDialog() {
-        new AlertDialog.Builder(DialogUtil.wrap(getActivity()))
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(getActivity())))
                 .setTitle(getString(R.string.profilefragment_settitle_771f))
                 .setMessage(getString(R.string.profilefragment_setmessage_545c))
                 .setPositiveButton("留下来", new DialogInterface.OnClickListener() {

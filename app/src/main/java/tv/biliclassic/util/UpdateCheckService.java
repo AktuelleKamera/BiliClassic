@@ -32,18 +32,23 @@ public class UpdateCheckService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (!SharedPreferencesUtil.getBoolean("auto_check_update", true)) {
-            stopSelf();
-            return START_NOT_STICKY;
-        }
-
+        // 被 startForegroundService 拉起后必须立刻 startForeground（5 秒看门狗），
+        // 任何提前返回（如设置开关关闭）都不能跳过这一步
         if (SdkHelper.getSdkInt() >= 26) {
             try {
                 Notification n = buildForegroundNotification();
                 Service.class.getMethod("startForeground", int.class, Notification.class)
                         .invoke(this, NOTIFY_FG, n);
             } catch (Exception e) {
+                // 起不来就立刻停服：停了就不会再看门狗崩溃
+                stopSelf();
+                return START_NOT_STICKY;
             }
+        }
+
+        if (!SharedPreferencesUtil.getBoolean("auto_check_update", true)) {
+            stopSelf();
+            return START_NOT_STICKY;
         }
 
         checkUpdate();
@@ -112,7 +117,8 @@ public class UpdateCheckService extends Service {
             builderClass.getMethod("setPriority", int.class).invoke(builder, -2);
             return (Notification) builderClass.getMethod("build").invoke(builder);
         } catch (Exception e) {
-            return null;
+            // 不能返回 null：startForeground(id, null) 会失败，进而触发 5 秒看门狗崩溃
+            return new Notification();
         }
     }
 
@@ -220,7 +226,18 @@ public class UpdateCheckService extends Service {
 
         Intent intent = new Intent(this, UpdateCheckService.class);
         PendingIntent pi;
-        if (SdkHelper.getSdkInt() >= 23) {
+        if (SdkHelper.getSdkInt() >= 26) {
+            // O+ 后台不允许普通 startService，闹钟改用 getForegroundService 投递
+            try {
+                Method m = PendingIntent.class.getMethod("getForegroundService",
+                        Context.class, int.class, Intent.class, int.class);
+                pi = (PendingIntent) m.invoke(null, this, 0, intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            } catch (Exception e) {
+                pi = PendingIntent.getService(this, 0, intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            }
+        } else if (SdkHelper.getSdkInt() >= 23) {
             pi = PendingIntent.getService(this, 0, intent,
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         } else {

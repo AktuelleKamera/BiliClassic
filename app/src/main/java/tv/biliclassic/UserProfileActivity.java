@@ -91,7 +91,7 @@ public class UserProfileActivity extends BaseActivity {
         if (pendingBitmapSets.isEmpty()) return;
         final java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
         pendingBitmapSets.clear();
-        // 分批应用（每帧最多 2 张），避免停下瞬间一次性 setImageBitmap 全部封面造成整帧卡顿
+        // 分批应用（每帧最多 2 张）
         final int[] idx = {0};
         final Runnable drain = new Runnable() {
             @Override
@@ -123,7 +123,10 @@ public class UserProfileActivity extends BaseActivity {
 
     private void initCache() {
         int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        int cacheSize = maxMemory / 8;
+        // 2.x 位图像素在独立 ~13MB native 堆，按 Java 堆 1/8 会撑爆 → OOM
+        int cacheSize = (tv.biliclassic.util.SdkHelper.getSdkInt() < 11)
+                ? Math.min(maxMemory / 16, 2048)
+                : maxMemory / 8;
         if (cacheSize < 1024) {
             cacheSize = 1024;
         }

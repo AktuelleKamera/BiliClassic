@@ -456,17 +456,28 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
                 f.setAccessible(true);
                 native_fd = f.getInt(fd); //IllegalAccessException
             } catch (NoSuchFieldException e) {
-                throw new RuntimeException(e);
+                throw new RuntimeException(e.toString()); // Throwable 版构造器是 API 9+，老平台会拒载整类
             } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
+                throw new RuntimeException(e.toString()); // Throwable 版构造器是 API 9+，老平台会拒载整类
             }
             _setDataSourceFd(native_fd);
         } else {
-            ParcelFileDescriptor pfd = ParcelFileDescriptor.dup(fd);
+            // ParcelFileDescriptor.dup 是 API 13+ 方法：硬失败校验平台（2.1 及以下）
+            // 上字节码直接引用会拒载整类，反射调用（本分支仅 API>=12 走到，
+            // 实际不会失败，但字节码层面必须干净）
             try {
-                _setDataSourceFd(pfd.getFd());
-            } finally {
-                pfd.close();
+                Object pfd = ParcelFileDescriptor.class
+                        .getMethod("dup", FileDescriptor.class).invoke(null, fd);
+                try {
+                    Object fdObj = pfd.getClass().getMethod("getFd").invoke(pfd);
+                    _setDataSourceFd(((Integer) fdObj).intValue());
+                } finally {
+                    pfd.getClass().getMethod("close").invoke(pfd);
+                }
+            } catch (IOException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new IOException(String.valueOf(e));
             }
         }
     }
@@ -1175,7 +1186,7 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
 
                 String newUrl = onControlMessageListener.onControlResolveSegmentUrl(segmentIndex);
                 if (newUrl == null)
-                    throw new RuntimeException(new IOException("onNativeInvoke() = <NULL newUrl>"));
+                    throw new RuntimeException("onNativeInvoke() = <NULL newUrl>");
 
                 args.putString(OnNativeInvokeListener.ARG_URL, newUrl);
                 return true;
@@ -1223,65 +1234,22 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     public static class DefaultMediaCodecSelector implements OnMediaCodecSelectListener {
         public static final DefaultMediaCodecSelector sInstance = new DefaultMediaCodecSelector();
 
+        /**
+         * MediaCodecList/MediaCodecInfo 是 API 16+ 类，本方法体已迁至
+         * IjkMediaCodecSelectorImpl：若留在本类字节码里，硬失败校验平台
+         * 验证外层类解析本内部类时会连锁拒载 IjkMediaPlayer。
+         * 通过 Class.forName 字符串加载隔离，低版本返回 null 走软解。
+         */
         @SuppressWarnings("deprecation")
-        @TargetApi(Build.VERSION_CODES.JELLY_BEAN)
         public String onMediaCodecSelect(IMediaPlayer mp, String mimeType, int profile, int level) {
-            if (getSdkInt() < Build.VERSION_CODES.JELLY_BEAN)
-                return null;
-
-            if (mimeType == null || mimeType.length() == 0)
-                return null;
-
-            Log.i(TAG, String.format(Locale.US, "onSelectCodec: mime=%s, profile=%d, level=%d", mimeType, profile, level));
-            ArrayList<IjkMediaCodecInfo> candidateCodecList = new ArrayList<IjkMediaCodecInfo>();
-            int numCodecs = MediaCodecList.getCodecCount();
-            for (int i = 0; i < numCodecs; i++) {
-                MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
-                Log.d(TAG, String.format(Locale.US, "  found codec: %s", codecInfo.getName()));
-                if (codecInfo.isEncoder())
-                    continue;
-
-                String[] types = codecInfo.getSupportedTypes();
-                if (types == null)
-                    continue;
-
-                for(String type: types) {
-                    if (type == null || type.length() == 0)
-                        continue;
-
-                    Log.d(TAG, String.format(Locale.US, "    mime: %s", type));
-                    if (!type.equalsIgnoreCase(mimeType))
-                        continue;
-
-                    IjkMediaCodecInfo candidate = IjkMediaCodecInfo.setupCandidate(codecInfo, mimeType);
-                    if (candidate == null)
-                        continue;
-
-                    candidateCodecList.add(candidate);
-                    Log.i(TAG, String.format(Locale.US, "candidate codec: %s rank=%d", codecInfo.getName(), candidate.mRank));
-                    candidate.dumpProfileLevels(mimeType);
-                }
-            }
-
-            if (candidateCodecList.size() == 0) {
+            try {
+                Class<?> impl = Class.forName("tv.danmaku.ijk.media.player.IjkMediaCodecSelectorImpl");
+                return (String) impl
+                        .getMethod("onMediaCodecSelect", String.class, int.class, int.class)
+                        .invoke(null, mimeType, Integer.valueOf(profile), Integer.valueOf(level));
+            } catch (Throwable t) {
                 return null;
             }
-
-            IjkMediaCodecInfo bestCodec = candidateCodecList.get(0);
-
-            for (IjkMediaCodecInfo codec : candidateCodecList) {
-                if (codec.mRank > bestCodec.mRank) {
-                    bestCodec = codec;
-                }
-            }
-
-            if (bestCodec.mRank < IjkMediaCodecInfo.RANK_LAST_CHANCE) {
-                Log.w(TAG, String.format(Locale.US, "unaccetable codec: %s", bestCodec.mCodecInfo.getName()));
-                return null;
-            }
-
-            Log.i(TAG, String.format(Locale.US, "selected codec: %s rank=%d", bestCodec.mCodecInfo.getName(), bestCodec.mRank));
-            return bestCodec.mCodecInfo.getName();
         }
     }
 

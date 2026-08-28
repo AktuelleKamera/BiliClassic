@@ -181,7 +181,7 @@ public class FollowingAdapter extends BaseAdapter {
 
     /** 确认取消关注（垃圾桶点击与遥控器长按 OK 共用），成功后经 OnUnfollowListener 回调移除 */
     public void confirmUnfollow(final UserInfo user, final int position) {
-        new android.app.AlertDialog.Builder(context)
+        new android.app.AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(context))
                 .setTitle(context.getString(R.string.following_list_unfollow_title))
                 .setMessage(context.getString(R.string.following_list_unfollow_msg, user.name != null ? user.name : ""))
                 .setPositiveButton(context.getString(R.string.following_list_unfollow_confirm),
