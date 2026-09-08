@@ -27,8 +27,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import tv.biliclassic.api.ConfInfoApi;
-import tv.biliclassic.metro.MetroHomeActivity;
 import tv.biliclassic.api.BilibiliIDConverter;
+import tv.biliclassic.api.SearchApi;
 import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.MsgUtil;
@@ -175,7 +175,7 @@ public class SearchActivity extends BaseActivity {
                 } else if (item.bvid != null && item.bvid.length() > 0) {
                     intent.putExtra("bvid", item.bvid);
                 } else {
-                    Toast.makeText(SearchActivity.this, SearchActivity.this.getString(R.string.searchactivity_toast_65e0), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SearchActivity.this, SearchActivity.this.getString(R.string.load_video_info_failed_4), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 startActivity(intent);
@@ -381,7 +381,7 @@ public class SearchActivity extends BaseActivity {
         if (historyContainer != null) {
             historyContainer.setVisibility(View.GONE);
         }
-        Toast.makeText(this, this.getString(R.string.searchactivity_toast_5df2), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, this.getString(R.string.search_history_cleared), Toast.LENGTH_SHORT).show();
     }
 
     private void showFirstLoading() {
@@ -420,7 +420,7 @@ public class SearchActivity extends BaseActivity {
             String aidStr = avMatcher.group(1);
             try {
                 final long aid = Long.parseLong(aidStr);
-                Toast.makeText(this, this.getString(R.string.searchactivity_toast_6b63), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.opening_video), Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(SearchActivity.this, VideoDetailActivity.class);
                 intent.putExtra("aid", aid);
                 startActivity(intent);
@@ -435,7 +435,7 @@ public class SearchActivity extends BaseActivity {
             if (!bvid.startsWith("BV") && !bvid.startsWith("bv")) {
                 bvid = "BV" + bvid;
             }
-            Toast.makeText(this, this.getString(R.string.searchactivity_toast_6b63), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.opening_video), Toast.LENGTH_SHORT).show();
             Intent intent = new Intent(SearchActivity.this, VideoDetailActivity.class);
             intent.putExtra("bvid", bvid);
             startActivity(intent);
@@ -466,7 +466,7 @@ public class SearchActivity extends BaseActivity {
                 e.printStackTrace();
             }
 
-            Toast.makeText(this, this.getString(R.string.searchactivity_toast_4f5c), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, this.getString(R.string.cheat_code_enabled), Toast.LENGTH_LONG).show();
 
             new Handler().postDelayed(new Runnable() {
                 @Override
@@ -489,7 +489,7 @@ public class SearchActivity extends BaseActivity {
                 e.printStackTrace();
             }
 
-            Toast.makeText(this, this.getString(R.string.searchactivity_toast_4f5c), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, this.getString(R.string.cheat_code_enabled), Toast.LENGTH_LONG).show();
 
             new Handler().postDelayed(new Runnable() {
                 @Override
@@ -503,7 +503,7 @@ public class SearchActivity extends BaseActivity {
             return true;
         }
 
-        // GETTHEREQUICKLY → Metro 主题主页
+        // GETTHEREQUICKLY → 生放送（直播）
         if (lowerKeyword.equals("gettherequickly")) {
             try {
                 Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
@@ -514,12 +514,12 @@ public class SearchActivity extends BaseActivity {
                 e.printStackTrace();
             }
 
-            Toast.makeText(this, this.getString(R.string.searchactivity_toast_4f5c), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, this.getString(R.string.cheat_code_enabled), Toast.LENGTH_LONG).show();
 
             new Handler().postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    startActivity(new Intent(SearchActivity.this, MetroHomeActivity.class));
+                    startActivity(new Intent(SearchActivity.this, LiveRoomListActivity.class));
                 }
             }, 800);
             return true;
@@ -531,7 +531,7 @@ public class SearchActivity extends BaseActivity {
     private void performSearch() {
         final String keyword = searchEdit.getText().toString().trim();
         if (keyword == null || keyword.length() == 0) {
-            Toast.makeText(this, this.getString(R.string.searchactivity_toast_8bf7), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.search_input_required), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -578,17 +578,7 @@ public class SearchActivity extends BaseActivity {
             @Override
             public void run() {
                 try {
-                    String url = "https://api.bilibili.com/x/web-interface/wbi/search/type?";
-                    url += "search_type=video";
-                    url += "&keyword=" + URLEncoder.encode(keyword, "UTF-8");
-                    url += "&page=" + page;
-                    url += "&pagesize=20";
-
-                    url = ConfInfoApi.signWBI(url);
-                    ArrayList<String> headers = buildHeaders();
-                    String response = NetWorkUtil.get(url, headers);
-
-                    final JSONObject json = new JSONObject(response);
+                    final JSONObject json = SearchApi.search(keyword, page);
                     final int code = json.optInt("code", -1);
                     final String message = json.optString("message", "");
 
@@ -773,17 +763,7 @@ public class SearchActivity extends BaseActivity {
             @Override
             public void run() {
                 try {
-                    String url = "https://api.bilibili.com/x/web-interface/wbi/search/type?";
-                    url += "search_type=video";
-                    url += "&keyword=" + URLEncoder.encode(keyword, "UTF-8");
-                    url += "&page=" + page;
-                    url += "&pagesize=20";
-
-                    url = ConfInfoApi.signWBI(url);
-                    ArrayList<String> headers = buildHeaders();
-                    String response = NetWorkUtil.get(url, headers);
-
-                    final JSONObject json = new JSONObject(response);
+                    final JSONObject json = SearchApi.search(keyword, page);
                     final int code = json.optInt("code", -1);
 
                     runOnUiThread(new Runnable() {
@@ -928,35 +908,6 @@ public class SearchActivity extends BaseActivity {
         Toast.makeText(this, getString(R.string.emoticon__no_more_data), Toast.LENGTH_SHORT).show();
     }
 
-    private ArrayList<String> buildHeaders() {
-        ArrayList<String> headers = new ArrayList<String>();
-
-        headers.add("User-Agent");
-        headers.add("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-
-        headers.add("Accept");
-        headers.add("application/json, text/plain, */*");
-
-        headers.add("Accept-Language");
-        headers.add("zh-CN,zh;q=0.9,en;q=0.8");
-
-        headers.add("Accept-Encoding");
-        headers.add("identity");
-
-        headers.add("Referer");
-        headers.add("https://www.bilibili.com/");
-
-        headers.add("Origin");
-        headers.add("https://www.bilibili.com");
-
-        String cookies = SharedPreferencesUtil.getString("cookies", "");
-        if (cookies != null && cookies.length() > 0) {
-            headers.add("Cookie");
-            headers.add(cookies);
-        }
-
-        return headers;
-    }
 
     /**
      * 遥控器方向键在搜索结果列表内移动光标（选中高亮），确认键打开视频。
@@ -1075,7 +1026,7 @@ public class SearchActivity extends BaseActivity {
             intent.putExtra("bvid", item.bvid);
         } else {
             Toast.makeText(SearchActivity.this,
-                    getString(R.string.searchactivity_toast_65e0), Toast.LENGTH_SHORT).show();
+                    getString(R.string.load_video_info_failed_4), Toast.LENGTH_SHORT).show();
             return;
         }
         startActivity(intent);

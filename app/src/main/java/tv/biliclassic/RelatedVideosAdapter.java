@@ -1,11 +1,6 @@
 package tv.biliclassic;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,25 +8,11 @@ import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import java.io.InputStream;
-import java.lang.ref.SoftReference;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 import tv.biliclassic.model.VideoCard;
-import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.ImageLoader;
-import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class RelatedVideosAdapter extends BaseAdapter {
 
@@ -108,7 +89,7 @@ public class RelatedVideosAdapter extends BaseAdapter {
         ViewHolder holder;
 
         if (convertView == null) {
-            convertView = LayoutInflater.from(context).inflate(R.layout.history_item, parent, false);
+            convertView = LayoutInflater.from(context).inflate(R.layout.item_history, parent, false);
             holder = new ViewHolder();
             holder.coverContainer = (FrameLayout) convertView.findViewById(R.id.cover_container);
             holder.cover = (ImageView) convertView.findViewById(R.id.cover);

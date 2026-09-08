@@ -24,7 +24,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_gravity="center_vertical"
-            android:contentDescription="@string/activity_search_8fd4"
+            android:contentDescription="@string/common_back_7"
             android:padding="1dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_action_back"
@@ -38,7 +38,7 @@
             android:layout_gravity="center_vertical"
             android:layout_weight="1"
             android:background="@drawable/bili_search_edit_background"
-            android:hint="@string/activity_search_8f93"
+            android:hint="@string/search_input_hint"
             android:imeOptions="actionSearch"
             android:inputType="text"
             android:maxLines="1"
@@ -54,7 +54,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_gravity="center_vertical"
-            android:contentDescription="@string/activity_search_641c"
+            android:contentDescription="@string/common_search"
             android:padding="1dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_action_search"
@@ -98,7 +98,7 @@
                 android:id="@+id/clear_history"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_search_6e05"
+                android:text="@string/common_clear"
                 android:textSize="12sp"
                 android:textColor="#D86DA5"
                 android:focusable="true"
@@ -124,7 +124,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_search_6682"
+                android:text="@string/no_search_history"
                 android:textSize="12sp"
                 android:textColor="#999999" />
 
@@ -152,7 +152,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginLeft="8dp"
-            android:text="@string/activity_search_563f"
+            android:text="@string/login_working_hard_2"
             android:textSize="12sp"
             android:textColor="#999999" />
 
@@ -178,7 +178,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:layout_marginTop="50dp"
-        android:text="@string/activity_search_1_6682"
+        android:text="@string/no_search_results"
         android:textSize="14sp"
         android:textColor="#999999"
         android:visibility="gone" />

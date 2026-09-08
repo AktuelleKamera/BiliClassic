@@ -16,7 +16,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_centerVertical="true"
-            android:contentDescription="@string/activity_settings_572cf45ba436"
+            android:contentDescription="@string/common_back_8"
             android:padding="1dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_action_back" />
@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="@string/activity_settings_df3d58c7d84b"
+            android:text="@string/common_settings"
             android:textColor="#333333"
             android:textSize="18sp"/>
 
@@ -85,7 +85,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/keybinding_restart_setting"
+                        android:text="@string/keybinding_title"
                         android:textColor="#333333"
                         android:textSize="15sp" />
 
@@ -103,7 +103,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/activity_settings_df3d58c7d84b"
+                    android:contentDescription="@string/common_settings"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
@@ -112,7 +112,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_settings_75c7ffe7c7b3"
+                android:text="@string/image_load_settings"
                 android:textColor="#333333"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -131,7 +131,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_59625e6f1259"
+                    android:text="@string/image_load_threads"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
@@ -146,7 +146,7 @@
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="@string/activity_settings_c11330b85234"
+                    android:contentDescription="@string/common_select_3"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
@@ -163,7 +163,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_settings_e512c25c5a09"
+                android:text="@string/landscape_adaptation"
                 android:textColor="#333333"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -182,7 +182,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_1f827b011ce1"
+                    android:text="@string/auto_landscape_mode"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
@@ -205,7 +205,7 @@
                 android:layout_marginLeft="4dp"
                 android:layout_marginRight="4dp"
                 android:layout_marginTop="8dp"
-                android:text="@string/activity_settings_f222926ea9d0"
+                android:text="@string/portrait_adapted_devices"
                 android:textColor="#999999"
                 android:textSize="11sp" />
 
@@ -215,7 +215,7 @@
                 android:layout_marginLeft="4dp"
                 android:layout_marginRight="4dp"
                 android:layout_marginTop="2dp"
-                android:text="@string/activity_settings_125d656a0fd4"
+                android:text="@string/portrait_devices_hint"
                 android:textColor="#999999"
                 android:textSize="11sp" />
 
@@ -231,7 +231,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_settings_186be2232e2c"
+                android:text="@string/data_source"
                 android:textColor="#333333"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -255,7 +255,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/activity_settings_c1c3eb1a1f1b"
+                        android:text="@string/modern_style"
                         android:textColor="#333333"
                         android:textSize="15sp" />
 
@@ -287,7 +287,7 @@
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
                 android:layout_marginTop="4dp"
-                android:text="@string/activity_settings_0210f24eff67"
+                android:text="@string/new_anime_api_hint"
                 android:textColor="#999999"
                 android:textSize="11sp" />
 
@@ -303,7 +303,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_settings_ba8681d27226"
+                android:text="@string/lab_section"
                 android:textColor="#333333"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -328,7 +328,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/activity_settings_82e7c8815861"
+                        android:text="@string/online_playback"
                         android:textColor="#333333"
                         android:textSize="15sp" />
 
@@ -337,7 +337,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="@string/activity_settings_ec35b2ba9bfe"
+                        android:text="@string/direct_online_play_summary"
                         android:textColor="#999999"
                         android:textSize="11sp" />
 
@@ -362,7 +362,7 @@
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
                 android:layout_marginTop="4dp"
-                android:text="@string/activity_settings_5ff6c246223f"
+                android:text="@string/online_play_no_cache_summary"
                 android:textColor="#FF6B35"
                 android:textSize="11sp" />
 
@@ -505,6 +505,53 @@
 
             </LinearLayout>
 
+            <!-- 投屏（Miracast）开关 -->
+            <LinearLayout
+                android:id="@+id/cast_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="#FFFFFF"
+                android:clickable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/activity_settings_cast_title"
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/activity_settings_cast_desc"
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+                <CheckBox
+                    android:id="@+id/checkbox_cast"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:minHeight="0dp"
+                    android:padding="0dp" />
+
+            </LinearLayout>
+
             <!-- 夜间模式开关 -->
             <LinearLayout
                 android:id="@+id/night_mode_item"
@@ -600,7 +647,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/activity_settings_c11330b85234"
+                    android:contentDescription="@string/common_select_3"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
@@ -617,7 +664,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_settings_69d96ab742b7"
+                android:text="@string/player_settings"
                 android:textColor="#333333"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -635,7 +682,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_aee40e8b1d43"
+                    android:text="@string/default_player"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
@@ -644,14 +691,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginRight="8dp"
-                    android:text="@string/activity_settings_3b89fd6b0ced"
+                    android:text="@string/auto_detect"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="@string/activity_settings_c11330b85234"
+                    android:contentDescription="@string/common_select_3"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
@@ -671,7 +718,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_a0c8af9b5b1d"
+                    android:text="@string/decoder_method"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
@@ -680,14 +727,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginRight="8dp"
-                    android:text="@string/activity_settings_46aaf464e9c4"
+                    android:text="@string/ijk_player"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="@string/activity_settings_c11330b85234"
+                    android:contentDescription="@string/common_select_3"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
@@ -712,7 +759,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/activity_settings_ca29692c683d"
+                        android:text="@string/decoder_settings"
                         android:textColor="#333333"
                         android:textSize="15sp" />
 
@@ -720,7 +767,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="@string/activity_settings_1fe7d7f4e3de"
+                        android:text="@string/decoder_tuning_summary"
                         android:textColor="#999999"
                         android:textSize="11sp" />
 
@@ -730,7 +777,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/activity_settings_df3d58c7d84b"
+                    android:contentDescription="@string/common_settings"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
@@ -755,7 +802,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/activity_settings_dde1c3b8130a"
+                        android:text="@string/video_render_method"
                         android:textColor="#333333"
                         android:textSize="15sp" />
 
@@ -763,7 +810,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="@string/activity_settings_4187d8f61b28"
+                        android:text="@string/switch_render_view"
                         android:textColor="#999999"
                         android:textSize="11sp" />
 
@@ -775,7 +822,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
                     android:layout_marginRight="8dp"
-                    android:text="@string/activity_settings_d69b6e11c7f3"
+                    android:text="@string/render_surface_view"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
@@ -783,7 +830,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/activity_settings_c11330b85234"
+                    android:contentDescription="@string/common_select_3"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
@@ -803,7 +850,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_d1c4084c835c"
+                    android:text="@string/danmaku_engine"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
@@ -813,7 +860,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
                     android:layout_marginRight="8dp"
-                    android:text="@string/activity_settings_dbd2f1e3dc97"
+                    android:text="@string/full_edition"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
@@ -821,7 +868,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/activity_settings_c11330b85234"
+                    android:contentDescription="@string/common_select_3"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
@@ -858,7 +905,7 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:layout_gravity="center_vertical"
-                android:contentDescription="@string/activity_settings_c11330b85234"
+                android:contentDescription="@string/common_select_3"
                 android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
@@ -895,7 +942,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/activity_settings_c11330b85234"
+                    android:contentDescription="@string/common_select_3"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
@@ -913,7 +960,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="6dp"
-                    android:text="@string/activity_settings_a60148ee64f0"
+                    android:text="@string/about_player"
                     android:textColor="#999999"
                     android:textSize="12sp" />
 
@@ -921,7 +968,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="4dp"
-                    android:text="@string/activity_settings_e8a5788596ec"
+                    android:text="@string/player_recommend_builtin"
                     android:textColor="#4CAF50"
                     android:textSize="11sp" />
 
@@ -929,7 +976,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="4dp"
-                    android:text="@string/activity_settings_9d600348e63d"
+                    android:text="@string/player_recommend_mx_vlc"
                     android:textColor="#666666"
                     android:textSize="11sp" />
 
@@ -937,7 +984,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="4dp"
-                    android:text="@string/activity_settings_6c4a2a96c18f"
+                    android:text="@string/player_recommend_lightweight"
                     android:textColor="#666666"
                     android:textSize="11sp" />
 
@@ -945,14 +992,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="4dp"
-                    android:text="@string/activity_settings_b88caea80965"
+                    android:text="@string/player_recommend_system"
                     android:textColor="#D32F2F"
                     android:textSize="11sp" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/activity_settings_6c2223ae0a18"
+                    android:text="@string/player_recommend_old_android"
                     android:textColor="#666666"
                     android:textSize="11sp" />
 
@@ -970,7 +1017,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_settings_7ce6317101f7"
+                android:text="@string/ui_settings"
                 android:textColor="#333333"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -988,7 +1035,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_e8ada398d92a"
+                    android:text="@string/default_home_page"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
@@ -997,14 +1044,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginRight="8dp"
-                    android:text="@string/activity_settings_e85696350756"
+                    android:text="@string/new_anime_special"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="@string/activity_settings_c11330b85234"
+                    android:contentDescription="@string/common_select_3"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
@@ -1015,7 +1062,7 @@
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
                 android:layout_marginTop="4dp"
-                android:text="@string/activity_settings_832b23a08f2d"
+                android:text="@string/default_page_summary"
                 android:textColor="#999999"
                 android:textSize="11sp" />
 
@@ -1032,7 +1079,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_settings_8bed"
+                android:text="@string/language"
                 android:textColor="#333333"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -1056,7 +1103,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/activity_settings_8bed"
+                        android:text="@string/language"
                         android:textColor="#333333"
                         android:textSize="15sp" />
 
@@ -1076,14 +1123,14 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
                     android:layout_marginRight="8dp"
-                    android:text="@string/activity_settings_7b80"
+                    android:text="@string/lang_simplified_chinese"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="@string/activity_settings_9009"
+                    android:contentDescription="@string/common_select_2"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
@@ -1101,7 +1148,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_settings_1d3fb4d6f727"
+                android:text="@string/playback_settings"
                 android:textColor="#333333"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -1119,7 +1166,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_221c5ff1de8a"
+                    android:text="@string/video_quality"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
@@ -1128,14 +1175,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginRight="8dp"
-                    android:text="@string/activity_settings_4c9273ccad7c"
+                    android:text="@string/quality_360p"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="@string/activity_settings_c11330b85234"
+                    android:contentDescription="@string/common_select_3"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
@@ -1146,7 +1193,7 @@
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
                 android:layout_marginTop="4dp"
-                android:text="@string/activity_settings_9b29faa5ed8d"
+                android:text="@string/video_quality_summary"
                 android:textColor="#999999"
                 android:textSize="11sp" />
 
@@ -1209,14 +1256,14 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
                     android:layout_marginRight="8dp"
-                    android:text="@string/activity_settings_9ed8"
+                    android:text="@string/common_default"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="@string/activity_settings_9009"
+                    android:contentDescription="@string/common_select_2"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
@@ -1235,7 +1282,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_settings_6c07bb6fd4b6"
+                android:text="@string/device_info_2"
                 android:textColor="#333333"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -1253,7 +1300,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_591d8d54fac7"
+                    android:text="@string/view_device_info"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
@@ -1261,14 +1308,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginRight="8dp"
-                    android:text="@string/activity_settings_f0b19fcb3a58"
+                    android:text="@string/tap_to_view"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="@string/activity_settings_db8db0530432"
+                    android:contentDescription="@string/common_view"
                     android:src="@android:drawable/ic_menu_info_details" />
 
             </LinearLayout>
@@ -1285,7 +1332,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_settings_618e688f6a1c"
+                android:text="@string/cache_manager"
                 android:textColor="#333333"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -1304,7 +1351,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_e88ca343dda4"
+                    android:text="@string/clear_image_cache"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
@@ -1313,14 +1360,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginRight="8dp"
-                    android:text="@string/activity_settings_b64fc86a2b82"
+                    android:text="@string/size_zero_kb"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="@string/activity_settings_bce2377283c2"
+                    android:contentDescription="@string/common_clear_data"
                     android:src="@android:drawable/ic_menu_delete" />
 
             </LinearLayout>
@@ -1331,7 +1378,7 @@
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
                 android:layout_marginTop="4dp"
-                android:text="@string/activity_settings_051d7a1c94bb"
+                android:text="@string/clear_cache_hint"
                 android:textColor="#999999"
                 android:textSize="11sp" />
 
@@ -1350,7 +1397,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_8f40e7a054ce"
+                    android:text="@string/clear_playback_cache"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
@@ -1359,14 +1406,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginRight="8dp"
-                    android:text="@string/activity_settings_adc353d548c8"
+                    android:text="@string/size_zero_mb"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="@string/activity_settings_bce2377283c2"
+                    android:contentDescription="@string/common_clear_data"
                     android:src="@android:drawable/ic_menu_delete" />
 
             </LinearLayout>
@@ -1377,7 +1424,7 @@
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
                 android:layout_marginTop="4dp"
-                android:text="@string/activity_settings_8f121a2c52e3"
+                android:text="@string/clear_video_cache_summary"
                 android:textColor="#999999"
                 android:textSize="11sp" />
 
@@ -1396,14 +1443,14 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_22949cb603d7"
+                    android:text="@string/cookie_import_export"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="@string/activity_settings_bb6d995724f4"
+                    android:contentDescription="@string/manage"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
@@ -1414,7 +1461,7 @@
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
                 android:layout_marginTop="4dp"
-                android:text="@string/activity_settings_e444fb9c6c19"
+                android:text="@string/cookie_export_needs_login"
                 android:textColor="#999999"
                 android:textSize="11sp" />
 
@@ -1430,7 +1477,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_settings_c5ba32ba0124"
+                android:text="@string/echo_cave"
                 android:textColor="#333333"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -1448,7 +1495,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_c5ba32ba0124"
+                    android:text="@string/echo_cave"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
@@ -1457,14 +1504,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginRight="8dp"
-                    android:text="@string/activity_settings_3d39c5b7c001"
+                    android:text="@string/random_one"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="@string/activity_settings_c5ba32ba0124"
+                    android:contentDescription="@string/echo_cave"
                     android:src="@android:drawable/ic_menu_myplaces" />
 
             </LinearLayout>
@@ -1475,7 +1522,7 @@
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
                 android:layout_marginTop="4dp"
-                android:text="@string/activity_settings_f555be2a3ea5"
+                android:text="@string/echo_cave_summary"
                 android:textColor="#999999"
                 android:textSize="11sp" />
 
@@ -1491,7 +1538,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_settings_52892bc824b2"
+                android:text="@string/crash_log"
                 android:textColor="#333333"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -1509,7 +1556,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_bda158ae6685"
+                    android:text="@string/delete_crash_logs"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
@@ -1518,14 +1565,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginRight="8dp"
-                    android:text="@string/activity_settings_31febe8b1081"
+                    android:text="@string/no_log"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="@string/activity_settings_bce2377283c2"
+                    android:contentDescription="@string/common_clear_data"
                     android:src="@android:drawable/ic_menu_delete" />
 
             </LinearLayout>
@@ -1536,7 +1583,7 @@
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
                 android:layout_marginTop="4dp"
-                android:text="@string/activity_settings_dd3e5a44557b"
+                android:text="@string/delete_crash_logs_summary"
                 android:textColor="#999999"
                 android:textSize="11sp" />
 
@@ -1619,7 +1666,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_settings_d51db0e60727"
+                android:text="@string/privacy_and_data"
                 android:textColor="#333333"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -1644,7 +1691,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/activity_settings_a938a37715ed"
+                        android:text="@string/no_image_mode"
                         android:textColor="#333333"
                         android:textSize="15sp" />
 
@@ -1652,7 +1699,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="@string/activity_settings_5ce0d161d888"
+                        android:text="@string/no_image_mode_summary"
                         android:textColor="#999999"
                         android:textSize="11sp" />
 
@@ -1689,7 +1736,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/activity_settings_04a462c6be4c"
+                        android:text="@string/privacy_mode"
                         android:textColor="#333333"
                         android:textSize="15sp" />
 
@@ -1697,7 +1744,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="@string/activity_settings_cd9bb00f0723"
+                        android:text="@string/no_history_privacy_summary"
                         android:textColor="#999999"
                         android:textSize="11sp" />
 
@@ -1735,7 +1782,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/activity_settings_ed495078a9b9"
+                        android:text="@string/incognito_mode"
                         android:textColor="#333333"
                         android:textSize="15sp" />
 
@@ -1743,7 +1790,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="@string/activity_settings_df5d5a7aeac6"
+                        android:text="@string/no_cookie_privacy_summary"
                         android:textColor="#999999"
                         android:textSize="11sp" />
 
@@ -1773,7 +1820,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_settings_7f68ebad19ba"
+                android:text="@string/check_update"
                 android:textColor="#333333"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -1791,7 +1838,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_fa487d3da959"
+                    android:text="@string/manual_check_update"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
@@ -1800,14 +1847,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginRight="8dp"
-                    android:text="@string/activity_settings_172484d5af24"
+                    android:text="@string/click_to_check"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="@string/activity_settings_978e275133d1"
+                    android:contentDescription="@string/common_check"
                     android:src="@android:drawable/ic_menu_info_details" />
 
             </LinearLayout>
@@ -1827,7 +1874,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_c42a3dd9c2e4"
+                    android:text="@string/auto_check_update"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
@@ -1849,7 +1896,7 @@
                 android:layout_marginLeft="12dp"
                 android:layout_marginRight="12dp"
                 android:layout_marginTop="4dp"
-                android:text="@string/activity_settings_7f3eae7698c1"
+                android:text="@string/auto_update_summary"
                 android:textColor="#999999"
                 android:textSize="11sp" />
 

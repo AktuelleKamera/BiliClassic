@@ -1,6 +1,5 @@
 package tv.biliclassic;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -62,7 +61,7 @@ public class HistoryActivity extends BaseActivity {
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.history_activity);
+        setContentView(R.layout.activity_history);
         initRoundTitleBar();
 
         historyList = (ListView) findViewById(R.id.history_list);
@@ -111,7 +110,7 @@ public class HistoryActivity extends BaseActivity {
                 } else if (item.bvid != null && item.bvid.length() > 0) {
                     intent.putExtra("bvid", item.bvid);
                 } else {
-                    Toast.makeText(HistoryActivity.this, HistoryActivity.this.getString(R.string.historyactivity_toast_65e0), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(HistoryActivity.this, HistoryActivity.this.getString(R.string.load_video_info_failed), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 startActivity(intent);
@@ -268,7 +267,7 @@ public class HistoryActivity extends BaseActivity {
             if (emptyView.getVisibility() == View.VISIBLE) {
                 return;
             }
-            emptyView.setText(getString(R.string.historyactivity_settext_52a0));
+            emptyView.setText(getString(R.string.load_failed_tap_retry));
             emptyView.setVisibility(View.VISIBLE);
             progressBar.setVisibility(View.GONE);
             return;
@@ -282,7 +281,7 @@ public class HistoryActivity extends BaseActivity {
             mainHandler.post(new Runnable() {
                 public void run() {
                     progressBar.setVisibility(View.GONE);
-                    emptyView.setText(getString(R.string.historyactivity_settext_8fd8));
+                    emptyView.setText(getString(R.string.not_logged_in_yet));
                     emptyView.setVisibility(View.VISIBLE);
                     historyList.setVisibility(View.GONE);
                 }
@@ -348,7 +347,7 @@ public class HistoryActivity extends BaseActivity {
                                 }
 
                                 if (videoList.size() == 0) {
-                                    emptyView.setText(getString(R.string.historyactivity_settext_6682));
+                                    emptyView.setText(getString(R.string.no_history_2));
                                     emptyView.setVisibility(View.VISIBLE);
                                     historyList.setVisibility(View.GONE);
                                 } else {

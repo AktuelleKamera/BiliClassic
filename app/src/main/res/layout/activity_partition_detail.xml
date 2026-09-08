@@ -24,14 +24,14 @@
                 android:padding="1dp"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_action_back"
-                android:contentDescription="@string/activity_partition_detail_8fd4" />
+                android:contentDescription="@string/common_back_4" />
 
             <TextView
                 android:id="@+id/title_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:text="@string/activity_partition_detail_5206"
+                android:text="@string/partition"
                 android:textColor="#333333"
                 android:textSize="18sp" />
 

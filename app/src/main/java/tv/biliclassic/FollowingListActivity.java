@@ -124,7 +124,7 @@ public class FollowingListActivity extends BaseActivity {
         footerView.setVisibility(visible ? View.VISIBLE : View.GONE);
         if (footerText != null) {
             footerText.setText(visible
-                    ? getString(R.string.list_footer_563f)
+                    ? getString(R.string.login_working_hard_6)
                     : "");
         }
     }

@@ -119,16 +119,8 @@ public class CookieGenerator {
             String hexsign = hmacSha256("XgwSnGZ1p", "ts" + ts);
             String url = "https://api.bilibili.com/bapis/bilibili.api.ticket.v1.Ticket/GenWebTicket?key_id=ec02&hexsign=" + hexsign + "&context[ts]=" + ts;
 
-            java.util.ArrayList<String> headers = new java.util.ArrayList<String>();
-            headers.add("User-Agent");
-            headers.add(NetWorkUtil.USER_AGENT_WEB);
-            headers.add("Referer");
-            headers.add("https://www.bilibili.com/");
-            headers.add("Content-Type");
-            headers.add("application/x-www-form-urlencoded");
-
-            // NetWorkUtil.post 直接返回 String
-            String response = NetWorkUtil.post(url, "", headers);
+            // NetWorkUtil.post 直接返回 String（UA/Referer/Cookie 由 NetWorkUtil 统一处理）
+            String response = NetWorkUtil.post(url, "");
             if (response == null || response.length() == 0) return;
 
             JSONObject resp = new JSONObject(response);

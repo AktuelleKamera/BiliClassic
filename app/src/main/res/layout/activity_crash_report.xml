@@ -14,7 +14,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="@string/activity_crash_report_7a0b"
+            android:text="@string/app_crashed"
             android:textColor="#333333"
             android:textSize="18sp"/>
 
@@ -26,13 +26,19 @@
         android:layout_height="2px"
         android:background="#D86DA5" />
 
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="6.0dp"
+        android:background="@drawable/shadow_top_dig"
+        android:contentDescription="@null" />
+
     <!-- 提示信息 -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#F0F0F0"
         android:padding="12dp"
-        android:text="@string/activity_crash_report_5f88"
+        android:text="@string/crash_report_apology"
         android:textColor="#666666"
         android:textSize="13sp" />
 
@@ -51,7 +57,7 @@
             android:background="#FFFFFF"
             android:fontFamily="monospace"
             android:padding="12dp"
-            android:text="@string/activity_crash_report_6b63"
+            android:text="@string/collecting_info"
             android:textColor="#333333"
             android:textSize="10sp" />
 
@@ -71,7 +77,7 @@
             android:layout_weight="1"
             android:layout_marginRight="6dp"
             android:background="#D86DA5"
-            android:text="@string/activity_crash_report_590d"
+            android:text="@string/copy_log"
             android:textColor="#FFFFFF"
             android:textSize="14sp" />
 
@@ -83,7 +89,7 @@
             android:layout_marginLeft="6dp"
             android:layout_marginRight="6dp"
             android:background="#FFFFFF"
-            android:text="@string/activity_crash_report_5206"
+            android:text="@string/share_log"
             android:textColor="#D86DA5"
             android:textSize="14sp" />
 
@@ -94,7 +100,7 @@
             android:layout_weight="1"
             android:layout_marginLeft="6dp"
             android:background="#FFFFFF"
-            android:text="@string/activity_crash_report_9000"
+            android:text="@string/exit_page"
             android:textColor="#666666"
             android:textSize="14sp" />
 

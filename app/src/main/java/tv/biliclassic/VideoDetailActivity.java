@@ -224,7 +224,7 @@ public class VideoDetailActivity extends BaseActivity {
                 if (bangumiTitle != null && bangumiTitle.length() > 0) {
                     tvAvid.setText(bangumiTitle);
                 } else {
-                    tvAvid.setText(getString(R.string.videodetailactivity_settext_756a));
+                    tvAvid.setText(getString(R.string.bangumi_detail));
                 }
                 initBottomButtons();
                 fetchBangumiInfoFromAid(aid);
@@ -1057,7 +1057,7 @@ public class VideoDetailActivity extends BaseActivity {
                         long mid = SharedPreferencesUtil.getLong("mid", 0);
                         String cookies = SharedPreferencesUtil.getString("cookies", "");
                         if (mid == 0 || cookies == null || cookies.length() == 0) {
-                            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_767b), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.favorite_need_login), Toast.LENGTH_SHORT).show();
                             return;
                         }
                         showFavoriteDialog();
@@ -1086,7 +1086,7 @@ public class VideoDetailActivity extends BaseActivity {
                         long mid = SharedPreferencesUtil.getLong("mid", 0);
                         String cookies = SharedPreferencesUtil.getString("cookies", "");
                         if (mid == 0 || cookies == null || cookies.length() == 0) {
-                            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_8bf7), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.please_login_first_8), Toast.LENGTH_SHORT).show();
                             return;
                         }
                         showSendCommentDialog();
@@ -1190,7 +1190,7 @@ public class VideoDetailActivity extends BaseActivity {
         } else if (bvid != null && bvid.length() > 0) {
             tvAvid.setText(bvid);
         } else {
-            tvAvid.setText(getString(R.string.videodetailactivity_settext_53c2));
+            tvAvid.setText(getString(R.string.args_error));
         }
     }
 
@@ -1202,7 +1202,7 @@ public class VideoDetailActivity extends BaseActivity {
             copyText = bvid;
         }
         if (copyText == null || copyText.length() == 0) {
-            Toast.makeText(this, this.getString(R.string.videodetailactivity_toast_65e0), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.cannot_copy), Toast.LENGTH_SHORT).show();
             return;
         }
         try {
@@ -1212,7 +1212,7 @@ public class VideoDetailActivity extends BaseActivity {
                 Toast.makeText(this, getString(R.string.videodetail_toast_copied, copyText), Toast.LENGTH_SHORT).show();
             }
         } catch (Exception e) {
-            Toast.makeText(this, this.getString(R.string.videodetailactivity_toast_590d), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.copy_failed_3), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1237,13 +1237,13 @@ public class VideoDetailActivity extends BaseActivity {
                 getString(R.string.videodetail_cancel)
         };
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.videodetailactivity_settitle_5206))
+                .setTitle(getString(R.string.share_video))
                 .setItems(shareOptions, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         if (which == 0) {
                             copyToClipboard(finalShareUrl);
-                            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_94fe), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.link_copied), Toast.LENGTH_SHORT).show();
                         } else if (which == 1) {
                             Intent shareIntent = new Intent(Intent.ACTION_SEND);
                             shareIntent.setType("text/plain");
@@ -1270,7 +1270,7 @@ public class VideoDetailActivity extends BaseActivity {
         final LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         final EditText input = new EditText(this);
-        input.setHint(getString(R.string.videodetailactivity_sethint_8f93));
+        input.setHint(getString(R.string.comment_input_hint));
         input.setLines(3);
         input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(1000)});
         if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 14) {
@@ -1287,7 +1287,7 @@ public class VideoDetailActivity extends BaseActivity {
         btnRow.setPadding(0, 0, 0, dpToPx(6));
 
         final TextView imageBtn = new TextView(this);
-        imageBtn.setText(getString(R.string.videodetailactivity_settext_6dfb));
+        imageBtn.setText(getString(R.string.add_image_2));
         imageBtn.setTextSize(13);
         imageBtn.setTextColor(0xFFD86DA5);
         imageBtn.setPadding(0, 0, dpToPx(12), 0);
@@ -1311,7 +1311,7 @@ public class VideoDetailActivity extends BaseActivity {
         }
 
         final TextView emojiBtn = new TextView(this);
-        emojiBtn.setText(getString(R.string.videodetailactivity_settext_8868));
+        emojiBtn.setText(getString(R.string.emoji_3));
         emojiBtn.setTextSize(13);
         emojiBtn.setTextColor(0xFFD86DA5);
         emojiBtn.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
@@ -1330,7 +1330,7 @@ public class VideoDetailActivity extends BaseActivity {
         layout.addView(input, lp);
 
         final TextView clearText = new TextView(this);
-        clearText.setText(getString(R.string.videodetailactivity_settext_6e05));
+        clearText.setText(getString(R.string.common_clear_4));
         clearText.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         clearText.setPadding(0, 8, 0, 0);
         clearText.setTextSize(14);
@@ -1347,9 +1347,9 @@ public class VideoDetailActivity extends BaseActivity {
         layout.addView(clearText, lp);
 
         final AlertDialog dialog = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.videodetailactivity_settitle_53d1))
+                .setTitle(getString(R.string.send_comment))
                 .setView(layout)
-                .setPositiveButton(getString(R.string.videodetail_send_comment), new DialogInterface.OnClickListener() {
+                .setPositiveButton(getString(R.string.dynamicfragment_btn_ok), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface d, int which) {
                     }
@@ -1376,7 +1376,7 @@ public class VideoDetailActivity extends BaseActivity {
             public void onClick(View v) {
                 String text = input.getText().toString().trim();
                 if (text == null || text.length() == 0) {
-                    Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_8bc4), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.comment_empty), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 dialog.dismiss();
@@ -1392,7 +1392,7 @@ public class VideoDetailActivity extends BaseActivity {
     }
 
     private void sendComment(final String text) {
-        Toast.makeText(this, this.getString(R.string.videodetailactivity_toast_6b63), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, this.getString(R.string.sending_comment), Toast.LENGTH_SHORT).show();
 
         final long finalAid = getCorrectAid();
 
@@ -1418,7 +1418,7 @@ public class VideoDetailActivity extends BaseActivity {
     }
 
     private void sendCommentWithPicture(final String text, final String picturesJson) {
-        Toast.makeText(this, this.getString(R.string.videodetailactivity_toast_6b63), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, this.getString(R.string.sending_comment), Toast.LENGTH_SHORT).show();
         final long finalAid = getCorrectAid();
         ReplyHelper.sendReplyWithPictures(this, finalAid, 0, 0, text, picturesJson,
                 new ReplyHelper.ReplyCallback() {
@@ -1513,7 +1513,7 @@ public class VideoDetailActivity extends BaseActivity {
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_56fe), Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.image_upload_failed_2), Toast.LENGTH_SHORT).show();
                                     }
                                 });
                             }
@@ -1686,7 +1686,7 @@ public class VideoDetailActivity extends BaseActivity {
         long mid = SharedPreferencesUtil.getLong("mid", 0);
         String cookies = SharedPreferencesUtil.getString("cookies", "");
         if (mid == 0 || cookies == null || cookies.length() == 0) {
-            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_767b), Toast.LENGTH_SHORT).show();
+            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.favorite_need_login), Toast.LENGTH_SHORT).show();
             return;
         }
         final String[] items = {
@@ -1696,7 +1696,7 @@ public class VideoDetailActivity extends BaseActivity {
                 getString(R.string.videodetail_triple)
         };
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(VideoDetailActivity.this)))
-                .setTitle(getString(R.string.videodetailactivity_settitle_4e92))
+                .setTitle(getString(R.string.interactive_actions))
                 .setItems(items, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -1712,9 +1712,9 @@ public class VideoDetailActivity extends BaseActivity {
                                                 if (code == 0) {
                                                     Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_70b9_1), Toast.LENGTH_SHORT).show();
                                                 } else if (code == 65006) {
-                                                    Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_91cd), Toast.LENGTH_SHORT).show();
+                                                    Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.duplicate_like), Toast.LENGTH_SHORT).show();
                                                 } else {
-                                                    Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_70b9), Toast.LENGTH_SHORT).show();
+                                                    Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.like_failed), Toast.LENGTH_SHORT).show();
                                                 }
                                             }
                                         });
@@ -1731,7 +1731,7 @@ public class VideoDetailActivity extends BaseActivity {
                         } else if (which == 1) {
                             final String[] coinItems = {"1枚硬币", "2枚硬币"};
                             new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(VideoDetailActivity.this)))
-                                    .setTitle(getString(R.string.videodetailactivity_settitle_6295))
+                                    .setTitle(getString(R.string.insert_coin))
                                     .setItems(coinItems, new DialogInterface.OnClickListener() {
                                         @Override
                                         public void onClick(DialogInterface coinDialog, int coinWhich) {
@@ -1747,9 +1747,9 @@ public class VideoDetailActivity extends BaseActivity {
                                                                 if (code == 0) {
                                                                     Toast.makeText(VideoDetailActivity.this, "投币" + multiply + "枚成功", Toast.LENGTH_SHORT).show();
                                                                 } else if (code == -401) {
-                                                                    Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_9700), Toast.LENGTH_SHORT).show();
+                                                                    Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.captcha_for_coin_web), Toast.LENGTH_SHORT).show();
                                                                 } else {
-                                                                    Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_6295), Toast.LENGTH_SHORT).show();
+                                                                    Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.coin_failed), Toast.LENGTH_SHORT).show();
                                                                 }
                                                             }
                                                         });
@@ -1781,9 +1781,9 @@ public class VideoDetailActivity extends BaseActivity {
                                                 if (code == 0) {
                                                     Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_4e09_1), Toast.LENGTH_SHORT).show();
                                                 } else if (code == -401) {
-                                                    Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_9700), Toast.LENGTH_SHORT).show();
+                                                    Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.captcha_for_coin_web), Toast.LENGTH_SHORT).show();
                                                 } else {
-                                                    Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_4e09), Toast.LENGTH_SHORT).show();
+                                                    Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.triple_action_failed), Toast.LENGTH_SHORT).show();
                                                 }
                                             }
                                         });
@@ -1844,7 +1844,7 @@ public class VideoDetailActivity extends BaseActivity {
                             if (isFinishing()) return;
                             mIsFavoriteLoading = false;
                             if (folders == null || folders.size() == 0) {
-                                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_6682), Toast.LENGTH_LONG).show();
+                                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.no_folder_create_web_2), Toast.LENGTH_LONG).show();
                                 return;
                             }
 
@@ -1891,8 +1891,8 @@ public class VideoDetailActivity extends BaseActivity {
                                             final long fid = folderIds[which];
                                             if (favStates[which]) {
                                                 new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(VideoDetailActivity.this)))
-                                                        .setTitle(getString(R.string.videodetailactivity_settitle_5220))
-                                                        .setMessage(getString(R.string.videodetailactivity_setmessage_662f))
+                                                        .setTitle(getString(R.string.remove_favorite))
+                                                        .setMessage(getString(R.string.remove_from_folder_ask))
                                                         .setPositiveButton(getString(R.string.videodetail_delete), new DialogInterface.OnClickListener() {
                                                             @Override
                                                             public void onClick(DialogInterface delDialog, int delWhich) {
@@ -1944,7 +1944,7 @@ public class VideoDetailActivity extends BaseActivity {
                             mIsFavoriteUpdating = false;
                             if (code == 0) {
                                 mIsFavorited = true;
-                                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_6536), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.favorited_ok_2), Toast.LENGTH_SHORT).show();
                                 sendBroadcast(new Intent(BroadcastConstants.ACTION_FAVORITE_CHANGED));
                             } else if (code == 11201) {
                                 mIsFavorited = true;
@@ -1988,7 +1988,7 @@ public class VideoDetailActivity extends BaseActivity {
                             mIsFavoriteUpdating = false;
                             if (code == 0) {
                                 mIsFavorited = false;
-                                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_5df2), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.removed_from_folder), Toast.LENGTH_SHORT).show();
                                 sendBroadcast(new Intent(BroadcastConstants.ACTION_FAVORITE_CHANGED));
                             } else {
                                 Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_5220_1), Toast.LENGTH_SHORT).show();
@@ -2067,10 +2067,10 @@ public class VideoDetailActivity extends BaseActivity {
                 Toast.makeText(this, this.getString(R.string.videodetailactivity_toast_5df2_1), Toast.LENGTH_SHORT).show();
                 finish();
             } else {
-                Toast.makeText(this, this.getString(R.string.videodetailactivity_toast_5220), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.delete_failed_4), Toast.LENGTH_SHORT).show();
             }
         } else {
-            Toast.makeText(this, this.getString(R.string.videodetailactivity_toast_672a), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.offline_cache_missing), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -2091,7 +2091,7 @@ public class VideoDetailActivity extends BaseActivity {
 
     private void showDownloadChoiceDialog() {
         if (isBangumi) {
-            Toast.makeText(this, this.getString(R.string.videodetailactivity_toast_756a), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.bangumi_no_offline), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -2129,7 +2129,7 @@ public class VideoDetailActivity extends BaseActivity {
         listView.setAdapter(adapter);
 
         AlertDialog.Builder builder = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)));
-        builder.setTitle(getString(R.string.videodetailactivity_settitle_9009));
+        builder.setTitle(getString(R.string.select_part_quality));
         builder.setView(dialogView);
         builder.setPositiveButton(getString(R.string.videodetail_download), new DialogInterface.OnClickListener() {
             @Override

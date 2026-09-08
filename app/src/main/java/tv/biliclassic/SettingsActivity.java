@@ -51,7 +51,8 @@ public class SettingsActivity extends BaseActivity {
     private static final String KEY_MODERN_MODE = "modern_mode";
     private static final String KEY_PORTRAIT_MODE = "portrait_mode";
     public static final String KEY_DECODER_TYPE = "decoder_type";
-    private static final String KEY_BUILTIN_PLAYER = "use_builtin_player";    private static final String KEY_ONLINE_PLAY = "online_play";
+    private static final String KEY_BUILTIN_PLAYER = "use_builtin_player";
+    private static final String KEY_ONLINE_PLAY = "online_play";
     private static final String KEY_CONVERT_PLAY = "convert_play";
 
     // 转码播放服务（SCF Web 函数，暂时直接使用默认地址，后续换自定义域名）
@@ -80,6 +81,7 @@ public class SettingsActivity extends BaseActivity {
     private static final int PLAYER_BUILTIN = 8;
     private static final int PLAYER_LIANGWAN = 9;
     public static final int PLAYER_OSTWIND = 10;
+    private static final int PLAYER_MOBO_PRO = 11;
 
     // 首页 Tab 索引
     private static final int TAB_PROFILE = 0;
@@ -149,6 +151,9 @@ public class SettingsActivity extends BaseActivity {
     // 竖屏模式（推荐流）开关
     private CheckBox checkboxPortraitMode;
     private LinearLayout portraitModeItem;
+
+    private CheckBox checkboxCast;
+    private LinearLayout castItem;
 
     // 在线播放开关
     private CheckBox checkboxOnlinePlay;
@@ -331,6 +336,31 @@ public class SettingsActivity extends BaseActivity {
             }
         }
 
+        // 投屏（Miracast）开关：开启后点播放先跳系统投屏设置
+        checkboxCast = (CheckBox) findViewById(R.id.checkbox_cast);
+        castItem = (LinearLayout) findViewById(R.id.cast_item);
+        if (checkboxCast != null) {
+            checkboxCast.setChecked(tv.biliclassic.util.MiracastUtil.isCastEnabled());
+            checkboxCast.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    tv.biliclassic.util.MiracastUtil.setCastEnabled(isChecked);
+                    Toast.makeText(SettingsActivity.this,
+                            isChecked ? "已开启投屏：点击播放将打开系统投屏设置"
+                                      : "已关闭投屏",
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+            if (castItem != null) {
+                castItem.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        checkboxCast.toggle();
+                    }
+                });
+            }
+        }
+
         // 在线播放开关 - 低版本完全隐藏
         checkboxOnlinePlay = (CheckBox) findViewById(R.id.checkbox_online_play);
         onlinePlayItem = (LinearLayout) findViewById(R.id.online_play_item);
@@ -359,7 +389,7 @@ public class SettingsActivity extends BaseActivity {
                             if (!isBuiltinPlayerSupported()
                                     && getPlayerPreference() != PLAYER_OSTWIND) {
                                 new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(SettingsActivity.this)))
-                                        .setTitle(getString(R.string.settingsactivity_settitle_63d0))
+                                        .setTitle(getString(R.string.common_hint_2))
                                         .setMessage(getString(R.string.settingsactivity_setmessage_ostwind))
                                         .setPositiveButton("切换并开启", new DialogInterface.OnClickListener() {
                                             @Override
@@ -385,7 +415,7 @@ public class SettingsActivity extends BaseActivity {
                             Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2_4), Toast.LENGTH_SHORT).show();
                         } else {
                             SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, false);
-                            Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.online_play_disabled), Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
@@ -990,14 +1020,11 @@ public class SettingsActivity extends BaseActivity {
 
 
     // 判断是否支持 IJK 硬解：
-    // - Android 4.1+ (API 16+) 恒支持
-    // - Android 2.1-4.0 (API 7-15) 仅高通/MTK 芯片组设备支持，其余隐藏
+    // 仅 Android 4.1+ (API 16+) 支持（MediaCodec 此后才可用）。
+    // 4.1 以下一律不支持：设置里隐藏"IJK 硬解"选项，
+    // 已存储的硬解选择由 getDecoderType() 强制回退系统解码器。
     private static boolean isIjkHardwareSupported() {
-        int sdk = SdkHelper.getSdkInt();
-        if (sdk >= MIN_SDK_FOR_IJK_HARDWARE) {
-            return true;
-        }
-        return sdk >= 7 && DeviceInfoUtil.isQualcommOrMtk();
+        return SdkHelper.getSdkInt() >= MIN_SDK_FOR_IJK_HARDWARE;
     }
 
     // 获取在线播放状态
@@ -1092,6 +1119,8 @@ public class SettingsActivity extends BaseActivity {
                 return "MX Player (专业版)";
             case PLAYER_MOBO:
                 return "MoboPlayer";
+            case PLAYER_MOBO_PRO:
+                return "MoboPlayer Pro";
             case PLAYER_VLC:
                 return "VLC";
             case PLAYER_VPLAYER:
@@ -1122,6 +1151,8 @@ public class SettingsActivity extends BaseActivity {
                 return "com.mxtech.videoplayer.pro";
             case PLAYER_MOBO:
                 return "com.clov4r.android.nil";
+            case PLAYER_MOBO_PRO:
+                return "com.clov4r.android.nil.noad";
             case PLAYER_VLC:
                 return "org.videolan.vlc";
             case PLAYER_VPLAYER:
@@ -1147,9 +1178,12 @@ public class SettingsActivity extends BaseActivity {
     public static int getDecoderType() {
         // 默认值：4.1 以下默认软解，4.1 以上默认硬解
         int defaultDecoder = isIjkHardwareSupported() ? DECODER_IJK_HARD : DECODER_IJK_SOFT;
-        // 已移除"硬解不支持时强制修正为软解"：尊重用户选择，
-        // 低版本上 mediacodec 缺失时 ijk 会忽略硬解选项，等同软解
-        return SharedPreferencesUtil.getInt(KEY_DECODER_TYPE, defaultDecoder);
+        int stored = SharedPreferencesUtil.getInt(KEY_DECODER_TYPE, defaultDecoder);
+        // 4.1 以下不支持 IJK 硬解：即使之前存过硬解选择，也强制回退系统解码器
+        if (stored == DECODER_IJK_HARD && !isIjkHardwareSupported()) {
+            return DECODER_SYSTEM;
+        }
+        return stored;
     }
 
     public static boolean useBuiltinPlayer() {
@@ -1191,13 +1225,13 @@ public class SettingsActivity extends BaseActivity {
     private void updateVideoQualityDisplay() {
         int quality = getVideoQuality();
         if (quality == QUALITY_1080P) {
-            videoQualityText.setText(getString(R.string.settingsactivity_settext_8d85));
+            videoQualityText.setText(getString(R.string.quality_1080p));
         } else if (quality == QUALITY_720P) {
-            videoQualityText.setText(getString(R.string.settingsactivity_settext_9ad8));
+            videoQualityText.setText(getString(R.string.quality_720p));
         } else if (quality == QUALITY_480P) {
-            videoQualityText.setText(getString(R.string.settingsactivity_settext_6e05));
+            videoQualityText.setText(getString(R.string.quality_480p));
         } else {
-            videoQualityText.setText(getString(R.string.settingsactivity_settext_6d41));
+            videoQualityText.setText(getString(R.string.quality_360p_2));
         }
     }
 
@@ -1228,7 +1262,7 @@ public class SettingsActivity extends BaseActivity {
         }
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.settingsactivity_settitle_89c6))
+                .setTitle(getString(R.string.video_render_method_2))
                 .setSingleChoiceItems(modes, checkedIndex, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         SharedPreferencesUtil.putInt(SharedPreferencesUtil.RENDERER_TYPE, values[which]);
@@ -1295,7 +1329,7 @@ public class SettingsActivity extends BaseActivity {
         int checkedIndex = Math.min(current, 1);
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.settingsactivity_settitle_5f39))
+                .setTitle(getString(R.string.danmaku_engine_2))
                 .setSingleChoiceItems(modes, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -1457,7 +1491,7 @@ public class SettingsActivity extends BaseActivity {
         if (index >= 0 && index < tabNames.length) {
             defaultTabText.setText(tabNames[index]);
         } else {
-            defaultTabText.setText(getString(R.string.settingsactivity_settext_65b0));
+            defaultTabText.setText(getString(R.string.new_anime_special_2));
         }
     }
 
@@ -1494,8 +1528,8 @@ public class SettingsActivity extends BaseActivity {
 
     // 播放器选择对话框
     private void showPlayerChoiceDialog() {
-        final String[] allPlayers = {"内置播放器", "自动检测", "MX Player (免费版)", "MX Player (专业版)", "MoboPlayer", "VLC", "VPlayer", "RockPlaye Liter", "QQ影音", "凉腕播放器", "Ostwind播放器", "系统播放器"};
-        final int[] allValues = {PLAYER_BUILTIN, PLAYER_AUTO, PLAYER_MX_AD, PLAYER_MX_PRO, PLAYER_MOBO, PLAYER_VLC, PLAYER_VPLAYER, PLAYER_ROCKPLAYER, PLAYER_QQPLAYER, PLAYER_LIANGWAN, PLAYER_OSTWIND, PLAYER_SYSTEM};
+        final String[] allPlayers = {"内置播放器", "自动检测", "MX Player (免费版)", "MX Player (专业版)", "MoboPlayer", "MoboPlayer Pro", "VLC", "VPlayer", "RockPlaye Liter", "QQ影音", "凉腕播放器", "Ostwind播放器", "系统播放器"};
+        final int[] allValues = {PLAYER_BUILTIN, PLAYER_AUTO, PLAYER_MX_AD, PLAYER_MX_PRO, PLAYER_MOBO, PLAYER_MOBO_PRO, PLAYER_VLC, PLAYER_VPLAYER, PLAYER_ROCKPLAYER, PLAYER_QQPLAYER, PLAYER_LIANGWAN, PLAYER_OSTWIND, PLAYER_SYSTEM};
 
         // 低版本过滤掉内置播放器
         ArrayList filteredPlayers = new ArrayList();
@@ -1526,7 +1560,7 @@ public class SettingsActivity extends BaseActivity {
         }
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.settingsactivity_settitle_9009_4))
+                .setTitle(getString(R.string.settingsactivity_settitle_9009_6))
                 .setSingleChoiceItems(players, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -1560,24 +1594,22 @@ public class SettingsActivity extends BaseActivity {
         int decoder = getDecoderType();
         switch (decoder) {
             case DECODER_SYSTEM:
-                decoderChoiceText.setText(getString(R.string.settingsactivity_settext_7cfb));
+                decoderChoiceText.setText(getString(R.string.decoder_system));
                 break;
             case DECODER_IJK_HARD:
             default:
-                decoderChoiceText.setText(getString(R.string.settingsactivity_settext_786c));
+                decoderChoiceText.setText(getString(R.string.decoder_ijk_hw));
                 break;
             case DECODER_IJK_SOFT:
-                decoderChoiceText.setText(getString(R.string.settingsactivity_settext_8f6f));
+                decoderChoiceText.setText(getString(R.string.decoder_software));
                 break;
         }
     }
 
     // 解码方式选择对话框
     private void showDecoderChoiceDialog() {
-        // IJK 硬解仅以下情况显示：
-        // - Android 4.1+ (API 16+) 恒显示
-        // - Android 2.1-4.0 (API 7-15) 且为高通/MTK 芯片组设备
-        //   其余设备隐藏（老平台 IJK 硬解依赖芯片组硬件解码，非高通/MTK 兼容性差）
+        // IJK 硬解仅在 Android 4.1+ (API 16+) 显示；
+        // 4.1 以下隐藏该选项（MediaCodec 不可用），已存储的硬解选择强制回退系统解码器
         ArrayList filtered = new ArrayList();
         ArrayList filteredValues = new ArrayList();
         filtered.add("系统解码器");
@@ -1639,7 +1671,7 @@ public class SettingsActivity extends BaseActivity {
         if (checkedIndex == 1 && current != 3) checkedIndex = 2;
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.settingsactivity_settitle_56fe))
+                .setTitle(getString(R.string.image_load_threads_2))
                 .setSingleChoiceItems(items, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -1648,7 +1680,7 @@ public class SettingsActivity extends BaseActivity {
                         } else {
                             SharedPreferencesUtil.putInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, values[which]);
                             updateImageThreadDisplay(textView);
-                            Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_91cd), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.take_effect_after_restart), Toast.LENGTH_SHORT).show();
                         }
                         dialog.dismiss();
                     }
@@ -1664,7 +1696,7 @@ public class SettingsActivity extends BaseActivity {
         input.setText(String.valueOf(current == -1 ? 3 : current));
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.settingsactivity_settitle_81ea))
+                .setTitle(getString(R.string.custom_thread_count))
                 .setView(input)
                 .setPositiveButton("确定", new DialogInterface.OnClickListener() {
                     @Override
@@ -1679,7 +1711,7 @@ public class SettingsActivity extends BaseActivity {
                             }
                             if (val > 5) {
                                 new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(SettingsActivity.this)))
-                                        .setTitle(getString(R.string.settingsactivity_settitle_8b66))
+                                        .setTitle(getString(R.string.thread_count_warning))
                                         .setMessage("当前设置 " + val + " 个线程，超过安全建议值（5）。部分手机可能出现频繁卡顿甚至闪退的问题。若遇到此类问题，建议回到此处重新调低。\n\n确定继续吗？")
                                         .setPositiveButton("仍然设置", new DialogInterface.OnClickListener() {
                                             @Override
@@ -1687,7 +1719,7 @@ public class SettingsActivity extends BaseActivity {
                                                 saveThreadValue(val, textView);
                                             }
                                         })
-.setNegativeButton(getString(R.string.common_cancel), null)
+.setNegativeButton(getString(R.string.videodetail_cancel), null)
                                         .show();
                             } else {
                                 saveThreadValue(val, textView);
@@ -1704,7 +1736,7 @@ public class SettingsActivity extends BaseActivity {
     private void saveThreadValue(int val, TextView textView) {
         SharedPreferencesUtil.putInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, val);
         updateImageThreadDisplay(textView);
-        Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_91cd), Toast.LENGTH_SHORT).show();
+        Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.take_effect_after_restart), Toast.LENGTH_SHORT).show();
     }
 
     private void showDialogStyleDialog(final TextView textView) {
@@ -1728,7 +1760,7 @@ public class SettingsActivity extends BaseActivity {
             }
         }
         new android.app.AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(tv.biliclassic.util.DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.settingsactivity_settitle_9009))
+                .setTitle(getString(R.string.select_dialog_style))
                 .setSingleChoiceItems(items, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -1745,8 +1777,8 @@ public class SettingsActivity extends BaseActivity {
 
     private void updateDialogStyleDisplay(TextView textView) {
         int val = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DIALOG_STYLE, 0);
-        if (val == 0) textView.setText(getString(R.string.settingsactivity_settext_81ea));
-        else if (val == 1) textView.setText(getString(R.string.settingsactivity_settext_7ecf));
+        if (val == 0) textView.setText(getString(R.string.auto_adapt));
+        else if (val == 1) textView.setText(getString(R.string.classic_style));
         else if (val == 2) textView.setText("Holo");
         else if (val == 3) textView.setText("Material");
     }
@@ -1783,9 +1815,9 @@ public class SettingsActivity extends BaseActivity {
     private void updateLocaleDisplay(TextView textView) {
         String current = LocaleHelper.getCurrentLocale();
         if ("zh_TW".equals(current)) {
-            textView.setText(getString(R.string.settingsactivity_settext_7e41));
+            textView.setText(getString(R.string.lang_traditional_chinese));
         } else {
-            textView.setText(getString(R.string.settingsactivity_settext_7b80));
+            textView.setText(getString(R.string.lang_simplified_chinese_2));
         }
     }
 
@@ -1862,7 +1894,7 @@ public class SettingsActivity extends BaseActivity {
         long totalSize = getTotalCacheSize();
         String sizeText = formatFileSize(totalSize);
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.settingsactivity_settitle_6e05))
+                .setTitle(getString(R.string.clear_image_cache_2))
                 .setMessage("将清除以下缓存：\n\n• 头像缓存\n• 番剧封面缓存\n\n共 " + sizeText + "，清除后下次启动会自动重新下载。")
                 .setPositiveButton("清除", new DialogInterface.OnClickListener() {
                     @Override
@@ -1975,7 +2007,7 @@ public class SettingsActivity extends BaseActivity {
             String sizeText = formatFileSize(totalSize);
             playCacheSizeText.setText(sizeText + " (" + fileCount + "个视频)");
         } else {
-            playCacheSizeText.setText(getString(R.string.settingsactivity_settext_65e0));
+            playCacheSizeText.setText(getString(R.string.no_playback_cache));
         }
     }
 
@@ -2050,7 +2082,7 @@ public class SettingsActivity extends BaseActivity {
 
     private void showCookieDialog() {
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.settingsactivity_settitle_7ba1))
+                .setTitle(getString(R.string.cookie_manager))
                 .setItems(new String[]{"保存到本地", "复制到剪切板", "从本地导入", "从剪切板导入"}, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -2074,7 +2106,7 @@ public class SettingsActivity extends BaseActivity {
 
     private boolean checkLogin() {
         if (!isLoggedIn()) {
-            Toast.makeText(this, this.getString(R.string.settingsactivity_toast_8bf7), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.please_login_first_7), Toast.LENGTH_SHORT).show();
             return false;
         }
         return true;
@@ -2134,7 +2166,7 @@ public class SettingsActivity extends BaseActivity {
             cm.setText(getCookieJson());
             Toast.makeText(this, this.getString(R.string.settingsactivity_toast_5df2_3), Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Toast.makeText(this, this.getString(R.string.settingsactivity_toast_590d), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.copy_failed_2), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -2166,7 +2198,7 @@ public class SettingsActivity extends BaseActivity {
         input.setMinLines(3);
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.settingsactivity_settitle_7c98))
+                .setTitle(getString(R.string.paste_cookie))
                 .setView(input)
                 .setPositiveButton("导入", new DialogInterface.OnClickListener() {
                     @Override
@@ -2180,14 +2212,14 @@ public class SettingsActivity extends BaseActivity {
 
     private void applyCookieJson(String jsonStr) {
         if (jsonStr == null || jsonStr.length() == 0) {
-            Toast.makeText(this, this.getString(R.string.settingsactivity_toast_5185), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.content_is_empty), Toast.LENGTH_SHORT).show();
             return;
         }
         try {
             JSONObject json = new JSONObject(jsonStr);
             String cookies = json.optString("cookies", "");
             if (cookies == null || cookies.length() == 0) {
-                Toast.makeText(this, this.getString(R.string.settingsactivity_toast_65e0), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.invalid_cookie_data), Toast.LENGTH_SHORT).show();
                 return;
             }
             SharedPreferencesUtil.putString("cookies", cookies);
@@ -2211,10 +2243,10 @@ public class SettingsActivity extends BaseActivity {
             if (isLoggedIn()) {
                 Toast.makeText(this, this.getString(R.string.settingsactivity_toast_5bfc_1), Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(this, this.getString(R.string.settingsactivity_toast_5bfc), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, this.getString(R.string.import_cookie_status_warning), Toast.LENGTH_LONG).show();
             }
         } catch (JSONException e) {
-            Toast.makeText(this, this.getString(R.string.settingsactivity_toast_683c), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.format_error_check), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -2262,13 +2294,13 @@ public class SettingsActivity extends BaseActivity {
     private void showClearCrashLogDialog() {
         int count = getCrashLogFileCount();
         if (count == 0) {
-            Toast.makeText(this, this.getString(R.string.settingsactivity_toast_6ca1), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.no_crash_logs), Toast.LENGTH_SHORT).show();
             return;
         }
 
         String sizeText = formatFileSize(getCrashLogTotalSize());
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.settingsactivity_settitle_5220))
+                .setTitle(getString(R.string.delete_crash_logs_2))
                 .setMessage("确定要删除所有崩溃日志吗？\n共 " + count + " 个文件，总计 " + sizeText)
                 .setPositiveButton("删除", new DialogInterface.OnClickListener() {
                     @Override
@@ -2305,7 +2337,7 @@ public class SettingsActivity extends BaseActivity {
 
     // 回声洞
     private void loadEchoHole() {
-        echoHoleText.setText(getString(R.string.settingsactivity_settext_563f));
+        echoHoleText.setText(getString(R.string.login_working_hard_9));
         echoHoleItem.setEnabled(false);
         new Thread(new Runnable() {
             public void run() {
@@ -2326,7 +2358,7 @@ public class SettingsActivity extends BaseActivity {
                     final String jsonStr = sb.toString();
                     runOnUiThread(new Runnable() {
                         public void run() {
-                            echoHoleText.setText(getString(R.string.settingsactivity_settext_968f));
+                            echoHoleText.setText(getString(R.string.random_one_2));
                             echoHoleItem.setEnabled(true);
                             if (isFinishing()) return;
                             try {
@@ -2350,15 +2382,15 @@ public class SettingsActivity extends BaseActivity {
                                     }
                                     msg += "\n" + time;
                                     new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(SettingsActivity.this)))
-                                            .setTitle(getString(R.string.settingsactivity_settitle_56de))
+                                            .setTitle(getString(R.string.echo_cave_2))
                                             .setMessage(msg)
                                             .setPositiveButton("关闭", null)
                                             .show();
                                 } else {
-                                    Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_56de), Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.echo_cave_empty), Toast.LENGTH_SHORT).show();
                                 }
                             } catch (JSONException e) {
-                                Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_89e3), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.parse_failed), Toast.LENGTH_SHORT).show();
                             }
                         }
                     });
@@ -2366,7 +2398,7 @@ public class SettingsActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         public void run() {
                             if (isFinishing()) return;
-                            echoHoleText.setText(getString(R.string.settingsactivity_settext_968f));
+                            echoHoleText.setText(getString(R.string.random_one_2));
                             echoHoleItem.setEnabled(true);
                             Toast.makeText(SettingsActivity.this, "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
@@ -2378,7 +2410,7 @@ public class SettingsActivity extends BaseActivity {
 
     // 检查更新（使用 UpdateUtil）
     private void checkForUpdate() {
-        checkUpdateText.setText(getString(R.string.settingsactivity_settext_6b63));
+        checkUpdateText.setText(getString(R.string.checking));
         checkUpdateItem.setEnabled(false);
 
         UpdateUtil.checkUpdate(this, currentVersionCode, currentVersionName,
@@ -2390,7 +2422,7 @@ public class SettingsActivity extends BaseActivity {
 
                     @Override
                     public void onCheckComplete(boolean hasUpdate, String message) {
-                        checkUpdateText.setText(getString(R.string.settingsactivity_settext_68c0));
+                        checkUpdateText.setText(getString(R.string.check_done));
                         checkUpdateItem.setEnabled(true);
                         if (!hasUpdate) {
                             Toast.makeText(SettingsActivity.this, message, Toast.LENGTH_SHORT).show();
@@ -2399,7 +2431,7 @@ public class SettingsActivity extends BaseActivity {
 
                     @Override
                     public void onCheckFailed(String error) {
-                        checkUpdateText.setText(getString(R.string.settingsactivity_settext_68c0));
+                        checkUpdateText.setText(getString(R.string.check_done));
                         checkUpdateItem.setEnabled(true);
                         Toast.makeText(SettingsActivity.this, error, Toast.LENGTH_SHORT).show();
                     }

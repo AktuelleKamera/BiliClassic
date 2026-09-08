@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root_layout"
     android:layout_width="match_parent"
@@ -41,7 +41,7 @@
                 android:id="@+id/page2_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_setup_9009"
+                android:text="@string/choose_default_home"
                 android:textSize="@dimen/setup_title_text_size"
                 android:textColor="#D86DA5" />
 
@@ -78,7 +78,7 @@
                 android:id="@+id/btn_start"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_setup_5f00"
+                android:text="@string/get_started"
                 android:textSize="@dimen/setup_button_text_size"
                 android:textColor="#D86DA5"
                 android:padding="@dimen/setup_button_padding"
@@ -289,7 +289,7 @@
                 android:id="@+id/title_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_setup_521d"
+                android:text="@string/setup_first_meeting"
                 android:textColor="#D86DA5"
                 android:textSize="@dimen/setup_title_text_size" />
 
@@ -306,7 +306,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:text="@string/activity_setup_6b22"
+                android:text="@string/setup_welcome_message"
                 android:textColor="#666666"
                 android:textSize="@dimen/setup_content_text_size" />
 
@@ -328,7 +328,7 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:padding="@dimen/setup_button_padding"
-                android:text="@string/activity_setup_4e0b"
+                android:text="@string/common_next"
                 android:textColor="#D86DA5"
                 android:textSize="@dimen/setup_button_text_size" />
 

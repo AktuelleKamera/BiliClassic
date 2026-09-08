@@ -69,7 +69,7 @@ public abstract class BaseActivity extends FragmentActivity {
 
         // 防止有心人直接跳转到 BaseActivity
         if (getClass() == BaseActivity.class) {
-            Toast.makeText(this, this.getString(R.string.baseactivity_toast_65e0), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.cannot_open_page), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -279,7 +279,7 @@ public abstract class BaseActivity extends FragmentActivity {
                     mPendingStorageAction = null;
                 }
             } else {
-                Toast.makeText(this, this.getString(R.string.baseactivity_toast_9700), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.storage_permission_needed), Toast.LENGTH_SHORT).show();
                 mPendingStorageAction = null;
             }
         }

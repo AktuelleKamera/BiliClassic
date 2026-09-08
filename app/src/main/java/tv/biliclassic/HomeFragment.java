@@ -35,7 +35,9 @@ import tv.biliclassic.api.PartitionApi;
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.SdkHelper;
+import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.NetWorkUtil;
 
 public class HomeFragment extends Fragment {
 
@@ -535,47 +537,9 @@ public class HomeFragment extends Fragment {
     }
 
     private Bitmap downloadImage(String urlStr) throws Exception {
-        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
-
         android.content.Context ctx = tv.biliclassic.BaseActivity.getAppContext();
         if (ctx == null) return null;
-
-        HttpURLConnection conn = null;
-        java.io.File tempFile = null;
-        try {
-            URL url = new URL(urlStr);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(12000);
-            conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.setRequestProperty("Accept-Encoding", "identity");
-            conn.connect();
-
-            tempFile = new java.io.File(ctx.getCacheDir(), "hom_" + urlStr.hashCode() + ".tmp");
-            InputStream is = conn.getInputStream();
-            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
-            byte[] buf = new byte[8192];
-            int len;
-            while ((len = is.read(buf)) != -1) {
-                fos.write(buf, 0, len);
-            }
-            is.close();
-            fos.close();
-
-            if (!tempFile.exists() || tempFile.length() == 0) return null;
-
-            int targetWidth = 160;
-            int targetHeight = 90;
-            if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 23) {
-                targetWidth = (int)(targetWidth * 1.25f);
-                targetHeight = (int)(targetHeight * 1.25f);
-            }
-            int minScale = tv.biliclassic.util.SdkHelper.getSdkInt() >= 9 ? 2 : 4;
-            return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, targetHeight, minScale);
-        } finally {
-            if (conn != null) conn.disconnect();
-            if (tempFile != null && tempFile.exists()) tempFile.delete();
-        }
+        return ImageLoader.fetchBitmap(ctx, urlStr, 160, 90);
     }
 
     /**

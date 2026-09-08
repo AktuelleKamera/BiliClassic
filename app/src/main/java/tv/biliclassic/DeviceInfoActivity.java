@@ -231,9 +231,9 @@ public class DeviceInfoActivity extends BaseActivity {
         try {
             android.text.ClipboardManager clipboard = (android.text.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
             clipboard.setText(info);
-            Toast.makeText(this, this.getString(R.string.deviceinfoactivity_toast_5df2), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.copied), Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Toast.makeText(this, this.getString(R.string.deviceinfoactivity_toast_590d), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.copy_failed), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -241,18 +241,18 @@ public class DeviceInfoActivity extends BaseActivity {
         final String evaluateText = getEasterEggComment();
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.deviceinfoactivity_settitle_8bbe))
+                .setTitle(getString(R.string.device_rating))
                 .setMessage(evaluateText + "\n\n觉得这个评价准确吗？")
                 .setPositiveButton("准确", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        Toast.makeText(DeviceInfoActivity.this, DeviceInfoActivity.this.getString(R.string.deviceinfoactivity_toast_8c22), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(DeviceInfoActivity.this, DeviceInfoActivity.this.getString(R.string.thanks_feedback), Toast.LENGTH_SHORT).show();
                     }
                 })
                 .setNegativeButton("不准确", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        Toast.makeText(DeviceInfoActivity.this, DeviceInfoActivity.this.getString(R.string.deviceinfoactivity_toast_4f1a), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(DeviceInfoActivity.this, DeviceInfoActivity.this.getString(R.string.will_keep_improving), Toast.LENGTH_SHORT).show();
                     }
                 })
                 .setNeutralButton("分享", new DialogInterface.OnClickListener() {

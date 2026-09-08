@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 夜间模式磁贴底色：灰色本体（文字保持深色可读），按压粉色反馈与白色版一致 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape>
+            <solid android:color="#40D86DA5" />
+        </shape>
+    </item>
+    <item>
+        <shape>
+            <solid android:color="#FF222222" />
+        </shape>
+    </item>
+</selector>

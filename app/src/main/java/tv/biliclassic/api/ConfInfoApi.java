@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.NetWorkUtil;
 
 public class ConfInfoApi {
 
@@ -191,7 +192,7 @@ public class ConfInfoApi {
         conn.setRequestMethod("GET");
         conn.setConnectTimeout(12000);
         conn.setReadTimeout(12000);
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
         conn.setRequestProperty("Accept-Encoding", "identity");
         conn.connect();
 

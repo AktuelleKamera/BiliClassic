@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 顶部状态栏留白由 BaseActivity.applyEdgeToEdge 统一处理，这里不能再开 fitsSystemWindows（会双重补偿出现白条） -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:fitsSystemWindows="true">
+    android:orientation="vertical">
 
     <!-- 标题栏 -->
     <LinearLayout
@@ -22,7 +22,7 @@
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:layout_centerVertical="true"
-                android:contentDescription="@string/activity_webview_8fd4"
+                android:contentDescription="@string/common_back_10"
                 android:padding="8dp"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_action_back" />
@@ -32,7 +32,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:text="@string/activity_webview_7f51"
+                android:text="@string/webpage"
                 android:textSize="18sp"
                 android:textColor="#333333"/>
 
@@ -72,7 +72,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="@string/activity_webview_563f"
+            android:text="@string/login_working_hard_3"
             android:textSize="12sp"
             android:textColor="#999999" />
 

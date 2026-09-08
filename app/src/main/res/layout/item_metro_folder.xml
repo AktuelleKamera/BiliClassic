@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Metro 透明收藏夹行：封面（右上角灰色"私密"方块，仅私密收藏夹显示）
+  + 名称（大字）+ 视频数量（小字）。按压有淡粉色反馈（metro_row_bg），
+  颜色由适配器按夜间模式设置。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingLeft="6dp"
+    android:paddingRight="6dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp"
+    android:background="@drawable/metro_row_bg">
+
+    <!-- 封面 -->
+    <FrameLayout
+        android:id="@+id/cover_container"
+        android:layout_width="112dp"
+        android:layout_height="66dp"
+        android:background="#FFFFFF"
+        android:padding="2dp">
+
+        <ImageView
+            android:id="@+id/cover"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:src="@drawable/bili_default_image_tv_with_bg"
+            android:contentDescription="@null" />
+
+        <!-- 私密标记：封面右上角灰色方块 -->
+        <TextView
+            android:id="@+id/badge_private"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:background="#B3666666"
+            android:paddingLeft="5dp"
+            android:paddingRight="5dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:text="私密"
+            android:textSize="10sp"
+            android:textColor="#FFFFFF"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+    <!-- 文案区 -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginLeft="12dp"
+        android:orientation="vertical"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/folder_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="17sp"
+            android:textColor="#333333"
+            android:maxLines="2"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/folder_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="12sp"
+            android:textColor="#999999" />
+
+    </LinearLayout>
+
+</LinearLayout>

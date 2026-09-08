@@ -59,6 +59,7 @@ import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.player.BiliPlayerActivity;
 
 import tv.biliclassic.util.SdkHelper;
+import tv.biliclassic.util.NetWorkUtil;
 public class VideoDetailFragment extends Fragment {
 
     public static class VideoPage {
@@ -325,17 +326,17 @@ public class VideoDetailFragment extends Fragment {
     public void prepareDownload(final VideoPage page, final int quality, final String qualityName) {
         if (!isAdded() || getActivity() == null) return;
         if (page == null) {
-            Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_5206), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.part_info_empty), Toast.LENGTH_SHORT).show();
             return;
         }
         if (page.cid == 0) {
-            Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_65e0), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.load_video_id_failed), Toast.LENGTH_SHORT).show();
             return;
         }
 
         final long realAid = (videoInfo != null && videoInfo.aid != 0) ? videoInfo.aid : aid;
         if (realAid == 0) {
-            Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_65e0), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.load_video_id_failed), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -347,7 +348,7 @@ public class VideoDetailFragment extends Fragment {
         final String mainTitle = (videoInfo != null) ? videoInfo.title : page.title;
         final String bvidStr = (videoInfo != null) ? videoInfo.bvid : null;
 
-        Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_6b63), Toast.LENGTH_SHORT).show();
+        Toast.makeText(getActivity(), getActivity().getString(R.string.fetching_download_url), Toast.LENGTH_SHORT).show();
 
         new Thread(new Runnable() {
             @Override
@@ -402,7 +403,7 @@ public class VideoDetailFragment extends Fragment {
                                                 coverUrl, upName, bvidStr, desc, tagsStr);
                                     }
                                 } else {
-                                    Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_83b7), Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(getActivity(), getActivity().getString(R.string.load_download_url_failed), Toast.LENGTH_SHORT).show();
                                 }
                             }
                         });
@@ -436,7 +437,7 @@ public class VideoDetailFragment extends Fragment {
 
     private void loadVideoData() {
         if (!isAdded() || getActivity() == null) return;
-        tvTitle.setText(getString(R.string.videodetailfragment_settext_52a0));
+        tvTitle.setText(getString(R.string.common_loading_2));
 
         if (mOfflineMode) {
             loadVideoDataFromOffline();
@@ -463,8 +464,8 @@ public class VideoDetailFragment extends Fragment {
                                 @Override
                                 public void run() {
                                     if (!isAdded() || getActivity() == null) return;
-                                    tvTitle.setText(getString(R.string.videodetailfragment_settext_53c2));
-                                    Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_7f3a), Toast.LENGTH_SHORT).show();
+                                    tvTitle.setText(getString(R.string.args_error_2));
+                                    Toast.makeText(getActivity(), getActivity().getString(R.string.missing_video_args), Toast.LENGTH_SHORT).show();
                                 }
                             });
                         }
@@ -578,7 +579,7 @@ public class VideoDetailFragment extends Fragment {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
-                                tvTitle.setText(getString(R.string.videodetailfragment_settext_79bb));
+                                tvTitle.setText(getString(R.string.offline_data_load_failed));
                             }
                         });
                     }
@@ -728,7 +729,7 @@ public class VideoDetailFragment extends Fragment {
     private void displayVideoInfo() {
         if (!isAdded() || getActivity() == null) return;
         if (videoInfo == null) {
-            tvTitle.setText(getString(R.string.videodetailfragment_settext_83b7));
+            tvTitle.setText(getString(R.string.load_data_failed));
             return;
         }
 
@@ -746,12 +747,12 @@ public class VideoDetailFragment extends Fragment {
                         intent.putExtra("mid", staff.mid);
                         startActivity(intent);
                     } else {
-                        Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_65e0), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getActivity(), getActivity().getString(R.string.load_video_id_failed), Toast.LENGTH_SHORT).show();
                     }
                 }
             });
         } else {
-            tvUpNameNew.setText(getString(R.string.videodetailfragment_settext_672a));
+            tvUpNameNew.setText(getString(R.string.unknown));
         }
 
         if (videoInfo.stats != null) {
@@ -768,13 +769,13 @@ public class VideoDetailFragment extends Fragment {
                             getActivity().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
                     if (cm != null) {
                         cm.setText(videoInfo.description);
-                        android.widget.Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_7b80), android.widget.Toast.LENGTH_SHORT).show();
+                        android.widget.Toast.makeText(getActivity(), getActivity().getString(R.string.intro_copied), android.widget.Toast.LENGTH_SHORT).show();
                     }
                     return true;
                 }
             });
         } else {
-            tvDesc.setText(getString(R.string.videodetailfragment_settext_6682));
+            tvDesc.setText(getString(R.string.no_intro));
             tvDesc.setOnLongClickListener(null);
         }
 
@@ -784,7 +785,7 @@ public class VideoDetailFragment extends Fragment {
                 String dateStr = sdf.format(new Date(videoInfo.pubdate * 1000));
                 tvPubDate.setText("发布时间: " + dateStr);
             } else {
-                tvPubDate.setText(getString(R.string.videodetailfragment_settext_53d1));
+                tvPubDate.setText(getString(R.string.publish_time_empty));
             }
         }
 
@@ -805,7 +806,7 @@ public class VideoDetailFragment extends Fragment {
             tvPartCount.setText("共" + partList.size() + "段视频");
             partAdapter.notifyDataSetChanged();
         } else {
-            tvPartCount.setText(getString(R.string.videodetailfragment_settext_5171));
+            tvPartCount.setText(getString(R.string.video_total_part_single));
             partList.clear();
             partList.add(new VideoPart(1, videoInfo.title, 0));
             partAdapter.notifyDataSetChanged();
@@ -884,7 +885,7 @@ public class VideoDetailFragment extends Fragment {
             tv.biliclassic.util.NetWorkUtil.applySSLCompat(conn, urlStr);
             conn.setConnectTimeout(12000);
             conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
             conn.connect();
 
             tempFile = new java.io.File(getActivity().getCacheDir(), "vd_" + urlStr.hashCode() + ".tmp");
@@ -929,7 +930,7 @@ public class VideoDetailFragment extends Fragment {
             return;
         }
         if (videoInfo == null) {
-            Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_89c6), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.video_info_not_loaded), Toast.LENGTH_SHORT).show();
             isPlayButtonClicked = false;
             return;
         }
@@ -941,6 +942,19 @@ public class VideoDetailFragment extends Fragment {
             return;
         }
 
+        // 投屏（Miracast）：开启后首次点播放先跳系统投屏设置，
+        // 连接后系统镜像画面；引导过一次之后播放不再跳转
+        if (tv.biliclassic.util.MiracastUtil.shouldPromptBeforePlay(getActivity())) {
+            isPlayButtonClicked = false;
+            tv.biliclassic.util.MiracastUtil.markPrompted();
+            boolean opened = tv.biliclassic.util.MiracastUtil.openCastSettings(getActivity());
+            Toast.makeText(getActivity(),
+                    opened ? "请在系统设置中连接投屏设备（Miracast），连接后画面自动镜像"
+                           : "未找到系统投屏设置，请在系统设置中手动连接无线显示",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
         final long targetCid;
         if (videoInfo.cids != null && currentPartIndex < videoInfo.cids.size()) {
             targetCid = videoInfo.cids.get(currentPartIndex);
@@ -948,7 +962,7 @@ public class VideoDetailFragment extends Fragment {
             targetCid = 0;
         }
         if (targetCid == 0) {
-            Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_65e0), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.load_video_id_failed), Toast.LENGTH_SHORT).show();
             isPlayButtonClicked = false;
             return;
         }
@@ -1071,7 +1085,7 @@ public class VideoDetailFragment extends Fragment {
                                         isPlayButtonClicked = false;
                                         startActivity(pIntent);
                                     } else {
-                                        Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_83b7_1), Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(getActivity(), getActivity().getString(R.string.live_info_build_url_fail), Toast.LENGTH_SHORT).show();
                                         isPlayButtonClicked = false;
                                     }
                                 }
@@ -1143,7 +1157,7 @@ public class VideoDetailFragment extends Fragment {
                                     isPlayButtonClicked = false;
                                     startActivity(intent);
                                 } else {
-                                    Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_83b7_1), Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(getActivity(), getActivity().getString(R.string.live_info_build_url_fail), Toast.LENGTH_SHORT).show();
                                     isPlayButtonClicked = false;
                                 }
                             }
@@ -1196,7 +1210,7 @@ public class VideoDetailFragment extends Fragment {
         java.io.File danmakuFile = env.getDanmakuFile(false);
 
         if (!videoFile.exists()) {
-            Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_7f13), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.cached_file_missing), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -1273,7 +1287,7 @@ public class VideoDetailFragment extends Fragment {
                 startActivity(extIntent);
                 return;
             } catch (Exception e) {
-                Toast.makeText(getActivity(), getActivity().getString(R.string.videodetailfragment_toast_672a), Toast.LENGTH_SHORT).show();
+                Toast.makeText(getActivity(), getActivity().getString(R.string.no_external_player), Toast.LENGTH_SHORT).show();
                 return;
             }
         }
@@ -1341,7 +1355,8 @@ public class VideoDetailFragment extends Fragment {
                 }
             }
         }
-    }
+    }
+
     /** UI 线程安全执行：单次读取 getActivity()，避免后台线程两次调用间被置空导致 NPE */
     private void runUi(java.lang.Runnable r) {
         android.support.v4.app.FragmentActivity a = getActivity();

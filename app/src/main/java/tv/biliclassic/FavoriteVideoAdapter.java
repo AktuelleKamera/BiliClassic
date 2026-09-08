@@ -39,6 +39,8 @@ public class FavoriteVideoAdapter extends BaseAdapter {
     private List<VideoCard> list;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private volatile boolean mScrolling = false;
+    // Metro 主题标记
+    private final boolean mMetro;
 
     // 长按检测
     private Handler longPressHandler = new Handler();
@@ -62,6 +64,8 @@ public class FavoriteVideoAdapter extends BaseAdapter {
         if (this.list == null) {
             this.list = new ArrayList<VideoCard>();
         }
+        // Metro 主题：使用透明的共用视频 item（与历史记录页共用）
+        this.mMetro = SettingsActivity.getUiTheme() == SettingsActivity.THEME_METRO;
     }
 
     /** 滚动状态变化时由 ListView 的 OnScrollListener 调用 */
@@ -109,7 +113,8 @@ public class FavoriteVideoAdapter extends BaseAdapter {
         ViewHolder holder;
 
         if (convertView == null) {
-            convertView = LayoutInflater.from(context).inflate(R.layout.item_favorite_video, parent, false);
+            convertView = LayoutInflater.from(context).inflate(
+                    mMetro ? R.layout.item_metro_video_row : R.layout.item_favorite_video, parent, false);
             holder = new ViewHolder();
             holder.cover = (ImageView) convertView.findViewById(R.id.cover);
             holder.title = (TextView) convertView.findViewById(R.id.title);
@@ -131,9 +136,11 @@ public class FavoriteVideoAdapter extends BaseAdapter {
             return convertView;
         }
 
-        // 遥控器光标高亮（选中：半透明粉色；未选中：恢复原点击效果背景）
+        // 遥控器光标高亮（选中：半透明粉色；未选中：Classic 恢复点击效果，Metro 保持透明）
         if (position == selectedPosition && !mHideHighlight) {
             convertView.setBackgroundColor(0x66D86DA5);
+        } else if (mMetro) {
+            convertView.setBackgroundDrawable(null);
         } else {
             try {
                 convertView.setBackgroundDrawable(

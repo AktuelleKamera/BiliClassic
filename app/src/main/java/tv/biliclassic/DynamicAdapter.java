@@ -2,9 +2,6 @@ package tv.biliclassic;
 
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,16 +10,10 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import tv.biliclassic.model.Dynamic;
-import tv.biliclassic.util.GlobalImageCache;
+import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 /**
@@ -42,9 +33,6 @@ public class DynamicAdapter extends BaseAdapter {
     private final Context context;
     private final List<Dynamic> list;
     private final Listener listener;
-    private final ExecutorService executor;
-    private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private final HashSet<String> loadingUrls = new HashSet<String>();
 
     private int picHeight = 0;
 
@@ -52,12 +40,6 @@ public class DynamicAdapter extends BaseAdapter {
         this.context = context;
         this.list = list;
         this.listener = listener;
-        int threads = tv.biliclassic.util.SdkHelper.getImageLoadThreads();
-        if (threads <= 1) {
-            executor = Executors.newSingleThreadExecutor();
-        } else {
-            executor = Executors.newFixedThreadPool(threads);
-        }
     }
 
     @Override
@@ -327,123 +309,15 @@ public class DynamicAdapter extends BaseAdapter {
         }
     }
 
-    /** 异步加载图片：内存缓存命中直接显示，否则后台下载解码后回填 */
+    /** 异步加载图片：内存缓存命中直接显示，否则交给 ImageLoader 统一下载/解码 */
     private void loadBitmap(final ImageView iv, String rawUrl, final int w, final int h,
                             final int defaultRes) {
         if (iv == null) return;
-        if (rawUrl == null || rawUrl.length() == 0
-                || SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) {
-            iv.setImageResource(defaultRes);
-            iv.setTag(null);
-            return;
-        }
-        // 老设备 TLS 兼容：统一降为 http（与评论头像等处理一致）
-        final String url = rawUrl.startsWith("https://")
-                ? "http://" + rawUrl.substring(8) : rawUrl;
-
-        Object tag = iv.getTag();
-        if (url.equals(tag)) {
-            Bitmap cached = GlobalImageCache.getInstance().get(url);
-            if (cached != null && !cached.isRecycled()) {
-                iv.setImageBitmap(cached);
-                return;
-            }
-        } else {
-            iv.setTag(url);
-        }
-
-        Bitmap cached = GlobalImageCache.getInstance().get(url);
-        if (cached != null && !cached.isRecycled()) {
-            iv.setImageBitmap(cached);
-            return;
-        }
-        iv.setImageResource(defaultRes);
-
-        synchronized (loadingUrls) {
-            if (loadingUrls.contains(url)) return;
-            loadingUrls.add(url);
-        }
-
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                Bitmap bitmap = download(url, w, h);
-                synchronized (loadingUrls) {
-                    loadingUrls.remove(url);
-                }
-                if (bitmap == null || bitmap.isRecycled()) return;
-                GlobalImageCache.getInstance().put(url, bitmap);
-                mainHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Object t = iv.getTag();
-                        if (t != null && t.equals(url)) {
-                            Bitmap b = GlobalImageCache.getInstance().get(url);
-                            if (b != null && !b.isRecycled()) {
-                                iv.setImageBitmap(b);
-                            }
-                        }
-                    }
-                });
-            }
-        });
-    }
-
-    private Bitmap download(String urlStr, int targetW, int targetH) {
-        HttpURLConnection conn = null;
-        java.io.File tempFile = null;
-        try {
-            URL url = new URL(urlStr);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(12000);
-            conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.setRequestProperty("Accept-Encoding", "identity");
-            conn.connect();
-
-            tempFile = new java.io.File(context.getCacheDir(),
-                    "dyn_" + urlStr.hashCode() + ".tmp");
-            InputStream is = conn.getInputStream();
-            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
-            byte[] buf = new byte[8192];
-            int len;
-            while ((len = is.read(buf)) != -1) {
-                fos.write(buf, 0, len);
-            }
-            is.close();
-            fos.close();
-
-            if (!tempFile.exists() || tempFile.length() == 0) return null;
-            int minScale = tv.biliclassic.util.SdkHelper.getSdkInt() >= 9 ? 2 : 4;
-            return GlobalImageCache.decodeFileSafely(tempFile, targetW, targetH, minScale);
-        } catch (OutOfMemoryError e) {
-            GlobalImageCache.getInstance().freeAllUnreferenced();
-            return null;
-        } catch (Throwable e) {
-            return null;
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.disconnect();
-                } catch (Exception ignored) {
-                }
-            }
-            if (tempFile != null && tempFile.exists()) {
-                try {
-                    tempFile.delete();
-                } catch (Exception ignored) {
-                }
-            }
-        }
+        float density = context.getResources().getDisplayMetrics().density;
+        ImageLoader.bind(iv, rawUrl, defaultRes, Math.round(w / density), Math.round(h / density));
     }
 
     public void clearCache() {
-        synchronized (loadingUrls) {
-            loadingUrls.clear();
-        }
-        if (executor != null) {
-            executor.shutdownNow();
-        }
     }
 
     private int dpToPx(int dp) {

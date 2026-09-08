@@ -46,16 +46,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 import tv.biliclassic.api.ReplyApi;
-import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.ImageLoader;
+import tv.biliclassic.util.NetWorkUtil;
 
 public class CommentAdapter extends BaseAdapter {
 
@@ -64,10 +60,7 @@ public class CommentAdapter extends BaseAdapter {
     private long mAid;
     private String mBvid;
     private CommentFragment mFragment;
-    private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
-    private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
-    private java.util.Set<String> loadingUrls = new java.util.HashSet<String>();
 
     private long mMid;
     private int mReplyType = 1;
@@ -76,7 +69,6 @@ public class CommentAdapter extends BaseAdapter {
     public void setReplyType(int type) { mReplyType = type; }
     public void setBvid(String bvid) { mBvid = bvid; }
 
-    private boolean isScrolling = false;
     private float mDensity;
 
     // 键盘光标选中的项，-1 表示无选中
@@ -115,46 +107,23 @@ public class CommentAdapter extends BaseAdapter {
         this.likeListener = listener;
     }
 
-    private boolean isLowMemoryDevice() {
-        int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        return maxMemory < 24576;
-    }
-
-    private int getConfiguredThreadCount() {
-        return tv.biliclassic.util.SdkHelper.getImageLoadThreads();
-    }
-
-    private void initExecutor() {
-        if (executor != null && !executor.isShutdown()) {
-            executor.shutdownNow();
-        }
-        int threadCount = getConfiguredThreadCount();
-        if (threadCount <= 1) {
-            executor = Executors.newSingleThreadExecutor();
-        } else {
-            executor = new ThreadPoolExecutor(threadCount, threadCount, 60L, TimeUnit.SECONDS,
-                    new LinkedBlockingQueue<Runnable>());
-        }
-    }
-
     public CommentAdapter(Context context, List<CommentFragment.CommentItem> list, long aid, CommentFragment fragment) {
         this.context = context;
         this.list = list;
         this.mAid = aid;
         this.mFragment = fragment;
         mDensity = context.getResources().getDisplayMetrics().density;
-        initExecutor();
     }
 
     public void setScrolling(boolean scrolling) {
-        this.isScrolling = scrolling;
+        ImageLoader.setScrolling(scrolling);
         if (!scrolling) {
             notifyDataSetChanged();
         }
     }
 
     public void reloadExecutor() {
-        initExecutor();
+        ImageLoader.reloadExecutor();
     }
 
     @Override
@@ -367,7 +336,7 @@ public class CommentAdapter extends BaseAdapter {
                                                 h2.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                             }
                                             h2.likeCount.setText(String.valueOf(item.likeCount));
-                                            Toast.makeText(context, context.getString(R.string.commentadapter_toast_64cd), Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(context, context.getString(R.string.operation_failed), Toast.LENGTH_SHORT).show();
                                         }
                                     });
                                 } else {
@@ -391,7 +360,7 @@ public class CommentAdapter extends BaseAdapter {
                                             h2.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                         }
                                         h2.likeCount.setText(String.valueOf(item.likeCount));
-                                        Toast.makeText(context, context.getString(R.string.commentadapter_toast_7f51), Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(context, context.getString(R.string.network_error), Toast.LENGTH_SHORT).show();
                                     }
                                 });
                             }
@@ -490,7 +459,7 @@ public class CommentAdapter extends BaseAdapter {
                             intent.putExtra("mid", mid);
                             context.startActivity(intent);
                         } else {
-                            Toast.makeText(context, context.getString(R.string.commentadapter_toast_65e0), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(context, context.getString(R.string.load_user_info_failed_2), Toast.LENGTH_SHORT).show();
                         }
                     }
                     @Override
@@ -580,7 +549,7 @@ public class CommentAdapter extends BaseAdapter {
                     intent.putExtra("mid", mid);
                     context.startActivity(intent);
                 } else {
-                    Toast.makeText(context, context.getString(R.string.commentadapter_toast_65e0), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, context.getString(R.string.load_user_info_failed_2), Toast.LENGTH_SHORT).show();
                 }
             }
         };
@@ -589,131 +558,15 @@ public class CommentAdapter extends BaseAdapter {
         holder.userNameView.setOnClickListener(userClickListener);
 
         if (item.userAvatar != null && item.userAvatar.length() > 0) {
-            String avatarUrl = item.userAvatar;
-            if (avatarUrl.startsWith("https://")) {
-                avatarUrl = "http://" + avatarUrl.substring(8);
-            }
-            final String finalAvatarUrl = avatarUrl;
-            final ImageView avatarView = holder.avatar;
-            final int currentPos = position;
-            avatarView.setTag(finalAvatarUrl);
-
-            Bitmap cachedBitmap = GlobalImageCache.getInstance().getAndAcquire(finalAvatarUrl);
-            if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
-                avatarView.setImageBitmap(cachedBitmap);
-                addAvatarBorder(avatarView);
-                return convertView;
-            }
-
-            if (isScrolling) {
-                return convertView;
-            }
-
-            Boolean isLoading = loadingMap.get(currentPos);
-            if (isLoading != null && isLoading) {
-                return convertView;
-            }
-
-            loadingMap.put(currentPos, true);
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    final Bitmap bitmap = downloadImage(finalAvatarUrl);
-                    loadingMap.remove(currentPos);
-
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        GlobalImageCache.getInstance().put(finalAvatarUrl, bitmap);
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                Object tag = avatarView.getTag();
-                                if (tag != null && tag.equals(finalAvatarUrl)) {
-                                    avatarView.setImageBitmap(bitmap);
-                                    addAvatarBorder(avatarView);
-                                }
-                            }
-                        });
-                    }
-                }
-            });
+            addAvatarBorder(holder.avatar);
+            ImageLoader.bind(holder.avatar, item.userAvatar, R.drawable.bili_default_avatar, 48, 48);
         }
 
         return convertView;
     }
 
     private void loadCommentImage(final ImageView imageView, String urlStr) {
-        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return;
-        if (urlStr == null || urlStr.length() == 0) return;
-
-        Bitmap cached = GlobalImageCache.getInstance().get(urlStr);
-        if (cached != null && !cached.isRecycled()) {
-            imageView.setImageBitmap(cached);
-            return;
-        }
-
-        synchronized (loadingUrls) {
-            if (loadingUrls.contains(urlStr)) return;
-            loadingUrls.add(urlStr);
-        }
-
-        final String finalUrl = urlStr;
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                HttpURLConnection conn = null;
-                java.io.File tempFile = null;
-                try {
-                    URL url = new URL(finalUrl);
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(12000);
-                    conn.setReadTimeout(12000);
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-                    conn.setRequestProperty("Accept-Encoding", "identity");
-                    conn.connect();
-
-                    tempFile = new java.io.File(context.getCacheDir(), "cmt_" + finalUrl.hashCode() + ".tmp");
-                    InputStream is = conn.getInputStream();
-                    java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
-                    byte[] buffer = new byte[8192];
-                    int len;
-                    while ((len = is.read(buffer)) != -1) {
-                        fos.write(buffer, 0, len);
-                    }
-                    is.close();
-                    fos.close();
-
-                    if (!tempFile.exists() || tempFile.length() == 0) return;
-
-                    int targetSize = dpToPx(80);
-                    Bitmap bitmap = GlobalImageCache.decodeFileSafely(tempFile, targetSize, targetSize, 2);
-
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        GlobalImageCache.getInstance().put(finalUrl, bitmap);
-                        final Bitmap resultBitmap = bitmap;
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                imageView.setImageBitmap(resultBitmap);
-                            }
-                        });
-                    }
-                } catch (OutOfMemoryError e) {
-                    GlobalImageCache.getInstance().freeAllUnreferenced();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    synchronized (loadingUrls) {
-                        loadingUrls.remove(finalUrl);
-                    }
-                    if (conn != null) {
-                        try { conn.disconnect(); } catch (Exception e) {}
-                    }
-                    if (tempFile != null && tempFile.exists()) {
-                        try { tempFile.delete(); } catch (Exception e) {}
-                    }
-                }
-            }
-        });
+        ImageLoader.bind(imageView, urlStr, R.drawable.bili_default_image_tv_with_bg, 80, 80);
     }
 
     private void addAvatarBorder(ImageView imageView) {
@@ -731,58 +584,12 @@ public class CommentAdapter extends BaseAdapter {
         return (int) (dp * density + 0.5f);
     }
 
-    private Bitmap downloadImage(String urlStr) {
-        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
-        HttpURLConnection conn = null;
-        java.io.File tempFile = null;
-        try {
-            URL url = new URL(urlStr);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(12000);
-            conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.setRequestProperty("Accept-Encoding", "identity");
-            conn.connect();
-
-            tempFile = new java.io.File(context.getCacheDir(), "cmt_" + urlStr.hashCode() + ".tmp");
-            InputStream is = conn.getInputStream();
-            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
-            byte[] buffer = new byte[8192];
-            int len;
-            while ((len = is.read(buffer)) != -1) {
-                fos.write(buffer, 0, len);
-            }
-            is.close();
-            fos.close();
-
-            if (!tempFile.exists() || tempFile.length() == 0) return null;
-
-            int targetSize = dpToPx(48);
-            return GlobalImageCache.decodeFileSafely(tempFile, targetSize, targetSize, 2);
-        } catch (OutOfMemoryError e) {
-            GlobalImageCache.getInstance().freeAllUnreferenced();
-            return null;
-        } catch (Exception e) {
-            return null;
-        } finally {
-            if (conn != null) {
-                try { conn.disconnect(); } catch (Exception e) {}
-            }
-            if (tempFile != null && tempFile.exists()) {
-                try { tempFile.delete(); } catch (Exception e) {}
-            }
-        }
-    }
-
     public void updateData(List<CommentFragment.CommentItem> newList) {
         this.list = newList;
-        loadingMap.clear();
         notifyDataSetChanged();
     }
 
     public void clearCache() {
-        loadingMap.clear();
-        loadingUrls.clear();
     }
 
     private void copyToClipboard(String text) {
@@ -793,7 +600,7 @@ public class CommentAdapter extends BaseAdapter {
                 Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
                 if (vibrator != null) vibrator.vibrate(50);
             } catch (Exception e) { e.printStackTrace(); }
-            Toast.makeText(context, context.getString(R.string.commentadapter_toast_5df2_1), Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, context.getString(R.string.replylistactivity_toast_5df2_1), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -818,14 +625,14 @@ public class CommentAdapter extends BaseAdapter {
                                     list.remove(pos);
                                     notifyDataSetChanged();
                                 }
-                                Toast.makeText(context, context.getString(R.string.commentadapter_toast_5df2), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(context, context.getString(R.string.deleted), Toast.LENGTH_SHORT).show();
                             }
                         });
                     } else {
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(context, context.getString(R.string.commentadapter_toast_5220), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(context, context.getString(R.string.delete_failed), Toast.LENGTH_SHORT).show();
                             }
                         });
                     }

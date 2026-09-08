@@ -153,10 +153,10 @@ public class MetroSetupActivity extends BaseActivity {
         TextView titleText = (TextView) findViewById(R.id.title_text);
         TextView btnText = (TextView) findViewById(R.id.btn_text);
         if (isUpgrade) {
-            titleText.setText(getString(R.string.setupactivity_settext_66f4));
-            btnText.setText(getString(R.string.setupactivity_settext_6b22));
+            titleText.setText(getString(R.string.update_done));
+            btnText.setText(getString(R.string.welcome_back));
         } else {
-            titleText.setText(getString(R.string.setupactivity_settext_521d));
+            titleText.setText(getString(R.string.setup_first_meeting_2));
         }
 
         mPageWelcome = findViewById(R.id.page_welcome);
@@ -196,7 +196,7 @@ public class MetroSetupActivity extends BaseActivity {
             page2Title.setText(getString(R.string.setupactivity_settext_66f4_1));
             generateChangelog();
         } else {
-            page2Title.setText(getString(R.string.setupactivity_settext_9009));
+            page2Title.setText(getString(R.string.choose_default_home_2));
             generateTiles();
         }
 
@@ -204,7 +204,7 @@ public class MetroSetupActivity extends BaseActivity {
         mBtnStart = btnStart;
         // 现在点"下一页"总是进入下一页（需绑定则绑定页，否则直接主题选择），统一用"下一页"
         boolean hasHardwareKeys = tv.biliclassic.util.DeviceUtil.hasHardwareKeys(MetroSetupActivity.this);
-        btnStart.setText(getString(R.string.activity_setup_4e0b));
+        btnStart.setText(getString(R.string.common_next));
         btnStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1258,7 +1258,7 @@ public class MetroSetupActivity extends BaseActivity {
         container.removeAllViews();
 
         final TextView loadingText = new TextView(this);
-        loadingText.setText(getString(R.string.setupactivity_settext_6b63));
+        loadingText.setText(getString(R.string.fetching_changelog));
         loadingText.setTextColor(0xFF999999);
         loadingText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,
                 getResources().getDimension(R.dimen.setup_changelog_text_size));

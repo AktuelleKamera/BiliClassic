@@ -72,7 +72,7 @@ public class UpdateUtil {
                             if (callback != null) {
                                 callback.onCheckFailed(context.getString(R.string.update_toast_fail));
                             } else {
-                                Toast.makeText(context, context.getString(R.string.updateutil_toast_68c0), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(context, context.getString(R.string.check_update_failed), Toast.LENGTH_SHORT).show();
                             }
                             return;
                         }
@@ -432,7 +432,7 @@ public class UpdateUtil {
         if (url != null && url.length() > 0) {
             context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         } else {
-            Toast.makeText(context, context.getString(R.string.updateutil_toast_4e0b), Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, context.getString(R.string.invalid_download_url_2), Toast.LENGTH_SHORT).show();
         }
     }
 

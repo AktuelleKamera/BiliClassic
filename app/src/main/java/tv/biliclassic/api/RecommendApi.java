@@ -56,12 +56,11 @@ public class RecommendApi {
                 .put("fetch_row", fetchRow);
 
         String cookies = SharedPreferencesUtil.getString("cookies", "");
-        ArrayList<String> headers = buildHeaders(cookies);
 
         String signedUrl = ConfInfoApi.signWBI(url);
         android.util.Log.d("RecommendDiag", "推荐请求URL: " + signedUrl + ", cookieLen=" + (cookies == null ? -1 : cookies.length()));
         long t0 = System.currentTimeMillis();
-        JSONObject result = NetWorkUtil.getJson(signedUrl, headers);
+        JSONObject result = NetWorkUtil.getJson(signedUrl);
         android.util.Log.d("RecommendDiag", "推荐响应耗时=" + (System.currentTimeMillis() - t0) + "ms, code="
                 + result.optInt("code", -1) + ", message=" + result.optString("message", ""));
 
@@ -91,25 +90,6 @@ public class RecommendApi {
         }
     }
 
-    /**
-     * 构建请求头
-     */
-    private static ArrayList<String> buildHeaders(String cookies) {
-        ArrayList<String> headers = new ArrayList<String>();
-        headers.add("User-Agent");
-        headers.add("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-        headers.add("Accept");
-        headers.add("application/json, text/plain, */*");
-        headers.add("Accept-Language");
-        headers.add("zh-CN,zh;q=0.9,en;q=0.8");
-        headers.add("Referer");
-        headers.add("https://www.bilibili.com/");
-        headers.add("Origin");
-        headers.add("https://www.bilibili.com");
-        headers.add("Cookie");
-        headers.add(cookies);
-        return headers;
-    }
 
     /**
      * 获取相关视频推荐
@@ -118,8 +98,7 @@ public class RecommendApi {
         String url = "https://api.bilibili.com/x/web-interface/archive/related?aid=" + aid;
 
         String cookies = SharedPreferencesUtil.getString("cookies", "");
-        ArrayList<String> headers = buildHeaders(cookies);
-        JSONObject result = NetWorkUtil.getJson(url, headers);
+        JSONObject result = NetWorkUtil.getJson(url);
 
         ArrayList<VideoCard> videoList = new ArrayList<VideoCard>();
         if (result.has("data") && !result.isNull("data")) {
@@ -148,8 +127,7 @@ public class RecommendApi {
         String url = "https://api.bilibili.com/x/web-interface/popular?pn=" + page + "&ps=10";
 
         String cookies = SharedPreferencesUtil.getString("cookies", "");
-        ArrayList<String> headers = buildHeaders(cookies);
-        JSONObject result = NetWorkUtil.getJson(url, headers);
+        JSONObject result = NetWorkUtil.getJson(url);
 
         if (result.has("data") && !result.isNull("data")) {
             JSONObject data = result.getJSONObject("data");
@@ -178,8 +156,7 @@ public class RecommendApi {
         String url = "https://api.bilibili.com/x/web-interface/popular/precious?page=" + page + "&page_size=10";
 
         String cookies = SharedPreferencesUtil.getString("cookies", "");
-        ArrayList<String> headers = buildHeaders(cookies);
-        JSONObject result = NetWorkUtil.getJson(url, headers);
+        JSONObject result = NetWorkUtil.getJson(url);
 
         if (result.has("data") && !result.isNull("data")) {
             JSONObject data = result.getJSONObject("data");

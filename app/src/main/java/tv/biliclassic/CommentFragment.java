@@ -222,7 +222,7 @@ public class CommentFragment extends Fragment {
                     intent.putExtra("mid", mid);
                     startActivity(intent);
                 } else {
-                    Toast.makeText(getActivity(), getActivity().getString(R.string.commentfragment_toast_65e0), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.load_user_info_failed_3), Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -375,7 +375,7 @@ public class CommentFragment extends Fragment {
                                 activity.runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        Toast.makeText(activity, activity.getString(R.string.commentfragment_toast_56fe), Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(activity, activity.getString(R.string.image_upload_failed), Toast.LENGTH_SHORT).show();
                                     }
                                 });
                             }
@@ -493,7 +493,7 @@ public class CommentFragment extends Fragment {
                 uiAct1.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        emptyView.setText(getString(R.string.commentfragment_settext_65e0));
+                        emptyView.setText(getString(R.string.load_comments_failed));
                         emptyView.setVisibility(View.VISIBLE);
                         progressBar.setVisibility(View.GONE);
                     }
@@ -540,7 +540,7 @@ public class CommentFragment extends Fragment {
             progressBar.setVisibility(View.GONE);
             adapter.updateData(commentList);
             if (commentList.size() == 0) {
-                emptyView.setText(getString(R.string.commentfragment_settext_6682));
+                emptyView.setText(getString(R.string.no_comments_2));
                 emptyView.setVisibility(View.VISIBLE);
             } else {
                 emptyView.setVisibility(View.GONE);
@@ -589,19 +589,7 @@ public class CommentFragment extends Fragment {
             String url = "https://api.bilibili.com/x/v2/reply/main?type=1&oid=" + oidParam;
             Log.e(TAG, "评论 API URL: " + url);
 
-            ArrayList<String> headers = new ArrayList<String>();
-            headers.add("User-Agent");
-            headers.add(NetWorkUtil.USER_AGENT_WEB);
-            headers.add("Referer");
-            headers.add("https://www.bilibili.com/");
-
-            String cookies = SharedPreferencesUtil.getString("cookies", "");
-            if (cookies != null && cookies.length() > 0) {
-                headers.add("Cookie");
-                headers.add(cookies);
-            }
-
-            JSONObject json = NetWorkUtil.getJsonStream(url, headers);
+            JSONObject json = NetWorkUtil.getJsonStream(url);
             int code = json.optInt("code", -1);
             String message = json.optString("message", "");
             Log.e(TAG, "评论 API code: " + code + ", message: " + message);
@@ -715,7 +703,7 @@ public class CommentFragment extends Fragment {
                 adapter.updateData(commentList);
 
                 if (commentList.size() == 0) {
-                    emptyView.setText(getString(R.string.commentfragment_settext_6682));
+                    emptyView.setText(getString(R.string.no_comments_2));
                     emptyView.setVisibility(View.VISIBLE);
                 } else {
                     emptyView.setVisibility(View.GONE);
@@ -870,19 +858,7 @@ public class CommentFragment extends Fragment {
                     String url = "https://api.bilibili.com/x/v2/reply/main?type=1&oid=" + oidParam + "&next=" + cursor;
                     Log.e(TAG, "加载更多评论 URL: " + url);
 
-                    ArrayList<String> headers = new ArrayList<String>();
-                    headers.add("User-Agent");
-                    headers.add(NetWorkUtil.USER_AGENT_WEB);
-                    headers.add("Referer");
-                    headers.add("https://www.bilibili.com/");
-
-                    String cookies = SharedPreferencesUtil.getString("cookies", "");
-                    if (cookies != null && cookies.length() > 0) {
-                        headers.add("Cookie");
-                        headers.add(cookies);
-                    }
-
-                    JSONObject json = NetWorkUtil.getJsonStream(url, headers);
+                    JSONObject json = NetWorkUtil.getJsonStream(url);
                     int code = json.optInt("code", -1);
                     Log.e(TAG, "加载更多 code: " + code);
 
@@ -1080,7 +1056,7 @@ public class CommentFragment extends Fragment {
 
         if (isNewComment) {
             final TextView imageBtn = new TextView(getActivity());
-            imageBtn.setText(getString(R.string.commentfragment_settext_6dfb));
+            imageBtn.setText(getString(R.string.add_image));
             imageBtn.setTextSize(13);
             imageBtn.setTextColor(0xFFD86DA5);
             imageBtn.setPadding(0, 0, dpToPx(12), 0);
@@ -1105,7 +1081,7 @@ public class CommentFragment extends Fragment {
         }
 
         final TextView emojiBtn = new TextView(getActivity());
-        emojiBtn.setText(getString(R.string.commentfragment_settext_8868));
+        emojiBtn.setText(getString(R.string.emoji));
         emojiBtn.setTextSize(13);
         emojiBtn.setTextColor(0xFFD86DA5);
         emojiBtn.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
@@ -1124,7 +1100,7 @@ public class CommentFragment extends Fragment {
         layout.addView(input, lp);
 
         final TextView clearText = new TextView(getActivity());
-        clearText.setText(getString(R.string.commentfragment_settext_6e05));
+        clearText.setText(getString(R.string.common_clear_2));
         clearText.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         clearText.setPadding(0, 8, 0, 0);
         clearText.setTextSize(14);
@@ -1162,7 +1138,7 @@ public class CommentFragment extends Fragment {
             public void onClick(View v) {
                 String text = input.getText().toString().trim();
                 if (text == null || text.length() == 0) {
-                    Toast.makeText(getActivity(), getActivity().getString(R.string.commentfragment_toast_5185), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.content_empty), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 saveCurrentScrollPosition();
@@ -1176,7 +1152,7 @@ public class CommentFragment extends Fragment {
                                 new ReplyHelper.ReplyCallback() {
                             @Override
                             public void onSuccess(String responseJson) {
-                                Toast.makeText(getActivity(), getActivity().getString(R.string.commentfragment_toast_8bc4), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getActivity(), getActivity().getString(R.string.comment_sent), Toast.LENGTH_SHORT).show();
                                 pendingNewComment = parseCommentFromResponse(responseJson);
                                 refreshComments();
                             }
@@ -1187,7 +1163,7 @@ public class CommentFragment extends Fragment {
                         ReplyHelper.sendReply(getActivity(), aid, 0, 0, text, new ReplyHelper.ReplyCallback() {
                             @Override
                             public void onSuccess(String responseJson) {
-                                Toast.makeText(getActivity(), getActivity().getString(R.string.commentfragment_toast_8bc4), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getActivity(), getActivity().getString(R.string.comment_sent), Toast.LENGTH_SHORT).show();
                                 pendingNewComment = parseCommentFromResponse(responseJson);
                                 refreshComments();
                             }
@@ -1201,7 +1177,7 @@ public class CommentFragment extends Fragment {
                     ReplyHelper.sendReply(getActivity(), aid, root, parent, text, new ReplyHelper.ReplyCallback() {
                         @Override
                         public void onSuccess(String responseJson) {
-                            Toast.makeText(getActivity(), getActivity().getString(R.string.commentfragment_toast_56de), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getActivity(), getActivity().getString(R.string.reply_sent), Toast.LENGTH_SHORT).show();
                             refreshComments();
                         }
                         @Override
@@ -1232,7 +1208,7 @@ public class CommentFragment extends Fragment {
 
     private void showEmojiPicker(final EditText input) {
         final android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(getActivity())));
-        builder.setTitle(getString(R.string.commentfragment_settitle_9009));
+        builder.setTitle(getString(R.string.select_emoji));
 
         final android.widget.ScrollView scroll = new android.widget.ScrollView(getActivity());
         final android.widget.LinearLayout list = new android.widget.LinearLayout(getActivity());
@@ -1533,7 +1509,7 @@ public class CommentFragment extends Fragment {
     // 显示全部回复
     public void showAllReplies(CommentItem item) {
         if (item == null || item.replies == null || item.replies.size() == 0) {
-            Toast.makeText(getActivity(), getActivity().getString(R.string.commentfragment_toast_6682), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.no_replies_2), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -1588,7 +1564,8 @@ public class CommentFragment extends Fragment {
         public int replyCount;
         public List<String> pictureList;
         public List<ReplyItem> replies;
-    }
+    }
+
     /** UI 线程安全执行：单次读取 getActivity()，避免后台线程两次调用间被置空导致 NPE */
     private void runUi(java.lang.Runnable r) {
         android.support.v4.app.FragmentActivity a = getActivity();

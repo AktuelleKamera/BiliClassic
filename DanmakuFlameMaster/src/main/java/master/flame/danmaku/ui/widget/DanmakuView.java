@@ -267,12 +267,22 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
     @SuppressLint("NewApi")
     private void postInvalidateCompat() {
         mRequestRender = true;
-        // 注意：postInvalidateOnAnimation() 依赖 Choreographer 的 VSYNC 帧回调。
-        // 在部分设备/ROM（如 I9508V, Android 5.0.1 ART）上 Choreographer 的 doFrame
-        // 回调异常延迟（每 ~700ms 才触发一次），导致 onDraw 被拖慢、弹幕+视频一起卡。
-        // 改用 postInvalidate()（走主线程消息队列，post 探测证实消息队列响应 <20ms），
-        // 不依赖 Choreographer VSYNC，绘制及时。API<16 本来就只能 postInvalidate。
-        this.postInvalidate();
+        // 必须走 postInvalidateOnAnimation（0.4.11-dev4 行为，勿改回 postInvalidate）：
+        // - postInvalidateOnAnimation 经 ViewRootImpl → Choreographer.postCallback，
+        //   在更新线程调用时就会立刻请求 VSYNC，请求频率 = 更新线程帧率（约 16ms 一次），
+        //   vsync 流水线始终处于热态，每帧 16ms 内完成。
+        // - postInvalidate 只向主线程队列投递一条同步消息，VSYNC 要等主线程处理该消息、
+        //   执行 scheduleTraversals 时才首次请求；在部分 ROM（如实测 I9508V, 5.0.1 ART）
+        //   上这种"每帧现请求"的应答延迟高达 ~600ms，期间同步栅栏常驻，主线程所有消息
+        //   （invalidate/探测/播放器进度 Handler/MediaSession）全部被压住，实测
+        //   lockWait/mainThreadProbe 恒为 600-700ms，整个 UI 掉到 ~1.5fps。
+        //   （"post 探测消息队列响应 <20ms" 是在无栅栏状态下测的，不能反映此场景。）
+        // API<16 没有 postInvalidateOnAnimation，只能 postInvalidate。
+        if (getSdkInt() >= 16) {
+            master.flame.danmaku.util.DanmakuCompat.V16.postInvalidateOnAnimation(this);
+        } else {
+            this.postInvalidate();
+        }
     }
 
     private void lockCanvas() {

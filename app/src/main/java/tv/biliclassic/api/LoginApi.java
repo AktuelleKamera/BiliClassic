@@ -96,6 +96,9 @@ public class LoginApi {
 
     /**
      * 解析登录状态响应
+     * poll 接口结构：外层 code 恒为 0（请求成功），
+     * 扫码状态在 data.code：86101 未扫描 / 86090 已扫描待确认 / 86038 已过期 / 0 登录成功
+     *
      * @param response 轮询返回的字符串
      * @return 0: 未扫描, 1: 已扫描等待确认, 2: 登录成功, -1: 已过期, -2: 错误
      */
@@ -106,14 +109,22 @@ public class LoginApi {
         try {
             JSONObject json = new JSONObject(response);
             int code = json.optInt("code", -1);
-
-            if (code == 0) {
+            if (code != 0) {
+                // 请求本身失败（网络/参数问题），不是扫码状态
+                return -2;
+            }
+            JSONObject data = json.optJSONObject("data");
+            if (data == null) {
+                return -2;
+            }
+            int scanCode = data.optInt("code", -1);
+            if (scanCode == 0) {
                 return 2;
-            } else if (code == 86101) {
+            } else if (scanCode == 86101) {
                 return 0;
-            } else if (code == 86090) {
+            } else if (scanCode == 86090) {
                 return 1;
-            } else if (code == 86038) {
+            } else if (scanCode == 86038) {
                 return -1;
             } else {
                 return -2;

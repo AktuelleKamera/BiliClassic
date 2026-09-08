@@ -95,7 +95,6 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 | 播放内核 | 系统 MediaPlayer / ffmpeg | IjkMediaPlayer（ffmpeg/IJK硬解） |
 | 最低系统 | Android 1.0（API 1） | Android 2.1（API 7+） |
 | 解码方式 | 软解 / 硬解可切换 | 软解 / 硬解可切换 |
-| 防盗链 | 本地代理 LocalStreamProxy 转发 Referer/Cookie | 原生自定义请求头 |
 | 弹幕 | DanmakuManager（完整 / 简易双引擎） | DanmakuManager（完整 / 简易双引擎） |
 | 播放进度上报 | ✓ | ✓ |
 | 渲染 | SurfaceView + SURFACE_TYPE_PUSH_BUFFERS | TextureView / SurfaceView |

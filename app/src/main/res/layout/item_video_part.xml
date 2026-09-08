@@ -25,7 +25,7 @@
         android:layout_weight="1"
         android:ellipsize="end"
         android:maxLines="1"
-        android:text="@string/item_video_part_5206"
+        android:text="@string/part_title"
         android:textColor="#333333"
         android:textSize="14sp" />
 

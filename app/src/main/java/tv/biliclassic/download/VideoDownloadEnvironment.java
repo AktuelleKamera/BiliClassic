@@ -13,7 +13,7 @@ import java.util.Map;
  *     {avid}/                    ← 每个av号一个文件夹
  *       {page}/                  ← 每个分P一个子文件夹
  *         entry.json             ← 视频元数据
- *         danmaku.xml            ← 已缓存弹幕文件
+ *         R.string.danmaku.xml            ← 已缓存弹幕文件
  *         cover.jpg              ← 视频封面
  *         video.mp4              ← 视频文件
  */

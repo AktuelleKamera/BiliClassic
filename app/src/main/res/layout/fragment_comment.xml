@@ -19,7 +19,7 @@
             android:layout_height="wrap_content"
             android:paddingLeft="8dp"
             android:paddingRight="8dp"
-            android:text="@string/fragment_comment_6309"
+            android:text="@string/sort_by_time"
             android:textColor="#D86DA5"
             android:textSize="13sp" />
 
@@ -57,7 +57,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:layout_marginTop="50dp"
-        android:text="@string/fragment_comment_6682"
+        android:text="@string/no_comments_3"
         android:textSize="14sp"
         android:textColor="#999999"
         android:visibility="gone" />

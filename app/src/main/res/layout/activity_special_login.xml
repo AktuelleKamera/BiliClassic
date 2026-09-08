@@ -14,7 +14,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/activity_special_login_624b"
+        android:text="@string/manual_login"
         android:textSize="20sp"
         android:textColor="#333333"
         android:layout_marginBottom="16dp" />
@@ -23,7 +23,7 @@
         android:id="@+id/desc"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/activity_special_login_8bf7"
+        android:text="@string/json_login_prompt"
         android:textSize="14sp"
         android:textColor="#666666"
         android:layout_marginBottom="8dp" />
@@ -32,7 +32,7 @@
         android:id="@+id/hint_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/activity_special_login_652f"
+        android:text="@string/cookie_format_help"
         android:textSize="12sp"
         android:textColor="#888888"
         android:layout_marginBottom="8dp"
@@ -63,7 +63,7 @@
             android:layout_width="0dp"
             android:layout_height="30dp"
             android:layout_weight="1"
-            android:text="@string/activity_special_login_786e"
+            android:text="@string/confirm_login"
             android:background="#D86DA5"
             android:textColor="#FFFFFF"
             android:layout_marginRight="8dp" />
@@ -73,7 +73,7 @@
             android:layout_width="0dp"
             android:layout_height="30dp"
             android:layout_weight="1"
-            android:text="@string/activity_special_login_8fd4"
+            android:text="@string/common_back_9"
             android:background="#999999"
             android:textColor="#FFFFFF" />
 
@@ -82,7 +82,7 @@
             android:layout_width="0dp"
             android:layout_height="30dp"
             android:layout_weight="1"
-            android:text="@string/activity_special_login_590d"
+            android:text="@string/common_copy"
             android:background="#D86DA5"
             android:textColor="#FFFFFF"
             android:layout_marginLeft="8dp"

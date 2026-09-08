@@ -229,7 +229,7 @@ public class OfflineActivity extends BaseActivity {
         }
 
         if (item.videoFile == null || !item.videoFile.exists()) {
-            Toast.makeText(this, this.getString(R.string.offlineactivity_toast_89c6), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.video_file_missing), Toast.LENGTH_SHORT).show();
             refreshList();
             return;
         }
@@ -310,7 +310,7 @@ public class OfflineActivity extends BaseActivity {
                 ? item.pageTitle : item.title;
         if (!item.isCompleted) {
             new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                    .setTitle(getString(R.string.offlineactivity_settitle_5220))
+                    .setTitle(getString(R.string.delete_video))
                     .setMessage("确定要取消下载\"" + displayTitle + "\" 吗？已下载的内容也会一并清除。")
                     .setPositiveButton("取消", new DialogInterface.OnClickListener() {
                         @Override
@@ -329,7 +329,7 @@ public class OfflineActivity extends BaseActivity {
             return;
         }
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.offlineactivity_settitle_5220))
+                .setTitle(getString(R.string.delete_video))
                 .setMessage("确定要删除 \"" + displayTitle + "\" 吗？")
                 .setPositiveButton("删除", new DialogInterface.OnClickListener() {
                     @Override
@@ -476,7 +476,7 @@ public class OfflineActivity extends BaseActivity {
             String totalStr = formatFileSize(totalBytes);
             storageText.setText("可用 " + availStr + " / 共 " + totalStr);
         } catch (Exception e) {
-            storageText.setText(getString(R.string.offlineactivity_settext_5b58));
+            storageText.setText(getString(R.string.storage_info_failed));
         }
     }
 
@@ -932,7 +932,7 @@ public class OfflineActivity extends BaseActivity {
                                 }
                             });
                         }
-                        holder.state.setText(getString(R.string.offlineactivity_settext_51c6));
+                        holder.state.setText(getString(R.string.preparing));
                     } else {
                         holder.itemProgress.setVisibility(View.GONE);
                         if (holder.progressIndeterminate != null) {

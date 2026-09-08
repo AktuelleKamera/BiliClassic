@@ -551,7 +551,7 @@ public class BiliPlayerActivity extends Activity implements
 
         if (onlineMode) {
             if (videoUrl == null || videoUrl.length() == 0) {
-                Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_5728), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.online_empty_url), Toast.LENGTH_SHORT).show();
                 finish();
                 return;
             }
@@ -584,7 +584,7 @@ public class BiliPlayerActivity extends Activity implements
         if (DeviceInfoUtil.isUnsupportedCpu()) {
             if (!DeviceInfoUtil.isLegacy) {
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.biliplayeractivity_settitle_8bbe))
+                .setTitle(getString(R.string.device_not_supported))
                 .setMessage("ARMv5TE 或无 VFP 的 ARMv6 设备无法使用内置播放器，请关闭\"在线播放\"后下载视频，使用第三方播放器播放。")
                 .setPositiveButton("继续尝试", null)
                 .setNegativeButton("确定", new android.content.DialogInterface.OnClickListener() {
@@ -608,7 +608,7 @@ public class BiliPlayerActivity extends Activity implements
     /**
      * 给外部播放器 intent 附加 B 站在线播放所需信息：
      * cookie（含 Cookie + Referer 头）、agent（网页版 UA）、progress（进度）、
-     * name（标题）、danmaku（弹幕 XML 地址）、live_mode（直播标记）。
+     * name（标题）、R.string.danmaku（弹幕 XML 地址）、live_mode（直播标记）。
      * 支持这些 extras 的播放器（如凉腕）可据此直接在线播放。
      */
     private void putExternalPlayerExtras(Intent extIntent) {
@@ -1268,7 +1268,7 @@ public class BiliPlayerActivity extends Activity implements
                         intent.putExtra("mid", mid);
                         startActivity(intent);
                     } else {
-                        Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.biliplayeractivity_toast_65e0), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.load_user_info_failed), Toast.LENGTH_SHORT).show();
                     }
                 }
             });
@@ -1402,7 +1402,7 @@ public class BiliPlayerActivity extends Activity implements
                         lockOverlay.setVisibility(View.VISIBLE);
                     }
                     hideLockIcons();
-                    Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.biliplayeractivity_toast_5df2),
+                    Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.locked),
                             Toast.LENGTH_SHORT).show();
                 }
             });
@@ -1614,7 +1614,7 @@ public class BiliPlayerActivity extends Activity implements
         container.setVisibility(View.GONE);
 
         btnResetScale = new TextView(this);
-        btnResetScale.setText(getString(R.string.biliplayeractivity_settext_8fd8));
+        btnResetScale.setText(getString(R.string.restore_screen));
         btnResetScale.setTextSize(16);
         btnResetScale.setTextColor(0xFFD86DA5);
         btnResetScale.setGravity(Gravity.CENTER);
@@ -1665,7 +1665,7 @@ public class BiliPlayerActivity extends Activity implements
 
         if (commentEmpty != null) {
             commentEmpty.setVisibility(View.VISIBLE);
-            commentEmpty.setText(getString(R.string.biliplayeractivity_settext_563f));
+            commentEmpty.setText(getString(R.string.login_working_hard_5));
         }
 
         commentFooterView.setVisibility(View.GONE);
@@ -1680,17 +1680,7 @@ public class BiliPlayerActivity extends Activity implements
             public void run() {
                 try {
                     String url = "https://api.bilibili.com/x/v2/reply/main?type=1&oid=" + oidParam;
-                    java.util.ArrayList<String> headers = new java.util.ArrayList<String>();
-                    headers.add("User-Agent");
-                    headers.add(NetWorkUtil.USER_AGENT_WEB);
-                    headers.add("Referer");
-                    headers.add("https://www.bilibili.com/");
-                    String cookies = SharedPreferencesUtil.getString("cookies", "");
-                    if (cookies != null && cookies.length() > 0) {
-                        headers.add("Cookie");
-                        headers.add(cookies);
-                    }
-                    String response = NetWorkUtil.get(url, headers);
+                    String response = NetWorkUtil.get(url);
                     if (response == null || response.length() == 0) {
                         showCommentError("网络返回为空");
                         return;
@@ -1770,17 +1760,7 @@ public class BiliPlayerActivity extends Activity implements
             public void run() {
                 try {
                     String url = "https://api.bilibili.com/x/v2/reply/main?type=1&oid=" + oidParam + "&next=" + cursor;
-                    java.util.ArrayList<String> headers = new java.util.ArrayList<String>();
-                    headers.add("User-Agent");
-                    headers.add(NetWorkUtil.USER_AGENT_WEB);
-                    headers.add("Referer");
-                    headers.add("https://www.bilibili.com/");
-                    String cookies = SharedPreferencesUtil.getString("cookies", "");
-                    if (cookies != null && cookies.length() > 0) {
-                        headers.add("Cookie");
-                        headers.add(cookies);
-                    }
-                    String response = NetWorkUtil.get(url, headers);
+                    String response = NetWorkUtil.get(url);
 
                     if (response == null || response.length() == 0) {
                         showLoadMoreError("网络返回为空");
@@ -1927,7 +1907,7 @@ public class BiliPlayerActivity extends Activity implements
                     commentAdapter.updateData(commentItems);
 
                     if (commentItems.size() == 0) {
-                        commentEmpty.setText(getString(R.string.biliplayeractivity_settext_6682));
+                        commentEmpty.setText(getString(R.string.no_comments));
                         commentEmpty.setVisibility(View.VISIBLE);
                     } else {
                         commentEmpty.setVisibility(View.GONE);
@@ -2137,7 +2117,7 @@ public class BiliPlayerActivity extends Activity implements
                         runOnUiThread(new Runnable() {
                             public void run() {
                                 showBuffering(false);
-                                Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.biliplayeractivity_toast_5207), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.switch_quality_failed), Toast.LENGTH_SHORT).show();
                             }
                         });
                     }
@@ -2240,7 +2220,7 @@ public class BiliPlayerActivity extends Activity implements
                         runOnUiThread(new Runnable() {
                             public void run() {
                                 showBuffering(false);
-                                Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.biliplayeractivity_toast_6362), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.switch_part_failed), Toast.LENGTH_SHORT).show();
                             }
                         });
                     }
@@ -2263,7 +2243,7 @@ public class BiliPlayerActivity extends Activity implements
             items[i] = (i + 1) + ". " + (mPartNames != null && i < mPartNames.length ? mPartNames[i] : "P" + (i + 1));
         }
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.biliplayeractivity_settitle_9009))
+                .setTitle(getString(R.string.select_episode))
                 .setSingleChoiceItems(items, mCurrentPartIndex, new android.content.DialogInterface.OnClickListener() {
                     public void onClick(android.content.DialogInterface dialog, int which) {
                         dialog.dismiss();
@@ -2614,12 +2594,6 @@ public class BiliPlayerActivity extends Activity implements
             ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-auto-rotate", 1L);
             ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-handle-resolution-change", 1L);
             ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-timeout", 10000L);
-            // legacy OMX 节点：API < 16 无 MediaCodec，novfp 老库内置的
-            // ffpipenode_android_omx_vdec 可直连厂商 OMX 组件（如高通 QCvdec）。
-            // 选择逻辑在 native 侧：API>=16 走 MediaCodec，<16 才尝试 OMX，互不干扰；
-            // 无可用 OMX 解码器时管线自动落回软解
-            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "omx-all-videos", 1L);
-            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "omx-avc", 1L);
         }
 
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "opensles",
@@ -2932,10 +2906,10 @@ public class BiliPlayerActivity extends Activity implements
                 mAllowDecoderFallback = false;
                 if (sdkInt < 16) {
                     decoderType = DECODER_IJK_SOFT;
-                    Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_7cfb), Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, this.getString(R.string.sys_decoder_fail_to_sw), Toast.LENGTH_LONG).show();
                 } else {
                     decoderType = DECODER_IJK_HARD;
-                    Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_7cfb), Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, this.getString(R.string.sys_decoder_fail_to_sw), Toast.LENGTH_LONG).show();
                 }
                 mHardwareDecodeRetryCount = 0;
                 cleanupAndRestart();
@@ -2955,10 +2929,10 @@ public class BiliPlayerActivity extends Activity implements
             mAllowDecoderFallback = false;
             if (sdkInt < 16) {
                 decoderType = DECODER_IJK_SOFT;
-                Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_7cfb), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, this.getString(R.string.sys_decoder_fail_to_sw), Toast.LENGTH_LONG).show();
             } else {
                 decoderType = DECODER_IJK_HARD;
-                Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_7cfb), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, this.getString(R.string.sys_decoder_fail_to_sw), Toast.LENGTH_LONG).show();
             }
             mHardwareDecodeRetryCount = 0;
             cleanupAndRestart();
@@ -2979,7 +2953,7 @@ public class BiliPlayerActivity extends Activity implements
             mAllowDecoderFallback = false;
             decoderType = DECODER_IJK_SOFT;
             mHardwareDecodeRetryCount = 0;
-            Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_786c), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, this.getString(R.string.ijk_hw_fail_to_sw), Toast.LENGTH_LONG).show();
             cleanupAndRestart();
             return true;
         }
@@ -2987,7 +2961,7 @@ public class BiliPlayerActivity extends Activity implements
         if (decoderType == DECODER_IJK_SOFT || !mAllowDecoderFallback) {
             if (!mErrorToastShown) {
                 mErrorToastShown = true;
-                Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_64ad), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, this.getString(R.string.playback_failed_retry), Toast.LENGTH_LONG).show();
             }
             // 加载失败：显示「正在加载视频……【失败】」并停下小电视
             showLoadingFailed();
@@ -3246,7 +3220,7 @@ public class BiliPlayerActivity extends Activity implements
                 optionsMenuItemBlock.setOnClickListener(new View.OnClickListener() {
                     public void onClick(View v) {
                         hideOptionsMenu();
-                        Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.biliplayeractivity_toast_7528), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.user_block_not_impl), Toast.LENGTH_SHORT).show();
                         showControlsWithAutoHide();
                     }
                 });
@@ -3297,7 +3271,7 @@ public class BiliPlayerActivity extends Activity implements
 
         TextView titleView = (TextView) panel.findViewById(R.id.title);
         if (titleView != null) {
-            titleView.setText(R.string.Player_playback_options_pannel_title);
+            titleView.setText(R.string.decoder_pref_category_playctl);
         }
 
         View closeBtn = panel.findViewById(R.id.close);
@@ -3580,7 +3554,7 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.biliplayeractivity_settitle_89c6))
+                .setTitle(getString(R.string.video_info))
                 .setMessage(msg.toString())
                 .setPositiveButton("确定", null)
                 .show();
@@ -4150,7 +4124,7 @@ public class BiliPlayerActivity extends Activity implements
                 return true;
             } else {
                 mLastBackPressTime = currentTime;
-                Toast.makeText(this, this.getString(R.string.biliplayeractivity_toast_518d), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.press_back_again_exit), Toast.LENGTH_SHORT).show();
                 return true;
             }
         }

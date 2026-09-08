@@ -169,7 +169,7 @@ public class IjkMediaCodecInfo {
         } else if (name.startsWith("omx.mtk.")) {
             // 1. MTK only works on 4.3 and above
             // 2. MTK works on MIUI 6 (4.2.1)
-            if (getSdkInt() < 18)
+            if (getSdkInt() < 16)
                 rank = RANK_NO_SENSE;
             else
                 rank = RANK_TESTED;

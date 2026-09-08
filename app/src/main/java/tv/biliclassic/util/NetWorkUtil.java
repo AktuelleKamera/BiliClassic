@@ -754,6 +754,11 @@ public class NetWorkUtil {
     }
 
     // 流式解析 JSON，避免大响应构造 String（byte[]+char[] 双倍内存）
+    /** 鏃犺嚜瀹氫箟澶寸増鏈紝UA/Referer/Cookie 鐢辨湰绫荤粺涓€澶勭悊 */
+    public static JSONObject getJsonStream(String url) throws IOException, JSONException {
+        return getJsonStream(url, null);
+    }
+
     public static JSONObject getJsonStream(String url, ArrayList headers) throws IOException, JSONException {
         IOException lastException = null;
         for (int attempt = 0; attempt <= MAX_RETRY_COUNT; attempt++) {

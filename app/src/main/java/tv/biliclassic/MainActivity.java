@@ -164,7 +164,7 @@ public class MainActivity extends BaseActivity {
                 // 只显示一次提示
                 boolean alreadyShown = SharedPreferencesUtil.getBoolean(KEY_TV_UNSUPPORTED_SHOWN, false);
                 if (!alreadyShown) {
-                    Toast.makeText(this, this.getString(R.string.mainactivity_toast_6a21), Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, this.getString(R.string.tv_mode_need_android4), Toast.LENGTH_LONG).show();
                     SharedPreferencesUtil.putBoolean(KEY_TV_UNSUPPORTED_SHOWN, true);
                 }
             }
@@ -485,7 +485,7 @@ public class MainActivity extends BaseActivity {
                     intent.setData(Uri.parse(downloadUrl));
                     startActivity(intent);
                 } else {
-                    Toast.makeText(MainActivity.this, MainActivity.this.getString(R.string.mainactivity_toast_4e0b), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, MainActivity.this.getString(R.string.invalid_download_url), Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -686,8 +686,8 @@ public class MainActivity extends BaseActivity {
         }
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.mainactivity_settitle_4e0a))
-                .setMessage(getString(R.string.mainactivity_setmessage_7a0b))
+                .setTitle(getString(R.string.last_abnormal_exit))
+                .setMessage(getString(R.string.last_crash_prompt))
                 .setPositiveButton("查看", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -734,7 +734,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void triggerSpaceQuake() {
-        Toast.makeText(this, this.getString(R.string.mainactivity_toast_7a7a), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, this.getString(R.string.space_quake), Toast.LENGTH_SHORT).show();
 
         try {
             Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
@@ -837,8 +837,8 @@ public class MainActivity extends BaseActivity {
 
     private void showLandscapeTipDialog() {
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.mainactivity_settitle_8bbe))
-                .setMessage(getString(R.string.mainactivity_setmessage_60a8))
+                .setTitle(getString(R.string.device_adapt_notice))
+                .setMessage(getString(R.string.landscape_auto_adapted_msg))
                 .setPositiveButton("知道了", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -1055,10 +1055,10 @@ public class MainActivity extends BaseActivity {
 
         if (mid != 0 && cookies != null && cookies.length() > 0) {
             if (uname != null && uname.length() > 0) {
-                loginItem.setTitle(getString(R.string.mainactivity_settitle_767b));
+                loginItem.setTitle(getString(R.string.login_or_logout));
             }
         } else {
-            loginItem.setTitle(getString(R.string.mainactivity_settitle_767b));
+            loginItem.setTitle(getString(R.string.login_or_logout));
         }
 
         return true;
@@ -1096,12 +1096,12 @@ public class MainActivity extends BaseActivity {
 
     private void showMenuLogoutDialog() {
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.mainactivity_settitle_771f))
-                .setMessage(getString(R.string.mainactivity_setmessage_545c))
+                .setTitle(getString(R.string.really_leave_title))
+                .setMessage(getString(R.string.logout_confirm_message))
                 .setPositiveButton("留下来", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        Toast.makeText(MainActivity.this, MainActivity.this.getString(R.string.mainactivity_toast_55ef), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, MainActivity.this.getString(R.string.stay_message), Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
                     }
                 })
@@ -1121,8 +1121,8 @@ public class MainActivity extends BaseActivity {
             boolean isLegacyDevice = DeviceInfoUtil.isLegacyDevice();
             if (!isLegacyDevice) {
                 new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                        .setTitle(getString(R.string.mainactivity_settitle_7248))
-                        .setMessage(getString(R.string.mainactivity_setmessage_68c0))
+                        .setTitle(getString(R.string.version_notice))
+                        .setMessage(getString(R.string.legacy_version_suggestion))
                         .setPositiveButton("立即下载", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
@@ -1131,7 +1131,7 @@ public class MainActivity extends BaseActivity {
                                     intent.setData(Uri.parse("http://www.biliclassic.cn/"));
                                     startActivity(intent);
                                 } catch (Exception e) {
-                                    Toast.makeText(MainActivity.this, MainActivity.this.getString(R.string.mainactivity_toast_8bf7), Toast.LENGTH_LONG).show();
+                                    Toast.makeText(MainActivity.this, MainActivity.this.getString(R.string.download_full_version_hint), Toast.LENGTH_LONG).show();
                                 }
                             }
                         })
@@ -1148,7 +1148,7 @@ public class MainActivity extends BaseActivity {
         SharedPreferencesUtil.removeValue("csrf");
         SharedPreferencesUtil.removeValue("refresh_token");
 
-        Toast.makeText(this, this.getString(R.string.mainactivity_toast_5df2), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, this.getString(R.string.logged_out_message), Toast.LENGTH_SHORT).show();
 
         Intent intent = getIntent();
         finish();

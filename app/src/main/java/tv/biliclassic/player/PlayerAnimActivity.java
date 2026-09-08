@@ -135,7 +135,7 @@ public class PlayerAnimActivity extends Activity {
         android.util.Log.e("PlayerAnim", "isOnlineMode: " + isOnlineMode);
 
         if (videoUrl == null || videoUrl.length() == 0) {
-            Toast.makeText(this, this.getString(R.string.playeranimactivity_toast_89c6), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.video_url_invalid), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -143,7 +143,7 @@ public class PlayerAnimActivity extends Activity {
         startTvAnimation();
 
         if (isOnlineMode) {
-            tvStatus.setText(getString(R.string.playeranimactivity_settext_5728));
+            tvStatus.setText(getString(R.string.online_play_mode));
             progressBar.setVisibility(ProgressBar.GONE);
             tvProgress.setVisibility(TextView.GONE);
             handler.post(new Runnable() {
@@ -324,7 +324,7 @@ public class PlayerAnimActivity extends Activity {
             startActivity(extIntent);
             finish();
         } catch (Exception e) {
-            Toast.makeText(this, this.getString(R.string.playeranimactivity_toast_672a), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.no_player_found), Toast.LENGTH_SHORT).show();
             finish();
         }
     }
@@ -383,7 +383,7 @@ public class PlayerAnimActivity extends Activity {
     }
 
     private void startDownload() {
-        tvStatus.setText(getString(R.string.playeranimactivity_settext_6b63));
+        tvStatus.setText(getString(R.string.buffering));
         isDownloadCancelled = false;
 
         downloadThread = new Thread(new Runnable() {
@@ -456,7 +456,7 @@ public class PlayerAnimActivity extends Activity {
         }
 
         conn.setRequestProperty("Referer", "https://www.bilibili.com/");
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
         conn.setConnectTimeout(15000);
         conn.setReadTimeout(15000);
         conn.connect();
@@ -534,6 +534,11 @@ public class PlayerAnimActivity extends Activity {
                 break;
             case 2:
                 if (tryPlayWithPackage("com.clov4r.android.nil", "MoboPlayer")) {
+                    return;
+                }
+                break;
+            case 11:
+                if (tryPlayWithPackage("com.clov4r.android.nil.noad", "MoboPlayer Pro")) {
                     return;
                 }
                 break;
@@ -685,6 +690,9 @@ public class PlayerAnimActivity extends Activity {
         if (tryPlayWithPackageSilent("com.clov4r.android.nil")) {
             return;
         }
+        if (tryPlayWithPackageSilent("com.clov4r.android.nil.noad")) {
+            return;
+        }
         if (tryPlayWithPackageSilent("org.videolan.vlc")) {
             return;
         }
@@ -708,7 +716,7 @@ public class PlayerAnimActivity extends Activity {
         if (trySystemPlayer()) {
             return;
         }
-        Toast.makeText(this, this.getString(R.string.playeranimactivity_toast_672a), Toast.LENGTH_LONG).show();
+        Toast.makeText(this, this.getString(R.string.no_player_found), Toast.LENGTH_LONG).show();
         finish();
     }
 

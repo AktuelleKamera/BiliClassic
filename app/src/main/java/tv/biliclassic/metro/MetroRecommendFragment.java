@@ -35,7 +35,9 @@ import tv.biliclassic.VideoDetailActivity;
 import tv.biliclassic.api.RecommendApi;
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.GlobalImageCache;
+import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.NetWorkUtil;
 
 /**
  * Metro 主题下的"推荐视频"页（作为 MetroHome 内的 Fragment）。
@@ -64,7 +66,7 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View root = inflater.inflate(R.layout.activity_metro_recommend, container, false);
+        View root = inflater.inflate(R.layout.metro_recommend, container, false);
 
         // 封面加载线程池：按"图片加载线程数"设置创建（与其它页面一致）
         int loadThreads = tv.biliclassic.util.SdkHelper.getImageLoadThreads();
@@ -76,6 +78,8 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
 
         mTileList = (ListView) root.findViewById(R.id.tile_list);
         mTvLoading = (TextView) root.findViewById(R.id.tv_loading);
+        // 夜间模式：灰色提示文字换白色
+        mTvLoading.setTextColor(MetroTheme.grey());
 
         // API 3: 移除 SwipeRefreshLayout（引起 Layout.draw 递归），与推荐页处理一致
         if (tv.biliclassic.util.SdkHelper.getSdkInt() < 4) {
@@ -177,7 +181,7 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
                                 return;
                             }
                             if (items.size() == 0) {
-                                mTvLoading.setText(getString(R.string.metrohomeactivity_settext_6682));
+                                mTvLoading.setText(getString(R.string.no_recommendations));
                                 mIsLoading = false;
                                 stopRefreshing();
                                 return;
@@ -210,7 +214,7 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
                                 return;
                             }
                             if (mVideoList.size() == 0) {
-                                mTvLoading.setText(getString(R.string.metrohomeactivity_settext_52a0));
+                                mTvLoading.setText(getString(R.string.load_failed));
                             }
                             mIsLoading = false;
                             stopRefreshing();
@@ -431,47 +435,9 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
     }
 
     private Bitmap downloadCover(String urlStr) {
-        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
-        Context ctx = getActivity();
+        android.content.Context ctx = getActivity();
         if (ctx == null) return null;
-        HttpURLConnection conn = null;
-        File tempFile = null;
-        try {
-            URL url = new URL(urlStr);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(12000);
-            conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.setRequestProperty("Accept-Encoding", "identity");
-            conn.connect();
-
-            tempFile = new File(ctx.getCacheDir(), "metro_" + urlStr.hashCode() + ".tmp");
-            InputStream is = conn.getInputStream();
-            FileOutputStream fos = new FileOutputStream(tempFile);
-            byte[] buf = new byte[8192];
-            int len;
-            while ((len = is.read(buf)) != -1) {
-                fos.write(buf, 0, len);
-            }
-            is.close();
-            fos.close();
-
-            if (!tempFile.exists() || tempFile.length() == 0) return null;
-
-            int targetWidth = 160;
-            int targetHeight = 90;
-            if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 23) {
-                targetWidth = (int) (targetWidth * 1.25f);
-                targetHeight = (int) (targetHeight * 1.25f);
-            }
-            int minScale = tv.biliclassic.util.SdkHelper.getSdkInt() >= 9 ? 2 : 4;
-            return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, targetHeight, minScale);
-        } catch (Exception e) {
-            return null;
-        } finally {
-            if (conn != null) conn.disconnect();
-            if (tempFile != null && tempFile.exists()) tempFile.delete();
-        }
+        return ImageLoader.fetchBitmap(ctx, urlStr, 160, 90);
     }
 
     @Override
@@ -603,6 +569,16 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
             TextView title = (TextView) cell.findViewById(R.id.title);
             TextView viewTv = (TextView) cell.findViewById(R.id.view);
             TextView danmakuTv = (TextView) cell.findViewById(R.id.danmaku);
+
+            // 夜间模式：磁贴本体换成深灰色（与黑色背景形成对比），标题恢复白色文字
+            if (MetroTheme.isNight()) {
+                cell.setBackgroundResource(R.drawable.item_click_effect_grey);
+                View coverContainer = cell.findViewById(R.id.cover_container);
+                if (coverContainer != null) {
+                    coverContainer.setBackgroundColor(0xFF484848);
+                }
+                title.setTextColor(0xFFF2F2F2);
+            }
 
             title.setText(card.title != null ? card.title : "");
             viewTv.setText(card.view != null ? card.view : "0");

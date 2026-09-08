@@ -253,7 +253,7 @@ public class TimelineFragment extends Fragment {
                 public void run() {
                     hideAllLoading();
                     if (items == null || items.size() == 0) {
-                        emptyView.setText(getString(R.string.timelinefragment_settext_6682));
+                        emptyView.setText(getString(R.string.no_timeline_data));
                         emptyView.setVisibility(View.VISIBLE);
                         listView.setVisibility(View.GONE);
                         return;
@@ -435,7 +435,8 @@ public class TimelineFragment extends Fragment {
 
     public static class timelineItem {
         public String title;
-    }
+    }
+
     /** UI 线程安全执行：单次读取 getActivity()，避免后台线程两次调用间被置空导致 NPE */
     private void runUi(java.lang.Runnable r) {
         android.support.v4.app.FragmentActivity a = getActivity();

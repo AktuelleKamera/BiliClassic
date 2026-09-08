@@ -1402,7 +1402,7 @@ public class OstwindPlayerActivity extends Activity
                 return true;
             }
             mLastBackTime = now;
-            Toast.makeText(this, getString(R.string.biliplayeractivity_toast_518d), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.PreloadingView_press_back_to_exit), Toast.LENGTH_SHORT).show();
             return true;
         }
         if (keyCode == android.view.KeyEvent.KEYCODE_MENU

@@ -78,6 +78,15 @@
             android:name=".SearchActivity"
             android:screenOrientation="portrait" />
 
+        <!-- 生放送（直播） -->
+        <activity
+            android:name=".LiveRoomListActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".LiveInfoActivity"
+            android:screenOrientation="portrait" />
+
         <!-- AboutActivity -->
         <activity
             android:name=".AboutActivity"

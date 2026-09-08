@@ -49,6 +49,7 @@ import java.util.concurrent.TimeUnit;
 import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class NewAnimeFragment extends Fragment {
@@ -345,7 +346,7 @@ public class NewAnimeFragment extends Fragment {
             headerContainer.setVisibility(View.VISIBLE);
             TextView textView = (TextView) headerContainer.findViewById(R.id.header_text);
             if (textView != null) {
-                textView.setText(getString(R.string.newanimefragment_settext_7f51));
+                textView.setText(getString(R.string.offline_show_cache));
             }
         }
         if (isTablet()) {
@@ -373,7 +374,7 @@ public class NewAnimeFragment extends Fragment {
                         headerContainer.setVisibility(View.VISIBLE);
                         TextView textView = (TextView) headerContainer.findViewById(R.id.header_text);
                         if (textView != null) {
-                            textView.setText(getString(R.string.newanimefragment_settext_7f51));
+                            textView.setText(getString(R.string.offline_show_cache));
                         }
                     }
                 }
@@ -1255,7 +1256,7 @@ public class NewAnimeFragment extends Fragment {
             intent = new Intent(getActivity(), VideoDetailActivity.class);
             intent.putExtra("aid", item.aid);
         } else {
-            Toast.makeText(getActivity(), getActivity().getString(R.string.newanimefragment_toast_65e0), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.load_video_info_failed), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -1363,55 +1364,9 @@ public class NewAnimeFragment extends Fragment {
     }
 
     private Bitmap downloadImage(String urlStr, boolean isLarge) {
-        HttpURLConnection conn = null;
-        java.io.File tempFile = null;
-        try {
-            String finalUrl = urlStr;
-            if (finalUrl.startsWith("https://")) {
-                finalUrl = "http://" + finalUrl.substring(8);
-            }
-
-            URL url = new URL(finalUrl);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(10000);
-            conn.setReadTimeout(10000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-            conn.setRequestProperty("Accept-Encoding", "identity");
-            conn.connect();
-
-            int responseCode = conn.getResponseCode();
-            if (responseCode != 200) {
-                return null;
-            }
-
-            tempFile = new java.io.File(getActivity().getCacheDir(), "anime_" + finalUrl.hashCode() + ".tmp");
-            InputStream is = conn.getInputStream();
-            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
-            byte[] buffer = new byte[8192];
-            int len;
-            while ((len = is.read(buffer)) != -1) {
-                fos.write(buffer, 0, len);
-            }
-            is.close();
-            fos.close();
-
-            if (!tempFile.exists() || tempFile.length() == 0) return null;
-
-            int targetWidth = isLarge ? 480 : 240;
-            int targetHeight = isLarge ? 240 : 120;
-            return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, targetHeight, 2);
-        } catch (Exception e) {
-            return null;
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.disconnect();
-                } catch (Exception e) {}
-            }
-            if (tempFile != null && tempFile.exists()) {
-                try { tempFile.delete(); } catch (Exception e) {}
-            }
-        }
+        android.content.Context ctx = getActivity();
+        if (ctx == null) return null;
+        return ImageLoader.fetchBitmap(ctx, urlStr, isLarge ? 320 : 160, isLarge ? 160 : 80);
     }
 
     private int dpToPx(int dp) {

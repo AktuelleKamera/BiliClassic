@@ -17,7 +17,7 @@ import tv.biliclassic.util.SdkHelper;
 
 public class AboutFragment extends Fragment {
 
-    // ===== 遥控器按键导航：官网/帮助/GitHub/2012/哔哩哔哩 纵向链接 =====
+    // ===== 遥控器按键导航：官网/帮助/GitHub/Oldpods/哔哩哔哩 纵向链接 =====
     private final java.util.ArrayList<View> mNavItems = new java.util.ArrayList<View>();
     private int mNavIndex = -1;
     private boolean mKeyNavActive = false;

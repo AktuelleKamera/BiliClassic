@@ -17,24 +17,6 @@ public class PartitionApi {
 
     private static final String TAG = "PartitionApi";
 
-    private static ArrayList<String> buildHeaders(String cookies) {
-        ArrayList<String> headers = new ArrayList<String>();
-        headers.add("User-Agent");
-        headers.add("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-        headers.add("Accept");
-        headers.add("application/json, text/plain, */*");
-        headers.add("Accept-Language");
-        headers.add("zh-CN,zh;q=0.9,en;q=0.8");
-        headers.add("Referer");
-        headers.add("https://www.bilibili.com/");
-        headers.add("Origin");
-        headers.add("https://www.bilibili.com");
-        if (cookies != null && cookies.length() > 0) {
-            headers.add("Cookie");
-            headers.add(cookies);
-        }
-        return headers;
-    }
 
     public static void getRegionVideos(List<VideoCard> videoCardList, int rid, int page) throws IOException, JSONException {
 
@@ -55,9 +37,8 @@ public class PartitionApi {
         if (cookies == null) {
             cookies = "";
         }
-        ArrayList<String> headers = buildHeaders(cookies);
 
-        JSONObject result = NetWorkUtil.getJson(url, headers);
+        JSONObject result = NetWorkUtil.getJson(url);
 
         if (result == null) {
             android.util.Log.e(TAG, "result 为 null");

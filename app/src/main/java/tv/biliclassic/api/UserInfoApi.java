@@ -36,27 +36,10 @@ public class UserInfoApi {
 
     private static final String TAG = "UserInfoApi";
 
-    private static ArrayList<String> buildHeaders() {
-        ArrayList<String> headers = new ArrayList<String>();
-        headers.add("User-Agent");
-        headers.add(NetWorkUtil.USER_AGENT_WEB);
-        headers.add("Referer");
-        headers.add("https://www.bilibili.com/");
-        headers.add("Origin");
-        headers.add("https://www.bilibili.com");
-
-        String cookies = SharedPreferencesUtil.getString("cookies", "");
-        if (cookies != null && cookies.length() > 0) {
-            headers.add("Cookie");
-            headers.add(cookies);
-        }
-        return headers;
-    }
 
     public static UserInfo getUserInfo(long mid) throws IOException, JSONException {
         String url = "https://api.bilibili.com/x/web-interface/card?mid=" + mid;
-        ArrayList<String> headers = buildHeaders();
-        JSONObject all = NetWorkUtil.getJson(url, headers);
+        JSONObject all = NetWorkUtil.getJson(url);
 
         if (all == null) {
             return null;
@@ -96,7 +79,7 @@ public class UserInfoApi {
 
             String notice = "";
             try {
-                JSONObject noticeAll = NetWorkUtil.getJson("https://api.bilibili.com/x/space/notice?mid=" + mid, headers);
+                JSONObject noticeAll = NetWorkUtil.getJson("https://api.bilibili.com/x/space/notice?mid=" + mid);
                 if (noticeAll != null && noticeAll.has("data") && !noticeAll.isNull("data")) {
                     notice = noticeAll.getString("data");
                 }
@@ -135,8 +118,7 @@ public class UserInfoApi {
     public static JSONObject getUserSpaceInfo(long mid) throws JSONException, IOException {
         String url = "https://api.bilibili.com/x/space/wbi/acc/info?mid=" + mid;
         url = ConfInfoApi.signWBI(url);
-        ArrayList<String> headers = buildHeaders();
-        JSONObject all = NetWorkUtil.getJson(url, headers);
+        JSONObject all = NetWorkUtil.getJson(url);
         if (all != null && all.has("data") && !all.isNull("data")) {
             return all.getJSONObject("data");
         }
@@ -145,8 +127,7 @@ public class UserInfoApi {
 
     public static UserInfo getCurrentUserInfo() throws IOException, JSONException {
         String url = "https://api.bilibili.com/x/space/myinfo";
-        ArrayList<String> headers = buildHeaders();
-        JSONObject all = NetWorkUtil.getJson(url, headers);
+        JSONObject all = NetWorkUtil.getJson(url);
         if (all == null) {
             return new UserInfo(0, "加载失败", "", "", 0, 0, 0, false, "", 0, "", 0);
         }
@@ -176,8 +157,7 @@ public class UserInfoApi {
     public static int getCurrentUserCoin() {
         try {
             String url = "https://account.bilibili.com/site/getCoin";
-            ArrayList<String> headers = buildHeaders();
-            JSONObject all = NetWorkUtil.getJson(url, headers);
+            JSONObject all = NetWorkUtil.getJson(url);
             if (all != null && all.has("data") && !all.isNull("data")) {
                 JSONObject data = all.getJSONObject("data");
                 if (data.has("money")) {
@@ -204,8 +184,7 @@ public class UserInfoApi {
         url = ConfInfoApi.signWBI(url);
         Log.e(TAG, "getUserVideos URL=" + url);
 
-        ArrayList<String> headers = buildHeaders();
-        JSONObject all = NetWorkUtil.getJson(url, headers);
+        JSONObject all = NetWorkUtil.getJson(url);
 
         if (all != null) {
             int code = all.optInt("code", -1);
@@ -259,8 +238,7 @@ public class UserInfoApi {
         }
         String url = "https://api.bilibili.com/x/relation/followings?vmid=" + mid
                 + "&pn=" + page + "&ps=20&order=desc&order_type=attention";
-        ArrayList<String> headers = buildHeaders();
-        JSONObject all = NetWorkUtil.getJson(url, headers);
+        JSONObject all = NetWorkUtil.getJson(url);
         if (all == null) {
             return -1;
         }
@@ -301,8 +279,7 @@ public class UserInfoApi {
             arg += "&act=2";
         }
         Log.e(TAG, "followUser: mid=" + mid + ", isFollow=" + isFollow + ", csrf=" + csrf);
-        ArrayList<String> headers = buildHeaders();
-        JSONObject all = new JSONObject(NetWorkUtil.post(url, arg, headers));
+        JSONObject all = new JSONObject(NetWorkUtil.post(url, arg));
         int code = all.optInt("code", -1);
         Log.e(TAG, "followUser code=" + code);
         return code;
@@ -311,8 +288,7 @@ public class UserInfoApi {
     public static void exitLogin() {
         try {
             String url = "https://passport.bilibili.com/login/exit/v2";
-            ArrayList<String> headers = buildHeaders();
-            NetWorkUtil.get(url, headers);
+            NetWorkUtil.get(url);
             Log.e(TAG, "退出登录成功");
         } catch (Exception e) {
             Log.e(TAG, "退出登录失败: " + e.getMessage());

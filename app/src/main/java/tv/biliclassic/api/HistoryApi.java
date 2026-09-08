@@ -53,20 +53,11 @@ public class HistoryApi {
                 + "&business=" + lastResult.business
                 + "&max=" + lastResult.offset;
 
-        // 构建请求头（不设置 Cookie，由 NetWorkUtil 统一处理）
-        ArrayList<String> headers = new ArrayList<String>();
-        headers.add("User-Agent");
-        headers.add(NetWorkUtil.USER_AGENT_WEB);
-        headers.add("Referer");
-        headers.add("https://www.bilibili.com/");
-        headers.add("Accept");
-        headers.add("application/json, text/plain, */*");
-
         // 强制携带登录 Cookie（播放历史需要登录），即使在无痕模式下
         NetWorkUtil.setForceLogin(true);
         JSONObject result;
         try {
-            result = NetWorkUtil.getJson(url, headers);
+            result = NetWorkUtil.getJson(url);
         } finally {
             NetWorkUtil.setForceLogin(false);
         }
@@ -156,18 +147,9 @@ public class HistoryApi {
                         return;
                     }
 
-                    java.util.ArrayList headers = new java.util.ArrayList();
-                    headers.add("User-Agent");
-                    headers.add(NetWorkUtil.USER_AGENT_WEB);
-                    headers.add("Referer");
-                    headers.add("https://www.bilibili.com/");
-                    headers.add("Cookie");
-                    headers.add(cookie);
-                    headers.add("Content-Type");
-                    headers.add("application/x-www-form-urlencoded");
 
                     String arg = "aid=" + aid + "&cid=" + cid + "&progress=" + progressSec + "&csrf=" + csrf;
-                    NetWorkUtil.post(url, arg, headers);
+                    NetWorkUtil.post(url, arg);
                 } catch (Exception e) {}
             }
         }).start();

@@ -286,8 +286,7 @@ public class SdkHelper {
     /**
      * 弹窗 context 包裹：API 11+ 直接返回原 context（沿用 Activity 主题里的 alertDialogTheme，行为不变）；
      * API 1-10 则套上自包含的 AppDialog 主题，避免 Activity 的深色主题（白字）渗进对话框造成白底白字。
-     * 对应 2012rs 的 BaseActivity.dialogContext() 做法。alertDialogTheme 这类主题属性在 API 11 才加入，
-     * API 1 上会被忽略，所以必须在代码里用 ContextThemeWrapper 强制套主题。
+     * alertDialogTheme 这类主题属性在 API 11 才加入，必须在代码里用 ContextThemeWrapper 强制套主题。
      */
     public static android.content.Context dialogContext(android.content.Context context) {
         if (context == null) return null;

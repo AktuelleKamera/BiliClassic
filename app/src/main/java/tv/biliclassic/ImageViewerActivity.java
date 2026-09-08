@@ -30,6 +30,7 @@ import tv.biliclassic.widget.PhotoView;
 import tv.biliclassic.widget.PhotoViewPager;
 
 import tv.biliclassic.util.SdkHelper;
+import tv.biliclassic.util.NetWorkUtil;
 public class ImageViewerActivity extends BaseActivity {
 
     private static final boolean IS_MODERN_DEVICE;
@@ -209,7 +210,7 @@ public class ImageViewerActivity extends BaseActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(ImageViewerActivity.this, ImageViewerActivity.this.getString(R.string.imagevieweractivity_toast_83b7), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(ImageViewerActivity.this, ImageViewerActivity.this.getString(R.string.load_original_image_failed), Toast.LENGTH_SHORT).show();
                             }
                         });
                         return;
@@ -221,7 +222,7 @@ public class ImageViewerActivity extends BaseActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(ImageViewerActivity.this, ImageViewerActivity.this.getString(R.string.imagevieweractivity_toast_4fdd), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(ImageViewerActivity.this, ImageViewerActivity.this.getString(R.string.save_failed), Toast.LENGTH_SHORT).show();
                             }
                         });
                         return;
@@ -258,7 +259,7 @@ public class ImageViewerActivity extends BaseActivity {
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(15000);
             conn.setReadTimeout(15000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
             conn.connect();
 
             is = conn.getInputStream();
@@ -281,7 +282,7 @@ public class ImageViewerActivity extends BaseActivity {
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(15000);
             conn.setReadTimeout(15000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
             conn.connect();
             is = conn.getInputStream();
 
@@ -371,7 +372,7 @@ public class ImageViewerActivity extends BaseActivity {
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(15000);
             conn.setReadTimeout(15000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
             conn.connect();
 
             is = conn.getInputStream();
@@ -406,7 +407,7 @@ public class ImageViewerActivity extends BaseActivity {
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(15000);
             conn.setReadTimeout(15000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
             conn.connect();
             is = conn.getInputStream();
 
@@ -422,7 +423,7 @@ public class ImageViewerActivity extends BaseActivity {
                 conn = (HttpURLConnection) new URL(urlStr).openConnection();
                 conn.setConnectTimeout(15000);
                 conn.setReadTimeout(15000);
-                conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+                conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
                 conn.connect();
                 is = conn.getInputStream();
                 BitmapFactory.Options optsRetry = new BitmapFactory.Options();

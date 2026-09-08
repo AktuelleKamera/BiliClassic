@@ -16,7 +16,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_centerVertical="true"
-            android:contentDescription="@string/activity_login_8fd4"
+            android:contentDescription="@string/common_back_3"
             android:padding="1dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_action_back" />
@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="@string/activity_login_767b"
+            android:text="@string/common_login"
             android:textSize="18sp"
             android:textColor="#333333"/>
 
@@ -62,7 +62,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="@string/activity_login_563f"
+            android:text="@string/login_working_hard"
             android:textSize="12sp"
             android:textColor="#999999" />
 

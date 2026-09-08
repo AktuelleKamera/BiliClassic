@@ -16,7 +16,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_centerVertical="true"
-            android:contentDescription="@string/activity_decoder_settings_8fd4"
+            android:contentDescription="@string/common_back"
             android:padding="1dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_action_back" />
@@ -100,7 +100,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="@string/activity_decoder_settings_9009" />
+                        android:contentDescription="@string/common_select" />
 
                 </LinearLayout>
 
@@ -150,7 +150,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="@string/activity_decoder_settings_9009" />
+                        android:contentDescription="@string/common_select" />
 
                 </LinearLayout>
 
@@ -200,7 +200,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="@string/activity_decoder_settings_9009" />
+                        android:contentDescription="@string/common_select" />
 
                 </LinearLayout>
 
@@ -269,7 +269,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="@string/activity_decoder_settings_9009" />
+                        android:contentDescription="@string/common_select" />
 
                 </LinearLayout>
 
@@ -319,7 +319,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="@string/activity_decoder_settings_9009" />
+                        android:contentDescription="@string/common_select" />
 
                 </LinearLayout>
 

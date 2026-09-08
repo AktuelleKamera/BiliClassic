@@ -24,7 +24,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="@string/activity_favorite_folder_list_6211"
+            android:text="@string/my_favorites"
             android:textSize="18sp"
             android:textColor="#333333"/>
 
@@ -83,7 +83,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="50dp"
-            android:text="@string/activity_favorite_folder_list_6682"
+            android:text="@string/no_favorite_folders"
             android:textSize="14sp"
             android:textColor="#999999"
             android:visibility="gone" />

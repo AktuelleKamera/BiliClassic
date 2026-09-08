@@ -16,18 +16,18 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_centerVertical="true"
+            android:contentDescription="@string/common_back_2"
             android:padding="1dp"
             android:scaleType="centerInside"
-            android:src="@drawable/ic_action_back"
-            android:contentDescription="@string/activity_device_info_8fd4" />
+            android:src="@drawable/ic_action_back" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="@string/activity_device_info_8bbe"
+            android:text="@string/device_info"
             android:textColor="#333333"
-            android:textSize="18sp"/>
+            android:textSize="18sp" />
 
     </RelativeLayout>
 
@@ -66,7 +66,7 @@
                     android:id="@+id/device_info_text"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/activity_device_info_6b63"
+                    android:text="@string/detecting"
                     android:textSize="13sp"
                     android:textColor="#333333"
                     android:lineSpacingExtra="6dp"
@@ -88,7 +88,7 @@
                     android:layout_weight="1"
                     android:layout_marginRight="8dp"
                     android:background="#D86DA5"
-                    android:text="@string/activity_device_info_590d"
+                    android:text="@string/copy_info"
                     android:textColor="#FFFFFF"
                     android:textSize="14sp" />
 
@@ -99,7 +99,7 @@
                     android:layout_weight="1"
                     android:layout_marginLeft="8dp"
                     android:background="#FFFFFF"
-                    android:text="@string/activity_device_info_8fd9"
+                    android:text="@string/this_device"
                     android:textColor="#D86DA5"
                     android:textSize="14sp" />
 

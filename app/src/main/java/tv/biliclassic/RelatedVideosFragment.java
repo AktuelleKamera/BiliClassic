@@ -186,14 +186,14 @@ public class RelatedVideosFragment extends Fragment {
             @Override
             public void onVideoLongClick(VideoCard video, int position) {
                 if (video == null || video.aid == 0) {
-                    Toast.makeText(getActivity(), getActivity().getString(R.string.relatedvideosfragment_toast_65e0), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.favorite_failed), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 if (mIsFavoriteUpdating) return;
                 long mid = SharedPreferencesUtil.getLong("mid", 0);
                 String cookies = SharedPreferencesUtil.getString("cookies", "");
                 if (mid == 0 || cookies == null || cookies.length() == 0) {
-                    Toast.makeText(getActivity(), getActivity().getString(R.string.relatedvideosfragment_toast_8bf7), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first_5), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 showFavoriteDialog(video.aid);
@@ -216,7 +216,7 @@ public class RelatedVideosFragment extends Fragment {
 
         final long mid = SharedPreferencesUtil.getLong("mid", 0);
         if (mid == 0) {
-            Toast.makeText(getActivity(), getActivity().getString(R.string.relatedvideosfragment_toast_8bf7), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first_5), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -235,7 +235,7 @@ public class RelatedVideosFragment extends Fragment {
                         public void run() {
                             mIsFavoriteUpdating = false;
                             if (folders == null || folders.size() == 0) {
-                                Toast.makeText(getActivity(), getActivity().getString(R.string.relatedvideosfragment_toast_6682), Toast.LENGTH_LONG).show();
+                                Toast.makeText(getActivity(), getActivity().getString(R.string.no_folder_create_web), Toast.LENGTH_LONG).show();
                                 return;
                             }
 
@@ -248,7 +248,7 @@ public class RelatedVideosFragment extends Fragment {
                             }
 
                             new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(getActivity())))
-                                    .setTitle(getString(R.string.relatedvideosfragment_settitle_9009))
+                                    .setTitle(getString(R.string.select_folder))
                                     .setItems(folderNames, new DialogInterface.OnClickListener() {
                                         @Override
                                         public void onClick(DialogInterface dialog, int which) {
@@ -294,12 +294,12 @@ public class RelatedVideosFragment extends Fragment {
                         public void run() {
                             mIsFavoriteUpdating = false;
                             if (code == 0) {
-                                Toast.makeText(getActivity(), getActivity().getString(R.string.relatedvideosfragment_toast_6536), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getActivity(), getActivity().getString(R.string.favorited_ok), Toast.LENGTH_SHORT).show();
                                 if (getActivity() != null) {
                                     getActivity().sendBroadcast(new Intent(BroadcastConstants.ACTION_FAVORITE_CHANGED));
                                 }
                             } else if (code == 11201) {
-                                Toast.makeText(getActivity(), getActivity().getString(R.string.relatedvideosfragment_toast_5df2), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(getActivity(), getActivity().getString(R.string.already_favorited), Toast.LENGTH_SHORT).show();
                             } else {
                                 Toast.makeText(getActivity(), "收藏失败喵: " + code, Toast.LENGTH_SHORT).show();
                             }
@@ -351,7 +351,7 @@ public class RelatedVideosFragment extends Fragment {
 
     private void loadRelatedVideos() {
         if (aid == 0 && (bvid == null || bvid.length() == 0)) {
-            emptyView.setText(getString(R.string.relatedvideosfragment_settext_65e0));
+            emptyView.setText(getString(R.string.load_related_failed));
             emptyView.setVisibility(View.VISIBLE);
             progressBar.setVisibility(View.GONE);
             return;
@@ -373,19 +373,7 @@ public class RelatedVideosFragment extends Fragment {
 
                     android.util.Log.e("RelatedVideos", "请求URL: " + url);
 
-                    ArrayList<String> headers = new ArrayList<String>();
-                    headers.add("User-Agent");
-                    headers.add(NetWorkUtil.USER_AGENT_WEB);
-                    headers.add("Referer");
-                    headers.add("https://www.bilibili.com/");
-
-                    String cookies = SharedPreferencesUtil.getString("cookies", "");
-                    if (cookies != null && cookies.length() > 0) {
-                        headers.add("Cookie");
-                        headers.add(cookies);
-                    }
-
-                    String response = NetWorkUtil.get(url, headers);
+                                        String response = NetWorkUtil.get(url);
 
                     if (response == null || response.length() == 0) {
                         // 空响应多为网络瞬断（如视频流占满带宽），不弹错误 toast 打扰，
@@ -485,7 +473,7 @@ public class RelatedVideosFragment extends Fragment {
                 }
 
                 if (videoList.size() == 0) {
-                    emptyView.setText(getString(R.string.relatedvideosfragment_settext_6682));
+                    emptyView.setText(getString(R.string.no_related_videos_2));
                     emptyView.setVisibility(View.VISIBLE);
                 } else {
                     emptyView.setVisibility(View.GONE);
@@ -519,7 +507,8 @@ public class RelatedVideosFragment extends Fragment {
                 emptyView.setVisibility(View.VISIBLE);
             }
         });
-    }
+    }
+
     /** UI 线程安全执行：单次读取 getActivity()，避免后台线程两次调用间被置空导致 NPE */
     private void runUi(java.lang.Runnable r) {
         android.support.v4.app.FragmentActivity a = getActivity();

@@ -40,7 +40,7 @@
                 <TableRow>
                     <TextView
                         style="@style/AboutTableText"
-                        android:text="@string/bili_about_53cd" />
+                        android:text="@string/credit_feedback_group" />
                     <TextView
                         style="@style/AboutTableText"
                         android:text="@string/bili_about_qq_group" />
@@ -69,7 +69,7 @@
 
         <TextView
             style="@style/AboutBodyText"
-            android:text="@string/bili_about_539f"
+            android:text="@string/credit_original"
             android:layout_marginTop="8dp" />
 
         <TextView
@@ -78,7 +78,7 @@
 
         <TextView
             style="@style/AboutBodyText"
-            android:text="@string/bili_about_4f01"
+            android:text="@string/credit_planning"
             android:layout_marginTop="12dp" />
 
         <TableLayout
@@ -91,7 +91,7 @@
                     android:text="@string/bili_about_9bishi" />
                 <TextView
                     style="@style/AboutTableText"
-                    android:text="@string/bili_about_4e00" />
+                    android:text="@string/credit_maoziqiu" />
             </TableRow>
         </TableLayout>
 
@@ -99,7 +99,7 @@
             android:id="@+id/textView"
             style="@style/AboutBodyText"
             android:layout_marginTop="12dp"
-            android:text="@string/bili_about_8f6f" />
+            android:text="@string/credit_production" />
 
         <TableLayout
             android:layout_width="match_parent"
@@ -108,7 +108,7 @@
             <TableRow>
                 <TextView
                     style="@style/AboutTableText"
-                    android:text="@string/bili_about_4e00" />
+                    android:text="@string/credit_maoziqiu" />
                 <TextView
                     style="@style/AboutTableText"
                     android:text="@string/bili_about_skyler1n" />
@@ -117,7 +117,7 @@
 
         <TextView
             style="@style/AboutBodyText"
-            android:text="@string/bili_about_7cfb"
+            android:text="@string/credit_system_design"
             android:layout_marginTop="12dp" />
 
         <TextView
@@ -127,7 +127,7 @@
 
         <TextView
             style="@style/AboutBodyText"
-            android:text="@string/bili_about_5f00"
+            android:text="@string/credit_open_source"
             android:layout_marginTop="12dp" />
 
         <TextView
@@ -163,7 +163,7 @@
         <!-- 特别鸣谢 -->
         <TextView
             style="@style/AboutBodyText"
-            android:text="@string/bili_about_7279"
+            android:text="@string/credit_cooperation"
             android:layout_marginTop="12dp" />
 
         <TableLayout
@@ -180,7 +180,7 @@
             <TableRow>
                 <TextView
                     style="@style/AboutTableText"
-                    android:text="@string/bili_about_9010" />
+                    android:text="@string/credit_zhumeng3" />
                 <TextView
                     style="@style/AboutTableText"
                     android:text="@string/bili_about_wcxawa" />
@@ -196,7 +196,7 @@
             <TableRow>
                 <TextView
                     style="@style/AboutTableText"
-                    android:text="@string/bili_about_6d41" />
+                    android:text="@string/credit_liulang_hunter" />
                 <TextView
                     style="@style/AboutTableText"
                     android:text="@string/bili_about_chuichui" />
@@ -215,7 +215,7 @@
                     android:text="@string/bili_about_biribili_user" />
                 <TextView
                     style="@style/AboutTableText"
-                    android:text="@string/bili_about_6c34" />
+                    android:text="@string/credit_shuiqu" />
             </TableRow>
             <TableRow>
                 <TextView
@@ -232,7 +232,7 @@
                     android:text="@string/bili_about_budong" />
                 <TextView
                     style="@style/AboutTableText"
-                    android:text="@string/bili_about_662f" />
+                    android:text="@string/credit_shizhenchan" />
             </TableRow>
         </TableLayout>
 
@@ -241,7 +241,7 @@
             android:id="@+id/thanks"
             style="@style/AboutBodyText"
             android:layout_marginTop="12dp"
-            android:text="@string/bili_about_8d5e" />
+            android:text="@string/credit_support" />
 
         <TableLayout
             android:layout_width="match_parent"
@@ -261,7 +261,7 @@
                     android:text="@string/bili_about_steven" />
                 <TextView
                     style="@style/AboutTableText"
-                    android:text="@string/bili_about_8001" />
+                    android:text="@string/credit_klaoyu" />
             </TableRow>
             <TableRow>
                 <TextView
@@ -285,11 +285,11 @@
 
             <TextView
                 style="@style/AboutBodyText"
-                android:text="@string/bili_about_76d1" />
+                android:text="@string/credit_supervisor" />
 
             <TextView
                 style="@style/AboutBodyText"
-                android:text="@string/bili_about_9010" />
+                android:text="@string/credit_zhumeng3" />
 
         </LinearLayout>
 

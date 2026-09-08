@@ -41,27 +41,19 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 import tv.biliclassic.api.ReplyApi;
-import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.DialogUtil;
+import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.NetWorkUtil;
 
 public class ReplyListAdapter extends BaseAdapter {
 
     private Context context;
     private List<ReplyListActivity.ReplyData> list;
     private OnReplyClickListener replyClickListener;
-    private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
-    private Map<Integer, Boolean> loadingMap = new HashMap<Integer, Boolean>();
-    private Set<String> loadingUrls = new HashSet<String>();
-    private boolean isScrolling = false;
     private Set<Long> expandedRpids = new HashSet<Long>();
     private float mDensity;
 
@@ -82,7 +74,7 @@ public class ReplyListAdapter extends BaseAdapter {
     }
 
     public void setScrolling(boolean scrolling) {
-        this.isScrolling = scrolling;
+        ImageLoader.setScrolling(scrolling);
         this.hideHighlight = scrolling;
     }
 
@@ -102,29 +94,6 @@ public class ReplyListAdapter extends BaseAdapter {
         this.context = context;
         this.list = list;
         mDensity = context.getResources().getDisplayMetrics().density;
-        initExecutor();
-    }
-
-    private boolean isLowMemoryDevice() {
-        int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        return maxMemory < 24576;
-    }
-
-    private int getConfiguredThreadCount() {
-        return tv.biliclassic.util.SdkHelper.getImageLoadThreads();
-    }
-
-    private void initExecutor() {
-        if (executor != null && !executor.isShutdown()) {
-            executor.shutdownNow();
-        }
-        int threadCount = getConfiguredThreadCount();
-        if (threadCount <= 1) {
-            executor = Executors.newSingleThreadExecutor();
-        } else {
-            executor = new ThreadPoolExecutor(threadCount, threadCount, 60L, TimeUnit.SECONDS,
-                    new LinkedBlockingQueue<Runnable>());
-        }
     }
 
     @Override
@@ -160,6 +129,7 @@ public class ReplyListAdapter extends BaseAdapter {
             convertView.setOnTouchListener(new View.OnTouchListener() {
                 @Override
                 public boolean onTouch(View v, MotionEvent event) {
+                    final View rowView = v;
                     final ViewHolder h = (ViewHolder) v.getTag();
                     switch (event.getAction()) {
                         case MotionEvent.ACTION_DOWN:
@@ -168,6 +138,13 @@ public class ReplyListAdapter extends BaseAdapter {
                             h.longPressRunnable = new Runnable() {
                                 @Override
                                 public void run() {
+                                    // 长按已触发：立即恢复行背景。手指抬起的事件可能被
+                                    // 对话框窗口吃掉（UP/CANCEL 丢失），不恢复会高亮卡死
+                                    if (!hideHighlight && h.position == selectedPosition) {
+                                        rowView.setBackgroundColor(0x66D86DA5);
+                                    } else {
+                                        rowView.setBackgroundResource(R.drawable.item_click_effect_white);
+                                    }
                                     final long itemMid = h.mid;
                                     final String text = h.copyText;
                                     if (itemMid == mMid && mMid != 0) {
@@ -197,8 +174,10 @@ public class ReplyListAdapter extends BaseAdapter {
                             if (h.longPressRunnable != null) {
                                 mainHandler.removeCallbacks(h.longPressRunnable);
                             }
-                            // 触屏结束：恢复背景。若是键盘光标选中项则保留粉色高亮
-                            if (!hideHighlight && position == selectedPosition) {
+                            // 触屏结束：恢复背景（h.position 为本次绑定的实时位置，
+                            // 用行创建时捕获的旧位置会因行复用导致高亮卡死/丢失）。
+                            // 若是键盘光标选中项则保留粉色高亮
+                            if (!hideHighlight && h.position == selectedPosition) {
                                 v.setBackgroundColor(0x66D86DA5);
                             } else {
                                 v.setBackgroundResource(R.drawable.item_click_effect_white);
@@ -210,8 +189,10 @@ public class ReplyListAdapter extends BaseAdapter {
             });
         } else {
             holder = (ViewHolder) convertView.getTag();
-            convertView.setBackgroundResource(R.drawable.item_click_effect_white);
         }
+        // 记录本次绑定的实时位置：行复用后触摸恢复逻辑（UP/长按）依赖它，
+        // 用创建时捕获的旧位置会高亮卡死/丢失
+        holder.position = position;
 
         final ReplyListActivity.ReplyData rd = list.get(position);
         holder.copyText = rd.message;
@@ -293,7 +274,7 @@ public class ReplyListAdapter extends BaseAdapter {
                                                 h2.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                             }
                                             h2.likeCount.setText(String.valueOf(rd.likeCount));
-                                            Toast.makeText(context, context.getString(R.string.replylistadapter_toast_64cd), Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(context, context.getString(R.string.operation_failed_3), Toast.LENGTH_SHORT).show();
                                         }
                                     });
                                 }
@@ -313,7 +294,7 @@ public class ReplyListAdapter extends BaseAdapter {
                                             h2.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                         }
                                         h2.likeCount.setText(String.valueOf(rd.likeCount));
-                                        Toast.makeText(context, context.getString(R.string.replylistadapter_toast_7f51), Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(context, context.getString(R.string.network_error_3), Toast.LENGTH_SHORT).show();
                                     }
                                 });
                             }
@@ -425,49 +406,8 @@ public class ReplyListAdapter extends BaseAdapter {
 
         // 加载头像
         if (rd.avatar != null && rd.avatar.length() > 0) {
-            String avatarUrl = rd.avatar;
-            if (avatarUrl.startsWith("https://")) {
-                avatarUrl = "http://" + avatarUrl.substring(8);
-            }
-            final String finalAvatarUrl = avatarUrl;
-            final ImageView avatarView = holder.avatar;
-            final int currentPos = position;
-            avatarView.setTag(finalAvatarUrl);
-
-            Bitmap cachedBitmap = GlobalImageCache.getInstance().get(finalAvatarUrl);
-            if (cachedBitmap != null && !cachedBitmap.isRecycled()) {
-                avatarView.setImageBitmap(cachedBitmap);
-                addAvatarBorder(avatarView);
-                return convertView;
-            }
-
-            Boolean isLoading = loadingMap.get(currentPos);
-            if (isLoading != null && isLoading) {
-                return convertView;
-            }
-
-            loadingMap.put(currentPos, true);
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    final Bitmap bitmap = downloadImage(finalAvatarUrl);
-                    loadingMap.remove(currentPos);
-
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        GlobalImageCache.getInstance().put(finalAvatarUrl, bitmap);
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                Object tag = avatarView.getTag();
-                                if (tag != null && tag.equals(finalAvatarUrl)) {
-                                    avatarView.setImageBitmap(bitmap);
-                                    addAvatarBorder(avatarView);
-                                }
-                            }
-                        });
-                    }
-                }
-            });
+            addAvatarBorder(holder.avatar);
+            ImageLoader.bind(holder.avatar, rd.avatar, R.drawable.bili_default_avatar, 48, 48);
         }
 
         final long mid = rd.mid;
@@ -497,77 +437,7 @@ public class ReplyListAdapter extends BaseAdapter {
     }
 
     private void loadReplyImage(final ImageView imageView, String urlStr) {
-        if (urlStr == null || urlStr.length() == 0) return;
-
-        Bitmap cached = GlobalImageCache.getInstance().get(urlStr);
-        if (cached != null && !cached.isRecycled()) {
-            imageView.setImageBitmap(cached);
-            return;
-        }
-
-        synchronized (loadingUrls) {
-            if (loadingUrls.contains(urlStr)) return;
-            loadingUrls.add(urlStr);
-        }
-
-        final String finalUrl = urlStr;
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                HttpURLConnection conn = null;
-                java.io.File tempFile = null;
-                try {
-                    URL url = new URL(finalUrl);
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(12000);
-                    conn.setReadTimeout(12000);
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-                    conn.setRequestProperty("Accept-Encoding", "identity");
-                    conn.connect();
-
-                    tempFile = new java.io.File(context.getCacheDir(), "rpl_" + finalUrl.hashCode() + ".tmp");
-                    InputStream is = conn.getInputStream();
-                    java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
-                    byte[] buffer = new byte[8192];
-                    int len;
-                    while ((len = is.read(buffer)) != -1) {
-                        fos.write(buffer, 0, len);
-                    }
-                    is.close();
-                    fos.close();
-
-                    if (!tempFile.exists() || tempFile.length() == 0) return;
-
-                    int targetSize = dpToPx(80);
-                    Bitmap bitmap = GlobalImageCache.decodeFileSafely(tempFile, targetSize, targetSize, 2);
-
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        GlobalImageCache.getInstance().put(finalUrl, bitmap);
-                        final Bitmap resultBitmap = bitmap;
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                imageView.setImageBitmap(resultBitmap);
-                            }
-                        });
-                    }
-                } catch (OutOfMemoryError e) {
-                    System.gc();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    synchronized (loadingUrls) {
-                        loadingUrls.remove(finalUrl);
-                    }
-                    if (conn != null) {
-                        try { conn.disconnect(); } catch (Exception e) {}
-                    }
-                    if (tempFile != null && tempFile.exists()) {
-                        try { tempFile.delete(); } catch (Exception e) {}
-                    }
-                }
-            }
-        });
+        ImageLoader.bind(imageView, urlStr, R.drawable.bili_default_image_tv_with_bg, 80, 80);
     }
 
     private void addAvatarBorder(ImageView imageView) {
@@ -579,55 +449,10 @@ public class ReplyListAdapter extends BaseAdapter {
             imageView.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
         } catch (Exception e) {}
     }
-
     private int dpToPx(int dp) {
         float density = context.getResources().getDisplayMetrics().density;
         return (int) (dp * density + 0.5f);
     }
-
-    private Bitmap downloadImage(String urlStr) {
-        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
-        HttpURLConnection conn = null;
-        java.io.File tempFile = null;
-        try {
-            URL url = new URL(urlStr);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.setRequestProperty("Accept-Encoding", "identity");
-            conn.connect();
-
-            tempFile = new java.io.File(context.getCacheDir(), "rpl_" + urlStr.hashCode() + ".tmp");
-            InputStream is = conn.getInputStream();
-            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
-            byte[] buffer = new byte[8192];
-            int len;
-            while ((len = is.read(buffer)) != -1) {
-                fos.write(buffer, 0, len);
-            }
-            is.close();
-            fos.close();
-
-            if (!tempFile.exists() || tempFile.length() == 0) return null;
-
-            int targetSize = dpToPx(48);
-            return GlobalImageCache.decodeFileSafely(tempFile, targetSize, targetSize, 2);
-        } catch (OutOfMemoryError e) {
-            System.gc();
-            return null;
-        } catch (Exception e) {
-            return null;
-        } finally {
-            if (conn != null) {
-                try { conn.disconnect(); } catch (Exception e) {}
-            }
-            if (tempFile != null && tempFile.exists()) {
-                try { tempFile.delete(); } catch (Exception e) {}
-            }
-        }
-    }
-
     private void copyToClipboard(String text) {
         if (text != null && text.length() > 0) {
             ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
@@ -636,10 +461,9 @@ public class ReplyListAdapter extends BaseAdapter {
                 Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
                 if (vibrator != null) vibrator.vibrate(50);
             } catch (Exception e) { e.printStackTrace(); }
-            Toast.makeText(context, context.getString(R.string.replylistadapter_toast_5df2_1), Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, context.getString(R.string.replylistactivity_toast_5df2_1), Toast.LENGTH_SHORT).show();
         }
     }
-
     private void deleteComment(final long oid, final long rpid) {
         new Thread(new Runnable() {
             @Override
@@ -661,14 +485,14 @@ public class ReplyListAdapter extends BaseAdapter {
                                     list.remove(pos);
                                     notifyDataSetChanged();
                                 }
-                                Toast.makeText(context, context.getString(R.string.replylistadapter_toast_5df2), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(context, context.getString(R.string.deleted), Toast.LENGTH_SHORT).show();
                             }
                         });
                     } else {
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(context, context.getString(R.string.replylistadapter_toast_5220), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(context, context.getString(R.string.delete_failed), Toast.LENGTH_SHORT).show();
                             }
                         });
                     }
@@ -677,21 +501,19 @@ public class ReplyListAdapter extends BaseAdapter {
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            Toast.makeText(context, "删除失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(context, "鍒犻櫎澶辫触: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     });
                 }
             }
         }).start();
     }
-
     public void updateData(List<ReplyListActivity.ReplyData> newList) {
         this.list = newList;
         notifyDataSetChanged();
     }
 
     public void clearCache() {
-        loadingMap.clear();
     }
 
     static class ViewHolder {
@@ -708,6 +530,7 @@ public class ReplyListAdapter extends BaseAdapter {
         long mid;
         long oid;
         long rpid;
+        int position = -1; // 本次绑定的实时位置（行复用后触摸恢复依赖）
     }
 
     private static class BadgeSpan extends android.text.style.ReplacementSpan {

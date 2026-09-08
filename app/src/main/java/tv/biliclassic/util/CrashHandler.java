@@ -36,6 +36,55 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
         }
     }
 
+    /** 是否有待查看的崩溃报告（供各主题主页启动时检查，Classic/Metro 通用） */
+    public static boolean hasPendingCrashReport(android.content.Context ctx) {
+        try {
+            return ctx.getSharedPreferences("crash", android.content.Context.MODE_PRIVATE)
+                    .getBoolean("has_crash", false);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * 清除待查看标记并返回最新崩溃日志内容（无则返回 null）。
+     * 调用方负责展示（Classic 的 MainActivity 与 Metro 的 MetroHomeActivity 均调用）。
+     */
+    public static String consumeLatestCrashLog(android.content.Context ctx) {
+        try {
+            ctx.getSharedPreferences("crash", android.content.Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean("has_crash", false)
+                    .commit();
+        } catch (Exception e) {
+        }
+        try {
+            File crashDir = new File(ctx.getFilesDir().getParentFile(), "crashlog");
+            if (!crashDir.exists()) return null;
+            File[] files = crashDir.listFiles();
+            if (files == null || files.length == 0) return null;
+
+            File latest = files[0];
+            for (int i = 0; i < files.length; i++) {
+                if (files[i].lastModified() > latest.lastModified()) {
+                    latest = files[i];
+                }
+            }
+
+            java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(new java.io.FileInputStream(latest), "UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append("\n");
+            }
+            reader.close();
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     @Override
     public void uncaughtException(Thread thread, Throwable ex) {
         StringWriter sw = new StringWriter();

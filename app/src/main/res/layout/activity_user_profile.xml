@@ -27,7 +27,7 @@
             android:layout_centerVertical="true"
             android:layout_toRightOf="@+id/btn_back"
             android:layout_marginLeft="8dp"
-            android:text="@string/activity_user_profile_7528"
+            android:text="@string/user_space_title_fmt"
             android:textSize="18sp"
             android:textColor="#333333"
             android:maxWidth="200dp"
@@ -65,7 +65,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginLeft="5dp"
-            android:text="@string/activity_user_profile_52a0"
+            android:text="@string/common_loading"
             android:textSize="14sp"
             android:textColor="#999999" />
 
@@ -107,7 +107,7 @@
                     android:id="@+id/tv_user_sign"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/activity_user_profile_4e2a"
+                    android:text="@string/user_signature"
                     android:textSize="12sp"
                     android:textColor="#666666"
                     android:maxWidth="250dp"
@@ -134,7 +134,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginLeft="8dp"
-                        android:text="@string/activity_user_profile_7c89"
+                        android:text="@string/follower_count_fmt"
                         android:textSize="11sp"
                         android:textColor="#999999" />
 
@@ -143,7 +143,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginLeft="10dp"
-                        android:text="@string/activity_user_profile_5173"
+                        android:text="@string/following_count_fmt"
                         android:textSize="11sp"
                         android:textColor="#999999" />
 
@@ -179,7 +179,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:layout_marginTop="20dp"
-            android:text="@string/activity_user_profile_6682"
+            android:text="@string/no_videos"
             android:textSize="13sp"
             android:textColor="#999999"
             android:visibility="gone" />

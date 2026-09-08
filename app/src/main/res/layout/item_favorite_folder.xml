@@ -43,7 +43,7 @@
                 android:id="@+id/name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/item_favorite_folder_6536"
+                android:text="@string/folder_name"
                 android:textColor="#333333"
                 android:textSize="16sp" />
 
@@ -52,7 +52,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="@string/item_favorite_folder_4e2a"
+                android:text="@string/video_count_fmt"
                 android:textColor="#999999"
                 android:textSize="12sp" />
 

@@ -117,7 +117,7 @@
             android:gravity="left|top"
             android:paddingLeft="8dp"
             android:paddingTop="5dp"
-            android:text="@string/item_partition_section_756a"
+            android:text="@string/bangumi"
             android:textColor="#FFFFFF"
             android:textSize="18sp"/>
 

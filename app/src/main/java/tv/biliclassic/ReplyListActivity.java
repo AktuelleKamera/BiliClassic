@@ -54,6 +54,7 @@ import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.ReplyHelper;
 import tv.biliclassic.util.DialogUtil;
+import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class ReplyListActivity extends BaseActivity {
@@ -137,6 +138,9 @@ public class ReplyListActivity extends BaseActivity {
         } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
             if (mNavOnRoot) {
                 mNavOnRoot = false;
+                mNavIndex = 0;
+            } else if (mNavIndex < 0) {
+                // 未开始导航：首次按下从第一条开始
                 mNavIndex = 0;
             } else if (mNavIndex < allReplies.size() - 1) {
                 mNavIndex++;
@@ -232,13 +236,13 @@ public class ReplyListActivity extends BaseActivity {
         Log.e("ReplyList", "onCreate aid=" + aid + " bvid=" + bvid + " rpid=" + rpid + " msg=" + (rootCommentMessage != null ? rootCommentMessage.substring(0, Math.min(20, rootCommentMessage.length())) : "null"));
 
         if (aid == 0 && (bvid == null || bvid.length() == 0)) {
-            Toast.makeText(this, this.getString(R.string.replylistactivity_toast_89c6), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.invalid_video_args), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
 
         if (aid == 0 && bvid != null && bvid.length() > 0) {
-            tvTitle.setText(getString(R.string.replylistactivity_settext_6b63));
+            tvTitle.setText(getString(R.string.fetching_info));
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -249,7 +253,7 @@ public class ReplyListActivity extends BaseActivity {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    tvTitle.setText(getString(R.string.replylistactivity_settext_5168));
+                                    tvTitle.setText(getString(R.string.all_replies_2));
                                     initViews();
                                     loadReplies();
                                 }
@@ -258,7 +262,7 @@ public class ReplyListActivity extends BaseActivity {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.replylistactivity_toast_65e0), Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.load_video_info_failed_3), Toast.LENGTH_SHORT).show();
                                     finish();
                                 }
                             });
@@ -278,7 +282,7 @@ public class ReplyListActivity extends BaseActivity {
             return;
         }
 
-        tvTitle.setText(getString(R.string.replylistactivity_settext_5168));
+        tvTitle.setText(getString(R.string.all_replies_2));
         initViews();
         loadReplies();
     }
@@ -317,7 +321,7 @@ public class ReplyListActivity extends BaseActivity {
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA);
                 rootTimeView.setText(sdf.format(new Date(rootTime * 1000)));
             } else {
-                rootTimeView.setText(getString(R.string.replylistactivity_settext_521a));
+                rootTimeView.setText(getString(R.string.just_now_2));
             }
 
             // 根评论展开/收起（隐藏再显示，不闪烁）
@@ -359,11 +363,11 @@ public class ReplyListActivity extends BaseActivity {
                         if (isExpanded) {
                             rootMsgView.setMaxLines(Integer.MAX_VALUE);
                             rootMsgView.setEllipsize(null);
-                            rootExpandBtn.setText(getString(R.string.replylistactivity_settext_6536));
+                            rootExpandBtn.setText(getString(R.string.common_collapse_2));
                         } else {
                             rootMsgView.setMaxLines(3);
                             rootMsgView.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                            rootExpandBtn.setText(getString(R.string.replylistactivity_settext_5c55));
+                            rootExpandBtn.setText(getString(R.string.common_expand_4));
                         }
                     }
                 });
@@ -388,6 +392,7 @@ public class ReplyListActivity extends BaseActivity {
                 private Runnable mLongPressRunnable;
                 @Override
                 public boolean onTouch(View v, MotionEvent event) {
+                    final View rootView = v;
                     switch (event.getAction()) {
                         case MotionEvent.ACTION_DOWN:
                             mIsLongPress = false;
@@ -396,6 +401,14 @@ public class ReplyListActivity extends BaseActivity {
                                 @Override
                                 public void run() {
                                     mIsLongPress = true;
+                                    // 长按已触发：立即恢复背景。手指抬起的事件可能被
+                                    // 对话框窗口吃掉（UP/CANCEL 丢失），根评论是静态 View
+                                    // 永不重绑，不恢复会高亮永久卡死
+                                    if (mNavOnRoot && mKeyNavActive) {
+                                        rootView.setBackgroundColor(0x66D86DA5);
+                                    } else {
+                                        rootView.setBackgroundResource(R.drawable.item_click_effect_white);
+                                    }
                                     final String text = rootCommentMessage;
                                     if (text != null && text.length() > 0) {
                                         if (rootMid == finalMid && finalMid != 0) {
@@ -496,7 +509,7 @@ public class ReplyListActivity extends BaseActivity {
                                                 rootLikeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                             }
                                             rootLikeCount.setText(String.valueOf(mRootLikeCount));
-                                            Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.replylistactivity_toast_64cd), Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.operation_failed_2), Toast.LENGTH_SHORT).show();
                                         }
                                     });
                                 } else {
@@ -523,7 +536,7 @@ public class ReplyListActivity extends BaseActivity {
                                             rootLikeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                         }
                                         rootLikeCount.setText(String.valueOf(mRootLikeCount));
-                                        Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.replylistactivity_toast_7f51), Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.network_error_2), Toast.LENGTH_SHORT).show();
                                     }
                                 });
                             }
@@ -707,7 +720,7 @@ public class ReplyListActivity extends BaseActivity {
                 toggleView = moreTv;
             } else {
                 TextView collapseTv = new TextView(this);
-                collapseTv.setText(getString(R.string.replylistactivity_settext_6536));
+                collapseTv.setText(getString(R.string.common_collapse_2));
                 collapseTv.setTextSize(12);
                 collapseTv.setTextColor(0xFFD86DA5);
                 collapseTv.setGravity(Gravity.CENTER);
@@ -732,7 +745,7 @@ public class ReplyListActivity extends BaseActivity {
 
         final String cookies = SharedPreferencesUtil.getString("cookies", "");
         if (cookies == null || cookies.length() == 0) {
-            Toast.makeText(this, this.getString(R.string.replylistactivity_toast_8bf7), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.please_login_first_6), Toast.LENGTH_SHORT).show();
             isLoading = false;
             return;
         }
@@ -743,7 +756,7 @@ public class ReplyListActivity extends BaseActivity {
             footerProgress.setVisibility(View.VISIBLE);
         }
         if (footerText != null) {
-            footerText.setText(getString(R.string.replylistactivity_settext_563f));
+            footerText.setText(getString(R.string.login_working_hard_8));
             footerText.setVisibility(View.VISIBLE);
         }
 
@@ -824,11 +837,9 @@ public class ReplyListActivity extends BaseActivity {
                             isEnd = isEndNow;
                             pagination = nextPagination;
 
-                            // 首次加载完成：聚焦第一个回复，暂不自动加载更多（防止不足一屏立即翻页触发风控）
+                            // 触摸用户不预选高亮（选中态会常驻不消失）；
+                            // 按键用户首次按方向键时由 dispatchKeyEvent 从第一条/根评论开始
                             if (allReplies.size() > 0 && mNavIndex < 0) {
-                                mNavIndex = 0;
-                                mNavOnRoot = false;
-                                adapter.setSelectedPosition(0);
                                 lv.setSelection(0);
                             }
 
@@ -843,7 +854,7 @@ public class ReplyListActivity extends BaseActivity {
                                     footerProgress.setVisibility(View.GONE);
                                 }
                                 if (footerText != null) {
-                                    footerText.setText(getString(R.string.replylistactivity_settext_563f));
+                                    footerText.setText(getString(R.string.login_working_hard_8));
                                     footerText.setVisibility(View.VISIBLE);
                                 }
                             }
@@ -914,166 +925,12 @@ public class ReplyListActivity extends BaseActivity {
     }
 
     private void loadAvatar(final ImageView imageView, String urlStr) {
-        if (urlStr == null || urlStr.length() == 0) return;
-        if (urlStr.startsWith("https://")) {
-            urlStr = "http://" + urlStr.substring(8);
-        }
-        final String finalUrl = urlStr;
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                HttpURLConnection conn = null;
-                try {
-                    URL url = new URL(finalUrl);
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(12000);
-                    conn.setReadTimeout(12000);
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-                    conn.connect();
-
-                    InputStream is = conn.getInputStream();
-
-                    BitmapFactory.Options opts = new BitmapFactory.Options();
-                    opts.inJustDecodeBounds = true;
-                    BitmapFactory.decodeStream(is, null, opts);
-                    is.close();
-
-                    int targetSize = dpToPx(48);
-                    int scale = 1;
-                    if (opts.outWidth > targetSize || opts.outHeight > targetSize) {
-                        int widthRatio = opts.outWidth / targetSize;
-                        int heightRatio = opts.outHeight / targetSize;
-                        scale = Math.max(widthRatio, heightRatio);
-                        if (scale < 1) scale = 1;
-                        if (scale > 8) scale = 8;
-                    }
-
-                    conn.disconnect();
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(12000);
-                    conn.setReadTimeout(12000);
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-                    conn.connect();
-                    is = conn.getInputStream();
-
-                    opts = new BitmapFactory.Options();
-                    opts.inSampleSize = scale;
-                    opts.inPreferredConfig = Bitmap.Config.RGB_565;
-
-                    final Bitmap bitmap = BitmapFactory.decodeStream(is, null, opts);
-                    is.close();
-                    conn.disconnect();
-
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                imageView.setImageBitmap(bitmap);
-                                addAvatarBorder(imageView);
-                            }
-                        });
-                    }
-                } catch (OutOfMemoryError e) {
-                    System.gc();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    if (conn != null) {
-                        try { conn.disconnect(); } catch (Exception e) {}
-                    }
-                }
-            }
-        }).start();
+        ImageLoader.bind(imageView, urlStr, R.drawable.bili_default_avatar, 48, 48);
+        addAvatarBorder(imageView);
     }
 
     private void loadImage(final ImageView imageView, String urlStr) {
-        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return;
-        if (urlStr == null || urlStr.length() == 0) return;
-        if (urlStr.startsWith("https://")) {
-            urlStr = "http://" + urlStr.substring(8);
-        }
-
-        Bitmap cached = GlobalImageCache.getInstance().get(urlStr);
-        if (cached != null && !cached.isRecycled()) {
-            imageView.setImageBitmap(cached);
-            return;
-        }
-
-        final String finalUrl = urlStr;
-        synchronized (loadingUrls) {
-            if (loadingUrls.contains(finalUrl)) return;
-            loadingUrls.add(finalUrl);
-        }
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                HttpURLConnection conn = null;
-                try {
-                    URL url = new URL(finalUrl);
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(12000);
-                    conn.setReadTimeout(12000);
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-                    conn.connect();
-
-                    InputStream is = conn.getInputStream();
-
-                    BitmapFactory.Options opts = new BitmapFactory.Options();
-                    opts.inJustDecodeBounds = true;
-                    BitmapFactory.decodeStream(is, null, opts);
-                    is.close();
-
-                    int targetSize = dpToPx(80);
-                    int scale = 1;
-                    if (opts.outWidth > targetSize || opts.outHeight > targetSize) {
-                        int widthRatio = opts.outWidth / targetSize;
-                        int heightRatio = opts.outHeight / targetSize;
-                        scale = Math.max(widthRatio, heightRatio);
-                        if (scale < 1) scale = 1;
-                        if (scale > 8) scale = 8;
-                    }
-
-                    conn.disconnect();
-                    conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(12000);
-                    conn.setReadTimeout(12000);
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-                    conn.connect();
-                    is = conn.getInputStream();
-
-                    opts = new BitmapFactory.Options();
-                    opts.inSampleSize = scale;
-                    opts.inPreferredConfig = Bitmap.Config.RGB_565;
-
-                    final Bitmap bitmap = BitmapFactory.decodeStream(is, null, opts);
-                    is.close();
-                    conn.disconnect();
-
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        GlobalImageCache.getInstance().put(finalUrl, bitmap);
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                imageView.setImageBitmap(bitmap);
-                            }
-                        });
-                    }
-                } catch (OutOfMemoryError e) {
-                    System.gc();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    synchronized (loadingUrls) {
-                        loadingUrls.remove(finalUrl);
-                    }
-                    if (conn != null) {
-                        try { conn.disconnect(); } catch (Exception e) {}
-                    }
-                }
-            }
-        }).start();
+        ImageLoader.bind(imageView, urlStr, R.drawable.bili_default_image_tv_with_bg, 80, 80);
     }
 
     private void addAvatarBorder(ImageView imageView) {
@@ -1115,7 +972,7 @@ public class ReplyListActivity extends BaseActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.replylistactivity_toast_5df2), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.deleted_2), Toast.LENGTH_SHORT).show();
                                 finish();
                             }
                         });
@@ -1123,7 +980,7 @@ public class ReplyListActivity extends BaseActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.replylistactivity_toast_5220), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.delete_failed_2), Toast.LENGTH_SHORT).show();
                             }
                         });
                     }
@@ -1165,7 +1022,7 @@ public class ReplyListActivity extends BaseActivity {
         btnRow.setPadding(0, 0, 0, dpToPx(6));
 
         final TextView emojiBtn = new TextView(this);
-        emojiBtn.setText(getString(R.string.replylistactivity_settext_8868));
+        emojiBtn.setText(getString(R.string.emoji_2));
         emojiBtn.setTextSize(13);
         emojiBtn.setTextColor(0xFFD86DA5);
         emojiBtn.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
@@ -1184,7 +1041,7 @@ public class ReplyListActivity extends BaseActivity {
         layout.addView(input, lp);
 
         final TextView clearText = new TextView(this);
-        clearText.setText(getString(R.string.replylistactivity_settext_6e05));
+        clearText.setText(getString(R.string.common_clear_3));
         clearText.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         clearText.setPadding(0, 8, 0, 0);
         clearText.setTextSize(14);
@@ -1203,14 +1060,14 @@ public class ReplyListActivity extends BaseActivity {
         final long parentRpid = reply != null ? reply.rpid : 0;
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.replylistactivity_settitle_53d1))
+                .setTitle(getString(R.string.send_reply))
                 .setView(layout)
                 .setPositiveButton("发送", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface d, int which) {
                         String text = input.getText().toString().trim();
                         if (text == null || text.length() == 0) {
-                            Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.replylistactivity_toast_56de), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.reply_empty), Toast.LENGTH_SHORT).show();
                             return;
                         }
                         sendReply(rpid, parentRpid, text);
@@ -1228,7 +1085,7 @@ public class ReplyListActivity extends BaseActivity {
 
     private void showEmojiPicker(final EditText input) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)));
-        builder.setTitle(getString(R.string.replylistactivity_settitle_9009));
+        builder.setTitle(getString(R.string.select_emoji_2));
 
         final android.widget.ScrollView scroll = new android.widget.ScrollView(this);
         final LinearLayout list = new LinearLayout(this);

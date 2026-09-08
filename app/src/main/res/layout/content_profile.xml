@@ -42,7 +42,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="30dp"
                     android:background="#D86DA5"
-                    android:text="@string/content_profile_767b"
+                    android:text="@string/common_login_2"
                     android:textColor="#FFFFFF"
                     android:textSize="14sp"
                     android:paddingLeft="24dp"
@@ -116,7 +116,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginLeft="8dp"
                             android:background="#D86DA5"
-                            android:text="@string/content_profile_5927"
+                            android:text="@string/vip_member"
                             android:textColor="#FFFFFF"
                             android:textSize="10sp"
                             android:paddingLeft="6dp"
@@ -162,7 +162,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="30dp"
                         android:background="#DDDDDD"
-                        android:text="@string/content_profile_5207"
+                        android:text="@string/common_switch"
                         android:textColor="#666666"
                         android:textSize="12sp"
                         android:paddingLeft="12dp"
@@ -175,7 +175,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="30dp"
                         android:background="#DDDDDD"
-                        android:text="@string/content_profile_9000"
+                        android:text="@string/common_exit"
                         android:textColor="#666666"
                         android:textSize="12sp"
                         android:paddingLeft="12dp"
@@ -215,14 +215,14 @@
                         android:id="@+id/item_following_icon"
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:contentDescription="@string/content_profile_6d73" />
+                        android:contentDescription="@string/following_list" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
                         android:layout_marginLeft="16dp"
-                        android:text="@string/content_profile_6d73"
+                        android:text="@string/following_list"
                         android:textSize="15sp"
                         android:textColor="#333333" />
 
@@ -249,14 +249,14 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:contentDescription="@string/content_profile_6536" />
+                        android:contentDescription="@string/common_favorite" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
                         android:layout_marginLeft="16dp"
-                        android:text="@string/content_profile_6211"
+                        android:text="@string/my_favorites_2"
                         android:textSize="15sp"
                         android:textColor="#333333" />
 
@@ -283,14 +283,14 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:contentDescription="@string/content_profile_5386" />
+                        android:contentDescription="@string/history" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
                         android:layout_marginLeft="16dp"
-                        android:text="@string/content_profile_64ad"
+                        android:text="@string/playback_history"
                         android:textSize="15sp"
                         android:textColor="#333333" />
 
@@ -317,14 +317,14 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:contentDescription="@string/content_profile_79bb" />
+                        android:contentDescription="@string/offline_manager_2" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
                         android:layout_marginLeft="16dp"
-                        android:text="@string/content_profile_79bb"
+                        android:text="@string/offline_manager_2"
                         android:textSize="15sp"
                         android:textColor="#333333" />
 
@@ -351,14 +351,14 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:contentDescription="@string/content_profile_8bbe" />
+                        android:contentDescription="@string/common_settings_2" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
                         android:layout_marginLeft="16dp"
-                        android:text="@string/content_profile_529f"
+                        android:text="@string/feature_settings"
                         android:textSize="15sp"
                         android:textColor="#333333" />
 
@@ -385,14 +385,14 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:contentDescription="@string/content_profile_66f4" />
+                        android:contentDescription="@string/common_update" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
                         android:layout_marginLeft="16dp"
-                        android:text="@string/content_profile_68c0"
+                        android:text="@string/check_update_2"
                         android:textSize="15sp"
                         android:textColor="#333333" />
 

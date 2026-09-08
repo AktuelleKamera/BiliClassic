@@ -16,6 +16,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 import java.util.List;
 import java.util.ArrayList;
+import tv.biliclassic.util.NetWorkUtil;
 
 /**
  * 视频下载管理器
@@ -326,7 +327,7 @@ public class VideoDownloadManager {
         try {
             conn = (HttpURLConnection) new URL(task.videoUrl).openConnection();
             conn.setRequestProperty("Referer", "https://www.bilibili.com/");
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
             conn.setConnectTimeout(15000);
             conn.setReadTimeout(15000);
             conn.connect();
@@ -395,7 +396,7 @@ public class VideoDownloadManager {
             conn = (HttpURLConnection) new URL(coverUrl).openConnection();
             conn.setConnectTimeout(12000);
             conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
             conn.connect();
 
             is = conn.getInputStream();
@@ -433,7 +434,7 @@ public class VideoDownloadManager {
             conn = (HttpURLConnection) new URL(danmakuUrl).openConnection();
             conn.setConnectTimeout(12000);
             conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
             conn.connect();
 
             is = conn.getInputStream();

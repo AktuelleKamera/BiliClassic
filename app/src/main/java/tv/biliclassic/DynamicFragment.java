@@ -220,7 +220,7 @@ public class DynamicFragment extends Fragment {
                         adapter.notifyDataSetChanged();
                         hideLoading();
                         if (fCount == 0) {
-                            showEmpty(getString(R.string.dynamicfragment_settext_6682));
+                            showEmpty(getString(R.string.no_dynamics));
                         } else {
                             if (emptyView != null) emptyView.setVisibility(View.GONE);
                             if (listView != null) listView.setVisibility(View.VISIBLE);
@@ -349,7 +349,7 @@ public class DynamicFragment extends Fragment {
                             feedList.remove(d);
                             adapter.notifyDataSetChanged();
                             if (feedList.size() == 0) {
-                                showEmpty(getString(R.string.dynamicfragment_settext_6682));
+                                showEmpty(getString(R.string.no_dynamics));
                             }
                             showToast(getString(R.string.dynamicfragment_toast_op_success));
                         } else {
@@ -380,7 +380,7 @@ public class DynamicFragment extends Fragment {
         input.setFilters(new InputFilter[]{new InputFilter.LengthFilter(1000)});
 
         android.app.AlertDialog dlg = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(getActivity())))
-                .setTitle(getString(R.string.dynamicfragment_settitle_publish))
+                .setTitle(getString(R.string.dynamicfragment_btn_send))
                 .setView(input)
                 .setPositiveButton(getString(R.string.dynamicfragment_btn_ok),
                         new DialogInterface.OnClickListener() {

@@ -25,7 +25,7 @@ import java.util.List;
  * <https://www.gnu.org/licenses/>
  *
  * 修改者：一只毛子球 (BiliClassic)
- * 修改时间：2026年6月15日
+ * 修改时间：2026年9月7日
  *
  * 安卓2也要看B站！
  */
@@ -33,47 +33,56 @@ import java.util.List;
 //RobinNotBad: 搜索API 自己写的
 //逐渐感觉拆json是个很爽的事（
 //2023-07-14
-//移植到 BiliClassic
 
+//移植到 BiliClassic
+//2026-06-15
+
+//一只毛子球：终于把这坨史山升级WBI签名了（
+//2026-09-07
+
+/**
+ * 搜索统一入口：WBI 签名 + NetWorkUtil 自动请求头（UA/Referer/Cookie）。
+ */
 public class SearchApi {
 
-    public static String seid = "";
-    public static String searchKeyword = "";
-
     /**
-     * 搜索视频
+     * 搜索视频（WBI 签名接口）
      * @param keyword 关键词
      * @param page 页码
-     * @return 搜索结果 JSONArray
+     * @return 接口完整 JSON 响应（code==0 时 data.result 为结果数组）
      */
-    public static JSONArray search(String keyword, int page) throws IOException, JSONException {
-        if (!searchKeyword.equals(keyword)) {
-            searchKeyword = keyword;
-            seid = "";
-        }
+    public static JSONObject search(String keyword, int page) throws IOException, JSONException {
+        String url = "https://api.bilibili.com/x/web-interface/wbi/search/type?";
+        url += "search_type=video";
+        url += "&keyword=" + URLEncoder.encode(keyword, "UTF-8");
+        url += "&page=" + page;
+        url += "&pagesize=20";
 
-        String url = "https://api.bilibili.com/x/web-interface/search/type?";
-        url += "page=" + page +
-                "&pagesize=20" +
-                "&search_type=video" +
-                "&keyword=" + URLEncoder.encode(searchKeyword, "UTF-8");
-
-        // 使用 NetWorkUtil 发送请求
+        url = ConfInfoApi.signWBI(url);
         String response = NetWorkUtil.get(url);
         if (response == null || response.length() == 0) {
-            return null;
+            throw new IOException("empty search response");
         }
+        return new JSONObject(response);
+    }
 
-        JSONObject all = new JSONObject(response);
-        if (all.getInt("code") != 0) {
-            return null;
-        }
+    /**
+     * 搜索用户（WBI 签名接口）
+     * @return 接口完整 JSON 响应（code==0 时 data.result 为结果数组）
+     */
+    public static JSONObject searchUser(String keyword, int page) throws IOException, JSONException {
+        String url = "https://api.bilibili.com/x/web-interface/wbi/search/type?";
+        url += "search_type=bili_user";
+        url += "&keyword=" + URLEncoder.encode(keyword, "UTF-8");
+        url += "&page=" + page;
+        url += "&pagesize=20";
 
-        JSONObject data = all.getJSONObject("data");
-        if (data.has("result") && !data.isNull("result")) {
-            return data.getJSONArray("result");
+        url = ConfInfoApi.signWBI(url);
+        String response = NetWorkUtil.get(url);
+        if (response == null || response.length() == 0) {
+            throw new IOException("empty search response");
         }
-        return null;
+        return new JSONObject(response);
     }
 
     /**
@@ -96,7 +105,7 @@ public class SearchApi {
             long aid = card.getLong("aid");
             String cover = card.getString("pic");
             if (!cover.startsWith("http")) {
-                cover = "http:" + cover;
+                cover = "https:" + cover;
             }
             String upName = card.getString("author");
             long play = card.getLong("play");
@@ -107,29 +116,11 @@ public class SearchApi {
     }
 
     /**
-     * 搜索用户
+     * 从结果数组中提取所有视频卡片（包含格式化标题/封面等信息）。
      */
-    public static JSONArray searchUser(String keyword, int page) throws IOException, JSONException {
-        String url = "https://api.bilibili.com/x/web-interface/search/type?";
-        url += "page=" + page +
-                "&pagesize=20" +
-                "&search_type=bili_user" +
-                "&keyword=" + URLEncoder.encode(keyword, "UTF-8");
-
-        String response = NetWorkUtil.get(url);
-        if (response == null || response.length() == 0) {
-            return null;
-        }
-
-        JSONObject all = new JSONObject(response);
-        if (all.getInt("code") != 0) {
-            return null;
-        }
-
-        JSONObject data = all.getJSONObject("data");
-        if (data.has("result") && !data.isNull("result")) {
-            return data.getJSONArray("result");
-        }
-        return null;
+    public static List<VideoCard> parseVideoCards(JSONArray result) throws JSONException {
+        ArrayList<VideoCard> list = new ArrayList<VideoCard>();
+        getVideosFromSearchResult(result, list);
+        return list;
     }
 }

@@ -67,17 +67,7 @@ public class ReplyHelper {
                     final String arg = "oid=" + aid + "&type=1&root=" + root + "&parent=" + parent
                             + "&message=" + encodedMessage + "&jsonp=jsonp&csrf=" + csrf;
 
-                    ArrayList<String> headers = new ArrayList<String>();
-                    headers.add("User-Agent");
-                    headers.add(NetWorkUtil.USER_AGENT_WEB);
-                    headers.add("Referer");
-                    headers.add("https://www.bilibili.com/");
-                    headers.add("Content-Type");
-                    headers.add("application/x-www-form-urlencoded");
-                    headers.add("Cookie");
-                    headers.add(cookies);
-
-                    final String response = NetWorkUtil.post(url, arg, headers);
+                    final String response = NetWorkUtil.post(url, arg);
                     final JSONObject result = new JSONObject(response);
                     final int code = result.optInt("code", -1);
                     final String message = result.optString("message", "");
@@ -160,17 +150,7 @@ public class ReplyHelper {
                     final String arg = "oid=" + aid + "&type=1&root=" + root + "&parent=" + parent
                             + "&message=" + encodedMessage + pictureParam + "&jsonp=jsonp&csrf=" + csrf;
 
-                    ArrayList<String> headers = new ArrayList<String>();
-                    headers.add("User-Agent");
-                    headers.add(NetWorkUtil.USER_AGENT_WEB);
-                    headers.add("Referer");
-                    headers.add("https://www.bilibili.com/");
-                    headers.add("Content-Type");
-                    headers.add("application/x-www-form-urlencoded");
-                    headers.add("Cookie");
-                    headers.add(cookies);
-
-                    final String response = NetWorkUtil.post(url, arg, headers);
+                    final String response = NetWorkUtil.post(url, arg);
                     final JSONObject result = new JSONObject(response);
                     final int code = result.optInt("code", -1);
                     final String message = result.optString("message", "");

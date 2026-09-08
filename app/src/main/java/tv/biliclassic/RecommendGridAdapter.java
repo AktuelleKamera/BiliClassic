@@ -23,15 +23,11 @@ import android.widget.Toast;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 import tv.biliclassic.model.VideoCard;
-import tv.biliclassic.util.GlobalImageCache;
+import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.NetWorkUtil;
 
 /**
  * 推荐/分区列表的行式适配器（配合 ListView 使用，实现虚拟化）。
@@ -43,7 +39,6 @@ public class RecommendGridAdapter extends BaseAdapter {
     private Context context;
     private List<VideoCard> list;
     private int numColumns = 2;
-    private ExecutorService executor;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
     // 方向键选中的视频卡索引（-1 = 未选中），用于整卡高亮
@@ -62,19 +57,11 @@ public class RecommendGridAdapter extends BaseAdapter {
 
     // 滚动中暂缓应用新图，避免每张图到达都触发整屏软件重绘；
     // 仅在主线程访问（mainHandler.post 与 setScrolling 都在主线程）
-    private volatile boolean mScrolling = false;
-    private final java.util.ArrayList<Runnable> pendingBitmapSets = new java.util.ArrayList<Runnable>();
 
-    // 正在下载的 URL（主线程访问）：快速滑动来回绑定同一封面时避免重复提交下载
-    private final java.util.HashSet<String> loadingUrls = new java.util.HashSet<String>();
-
-    // Android 2.x 上 setImageResource 每次可能重新解码资源图，这里缓存默认 Drawable 实例复用
-    private static Drawable sDefaultCoverDrawable;
 
     public RecommendGridAdapter(Context context, List<VideoCard> list) {
         this.context = context;
         this.list = list;
-        initExecutor();
     }
 
     private boolean isLowMemoryDevice() {
@@ -86,18 +73,7 @@ public class RecommendGridAdapter extends BaseAdapter {
         return tv.biliclassic.util.SdkHelper.getImageLoadThreads();
     }
 
-    private void initExecutor() {
-        if (executor != null && !executor.isShutdown()) {
-            executor.shutdownNow();
-        }
-        int threadCount = getConfiguredThreadCount();
-        if (threadCount <= 1) {
-            executor = Executors.newSingleThreadExecutor();
-        } else {
-            executor = new ThreadPoolExecutor(threadCount, threadCount, 60L, TimeUnit.SECONDS,
-                    new LinkedBlockingQueue<Runnable>());
-        }
-    }
+
 
     public void setNumColumns(int numColumns) {
         this.numColumns = numColumns;
@@ -175,9 +151,12 @@ public class RecommendGridAdapter extends BaseAdapter {
                 // 方向键选中高亮：直接切换 background drawable，不依赖 selector 状态
                 // 触摸滑动时隐藏高亮（mHideHighlight），避免光标与手指位置混淆
                 boolean isSelected = index == selectedPosition && !mHideHighlight;
+                // 夜间模式：磁贴本体换灰色（文字保持深色不变），白天白色
                 cell.setBackgroundResource(isSelected
                         ? R.drawable.recommend_item_selected
-                        : R.drawable.item_click_effect_white);
+                        : (tv.biliclassic.metro.MetroTheme.isNight()
+                                ? R.drawable.item_click_effect_grey
+                                : R.drawable.item_click_effect_white));
             } else {
                 cell.setVisibility(View.INVISIBLE);
             }
@@ -212,6 +191,14 @@ public class RecommendGridAdapter extends BaseAdapter {
                 h.coverContainer.setLayoutParams(p);
             }
         }
+
+        // 夜间模式：封面衬底换深灰（与磁贴本体一致）、标题白字；白天白衬底深色字。状态变化才重设
+        boolean night = tv.biliclassic.metro.MetroTheme.isNight();
+        if (h.nightBgApplied != night) {
+            h.nightBgApplied = night;
+            h.coverContainer.setBackgroundColor(night ? 0xFF484848 : 0xFFFFFFFF);
+        }
+        h.title.setTextColor(night ? 0xFFF2F2F2 : 0xFF333333);
 
         // 文本没变就不重设：滚动复用行时避免每次 setText 都触发 invalidate/重排
         String title = item.title != null ? item.title : "";
@@ -249,192 +236,25 @@ public class RecommendGridAdapter extends BaseAdapter {
 
         final boolean hasCover = item.cover != null && item.cover.length() > 0
                 && !SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false);
-        String newCoverUrl = null;
         if (hasCover) {
-            String coverUrl = item.cover;
-            if (coverUrl.startsWith("https://")) {
-                coverUrl = "http://" + coverUrl.substring(8);
-            }
-            newCoverUrl = coverUrl;
-        }
-
-        // 封面 URL 变化才释放上一张引用；同一 URL（按键高亮/滚动重绘）不 release 不 acquire，
-        // 避免 getAndAcquire 与 release 之间的窗口期把仍被绘制的位图回收（封面销毁/崩溃）。
-        if (h.currentCoverUrl != null && !h.currentCoverUrl.equals(newCoverUrl)) {
-            GlobalImageCache.getInstance().release(h.currentCoverUrl);
-            h.currentCoverUrl = null;
-        }
-        if (h.currentCoverUrl == null && newCoverUrl != null) {
-            // 新 URL：先取缓存并持有引用
-            Bitmap cached = GlobalImageCache.getInstance().getAndAcquire(newCoverUrl);
-            if (cached != null && !cached.isRecycled()) {
-                h.currentCoverUrl = newCoverUrl;
-            } else {
-                // 未命中缓存：不占用引用，下载完成后由 applyBitmap 再 acquire
-            }
-        }
-
-        if (sDefaultCoverDrawable == null) {
-            try {
-                sDefaultCoverDrawable = context.getResources().getDrawable(R.drawable.bili_default_image_tv_with_bg);
-            } catch (Throwable t) {
-                sDefaultCoverDrawable = null;
-            }
-        }
-
-        if (newCoverUrl != null) {
-            final String finalUrl = newCoverUrl;
-            final ImageView coverView = h.cover;
-            coverView.setTag(finalUrl);
-
-            Bitmap cached = GlobalImageCache.getInstance().get(newCoverUrl);
-            if (cached != null && !cached.isRecycled()) {
-                // 已是同一张位图则跳过，避免滚动复用行时重复 invalidate
-                android.graphics.drawable.Drawable cur = coverView.getDrawable();
-                if (!(cur instanceof android.graphics.drawable.BitmapDrawable)
-                        || ((android.graphics.drawable.BitmapDrawable) cur).getBitmap() != cached) {
-                    coverView.setImageBitmap(cached);
-                }
-                return;
-            }
-
-            // 未命中缓存：显示默认占位图（当前已是默认图则跳过），
-            // 避免"先设默认图再设缓存图"的两次 invalidate
-            if (sDefaultCoverDrawable != null && h.cover.getDrawable() != sDefaultCoverDrawable) {
-                h.cover.setImageDrawable(sDefaultCoverDrawable);
-            }
-
-            final int targetW = cellWidth;
-            final int targetH = coverHeight;
-            if (loadingUrls.contains(finalUrl)) {
-                return;
-            }
-            loadingUrls.add(finalUrl);
-            executor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    final Bitmap bitmap = downloadImage(finalUrl, targetW, targetH);
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        GlobalImageCache.getInstance().put(finalUrl, bitmap);
-                        GlobalImageCache.getInstance().acquire(finalUrl);
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                loadingUrls.remove(finalUrl);
-                                if (mScrolling) {
-                                    // 滚动中不立即应用：每张图到达都会触发整屏软件重绘
-                                    pendingBitmapSets.add(this);
-                                    return;
-                                }
-                                applyBitmap(cell, coverView, finalUrl, bitmap);
-                            }
-                        });
-                    } else {
-                        mainHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                loadingUrls.remove(finalUrl);
-                            }
-                        });
-                    }
-                }
-            });
+            float density = context.getResources().getDisplayMetrics().density;
+            ImageLoader.bind(h.cover, item.cover, R.drawable.bili_default_image_tv_with_bg,
+                    Math.round(cellWidth / density), Math.round(coverHeight / density));
         } else {
-            // 无封面：显示默认占位图
-            if (sDefaultCoverDrawable != null && h.cover.getDrawable() != sDefaultCoverDrawable) {
-                h.cover.setImageDrawable(sDefaultCoverDrawable);
-            }
+            h.cover.setImageResource(R.drawable.bili_default_image_tv_with_bg);
         }
     }
 
-    private Bitmap downloadImage(String urlStr, int targetWidth, int targetHeight) {
-        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
-        HttpURLConnection conn = null;
-        java.io.File tempFile = null;
-        try {
-            URL url = new URL(urlStr);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(12000);
-            conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.setRequestProperty("Accept-Encoding", "identity");
-            conn.connect();
 
-            tempFile = new java.io.File(context.getCacheDir(), "rec_" + urlStr.hashCode() + ".tmp");
-            InputStream is = conn.getInputStream();
-            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
-            byte[] buf = new byte[8192];
-            int len;
-            while ((len = is.read(buf)) != -1) {
-                fos.write(buf, 0, len);
-            }
-            is.close();
-            fos.close();
-
-            if (!tempFile.exists() || tempFile.length() == 0) return null;
-
-            // 按实际显示尺寸解码：1:1 绘制无需软件缩放滤镜（更省且更清晰）
-            int minScale = tv.biliclassic.util.SdkHelper.getSdkInt() >= 9 ? 2 : 4;
-            return GlobalImageCache.decodeFileSafely(tempFile, targetWidth, targetHeight, minScale);
-        } catch (Exception e) {
-            Log.e(TAG, "下载失败: " + urlStr, e);
-            return null;
-        } finally {
-            if (conn != null) conn.disconnect();
-            if (tempFile != null && tempFile.exists()) tempFile.delete();
-        }
-    }
 
     /** 滚动状态变化时由 ListView 的 OnScrollListener 调用 */
     public void setScrolling(boolean scrolling) {
-        this.mScrolling = scrolling;
-        if (!scrolling) {
-            flushPendingBitmapSets();
-        }
+        ImageLoader.setScrolling(scrolling);
     }
 
-    private void flushPendingBitmapSets() {
-        if (pendingBitmapSets.isEmpty()) return;
-        final java.util.ArrayList<Runnable> pending = new java.util.ArrayList<Runnable>(pendingBitmapSets);
-        pendingBitmapSets.clear();
-        // 分批应用（每帧最多 2 张）：滑动中积攒的封面如果停下瞬间一次性 setImageBitmap，
-        // 会在同一帧连续整屏重绘造成明显卡顿；分帧补显示更顺
-        final int[] idx = {0};
-        final Runnable drain = new Runnable() {
-            @Override
-            public void run() {
-                if (executor == null || executor.isShutdown()) {
-                    return;
-                }
-                int applied = 0;
-                while (idx[0] < pending.size() && applied < 2) {
-                    try {
-                        pending.get(idx[0]).run();
-                    } catch (Throwable t) {
-                    }
-                    idx[0]++;
-                    applied++;
-                }
-                if (idx[0] < pending.size()) {
-                    mainHandler.postDelayed(this, 16);
-                }
-            }
-        };
-        drain.run();
-    }
 
-    private void applyBitmap(View cell, ImageView coverView, String finalUrl, Bitmap bitmap) {
-        Object tag = coverView.getTag();
-        if (tag != null && tag.equals(finalUrl)) {
-            coverView.setImageBitmap(bitmap);
-            CellHolder hh = (CellHolder) cell.getTag();
-            if (hh != null) {
-                hh.currentCoverUrl = finalUrl;
-            }
-        } else {
-            GlobalImageCache.getInstance().release(finalUrl);
-        }
-    }
+
+
 
     private int dpToPx(int dp) {
         float density = context.getResources().getDisplayMetrics().density;
@@ -462,13 +282,6 @@ public class RecommendGridAdapter extends BaseAdapter {
     }
 
     public void clearCache() {
-        loadingUrls.clear();
-        pendingBitmapSets.clear();
-        executor.shutdownNow();
-        // 注意：不调用 GlobalImageCache.clear()——那是全 App 共享缓存，
-        // 仅离开推荐页就清空会丢掉其他页面已加载的封面，破坏跨页复用。
-        // 缓存条目有界（LruCache 按内存上限淘汰），内存紧张时由
-        // onLowMemory / OOM 重试路径统一释放。
     }
 
     static class CellHolder {
@@ -481,5 +294,6 @@ public class RecommendGridAdapter extends BaseAdapter {
         String titleText;
         String viewText;
         String danmakuText;
+        boolean nightBgApplied; // 封面衬底当前是否已应用夜间灰色
     }
 }

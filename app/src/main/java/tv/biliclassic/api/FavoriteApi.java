@@ -45,32 +45,6 @@ public class FavoriteApi {
     private static final String TAG = "FavoriteApi";
     private static final int TYPE_VIDEO = 2;
 
-    // 构建带 Cookie 的请求头
-    private static ArrayList buildHeaders() {
-        ArrayList headers = new ArrayList();
-        String cookies = SharedPreferencesUtil.getString("cookies", "");
-
-        headers.add("User-Agent");
-        headers.add("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-        headers.add("Referer");
-        headers.add("https://space.bilibili.com/");
-        headers.add("Origin");
-        headers.add("https://space.bilibili.com");
-        headers.add("Accept");
-        headers.add("application/json, text/javascript, */*; q=0.01");
-        headers.add("Accept-Language");
-        headers.add("zh-CN,zh;q=0.9,en;q=0.8");
-
-        if (cookies != null && cookies.length() > 0) {
-            headers.add("Cookie");
-            headers.add(cookies);
-            Log.d(TAG, "Cookie已添加，长度: " + cookies.length());
-        } else {
-            Log.w(TAG, "警告：Cookie为空");
-        }
-
-        return headers;
-    }
 
     // 通过 bvid 获取 aid
     public static long getAidByBvid(String bvid) {
@@ -98,10 +72,9 @@ public class FavoriteApi {
 
     // 快速获取收藏夹列表（不含封面）
     public static ArrayList getFavoriteFoldersFast(long mid) throws IOException, JSONException {
-        ArrayList headers = buildHeaders();
 
         String url = "https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=" + mid + "&type=0";
-        String response = NetWorkUtil.get(url, headers);
+        String response = NetWorkUtil.get(url);
 
         if (response == null || response.length() == 0) {
             return new ArrayList();
@@ -138,8 +111,9 @@ public class FavoriteApi {
                 favoriteFolder.videoCount = folder.optInt("media_count", 0);
                 favoriteFolder.maxCount = 50000;
 
+                // attr 属性位（bit0：0 公开 / 1 私有；bit1：0 默认收藏夹 / 1 其他收藏夹）
                 int attr = folder.optInt("attr", 0);
-                favoriteFolder.isPrivate = (attr & 2) != 0;
+                favoriteFolder.isPrivate = (attr & 1) != 0;
                 favoriteFolder.cover = "";
 
                 folderList.add(favoriteFolder);
@@ -153,10 +127,9 @@ public class FavoriteApi {
     // 获取收藏夹封面映射
     public static HashMap getCoverMap(long mid) throws IOException, JSONException {
         HashMap coverMap = new HashMap();
-        ArrayList headers = buildHeaders();
 
         String oldUrl = "https://space.bilibili.com/ajax/fav/getBoxList?mid=" + mid;
-        String oldResponse = NetWorkUtil.get(oldUrl, headers);
+        String oldResponse = NetWorkUtil.get(oldUrl);
 
         if (oldResponse != null && oldResponse.length() > 0) {
             try {
@@ -188,7 +161,7 @@ public class FavoriteApi {
         }
 
         String newUrl = "https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=" + mid + "&type=0";
-        String newResponse = NetWorkUtil.get(newUrl, headers);
+        String newResponse = NetWorkUtil.get(newUrl);
 
         if (newResponse != null && newResponse.length() > 0) {
             try {
@@ -201,11 +174,12 @@ public class FavoriteApi {
                             for (int i = 0; i < newList.length(); i++) {
                                 JSONObject folder = newList.getJSONObject(i);
                                 long fid = folder.optLong("fid", 0);
+                                // attr 属性位（bit0：0 公开 / 1 私有；bit1：0 默认收藏夹 / 1 其他收藏夹）
                                 int attr = folder.optInt("attr", 0);
-                                boolean isPrivate = (attr & 2) != 0;
+                                boolean isPrivate = (attr & 1) != 0;
 
                                 if (isPrivate && !coverMap.containsKey(Long.valueOf(fid))) {
-                                    String cover = getFirstVideoCover(mid, fid, headers);
+                                    String cover = getFirstVideoCover(mid, fid);
                                     if (cover != null && cover.length() > 0) {
                                         coverMap.put(Long.valueOf(fid), cover);
                                     }
@@ -223,11 +197,11 @@ public class FavoriteApi {
     }
 
     // 获取收藏夹内第一个视频作为封面
-    private static String getFirstVideoCover(long mid, long fid, ArrayList headers) {
+    private static String getFirstVideoCover(long mid, long fid) {
         try {
             String url = "https://api.bilibili.com/x/space/fav/arc?vmid=" + mid
                     + "&ps=1&fid=" + fid + "&tid=0&keyword=&pn=1&order=fav_time";
-            String response = NetWorkUtil.get(url, headers);
+            String response = NetWorkUtil.get(url);
 
             if (response == null || response.length() == 0) {
                 return "";
@@ -267,9 +241,8 @@ public class FavoriteApi {
                 + "&ps=30&fid=" + fid + "&tid=0&keyword=&pn=" + page + "&order=fav_time";
         Log.d(TAG, "获取收藏夹视频: " + url);
 
-        ArrayList headers = buildHeaders();
 
-        String rawResponse = NetWorkUtil.get(url, headers);
+        String rawResponse = NetWorkUtil.get(url);
         if (rawResponse == null || rawResponse.length() == 0) {
             Log.w(TAG, "getFolderVideos: 响应为空");
             return -1;
@@ -339,8 +312,7 @@ public class FavoriteApi {
                 .put("ps", 10);
         Log.d(TAG, "获取收藏合集: " + url);
 
-        ArrayList headers = buildHeaders();
-        String rawResponse = NetWorkUtil.get(url, headers);
+        String rawResponse = NetWorkUtil.get(url);
 
         if (rawResponse == null || rawResponse.length() == 0) {
             Log.w(TAG, "getFavoritedCollections: 响应为空");
@@ -386,8 +358,7 @@ public class FavoriteApi {
         String url = "https://api.bilibili.com/x/v3/fav/folder/created/list-all?type=2&jsonp=jsonp&rid=" + aid + "&up_mid=" + mid;
         Log.d(TAG, "获取收藏状态: " + url);
 
-        ArrayList headers = buildHeaders();
-        String rawResponse = NetWorkUtil.get(url, headers);
+        String rawResponse = NetWorkUtil.get(url);
 
         if (rawResponse == null || rawResponse.length() == 0) {
             Log.w(TAG, "getFavoriteState: 响应为空");
@@ -496,9 +467,9 @@ public class FavoriteApi {
         conn.setConnectTimeout(10000);
         conn.setReadTimeout(10000);
 
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (iPad; CPU OS 18_5 like Mac OS X) AppleWebKit/605.1.15");
+        conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
         conn.setRequestProperty("Referer", "https://www.bilibili.com/");
-        conn.setRequestProperty("Cookie", cookies);
+        conn.setRequestProperty("Cookie", NetWorkUtil.getCookieString());
         conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
         conn.setRequestProperty("Origin", "https://www.bilibili.com");
 
@@ -568,9 +539,9 @@ public class FavoriteApi {
         conn.setConnectTimeout(12000);
         conn.setReadTimeout(12000);
 
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (iPad; CPU OS 18_5 like Mac OS X) AppleWebKit/605.1.15");
+        conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
         conn.setRequestProperty("Referer", "https://space.bilibili.com/");
-        conn.setRequestProperty("Cookie", SharedPreferencesUtil.getString("cookies", ""));
+        conn.setRequestProperty("Cookie", NetWorkUtil.getCookieString());
         conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
         conn.setRequestProperty("Origin", "https://space.bilibili.com");
 

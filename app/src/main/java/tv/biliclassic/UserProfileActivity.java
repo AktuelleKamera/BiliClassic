@@ -38,7 +38,9 @@ import tv.biliclassic.api.UserInfoApi;
 import tv.biliclassic.model.UserInfo;
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.GlobalImageCache;
+import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.NetWorkUtil;
 
 public class UserProfileActivity extends BaseActivity {
 
@@ -152,7 +154,7 @@ public class UserProfileActivity extends BaseActivity {
         mid = getIntent().getLongExtra("mid", 0);
 
         if (mid == 0) {
-            Toast.makeText(this, this.getString(R.string.userprofileactivity_toast_7528), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.invalid_user_id), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -185,7 +187,7 @@ public class UserProfileActivity extends BaseActivity {
             footerProgressBar.setVisibility(View.GONE);
         }
         if (footerText != null) {
-            footerText.setText(getString(R.string.userprofileactivity_settext_563f));
+            footerText.setText(getString(R.string.login_working_hard_10));
         }
         footerView.setVisibility(View.GONE);
         listView.addFooterView(footerView);
@@ -254,7 +256,7 @@ public class UserProfileActivity extends BaseActivity {
                             if (isDestroyed) return;
                             loadingLayout.setVisibility(View.GONE);
                             if (userInfo == null) {
-                                Toast.makeText(UserProfileActivity.this, UserProfileActivity.this.getString(R.string.userprofileactivity_toast_83b7), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(UserProfileActivity.this, UserProfileActivity.this.getString(R.string.load_user_failed_2), Toast.LENGTH_SHORT).show();
                                 finish();
                                 return;
                             }
@@ -289,7 +291,7 @@ public class UserProfileActivity extends BaseActivity {
             tvUserSign.setText(userInfo.sign);
             tvUserSign.setVisibility(View.VISIBLE);
         } else {
-            tvUserSign.setText(getString(R.string.userprofileactivity_settext_8fd9));
+            tvUserSign.setText(getString(R.string.user_lazy_bio));
             tvUserSign.setVisibility(View.VISIBLE);
         }
 
@@ -422,97 +424,7 @@ public class UserProfileActivity extends BaseActivity {
     }
 
     private Bitmap downloadImage(String urlStr, boolean isAvatar) {
-        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
-        HttpURLConnection conn = null;
-        InputStream is = null;
-        try {
-            URL url = new URL(urlStr);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(12000);
-            conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.setRequestProperty("Referer", "https://www.bilibili.com/");
-            conn.connect();
-
-            is = conn.getInputStream();
-
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inJustDecodeBounds = true;
-            BitmapFactory.decodeStream(is, null, options);
-            try { is.close(); } catch (Exception ignored) {}
-            is = null;
-
-            int outWidth = options.outWidth;
-            int outHeight = options.outHeight;
-
-            if (outWidth <= 0 || outHeight <= 0) {
-                outWidth = 800;
-                outHeight = 600;
-            }
-
-            // 按实际显示尺寸解码（封面 116x71dp / 头像 64dp），1:1 绘制无需软件缩放滤镜
-            float density = getResources().getDisplayMetrics().density;
-            int targetWidth = isAvatar ? 64 : (int) (116 * density + 0.5f);
-            int targetHeight = isAvatar ? 64 : (int) (71 * density + 0.5f);
-
-            // 计算缩放比例，确保为 2 的幂（低版本 Android 要求）
-            int scale = 1;
-            while (outWidth / scale > targetWidth * 2 && outHeight / scale > targetHeight * 2 && scale < 16) {
-                scale *= 2;
-            }
-
-            // 只做一次请求，避免重复下载
-            conn.disconnect();
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(12000);
-            conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.setRequestProperty("Referer", "https://www.bilibili.com/");
-            conn.connect();
-            is = conn.getInputStream();
-
-            options = new BitmapFactory.Options();
-            options.inSampleSize = scale;
-            options.inPreferredConfig = Bitmap.Config.RGB_565;
-
-            // 如果预计 bitmap 太大，主动跳过
-            int estWidth = outWidth / scale;
-            int estHeight = outHeight / scale;
-            int estBytes = estWidth * estHeight * 2;
-            if (estBytes > 2 * 1024 * 1024) {
-                Log.w("UserProfile", "图片过大，跳过: " + estBytes + " bytes");
-                return null;
-            }
-
-            Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
-
-            if (bitmap != null) {
-                int bw = bitmap.getWidth();
-                int bh = bitmap.getHeight();
-                if (bw > targetWidth * 2 || bh > targetHeight * 2) {
-                    Bitmap scaled = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true);
-                    if (scaled != bitmap && !bitmap.isRecycled()) {
-                        bitmap.recycle();
-                    }
-                    return scaled;
-                }
-            }
-
-            return bitmap;
-        } catch (OutOfMemoryError e) {
-            Log.e("UserProfile", "图片解码内存不足: " + e.getMessage());
-            return null;
-        } catch (Exception e) {
-            Log.e("UserProfile", "下载图片失败: " + e.getMessage());
-            return null;
-        } finally {
-            if (is != null) {
-                try { is.close(); } catch (Exception ignored) {}
-            }
-            if (conn != null) {
-                conn.disconnect();
-            }
-        }
+        return ImageLoader.fetchBitmap(this, urlStr, isAvatar ? 80 : 160, isAvatar ? 80 : 120);
     }
 
     private void loadUserVideos() {
@@ -543,7 +455,7 @@ public class UserProfileActivity extends BaseActivity {
                             Log.d("UserProfile", "UI 线程更新，视频数量=" + (items == null ? 0 : items.size()));
 
                             if (items == null || items.size() == 0) {
-                                videoEmptyView.setText(getString(R.string.userprofileactivity_settext_8be5));
+                                videoEmptyView.setText(getString(R.string.user_has_no_videos));
                                 footerView.setVisibility(View.GONE);
                                 Log.d("UserProfile", "视频列表为空，显示空视图");
                                 return;
@@ -569,13 +481,13 @@ public class UserProfileActivity extends BaseActivity {
                                         footerProgressBar.setVisibility(View.GONE);
                                     }
                                     if (footerText != null) {
-                                        footerText.setText(getString(R.string.userprofileactivity_settext_563f));
+                                        footerText.setText(getString(R.string.login_working_hard_10));
                                         footerText.setVisibility(View.VISIBLE);
                                     }
                                 }
                                 Log.d("UserProfile", "视频列表更新成功，当前页=" + currentPage);
                             } else {
-                                videoEmptyView.setText(getString(R.string.userprofileactivity_settext_6682));
+                                videoEmptyView.setText(getString(R.string.no_videos_2));
                                 footerView.setVisibility(View.GONE);
                                 Log.d("UserProfile", "无可添加的视频");
                             }
@@ -619,7 +531,7 @@ public class UserProfileActivity extends BaseActivity {
             footerProgressBar.setVisibility(View.VISIBLE);
         }
         if (footerText != null) {
-            footerText.setText(getString(R.string.userprofileactivity_settext_563f));
+            footerText.setText(getString(R.string.login_working_hard_10));
             footerText.setVisibility(View.VISIBLE);
         }
         footerView.setVisibility(View.VISIBLE);
@@ -853,7 +765,7 @@ public class UserProfileActivity extends BaseActivity {
                     } else if (clickItem.bvid != null && clickItem.bvid.length() > 0) {
                         intent.putExtra("bvid", clickItem.bvid);
                     } else {
-                        Toast.makeText(UserProfileActivity.this, UserProfileActivity.this.getString(R.string.userprofileactivity_toast_65e0), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(UserProfileActivity.this, UserProfileActivity.this.getString(R.string.load_video_info_failed_5), Toast.LENGTH_SHORT).show();
                         return;
                     }
                     startActivity(intent);

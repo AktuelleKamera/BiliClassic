@@ -40,7 +40,7 @@
                 android:id="@+id/title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/history_item_89c6"
+                android:text="@string/video_title_2"
                 android:textSize="14sp"
                 android:textColor="#333333"
                 android:maxLines="2"
@@ -51,7 +51,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="@string/history_item_4e3b"
+                android:text="@string/uploader"
                 android:textSize="12sp"
                 android:textColor="#666666" />
 
@@ -60,7 +60,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="@string/history_item_64ad"
+                android:text="@string/views_count_fmt"
                 android:textSize="11sp"
                 android:textColor="#999999" />
 

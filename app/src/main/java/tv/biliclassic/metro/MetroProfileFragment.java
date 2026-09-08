@@ -27,6 +27,7 @@ import tv.biliclassic.SettingsActivity;
 import tv.biliclassic.api.LoginApi;
 import tv.biliclassic.api.UserInfoApi;
 import tv.biliclassic.model.UserInfo;
+import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.NetWorkUtil;
 
@@ -56,7 +57,7 @@ public class MetroProfileFragment extends Fragment implements MetroTurnPage {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View root = inflater.inflate(R.layout.activity_metro_profile, container, false);
+        View root = inflater.inflate(R.layout.metro_profile, container, false);
 
         // 视图被销毁（onDestroyView）后会重新挂载，必须复位，否则异步回调里 if(mIsDestroyed) 直接返回 → 空白/加载不出
         mIsDestroyed = false;
@@ -76,6 +77,13 @@ public class MetroProfileFragment extends Fragment implements MetroTurnPage {
         tvUserName = (TextView) root.findViewById(R.id.tv_user_name);
         tvUserStat = (TextView) root.findViewById(R.id.tv_user_stat);
         tvUserSign = (TextView) root.findViewById(R.id.tv_user_sign);
+
+        // 夜间模式：页面底色置黑，灰色文字换白色
+        if (MetroTheme.isNight()) {
+            root.setBackgroundColor(0xFF000000);
+            tvUserStat.setTextColor(MetroTheme.grey());
+            tvUserSign.setTextColor(MetroTheme.secondary());
+        }
 
         bindNavRow(root, R.id.row_following, FollowingListActivity.class);
         bindNavRow(root, R.id.row_favorites, FavoriteFolderListActivity.class);
@@ -270,7 +278,10 @@ public class MetroProfileFragment extends Fragment implements MetroTurnPage {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    if (crossUrl != null && crossUrl.length() > 0) {
+                    // 只有登录成功响应里的 crossDomain 链接（含 DedeUserID 参数）才用于写 Cookie；
+                    // 未扫码时 data.url 是二维码跳转链接，写进去会污染 Cookie
+                    if (crossUrl != null && crossUrl.length() > 0
+                            && crossUrl.contains("DedeUserID")) {
                         saveCookiesFromUrl(crossUrl);
                         try { NetWorkUtil.get(crossUrl); } catch (Exception ignored) {}
                     }
@@ -429,32 +440,9 @@ public class MetroProfileFragment extends Fragment implements MetroTurnPage {
     }
 
     private Bitmap downloadAvatar(String urlStr) {
-        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
-        String dlUrl = urlStr;
-        if (dlUrl.startsWith("https://")) {
-            dlUrl = "http://" + dlUrl.substring(8);
-        }
-        java.net.HttpURLConnection conn = null;
-        try {
-            java.net.URL url = new java.net.URL(dlUrl);
-            conn = (java.net.HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(10000);
-            conn.setReadTimeout(10000);
-            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB == null ? "Mozilla/5.0" : NetWorkUtil.USER_AGENT_WEB);
-            conn.setRequestProperty("Accept-Encoding", "identity");
-            conn.connect();
-            java.io.InputStream is = conn.getInputStream();
-            android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
-            options.inSampleSize = 2;
-            options.inPreferredConfig = android.graphics.Bitmap.Config.RGB_565;
-            Bitmap bmp = android.graphics.BitmapFactory.decodeStream(is, null, options);
-            is.close();
-            return bmp;
-        } catch (Exception e) {
-            return null;
-        } finally {
-            if (conn != null) conn.disconnect();
-        }
+        android.content.Context ctx = getActivity();
+        if (ctx == null) return null;
+        return ImageLoader.fetchBitmap(ctx, urlStr, 84, 84);
     }
 
     private void cancelTimer() {

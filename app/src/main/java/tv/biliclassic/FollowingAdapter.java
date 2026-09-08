@@ -18,7 +18,7 @@ import java.util.concurrent.Executors;
 
 import tv.biliclassic.api.UserInfoApi;
 import tv.biliclassic.model.UserInfo;
-import tv.biliclassic.util.GlobalImageCache;
+import tv.biliclassic.util.ImageLoader;
 
 /**
  * 关注的人列表适配器（古早风格：分割线 + 左边头像 + 名字/签名 + 右边取消关注垃圾桶）。
@@ -70,37 +70,9 @@ public class FollowingAdapter extends BaseAdapter {
 
     /** 滚动状态：滚动中下载完成的图片暂不 set，停止后分批应用，避免列表滚动卡顿 */
     public void setScrolling(boolean scrolling) {
-        this.mScrolling = scrolling;
-        if (!scrolling) {
-            flushPendingBitmapSets();
-        }
+        ImageLoader.setScrolling(scrolling);
     }
 
-    private void flushPendingBitmapSets() {
-        if (pendingBitmapSets.isEmpty()) return;
-        final java.util.ArrayList<Runnable> pending =
-                new java.util.ArrayList<Runnable>(pendingBitmapSets);
-        pendingBitmapSets.clear();
-        // 分批应用（每帧最多 2 张），避免停下瞬间一次性 setImageBitmap 全部头像造成整帧卡顿
-        final int[] idx = {0};
-        final Runnable apply = new Runnable() {
-            @Override
-            public void run() {
-                int count = Math.min(2, pending.size() - idx[0]);
-                for (int i = 0; i < count; i++) {
-                    try {
-                        pending.get(idx[0]).run();
-                    } catch (Throwable t) {
-                    }
-                    idx[0]++;
-                }
-                if (idx[0] < pending.size()) {
-                    mainHandler.post(this);
-                }
-            }
-        };
-        mainHandler.post(apply);
-    }
 
     @Override
     public int getCount() {
@@ -182,15 +154,15 @@ public class FollowingAdapter extends BaseAdapter {
     /** 确认取消关注（垃圾桶点击与遥控器长按 OK 共用），成功后经 OnUnfollowListener 回调移除 */
     public void confirmUnfollow(final UserInfo user, final int position) {
         new android.app.AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(context))
-                .setTitle(context.getString(R.string.following_list_unfollow_title))
+                .setTitle(context.getString(R.string.following_list_unfollow))
                 .setMessage(context.getString(R.string.following_list_unfollow_msg, user.name != null ? user.name : ""))
-                .setPositiveButton(context.getString(R.string.following_list_unfollow_confirm),
+                .setPositiveButton(context.getString(R.string.ostwind_no_decoder_ok),
                         new android.content.DialogInterface.OnClickListener() {
                             public void onClick(android.content.DialogInterface d, int w) {
                                 doUnfollow(user, position);
                             }
                         })
-                .setNegativeButton(context.getString(R.string.following_list_unfollow_cancel), null)
+                .setNegativeButton(context.getString(R.string.videodetail_cancel), null)
                 .show();
     }
 
@@ -233,50 +205,9 @@ public class FollowingAdapter extends BaseAdapter {
 
     private void loadAvatar(final ImageView avatarView, final String url, final int position) {
         if (avatarView == null) return;
-        // 通用头像边框
+        // 通道头像边框
         addAvatarBorder(avatarView);
-        if (url == null || url.length() == 0) {
-            avatarView.setImageResource(R.drawable.bili_default_avatar);
-            return;
-        }
-        final String finalUrl = url;
-        avatarView.setTag(finalUrl);
-
-        Bitmap cached = GlobalImageCache.getInstance().getAndAcquire(finalUrl);
-        if (cached != null && !cached.isRecycled()) {
-            avatarView.setImageBitmap(cached);
-            return;
-        }
-
-        executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                final Bitmap bitmap = downloadAvatar(finalUrl);
-                if (bitmap != null && !bitmap.isRecycled()) {
-                    GlobalImageCache.getInstance().put(finalUrl, bitmap);
-                    final Runnable setBitmap = new Runnable() {
-                        @Override
-                        public void run() {
-                            Object tag = avatarView.getTag();
-                            if (tag != null && tag.equals(finalUrl)) {
-                                avatarView.setImageBitmap(bitmap);
-                            }
-                        }
-                    };
-                    mainHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (mScrolling) {
-                                // 滚动中：排队，等停止后分批应用，避免 setImageBitmap 拖慢滚动
-                                pendingBitmapSets.add(setBitmap);
-                            } else {
-                                setBitmap.run();
-                            }
-                        }
-                    });
-                }
-            }
-        });
+        ImageLoader.bind(avatarView, url, R.drawable.bili_default_avatar, 48, 48);
     }
 
     private void addAvatarBorder(ImageView imageView) {
@@ -296,58 +227,6 @@ public class FollowingAdapter extends BaseAdapter {
         return (int) (dp * density + 0.5f);
     }
 
-    private Bitmap downloadAvatar(String urlStr) {
-        if (tv.biliclassic.util.SharedPreferencesUtil.getBoolean(
-                tv.biliclassic.util.SharedPreferencesUtil.NO_IMAGE_MODE, false)) {
-            return null;
-        }
-        java.net.HttpURLConnection conn = null;
-        java.io.File tempFile = null;
-        try {
-            java.net.URL url = new java.net.URL(urlStr);
-            conn = (java.net.HttpURLConnection) url.openConnection();
-            if (conn instanceof javax.net.ssl.HttpsURLConnection) {
-                javax.net.ssl.SSLSocketFactory sslFactory =
-                        tv.biliclassic.util.NetWorkUtil.getTrustAllSSLSocketFactory();
-                if (sslFactory != null) {
-                    ((javax.net.ssl.HttpsURLConnection) conn).setSSLSocketFactory(sslFactory);
-                }
-                ((javax.net.ssl.HttpsURLConnection) conn).setHostnameVerifier(
-                        tv.biliclassic.util.NetWorkUtil.TRUST_ALL_HOSTNAMES);
-            }
-            conn.setRequestProperty("User-Agent", tv.biliclassic.util.NetWorkUtil.USER_AGENT_WEB);
-            conn.setRequestProperty("Accept-Encoding", "identity");
-            conn.setConnectTimeout(10000);
-            conn.setReadTimeout(10000);
-            conn.connect();
-            tempFile = new java.io.File(context.getCacheDir(),
-                    "follow_face_" + urlStr.hashCode() + ".tmp");
-            java.io.InputStream is = conn.getInputStream();
-            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
-            byte[] buf = new byte[8192];
-            int n;
-            while ((n = is.read(buf)) != -1) {
-                fos.write(buf, 0, n);
-            }
-            is.close();
-            fos.close();
-            if (!tempFile.exists() || tempFile.length() == 0) return null;
-            int targetSize = dpToPx(48);
-            return GlobalImageCache.decodeFileSafely(tempFile, targetSize, targetSize, 2);
-        } catch (OutOfMemoryError e) {
-            GlobalImageCache.getInstance().freeAllUnreferenced();
-            return null;
-        } catch (Exception e) {
-            return null;
-        } finally {
-            if (conn != null) {
-                try { conn.disconnect(); } catch (Exception e) {}
-            }
-            if (tempFile != null && tempFile.exists()) {
-                try { tempFile.delete(); } catch (Exception e) {}
-            }
-        }
-    }
 
     static class ViewHolder {
         ImageView avatar;

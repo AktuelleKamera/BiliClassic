@@ -55,7 +55,7 @@ public class SpecialLoginActivity extends BaseActivity {
         final boolean isLoginMode = getIntent().getBooleanExtra("login", true);
 
         if (isLoginMode) {
-            descText.setText(getString(R.string.specialloginactivity_settext_8bf7));
+            descText.setText(getString(R.string.paste_login_info));
             if (hintText != null) {
                 hintText.setText("支持格式：\n• 浏览器复制的 Cookie 字符串\n• JSON 格式 { \"cookies\": \"...\" }\n• 任意包含 SESSDATA 的文本");
                 hintText.setVisibility(View.VISIBLE);
@@ -74,7 +74,7 @@ public class SpecialLoginActivity extends BaseActivity {
                 public void onClick(View v) {
                     String input = textInput.getText().toString().trim();
                     if (input == null || input.length() == 0) {
-                        Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_8bf7), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.input_required), Toast.LENGTH_SHORT).show();
                         return;
                     }
 
@@ -86,17 +86,17 @@ public class SpecialLoginActivity extends BaseActivity {
                             JSONObject json = new JSONObject(input);
                             cookies = json.optString("cookies", "");
                             if (cookies == null || cookies.length() == 0) {
-                                Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_672a), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.no_sessdata_found), Toast.LENGTH_SHORT).show();
                                 return;
                             }
                         } catch (JSONException e) {
-                            Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_65e0), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.parse_input_failed), Toast.LENGTH_SHORT).show();
                             return;
                         }
                     }
 
                     if (cookies == null || cookies.length() == 0) {
-                        Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_672a), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.no_sessdata_found), Toast.LENGTH_SHORT).show();
                         return;
                     }
 
@@ -119,7 +119,7 @@ public class SpecialLoginActivity extends BaseActivity {
                     NetWorkUtil.refreshHeaders();
                     saveUserName();
 
-                    Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_767b), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.login_ok), Toast.LENGTH_SHORT).show();
 
                     Intent intent = new Intent(SpecialLoginActivity.this, MainActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -131,7 +131,7 @@ public class SpecialLoginActivity extends BaseActivity {
             copyBtn.setVisibility(View.GONE);
 
         } else {
-            descText.setText(getString(R.string.specialloginactivity_settext_5f53));
+            descText.setText(getString(R.string.current_login_info));
             if (hintText != null) {
                 hintText.setVisibility(View.GONE);
             }
@@ -149,7 +149,7 @@ public class SpecialLoginActivity extends BaseActivity {
             textInput.setFocusable(false);
             textInput.setFocusableInTouchMode(false);
 
-            confirmBtn.setText(getString(R.string.specialloginactivity_settext_5bfc));
+            confirmBtn.setText(getString(R.string.common_import));
             confirmBtn.setOnClickListener(new View.OnClickListener() {
                 public void onClick(View v) {
                     String input = textInput.getText().toString().trim();
@@ -166,10 +166,10 @@ public class SpecialLoginActivity extends BaseActivity {
                                 }
                             }
                             NetWorkUtil.refreshHeaders();
-                            Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_5bfc), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.import_ok), Toast.LENGTH_SHORT).show();
                         }
                     } catch (JSONException e) {
-                        Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_683c), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.invalid_json), Toast.LENGTH_SHORT).show();
                     }
                 }
             });
@@ -181,7 +181,7 @@ public class SpecialLoginActivity extends BaseActivity {
                 public void onClick(View v) {
                     ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
                     cm.setText(textInput.getText().toString());
-                    Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.specialloginactivity_toast_5df2), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SpecialLoginActivity.this, SpecialLoginActivity.this.getString(R.string.copied_to_clipboard), Toast.LENGTH_SHORT).show();
                 }
             });
         }

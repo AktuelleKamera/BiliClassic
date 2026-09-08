@@ -33,7 +33,7 @@ public class CrashReportActivity extends BaseActivity {
         if (crashInfo != null && crashInfo.length() > 0) {
             crashInfoText.setText(crashInfo);
         } else {
-            crashInfoText.setText(getString(R.string.crashreportactivity_settext_672a));
+            crashInfoText.setText(getString(R.string.unknown_error));
         }
 
         btnCopy.setOnClickListener(new View.OnClickListener() {
@@ -63,7 +63,7 @@ public class CrashReportActivity extends BaseActivity {
         String info = crashInfoText.getText().toString();
         ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
         clipboard.setText(info);
-        Toast.makeText(this, this.getString(R.string.crashreportactivity_toast_5d29), Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, this.getString(R.string.crash_log_copied), Toast.LENGTH_SHORT).show();
     }
 
     private void shareCrashInfo() {

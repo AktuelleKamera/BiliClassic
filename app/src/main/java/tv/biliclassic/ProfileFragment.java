@@ -39,6 +39,7 @@ import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.PermissionUtil;
+import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.UpdateUtil;
 import tv.biliclassic.util.DialogUtil;
@@ -240,10 +241,10 @@ public class ProfileFragment extends Fragment {
                         intent.putExtra("mid", mid);
                         startActivity(intent);
                     } else {
-                        Toast.makeText(getActivity(), getActivity().getString(R.string.profilefragment_toast_83b7), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getActivity(), getActivity().getString(R.string.load_user_failed), Toast.LENGTH_SHORT).show();
                     }
                 } else {
-                    Toast.makeText(getActivity(), getActivity().getString(R.string.profilefragment_toast_8bf7), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first_4), Toast.LENGTH_SHORT).show();
                 }
             }
         };
@@ -294,7 +295,7 @@ public class ProfileFragment extends Fragment {
             @Override
             public void onClick(View v) {
                 if (!isLoggedIn()) {
-                    Toast.makeText(getActivity(), getActivity().getString(R.string.profilefragment_toast_8bf7), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first_4), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 Intent intent = new Intent(getActivity(), FavoriteFolderListActivity.class);
@@ -306,7 +307,7 @@ public class ProfileFragment extends Fragment {
             @Override
             public void onClick(View v) {
                 if (!isLoggedIn()) {
-                    Toast.makeText(getActivity(), getActivity().getString(R.string.profilefragment_toast_8bf7), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first_4), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 Intent intent = new Intent(getActivity(), FollowingListActivity.class);
@@ -555,7 +556,7 @@ public class ProfileFragment extends Fragment {
 
     // 检查更新（使用 UpdateUtil）
     private void checkForUpdate() {
-        Toast.makeText(getActivity(), getActivity().getString(R.string.profilefragment_toast_6b63), Toast.LENGTH_SHORT).show();
+        Toast.makeText(getActivity(), getActivity().getString(R.string.checking_update), Toast.LENGTH_SHORT).show();
 
         UpdateUtil.checkUpdate(getActivity(), currentVersionCode, currentVersionName,
                 new UpdateUtil.UpdateCallback() {
@@ -612,7 +613,7 @@ public class ProfileFragment extends Fragment {
             } else {
                 mainHandler.post(new Runnable() {
                     public void run() {
-                        if (isAdded() && tvUserId != null) tvUserId.setText(getString(R.string.profilefragment_settext_7528));
+                        if (isAdded() && tvUserId != null) tvUserId.setText(getString(R.string.username_2));
                     }
                 });
             }
@@ -622,7 +623,7 @@ public class ProfileFragment extends Fragment {
                 }
             });
 
-            tvCoin.setText(getString(R.string.profilefragment_settext_52a0));
+            tvCoin.setText(getString(R.string.profile_loading));
 
             loadAvatarFromFileOrNetwork(mid);
 
@@ -640,9 +641,9 @@ public class ProfileFragment extends Fragment {
                 loginContainer.setVisibility(View.VISIBLE);
             }
 
-            tvUserId.setText(getString(R.string.profilefragment_settext_672a));
+            tvUserId.setText(getString(R.string.not_logged_in));
             tvUid.setText("");
-            tvCoin.setText(getString(R.string.profilefragment_settext_8bf7));
+            tvCoin.setText(getString(R.string.login_for_full_features));
             tvVipBadge.setVisibility(View.GONE);
             ivAvatar.setImageResource(R.drawable.bili_default_avatar);
             currentMid = 0;
@@ -739,15 +740,7 @@ public class ProfileFragment extends Fragment {
             @Override
             public void run() {
                 try {
-                    ArrayList<String> headers = new ArrayList<String>();
-                    headers.add("User-Agent");
-                    headers.add(NetWorkUtil.USER_AGENT_WEB);
-                    headers.add("Referer");
-                    headers.add("https://www.bilibili.com/");
-                    headers.add("Cookie");
-                    headers.add(cookies);
-
-                    String response = NetWorkUtil.get("https://api.bilibili.com/x/web-interface/nav", headers);
+                                        String response = NetWorkUtil.get("https://api.bilibili.com/x/web-interface/nav");
 
                     if (response == null || response.length() == 0) {
                         return;
@@ -807,12 +800,12 @@ public class ProfileFragment extends Fragment {
 
     private void showLogoutDialog() {
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(getActivity())))
-                .setTitle(getString(R.string.profilefragment_settitle_771f))
-                .setMessage(getString(R.string.profilefragment_setmessage_545c))
+                .setTitle(getString(R.string.really_leave_title_2))
+                .setMessage(getString(R.string.logout_confirm_message_2))
                 .setPositiveButton("留下来", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        Toast.makeText(getActivity(), getActivity().getString(R.string.profilefragment_toast_55ef), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getActivity(), getActivity().getString(R.string.stay_message_2), Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
                     }
                 })
@@ -915,32 +908,9 @@ public class ProfileFragment extends Fragment {
     }
 
     private Bitmap downloadBitmap(String urlStr) {
-        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
-        HttpURLConnection conn = null;
-        try {
-            URL url = new URL(urlStr);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(10000);
-            conn.setReadTimeout(10000);
-            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
-            conn.connect();
-
-            InputStream is = conn.getInputStream();
-
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inSampleSize = 2;
-            options.inPreferredConfig = Bitmap.Config.RGB_565;
-            Bitmap bitmap = BitmapFactory.decodeStream(is, null, options);
-            is.close();
-            return bitmap;
-        } catch (Exception e) {
-            Log.e(TAG, "downloadBitmap error: " + e.getMessage());
-            return null;
-        } finally {
-            if (conn != null) {
-                conn.disconnect();
-            }
-        }
+        android.content.Context ctx = getActivity();
+        if (ctx == null) return null;
+        return ImageLoader.fetchBitmap(ctx, urlStr, 96, 96);
     }
 
     private void doLogout() {

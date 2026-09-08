@@ -680,7 +680,7 @@ public class DanmakuManager {
         }
 
         conn.setRequestProperty("Referer", "https://www.bilibili.com/");
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
         conn.setConnectTimeout(10000);
         conn.setReadTimeout(10000);
         conn.connect();

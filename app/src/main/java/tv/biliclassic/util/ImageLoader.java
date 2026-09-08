@@ -226,6 +226,21 @@ public class ImageLoader {
         loadingMap.remove(k);
     }
 
+    /**
+     * 鍚屾鍥炬煍鍥剧墖浣嶅浘锛氬懡涓叏灞€缂撳瓨鐩存帴杩斿洖锛屽惁鍒欎笅杞斤紙鏃犲浘妯″紡杩斿洖 null锛夊苟鍐欏叆缂撳瓨銆
+     * 蹇呴』鍦ㄥ悗鍙扮嚎绋嬭皟鐢ㄣ€俉/H 鍗曚綅涓?dp銆倅
+     */
+    public static Bitmap fetchBitmap(android.content.Context context, String url, int dpW, int dpH) {
+        if (url == null || url.length() == 0) return null;
+        Bitmap cached = GlobalImageCache.getInstance().get(url);
+        if (cached != null && !cached.isRecycled()) return cached;
+        Bitmap bitmap = downloadImage(context, url, dpW, dpH);
+        if (bitmap != null && !bitmap.isRecycled()) {
+            GlobalImageCache.getInstance().put(url, bitmap);
+        }
+        return bitmap;
+    }
+
     private static Bitmap downloadImage(Context context, String urlStr, int dpW, int dpH) {
         if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
         // 本地文件（离线封面等）：直接解码，不联网
@@ -246,7 +261,7 @@ public class ImageLoader {
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(12000);
             conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
             conn.connect();
 
             tempFile = new java.io.File(context.getCacheDir(), "img_" + urlStr.hashCode() + ".tmp");

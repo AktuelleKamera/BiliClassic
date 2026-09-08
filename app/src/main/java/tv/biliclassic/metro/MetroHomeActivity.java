@@ -8,22 +8,17 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
-import android.view.animation.AccelerateInterpolator;
 import android.view.animation.AlphaAnimation;
 import android.view.animation.Animation;
-import android.view.animation.TranslateAnimation;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 
 import tv.biliclassic.BaseActivity;
-import tv.biliclassic.FavoriteFolderListActivity;
-import tv.biliclassic.HistoryActivity;
 import tv.biliclassic.R;
 import tv.biliclassic.SearchActivity;
 import tv.biliclassic.SettingsActivity;
@@ -48,6 +43,13 @@ public class MetroHomeActivity extends BaseActivity {
     private int mFocusIndex = -1;
     private MetroRecommendFragment mRecommendFrag;
     private MetroProfileFragment mProfileFrag;
+    private MetroHistoryFragment mHistoryFrag;
+    private MetroFavoriteFragment mFavoriteFrag;
+    private MetroFolderVideoFragment mFolderVideoFrag;
+    // 返回目标：收藏夹视频页按返回时翻回"我的收藏"页
+    private android.support.v4.app.Fragment mDetailBackTarget = null;
+    // 详情→详情整页转门进行中（期间屏蔽返回/再进入）
+    private boolean mDetailTurnAnim = false;
     private MetroTurnPage mCurrentPage;
     private boolean mShowingMenu = true;
     private MetroTiltEffect mTiltEffect;
@@ -72,7 +74,7 @@ public class MetroHomeActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_metro_home);
+        setContentView(R.layout.metro_home);
 
         mScroll = (ScrollView) findViewById(R.id.menu_scroll);
         mMenu = (LinearLayout) findViewById(R.id.metro_menu);
@@ -100,18 +102,24 @@ public class MetroHomeActivity extends BaseActivity {
             mTiltEffect.start();
         }
 
-        // 一次性把两个详情 Fragment 都 add 进容器（不 replace），之后切换只用 visibility。
+        // 一次性把详情 Fragment 都 add 进容器（不 replace），之后切换只用 visibility。
         // 视图在 onCreate 时按真实容器尺寸 measure 一次并常驻，永不销毁重建。
         mRecommendFrag = new MetroRecommendFragment();
         mProfileFrag = new MetroProfileFragment();
+        mHistoryFrag = new MetroHistoryFragment();
+        mFavoriteFrag = new MetroFavoriteFragment();
         FragmentManager fm = getSupportFragmentManager();
         FragmentTransaction ft = fm.beginTransaction();
         ft.add(R.id.metro_fragment_container, mRecommendFrag, "recommend");
         ft.add(R.id.metro_fragment_container, mProfileFrag, "profile");
+        ft.add(R.id.metro_fragment_container, mHistoryFrag, "history");
+        ft.add(R.id.metro_fragment_container, mFavoriteFrag, "favorite");
         ft.commitAllowingStateLoss();
         fm.executePendingTransactions();
         hideFragmentView(mRecommendFrag);
         hideFragmentView(mProfileFrag);
+        hideFragmentView(mHistoryFrag);
+        hideFragmentView(mFavoriteFrag);
 
         // 右下角电视水印
         ImageView watermark = (ImageView) findViewById(R.id.tv_watermark);
@@ -138,6 +146,33 @@ public class MetroHomeActivity extends BaseActivity {
                 }
             });
         }
+
+        // 崩溃报告检查（与 Classic 主页一致：Metro 用户也要能看到上次崩溃）
+        checkAndShowCrashDialog();
+    }
+
+    /** 检查并弹出上次崩溃的报告对话框（Classic 主页同款逻辑） */
+    private void checkAndShowCrashDialog() {
+        if (!tv.biliclassic.util.CrashHandler.hasPendingCrashReport(this)) {
+            return;
+        }
+        final String crashLog = tv.biliclassic.util.CrashHandler.consumeLatestCrashLog(this);
+        if (crashLog == null || crashLog.length() == 0) {
+            return;
+        }
+        new android.app.AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(tv.biliclassic.util.DialogUtil.wrap(this)))
+                .setTitle(getString(R.string.last_abnormal_exit))
+                .setMessage(getString(R.string.last_crash_prompt))
+                .setPositiveButton("查看", new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        Intent intent = new Intent(MetroHomeActivity.this, tv.biliclassic.CrashReportActivity.class);
+                        intent.putExtra("crash_info", crashLog);
+                        startActivity(intent);
+                    }
+                })
+                .setNegativeButton("忽略", null)
+                .show();
     }
 
     /** 启动入场 */
@@ -214,8 +249,8 @@ public class MetroHomeActivity extends BaseActivity {
                 {"个人中心", MetroProfileFragment.class},   // index0 由 navigate 走详情页，此处仅占位
                 {"搜索视频", SearchActivity.class},
                 {"推荐视频", MetroRecommendFragment.class},
-                {"历史记录", HistoryActivity.class},
-                {"收藏视频", FavoriteFolderListActivity.class},
+                {"历史记录", android.support.v4.app.Fragment.class},   // index3 由 navigate 走详情页（历史 Fragment），此处仅占位
+                {"收藏视频", android.support.v4.app.Fragment.class},   // index4 由 navigate 走详情页（收藏 Fragment），此处仅占位
                 {"功能设置", SettingsActivity.class},
         };
         mTargets = new Class<?>[entries.length];
@@ -320,6 +355,14 @@ public class MetroHomeActivity extends BaseActivity {
             openDetail(mRecommendFrag);
             return;
         }
+        if (index == 3) { // 历史记录 → 转门翻入详情页（历史记录 Fragment）
+            openDetail(mHistoryFrag);
+            return;
+        }
+        if (index == 4) { // 收藏视频 → 转门翻入详情页（我的收藏 Fragment）
+            openDetail(mFavoriteFrag);
+            return;
+        }
         if (index >= 0 && index < mTargets.length) {
             startActivity(new Intent(MetroHomeActivity.this, mTargets[index]));
         }
@@ -327,19 +370,107 @@ public class MetroHomeActivity extends BaseActivity {
 
     // ===== 整页转门 =====
 
-    /** 打开详情页 */
+    /** 打开详情页：隐藏其余详情 Fragment，只显示目标页（从主菜单进入） */
     private void openDetail(android.support.v4.app.Fragment f) {
         if (!mShowingMenu || mTurnAnim || f == null) return;
         if (mHomePage == null || mRecommendPage == null) return;
         mCurrentPage = (MetroTurnPage) f;
-        if (f == mProfileFrag) {
-            showFragmentView(mProfileFrag);
-            hideFragmentView(mRecommendFrag);
-        } else {
-            showFragmentView(mRecommendFrag);
-            hideFragmentView(mProfileFrag);
-        }
+        // 从主菜单发起的一级导航：清空详情返回栈
+        mDetailBackTarget = null;
+        hideFragmentView(mProfileFrag);
+        hideFragmentView(mRecommendFrag);
+        hideFragmentView(mHistoryFrag);
+        hideFragmentView(mFavoriteFrag);
+        hideFragmentView(mFolderVideoFrag);
+        showFragmentView(f);
         startTurn(1);
+    }
+
+    /**
+     * 打开指定收藏夹的视频页（从"我的收藏"点收藏夹进入）：
+     * 复用已有实例（setArguments 对已添加的 Fragment 会抛 already active 闪退），
+     * 返回时翻回"我的收藏"页。详情→详情瞬时切换，无转门/入场动画。
+     */
+    public void openFavoriteFolder(long fid, String name) {
+        if (isFinishing() || mTurnAnim || mDetailTurnAnim) return;
+        MetroFolderVideoFragment frag =
+                (MetroFolderVideoFragment) getSupportFragmentManager().findFragmentByTag("folder_video");
+        if (frag == null) {
+            frag = new MetroFolderVideoFragment();
+            Bundle args = new Bundle();
+            args.putLong("fid", fid);
+            args.putString("name", name != null ? name : "");
+            frag.setArguments(args); // 仅在添加前调用一次
+            FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+            ft.add(R.id.metro_fragment_container, frag, "folder_video");
+            ft.commitAllowingStateLoss();
+            getSupportFragmentManager().executePendingTransactions();
+            // 立即隐藏：否则新页面会在"翻走"阶段就叠在收藏列表上（标题/内容重叠）
+            hideFragmentView(frag);
+        } else {
+            frag.updateFolder(fid, name);
+        }
+        mFolderVideoFrag = frag;
+        // 返回目标 = 我的收藏页
+        mDetailBackTarget = mFavoriteFrag;
+        // 详情→详情：整页翻走 → 换内容 → 翻入
+        startDetailTurnTo(frag);
+    }
+
+    /**
+     * 详情↔详情整页转门（与主菜单↔详情同感的"整页翻走"）：
+     * 当前详情页 0→90 翻走 → 页面侧立时交换内容 → 新页 90→0 翻入。
+     */
+    private void startDetailTurnTo(final android.support.v4.app.Fragment target) {
+        if (mTurnAnim || mDetailTurnAnim) return;
+        final TurnLayout page = mRecommendPage;
+        if (page == null || target == null) return;
+        mDetailTurnAnim = true;
+        animateDetailTurn(page, 0f, 90f, new Runnable() {
+            @Override
+            public void run() {
+                // 页面侧立（视觉上不可见）时交换内容
+                hideAllDetails();
+                showFragmentView(target);
+                mCurrentPage = (MetroTurnPage) target;
+                animateDetailTurn(page, 90f, 0f, new Runnable() {
+                    @Override
+                    public void run() {
+                        mDetailTurnAnim = false;
+                    }
+                });
+            }
+        });
+    }
+
+    /** 详情容器按角度段旋转（easeInOut），结束后回调 */
+    private void animateDetailTurn(final TurnLayout page, float from, final float to, final Runnable done) {
+        final long start = android.os.SystemClock.uptimeMillis();
+        final float fFrom = from;
+        final float duration = 380f;
+        page.setVisibility(View.VISIBLE);
+        page.post(new Runnable() {
+            @Override
+            public void run() {
+                float t = (android.os.SystemClock.uptimeMillis() - start) / duration;
+                if (t > 1f) t = 1f;
+                page.setTurn(fFrom + (to - fFrom) * easeInOut(t), true);
+                if (t < 1f) {
+                    page.postDelayed(this, 16L);
+                } else {
+                    done.run();
+                }
+            }
+        });
+    }
+
+    /** 隐藏全部详情 Fragment */
+    private void hideAllDetails() {
+        hideFragmentView(mProfileFrag);
+        hideFragmentView(mRecommendFrag);
+        hideFragmentView(mHistoryFrag);
+        hideFragmentView(mFavoriteFrag);
+        hideFragmentView(mFolderVideoFrag);
     }
 
     /** 显示指定 Fragment 根视图 */
@@ -466,6 +597,7 @@ public class MetroHomeActivity extends BaseActivity {
         if (mRecommendPage != null) { mRecommendPage.setVisibility(View.INVISIBLE); mRecommendPage.clearTurn(); }
         mShowingMenu = true;
         mTurn = 0f;
+        mDetailBackTarget = null;
     }
 
     private void applyHighlight(View row, boolean on) {
@@ -529,8 +661,17 @@ public class MetroHomeActivity extends BaseActivity {
         if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
             if (mTurnAnim) {
                 startTurn(0);            // 真打断：从当前进度反向回放
+            } else if (mDetailTurnAnim) {
+                return true;             // 详情整页翻页进行中，忽略返回
             } else if (!mShowingMenu) {
-                closeDetail();
+                if (mDetailBackTarget != null) {
+                    // 整页翻回上一层详情页（收藏夹视频 → 我的收藏）
+                    android.support.v4.app.Fragment target = mDetailBackTarget;
+                    mDetailBackTarget = null;
+                    startDetailTurnTo(target);
+                } else {
+                    closeDetail();
+                }
             } else {
                 finish();
             }

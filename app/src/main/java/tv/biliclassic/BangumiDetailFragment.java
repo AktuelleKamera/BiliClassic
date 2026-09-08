@@ -25,6 +25,7 @@ import java.util.List;
 
 import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.api.BangumiApi;
 import tv.biliclassic.model.Bangumi;
@@ -120,7 +121,7 @@ public class BangumiDetailFragment extends Fragment {
 
     private void playEpisode(final Bangumi.Episode episode) {
         if (episode == null || episode.aid == 0) {
-            Toast.makeText(getActivity(), getActivity().getString(R.string.bangumidetailfragment_toast_5206), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.invalid_episode_info), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -152,7 +153,7 @@ public class BangumiDetailFragment extends Fragment {
                                     bangumi = result;
                                     displayBangumi();
                                 } else {
-                                    Toast.makeText(getActivity(), getActivity().getString(R.string.bangumidetailfragment_toast_83b7), Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(getActivity(), getActivity().getString(R.string.load_bangumi_failed), Toast.LENGTH_SHORT).show();
                                 }
                                 showLoading(false);
                             }
@@ -168,7 +169,7 @@ public class BangumiDetailFragment extends Fragment {
                                 showLoading(false);
                                 String msg = e.getMessage();
                                 if (msg != null && msg.contains("404")) {
-                                    Toast.makeText(getActivity(), getActivity().getString(R.string.bangumidetailfragment_toast_756a), Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(getActivity(), getActivity().getString(R.string.bangumi_not_found), Toast.LENGTH_SHORT).show();
                                 } else {
                                     Toast.makeText(getActivity(), "加载失败: " + msg, Toast.LENGTH_SHORT).show();
                                 }
@@ -235,11 +236,11 @@ public class BangumiDetailFragment extends Fragment {
                             if (isExpanded) {
                                 tvDesc.setMaxLines(Integer.MAX_VALUE);
                                 tvDesc.setEllipsize(null);
-                                tvDescExpand.setText(getString(R.string.bangumidetailfragment_settext_6536));
+                                tvDescExpand.setText(getString(R.string.common_collapse));
                             } else {
                                 tvDesc.setMaxLines(3);
                                 tvDesc.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                                tvDescExpand.setText(getString(R.string.bangumidetailfragment_settext_5c55));
+                                tvDescExpand.setText(getString(R.string.common_expand));
                             }
                         }
                     });
@@ -294,61 +295,7 @@ public class BangumiDetailFragment extends Fragment {
     }
 
     private void loadCover(String url) {
-        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return;
-        if (getActivity() == null) return;
-        if (url == null || url.length() == 0) return;
-
-        if (url.startsWith("https://")) {
-            url = "http://" + url.substring(8);
-        }
-
-        final String finalUrl = url;
-        final GlobalImageCache cache = GlobalImageCache.getInstance();
-
-        Bitmap cached = cache.get(finalUrl);
-        if (cached != null && !cached.isRecycled()) {
-            ivCover.setImageBitmap(cached);
-            return;
-        }
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                java.net.HttpURLConnection conn = null;
-                try {
-                    java.net.URL urlObj = new java.net.URL(finalUrl);
-                    conn = (java.net.HttpURLConnection) urlObj.openConnection();
-                    conn.setConnectTimeout(12000);
-                    conn.setReadTimeout(12000);
-                    conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-                    conn.connect();
-                    java.io.InputStream is = conn.getInputStream();
-                    android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
-                    options.inSampleSize = 2;
-                    options.inPreferredConfig = android.graphics.Bitmap.Config.RGB_565;
-                    final Bitmap bitmap = android.graphics.BitmapFactory.decodeStream(is, null, options);
-                    is.close();
-                    if (bitmap != null && !bitmap.isRecycled()) {
-                        cache.put(finalUrl, bitmap);
-                        android.support.v4.app.FragmentActivity uiAct3 = getActivity();
-        if (uiAct3 != null) {
-                            uiAct3.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    ivCover.setImageBitmap(bitmap);
-                                }
-                            });
-                        }
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    if (conn != null) {
-                        conn.disconnect();
-                    }
-                }
-            }
-        }).start();
+        ImageLoader.bind(ivCover, url, 0, 120, 160);
     }
 
     private void showLoading(boolean show) {
