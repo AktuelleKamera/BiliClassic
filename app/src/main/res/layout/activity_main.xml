@@ -30,7 +30,104 @@
             android:layout_marginRight="12dp"
             android:src="@drawable/ic_action_search" />
 
+        <!-- 内联 Holo 搜索框（点搜索图标才显示，模仿 1.8.4 的 iconified SearchView） -->
+        <LinearLayout
+            android:id="@+id/title_search_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_toRightOf="@id/logo"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingLeft="4dp"
+            android:paddingRight="8dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:background="@drawable/abs__textfield_search_default_holo_light"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="8dp"
+                    android:layout_marginRight="4dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/abs__ic_search_api_holo_light" />
+
+                <EditText
+                    android:id="@+id/title_search_edit"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@null"
+                    android:gravity="center_vertical"
+                    android:hint="@string/search_input_hint"
+                    android:imeOptions="actionSearch"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:paddingLeft="2dp"
+                    android:singleLine="true"
+                    android:textSize="14sp" />
+
+                <ImageView
+                    android:id="@+id/title_search_clear"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:clickable="true"
+                    android:contentDescription="@string/common_clear"
+                    android:paddingLeft="8dp"
+                    android:paddingRight="8dp"
+                    android:src="@drawable/abs__ic_clear_search_api_holo_light" />
+            </LinearLayout>
+        </LinearLayout>
+
     </RelativeLayout>
+
+    <!-- 搜索历史（内联搜索框展开时显示在下方） -->
+    <LinearLayout
+        android:id="@+id/main_search_history"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#FFFFFF"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:layout_marginBottom="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="搜索历史"
+                android:textColor="#666666"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/main_search_history_clear"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="8dp"
+                android:text="清空"
+                android:textColor="#D86DA5"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/main_search_history_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </LinearLayout>
 
     <!-- 上方分割线 -->
     <View

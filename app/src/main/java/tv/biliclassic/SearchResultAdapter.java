@@ -1,10 +1,6 @@
 package tv.biliclassic;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,24 +8,21 @@ import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import java.io.InputStream;
-import java.lang.ref.SoftReference;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.HashMap;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
-import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.ImageLoader;
-import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.StringUtil;
 
 public class SearchResultAdapter extends BaseAdapter {
+
+    // 结果行第二个统计字段的显示模式（随排序方式切换，模仿 1.8.4）
+    public static final int STAT_PLAY = 0;
+    public static final int STAT_DANMAKU = 1;
+    public static final int STAT_FAVORITE = 2;
+    public static final int STAT_REVIEW = 3;
+    public static final int STAT_PUBDATE = 4;
 
     private Context context;
     private List<SearchActivity.SearchResultItem> list;
@@ -40,6 +33,14 @@ public class SearchResultAdapter extends BaseAdapter {
 
     // 触摸滑动中是否隐藏光标高亮（滑动时隐藏，再次按键时恢复）
     private boolean mHideHighlight = false;
+
+    // 当前统计字段显示模式
+    private int statMode = STAT_PLAY;
+
+    public void setStatMode(int mode) {
+        this.statMode = mode;
+        notifyDataSetChanged();
+    }
 
     public void setSelectedPosition(int position) {
         this.selectedPosition = position;
@@ -84,22 +85,120 @@ public class SearchResultAdapter extends BaseAdapter {
 
     @Override
     public View getView(final int position, View convertView, ViewGroup parent) {
-        ViewHolder holder;
+        final SearchActivity.SearchResultItem item = list.get(position);
 
-        if (convertView == null) {
+        // UP主结果：复用关注列表的 item_following 布局
+        if (item != null && item.isUser) {
+            return getUserView(position, convertView, parent, item);
+        }
+
+        ViewHolder holder;
+        if (convertView == null || !(convertView.getTag() instanceof ViewHolder)) {
             convertView = LayoutInflater.from(context).inflate(R.layout.item_search_result, parent, false);
             holder = new ViewHolder();
             holder.title = (TextView) convertView.findViewById(R.id.title);
+            holder.authorGroup = convertView.findViewById(R.id.author_group);
             holder.author = (TextView) convertView.findViewById(R.id.author);
-            holder.play = (TextView) convertView.findViewById(R.id.play);
+            holder.statName = (TextView) convertView.findViewById(R.id.stat_name);
+            holder.statValue = (TextView) convertView.findViewById(R.id.stat_value);
             holder.cover = (ImageView) convertView.findViewById(R.id.cover);
             convertView.setTag(holder);
         } else {
             holder = (ViewHolder) convertView.getTag();
         }
 
-        // 键盘光标高亮（选中：半透明粉色；未选中：恢复原点击效果背景）
-        // 触摸滑动时隐藏高亮（mHideHighlight），避免光标与手指位置混淆
+        applyHighlight(convertView, position);
+
+        final int currentPos = position;
+
+        holder.title.setText(item.title);
+        holder.author.setText(item.author != null ? item.author : "");
+
+        // 发布日期模式下隐藏 UP 主组，只显示发布日期（与 1.8.4 一致）
+        if (statMode == STAT_PUBDATE) {
+            holder.authorGroup.setVisibility(View.GONE);
+        } else {
+            holder.authorGroup.setVisibility(View.VISIBLE);
+        }
+
+        String label;
+        String value;
+        switch (statMode) {
+            case STAT_DANMAKU:
+                label = "弹幕:";
+                value = StringUtil.toWan(item.danmaku);
+                break;
+            case STAT_FAVORITE:
+                label = "收藏:";
+                value = StringUtil.toWan(item.favorites);
+                break;
+            case STAT_REVIEW:
+                label = "评论:";
+                value = StringUtil.toWan(item.review);
+                break;
+            case STAT_PUBDATE:
+                label = "发布:";
+                value = formatDate(item.pubdate);
+                break;
+            case STAT_PLAY:
+            default:
+                label = "播放:";
+                value = StringUtil.toWan(item.play);
+                break;
+        }
+        holder.statName.setText(label);
+        holder.statValue.setText(value);
+
+        ImageLoader.bind(holder.cover, item.cover, R.drawable.bili_default_image_tv_with_bg, 88, 66);
+
+        convertView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (context instanceof SearchActivity) {
+                    ((SearchActivity) context).onSearchResultClick(item, currentPos);
+                }
+            }
+        });
+
+        return convertView;
+    }
+
+    /** UP主结果行：复用 item_following 布局（隐藏取消关注按钮） */
+    private View getUserView(final int position, View convertView, ViewGroup parent,
+                             final SearchActivity.SearchResultItem item) {
+        UserHolder holder;
+        if (convertView == null || !(convertView.getTag() instanceof UserHolder)) {
+            convertView = LayoutInflater.from(context).inflate(R.layout.item_following, parent, false);
+            holder = new UserHolder();
+            holder.avatar = (ImageView) convertView.findViewById(R.id.iv_avatar);
+            holder.name = (TextView) convertView.findViewById(R.id.tv_name);
+            holder.sign = (TextView) convertView.findViewById(R.id.tv_sign);
+            holder.btnUnfollow = convertView.findViewById(R.id.btn_unfollow);
+            convertView.setTag(holder);
+        } else {
+            holder = (UserHolder) convertView.getTag();
+        }
+
+        applyHighlight(convertView, position);
+
+        holder.name.setText(item.userName != null ? item.userName : "");
+        holder.sign.setText(item.userSign != null && item.userSign.length() > 0 ? item.userSign : "");
+        holder.btnUnfollow.setVisibility(View.GONE);
+        ImageLoader.bind(holder.avatar, item.userAvatar, R.drawable.bili_default_avatar, 44, 44);
+
+        convertView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (context instanceof SearchActivity) {
+                    ((SearchActivity) context).onSearchResultClick(item, position);
+                }
+            }
+        });
+
+        return convertView;
+    }
+
+    private void applyHighlight(View convertView, int position) {
         if (position == selectedPosition && !mHideHighlight) {
             convertView.setBackgroundColor(0x66D86DA5);
         } else {
@@ -110,28 +209,17 @@ public class SearchResultAdapter extends BaseAdapter {
                 convertView.setBackgroundColor(0xFFFFFFFF);
             }
         }
+    }
 
-        final SearchActivity.SearchResultItem item = list.get(position);
-        final int currentPos = position;
-
-        holder.title.setText(item.title);
-        holder.author.setText(item.author);
-        holder.play.setText(item.play + "播放");
-
-        ImageLoader.bind(holder.cover, item.cover, R.drawable.bili_default_image_tv_with_bg, 96, 66);
-
-        final int pos = position;
-        final SearchActivity.SearchResultItem clickItem = item;
-        convertView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (context instanceof SearchActivity) {
-                    ((SearchActivity) context).onSearchResultClick(clickItem, pos);
-                }
-            }
-        });
-
-        return convertView;
+    private String formatDate(long pubdate) {
+        if (pubdate <= 0) {
+            return "";
+        }
+        try {
+            return new SimpleDateFormat("yyyy-MM-dd").format(new Date(pubdate * 1000L));
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     public void updateData(List<SearchActivity.SearchResultItem> newList) {
@@ -145,8 +233,17 @@ public class SearchResultAdapter extends BaseAdapter {
 
     static class ViewHolder {
         TextView title;
+        View authorGroup;
         TextView author;
-        TextView play;
+        TextView statName;
+        TextView statValue;
         ImageView cover;
+    }
+
+    static class UserHolder {
+        ImageView avatar;
+        TextView name;
+        TextView sign;
+        View btnUnfollow;
     }
 }

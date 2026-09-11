@@ -129,7 +129,6 @@ public class DeviceUtil {
     /**
      * 设备是否有物理按键（硬件键盘 / 方向键）。用于判断是否需要引导按键绑定：
      * 纯触屏机（无键盘、无方向键）直接跳过绑定流程。
-     * Configuration.keyboard / navigation 均为 API 1，Android 1.5 可用。
      */
     public static boolean hasHardwareKeys(android.content.Context context) {
         try {

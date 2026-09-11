@@ -270,7 +270,7 @@ public class DeviceInfoActivity extends BaseActivity {
         shareIntent.setType("text/plain");
         shareIntent.putExtra(Intent.EXTRA_TEXT,
                 "我的设备信息：\n" + info + "\n\n" +
-                        "来自 BiliClassic - 支持安卓1.5+的B站客户端");
+                        "来自 BiliClassic - 支持安卓1.0+的B站客户端");
         startActivity(Intent.createChooser(shareIntent, "分享"));
     }
 }

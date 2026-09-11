@@ -175,6 +175,9 @@ public class OstwindPlayerActivity extends Activity
     private long mLastBackTime;
     private static final long BACK_EXIT_TIME = 2000;
 
+    // 表冠音量 Toast 节流
+    private long mLastCrownVolumeToast;
+
     private LocalStreamProxy mLocalProxy;
     private GestureController mGestureController;
     private boolean mPrepared = false;
@@ -205,6 +208,14 @@ public class OstwindPlayerActivity extends Activity
         getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         setContentView(R.layout.activity_ostwind_player);
+        // 表冠滚动：播放器内控制音量（向下转=增大），Toast 节流提示（API<12 内部自动跳过）
+        tv.biliclassic.util.CrownScrollHelper.attachVolume(this,
+                new tv.biliclassic.util.CrownScrollHelper.CrownVolumeListener() {
+                    @Override
+                    public void onCrownVolume(int steps) {
+                        changeVolumeByCrown(steps);
+                    }
+                });
 
         mSurfaceView = (SurfaceView) findViewById(R.id.ostwind_surface);
         mHolder = mSurfaceView.getHolder();
@@ -1558,6 +1569,35 @@ public class OstwindPlayerActivity extends Activity
             } catch (Exception e) {
             }
             mDanmaku = null;
+        }
+    }
+
+    /** 表冠调节音量：正=增大，负=减小；Toast 节流 400ms，避免连续旋转时刷屏 */
+    private void changeVolumeByCrown(int steps) {
+        if (steps == 0) {
+            return;
+        }
+        try {
+            android.media.AudioManager am = (android.media.AudioManager)
+                    getSystemService(android.content.Context.AUDIO_SERVICE);
+            if (am == null) {
+                return;
+            }
+            int max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC);
+            if (max <= 0) {
+                return;
+            }
+            int cur = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC);
+            int newVol = Math.min(Math.max(cur + steps, 0), max);
+            if (newVol != cur) {
+                am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, newVol, 0);
+            }
+            long now = android.os.SystemClock.uptimeMillis();
+            if (now - mLastCrownVolumeToast > 400) {
+                mLastCrownVolumeToast = now;
+                Toast.makeText(this, "音量 " + newVol * 100 / max + "%", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Throwable t) {
         }
     }
 

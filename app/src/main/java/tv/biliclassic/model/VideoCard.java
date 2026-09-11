@@ -8,6 +8,8 @@ public class VideoCard implements Serializable {
     public String view;
     public String cover;
     public String type = "video";
+    /** 番剧 season_id（type 为 bangumi 时有效，用于跳转番剧详情） */
+    public long seasonId = 0;
     public long aid;
     public String bvid;
     public long cid = 0;

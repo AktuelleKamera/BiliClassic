@@ -572,18 +572,46 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
     @Override
     @SuppressLint("NewApi")
     public boolean isHardwareAccelerated() {
-        // >= 3.0（isHardwareAccelerated 是 API 11+ 方法，super 调用在 API<11 上会 VerifyError，
-        // 用反射绕过）
-        if (getSdkInt() >= 11) {
-            try {
-                java.lang.reflect.Method m = android.view.View.class.getMethod("isHardwareAccelerated");
-                return ((Boolean) m.invoke(this)).booleanValue();
-            } catch (Throwable t) {
-            }
-            return false;
-        } else {
+        // 不能用 View.class.getMethod("isHardwareAccelerated").invoke(this)：
+        // Method.invoke 是动态分派，本类又重写了 isHardwareAccelerated，invoke(this)
+        // 会递归调回本方法 → StackOverflowError 被 catch(Throwable) 吞掉 → 恒返回 false
+        // → DFM 以为自己跑在"无硬件加速"环境 → 走软件渲染老路 → 老设备每帧 0.6~1.1s。
+        // 改为读 View.mAttachInfo.mHardwareAccelerated（窗口级硬件加速标志）：
+        // 与 View.isHardwareAccelerated()（mAttachInfo != null && mAttachInfo.mHardwareAccelerated）
+        // 语义完全一致；只用到 Field（API 1），不触发方法分派，也不会在 API<11 上因引用
+        // 不存在的 View.isHardwareAccelerated 触发 VerifyError。
+        if (getSdkInt() < 11) {
             return false;
         }
+        try {
+            java.lang.reflect.Field attachField = android.view.View.class.getDeclaredField("mAttachInfo");
+            attachField.setAccessible(true);
+            Object attachInfo = attachField.get(this);
+            if (attachInfo != null) {
+                java.lang.reflect.Field hwField =
+                        attachInfo.getClass().getDeclaredField("mHardwareAccelerated");
+                hwField.setAccessible(true);
+                return hwField.getBoolean(attachInfo);
+            }
+        } catch (Throwable t) {
+        }
+        // if 个别 ROM 改了 AttachInfo 字段名时，向上找到未重写该方法的装饰根代查。
+        // （mHardwareAccelerated 是窗口级标志，任意挂在同一窗口的非 DanmakuView 结果一致。）
+        try {
+            android.view.View p = (android.view.View) getParent();
+            android.view.View root = null;
+            while (p != null) {
+                root = p;
+                p = p.getParent() instanceof android.view.ViewGroup
+                        ? (android.view.View) ((android.view.ViewGroup) p.getParent()) : null;
+            }
+            if (root != null) {
+                java.lang.reflect.Method m = android.view.View.class.getMethod("isHardwareAccelerated");
+                return ((Boolean) m.invoke(root)).booleanValue();
+            }
+        } catch (Throwable t) {
+        }
+        return false;
     }
 
     @Override

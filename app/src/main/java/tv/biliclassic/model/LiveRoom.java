@@ -51,7 +51,7 @@ public class LiveRoom implements Serializable {
         return "";
     }
 
-    /** 真实房间号：roomid 缺失时用短号兜底 */
+    /** 真实房间号：roomid 缺失时用短号 */
     public long realRoomId() {
         if (roomid > 0) return roomid;
         return short_id > 0 ? short_id : 0;

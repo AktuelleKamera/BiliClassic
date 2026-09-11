@@ -90,7 +90,7 @@ public class RecommendVerticalFragment extends Fragment {
             boolean paging = false;
 
             public boolean onTouch(View v, MotionEvent e) {
-                switch (e.getActionMasked()) {
+                switch (e.getAction() & 0xFF) {
                     case MotionEvent.ACTION_DOWN:
                         downY = e.getY();
                         downTime = System.currentTimeMillis();

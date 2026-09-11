@@ -400,6 +400,16 @@ public class BiliPlayerActivity extends Activity implements
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         setContentView(R.layout.bili_app_player_view_new);
+        // 表冠滚动：播放器内控制音量（向下转=增大），复用手势音量 HUD（API<12 内部自动跳过）
+        tv.biliclassic.util.CrownScrollHelper.attachVolume(this,
+                new tv.biliclassic.util.CrownScrollHelper.CrownVolumeListener() {
+                    @Override
+                    public void onCrownVolume(int steps) {
+                        if (mGestureController != null) {
+                            mGestureController.adjustVolumeBySteps(steps);
+                        }
+                    }
+                });
 
         if (!getIntent().getBooleanExtra("offline_mode", false)) {
             initLoadingOverlay();

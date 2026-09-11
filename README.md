@@ -55,8 +55,8 @@
 
 ## 技术路线
 
-- 最低支持 API 1 (Android 1.0)，目标 API 28
-- 纯 Java 6 实现，兼容古早 Dalvik 虚拟机
+- 最低支持 API 1 (Android 1.0)，目标 API 29
+- Java层代码使用 Java 7 实现，NDK r10e 编译
 - 二维码生成使用 SwetakeQRCode 魔改
 - 参考 Bilibili 官方 API 文档实现数据获取
 - 独家魔改support-v4库，支持安卓1.0
@@ -78,7 +78,7 @@
 | Native 依赖 | 有（ndkbitmap.so） | 无 |
 | 推荐设备 | ARMv7 及以上 | ARMv5TE / ARMv6 |
 
-BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备设计。通过预渲染 Bitmap、同文案去重、低帧率轮询和 `MIN_PRIORITY` 后台线程，将弹幕渲染对视频解码的干扰降到最低。
+BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备设计。通过预渲染 Bitmap、同文案去重、低帧率轮询和 `MIN_PRIORITY` 后台线程，将弹幕渲染对视频解码的干扰降到最低。然而我还是推荐你用DanmakuFlameMaster（
 
 ### (BT-5-IS快速坦克)
 <img width="847" height="514" alt="07n9mbv7f7541" src="https://github.com/user-attachments/assets/d820526d-bdb6-4a41-84b4-c5fe05e3b5c3" />

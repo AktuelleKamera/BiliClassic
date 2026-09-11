@@ -121,6 +121,16 @@ public abstract class BaseActivity extends FragmentActivity {
     }
 
     /**
+     * 表冠旋钮滚动：内容就绪后在 DecorView 挂泛动作监听（API<12 时内部自动跳过）。
+     * 未被子视图消费的 ACTION_SCROLL 会落到这里，滚动页面上最大可见的可滚动容器。
+     */
+    @Override
+    public void onContentChanged() {
+        super.onContentChanged();
+        tv.biliclassic.util.CrownScrollHelper.attachToWindow(this);
+    }
+
+    /**
      * 让应用内容绘制到系统栏之下（edge-to-edge）。
      * 不设置 LAYOUT 标志、也不加顶部 padding，避免多出一截状态栏空白。
      * 启用时：底部延伸到手势/导航区（LAYOUT_HIDE_NAVIGATION），并把内容顶部下移状态栏高度，

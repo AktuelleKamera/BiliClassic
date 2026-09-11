@@ -113,6 +113,14 @@
                     style="@style/AboutTableText"
                     android:text="@string/bili_about_skyler1n" />
             </TableRow>
+            <TableRow>
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_wcxawa" />
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_cctyl" />
+            </TableRow>
         </TableLayout>
 
         <TextView

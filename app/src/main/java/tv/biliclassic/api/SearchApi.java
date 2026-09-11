@@ -52,11 +52,50 @@ public class SearchApi {
      * @return 接口完整 JSON 响应（code==0 时 data.result 为结果数组）
      */
     public static JSONObject search(String keyword, int page) throws IOException, JSONException {
+        return search(keyword, page, null);
+    }
+
+    /**
+     * 搜索视频（WBI 签名接口）
+     * @param order 排序：null=综合，pubdate=按时间，click=按播放，dm=按弹幕，stow=按收藏
+     */
+    public static JSONObject search(String keyword, int page, String order) throws IOException, JSONException {
+        return search(keyword, page, order, 0, 0);
+    }
+
+    /**
+     * 搜索视频（WBI 签名接口，支持投稿时间范围）
+     * @param pubtimeBeginS 投稿起始时间戳（秒），<=0 表示不限
+     * @param pubtimeEndS   投稿截止时间戳（秒），<=0 表示不限
+     */
+    public static JSONObject search(String keyword, int page, String order,
+                                    long pubtimeBeginS, long pubtimeEndS) throws IOException, JSONException {
+        return search(keyword, page, order, pubtimeBeginS, pubtimeEndS, 20);
+    }
+
+    /**
+     * 搜索视频（WBI 签名接口，支持投稿时间范围与自定义每页数量）
+     * @param pageSize 每页数量
+     */
+    public static JSONObject search(String keyword, int page, String order,
+                                    long pubtimeBeginS, long pubtimeEndS, int pageSize)
+            throws IOException, JSONException {
         String url = "https://api.bilibili.com/x/web-interface/wbi/search/type?";
         url += "search_type=video";
         url += "&keyword=" + URLEncoder.encode(keyword, "UTF-8");
         url += "&page=" + page;
-        url += "&pagesize=20";
+        url += "&pagesize=" + (pageSize > 0 ? pageSize : 20);
+        if (order != null && order.length() > 0) {
+            url += "&order=" + order;
+        }
+        if (pubtimeEndS > 0) {
+            // B 站时间过滤必须 begin+end 同时给，且 begin 不能为 0，否则过滤会被忽略
+            long begin = pubtimeBeginS > 0 ? pubtimeBeginS : 1245945600L; // 2009-06-26（B站建站日）
+            url += "&pubtime_begin_s=" + begin;
+            url += "&pubtime_end_s=" + pubtimeEndS;
+        } else if (pubtimeBeginS > 0) {
+            url += "&pubtime_begin_s=" + pubtimeBeginS;
+        }
 
         url = ConfInfoApi.signWBI(url);
         String response = NetWorkUtil.get(url);
@@ -89,9 +128,31 @@ public class SearchApi {
      * 获取视频列表
      */
     public static void getVideosFromSearchResult(JSONArray input, ArrayList<VideoCard> videoCardList) throws JSONException {
+        addVideos(input, videoCardList, true);
+    }
+
+    /**
+     * 从结果数组中提取所有视频卡片（包含格式化标题/封面等信息）。
+     */
+    public static List<VideoCard> parseVideoCards(JSONArray result) throws JSONException {
+        ArrayList<VideoCard> list = new ArrayList<VideoCard>();
+        addVideos(result, list, true);
+        return list;
+    }
+
+    /**
+     * 分区页用：播放量不带「播放」后缀，并解析弹幕数（video_review）。
+     */
+    public static List<VideoCard> parseVideoCardsForPartition(JSONArray result) throws JSONException {
+        ArrayList<VideoCard> list = new ArrayList<VideoCard>();
+        addVideos(result, list, false);
+        return list;
+    }
+
+    private static void addVideos(JSONArray input, ArrayList<VideoCard> videoCardList, boolean playSuffix) throws JSONException {
         for (int i = 0; i < input.length(); i++) {
             JSONObject card = input.getJSONObject(i);
-            String type = card.getString("type");
+            String type = card.optString("type", "");
 
             if (!"video".equals(type)) {
                 continue;
@@ -109,18 +170,10 @@ public class SearchApi {
             }
             String upName = card.getString("author");
             long play = card.getLong("play");
-            String playTimesStr = StringUtil.toWan(play) + "播放";
+            int danmaku = card.optInt("video_review", 0);
+            String view = StringUtil.toWan(play) + (playSuffix ? "播放" : "");
 
-            videoCardList.add(new VideoCard(title, upName, playTimesStr, cover, aid, bvid, type));
+            videoCardList.add(new VideoCard(title, upName, view, cover, aid, bvid, danmaku));
         }
-    }
-
-    /**
-     * 从结果数组中提取所有视频卡片（包含格式化标题/封面等信息）。
-     */
-    public static List<VideoCard> parseVideoCards(JSONArray result) throws JSONException {
-        ArrayList<VideoCard> list = new ArrayList<VideoCard>();
-        getVideosFromSearchResult(result, list);
-        return list;
     }
 }

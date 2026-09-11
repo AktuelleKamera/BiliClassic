@@ -20,6 +20,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
@@ -268,12 +269,57 @@ public class MainActivity extends BaseActivity {
         updateOrientationForTab();
 
         ImageView btnSearch = (ImageView) findViewById(R.id.btn_search);
-        btnSearch.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, SearchActivity.class));
-            }
-        });
+        if (btnSearch != null) {
+            btnSearch.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    expandTitleSearch();
+                }
+            });
+        }
+        // X：有文字则清空，无文字则收起搜索（模仿 1.8.4 SearchView 的关闭按钮）
+        View titleSearchClear = findViewById(R.id.title_search_clear);
+        if (titleSearchClear != null) {
+            titleSearchClear.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    EditText edit = (EditText) findViewById(R.id.title_search_edit);
+                    if (edit != null && edit.getText().length() > 0) {
+                        edit.setText("");
+                    } else {
+                        collapseTitleSearch();
+                    }
+                }
+            });
+        }
+        View historyClear = findViewById(R.id.main_search_history_clear);
+        if (historyClear != null) {
+            historyClear.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    SharedPreferencesUtil.putString("search_history", "");
+                    hideMainSearchHistory();
+                }
+            });
+        }
+        final EditText titleSearchEdit = (EditText) findViewById(R.id.title_search_edit);
+        if (titleSearchEdit != null) {
+            tv.biliclassic.util.SdkHelper.setOnEditorActionListener(titleSearchEdit,
+                    new tv.biliclassic.util.SdkHelper.EditorActionHandler() {
+                        @Override
+                        public boolean onEditorAction(int actionId, android.view.KeyEvent event) {
+                            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
+                                    || (event != null
+                                        && event.getAction() == android.view.KeyEvent.ACTION_DOWN
+                                        && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER
+                                        && event.getRepeatCount() == 0)) {
+                                submitTitleSearch();
+                                return true;
+                            }
+                            return false;
+                        }
+                    });
+        }
 
         ImageView logo = (ImageView) findViewById(R.id.logo);
         logo.setOnClickListener(new View.OnClickListener() {
@@ -874,8 +920,162 @@ public class MainActivity extends BaseActivity {
      * - 左右方向键不再切换 Tab（推荐页内用于移动卡片光标，其他页面直接消费掉，防止 ViewPager 切页）；
      * - Tab 切换改用数字键 1（上一个）和 3（下一个）。
      */
+    /** 展开主界面标题栏的内联 Holo 搜索框（模仿 1.8.4 iconified SearchView） */
+    private void expandTitleSearch() {
+        View btnSearch = findViewById(R.id.btn_search);
+        View container = findViewById(R.id.title_search_container);
+        final EditText edit = (EditText) findViewById(R.id.title_search_edit);
+        if (btnSearch != null) btnSearch.setVisibility(View.GONE);
+        if (container != null) container.setVisibility(View.VISIBLE);
+        if (edit != null) {
+            edit.requestFocus();
+            edit.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    android.view.inputmethod.InputMethodManager imm =
+                            (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+                    if (imm != null) {
+                        imm.showSoftInput(edit, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+                    }
+                }
+            }, 100);
+        }
+        showMainSearchHistory();
+    }
+
+    private boolean isTitleSearchExpanded() {
+        View container = findViewById(R.id.title_search_container);
+        return container != null && container.getVisibility() == View.VISIBLE;
+    }
+
+    /** 收起内联搜索框，恢复 logo 和搜索图标 */
+    private void collapseTitleSearch() {
+        View logo = findViewById(R.id.logo);
+        View btnSearch = findViewById(R.id.btn_search);
+        View container = findViewById(R.id.title_search_container);
+        if (logo != null) logo.setVisibility(View.VISIBLE);
+        if (btnSearch != null) btnSearch.setVisibility(View.VISIBLE);
+        if (container != null) container.setVisibility(View.GONE);
+        View focus = getCurrentFocus();
+        if (focus != null) {
+            android.view.inputmethod.InputMethodManager imm =
+                    (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(focus.getWindowToken(), 0);
+            }
+        }
+        hideMainSearchHistory();
+    }
+
+    /** 提交内联搜索：带关键词打开搜索页 */
+    private void submitTitleSearch() {
+        EditText edit = (EditText) findViewById(R.id.title_search_edit);
+        if (edit == null) {
+            return;
+        }
+        String keyword = edit.getText().toString().trim();
+        if (keyword.length() == 0) {
+            return;
+        }
+        saveMainSearchHistory(keyword);
+        Intent intent = new Intent(MainActivity.this, SearchActivity.class);
+        intent.putExtra("keyword", keyword);
+        startActivity(intent);
+        collapseTitleSearch();
+    }
+
+    /** 展开时在主搜索框下方显示搜索历史 */
+    private void showMainSearchHistory() {
+        LinearLayout container = (LinearLayout) findViewById(R.id.main_search_history);
+        LinearLayout listContainer = (LinearLayout) findViewById(R.id.main_search_history_list);
+        if (container == null || listContainer == null) {
+            return;
+        }
+        listContainer.removeAllViews();
+        java.util.List<String> items = new java.util.ArrayList<String>();
+        String json = SharedPreferencesUtil.getString("search_history", "");
+        try {
+            if (json != null && json.length() > 0) {
+                org.json.JSONArray arr = new org.json.JSONArray(json);
+                for (int i = 0; i < arr.length(); i++) {
+                    items.add(arr.getString(i));
+                }
+            }
+        } catch (Exception e) {
+        }
+        final float density = getResources().getDisplayMetrics().density;
+        for (final String kw : items) {
+            android.widget.TextView tv = new android.widget.TextView(this);
+            tv.setText(kw);
+            tv.setTextSize(14);
+            tv.setTextColor(0xFF333333);
+            tv.setSingleLine(true);
+            tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            tv.setPadding(0, (int) (8 * density + 0.5f), 0, (int) (8 * density + 0.5f));
+            tv.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    EditText edit = (EditText) findViewById(R.id.title_search_edit);
+                    if (edit != null) {
+                        edit.setText(kw);
+                    }
+                    submitTitleSearch();
+                }
+            });
+            listContainer.addView(tv);
+        }
+        container.setVisibility(items.size() > 0 ? View.VISIBLE : View.GONE);
+    }
+
+    private void hideMainSearchHistory() {
+        View container = findViewById(R.id.main_search_history);
+        if (container != null) {
+            container.setVisibility(View.GONE);
+        }
+    }
+
+    /** 保存搜索历史（JSON 数组，最多 10 条，去重，最新在前） */
+    private void saveMainSearchHistory(String keyword) {
+        if (keyword == null || keyword.length() == 0) {
+            return;
+        }
+        java.util.List<String> historyList = new java.util.ArrayList<String>();
+        String json = SharedPreferencesUtil.getString("search_history", "");
+        try {
+            if (json != null && json.length() > 0) {
+                org.json.JSONArray arr = new org.json.JSONArray(json);
+                for (int i = 0; i < arr.length(); i++) {
+                    String item = arr.getString(i);
+                    if (!item.equals(keyword)) {
+                        historyList.add(item);
+                    }
+                }
+            }
+        } catch (Exception e) {
+        }
+        historyList.add(0, keyword);
+        if (historyList.size() > 10) {
+            historyList = historyList.subList(0, 10);
+        }
+        try {
+            org.json.JSONArray arr = new org.json.JSONArray();
+            for (String item : historyList) {
+                arr.put(item);
+            }
+            SharedPreferencesUtil.putString("search_history", arr.toString());
+        } catch (Exception e) {
+        }
+    }
+
     @Override
     public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        // 内联搜索框展开时，返回键先收起搜索框
+        if (event.getAction() == android.view.KeyEvent.ACTION_DOWN
+                && event.getKeyCode() == android.view.KeyEvent.KEYCODE_BACK
+                && isTitleSearchExpanded()) {
+            collapseTitleSearch();
+            return true;
+        }
         if (!mOptionsMenuOpen) {
             if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
                 boolean firstPress = (event.getRepeatCount() == 0);

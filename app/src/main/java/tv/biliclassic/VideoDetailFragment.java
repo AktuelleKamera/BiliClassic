@@ -1119,10 +1119,10 @@ public class VideoDetailFragment extends Fragment {
                     playerData.title = tempPartTitle;
                     int quality = getSafeQuality();
                     playerData.qn = quality;
-                    PlayerApi.getVideo(playerData, false);
-                    reconcileQuality(playerData);
-                    final String videoUrl = playerData.videoUrl;
-                    android.support.v4.app.FragmentActivity uiAct14 = getActivity();
+                      PlayerApi.getVideo(playerData, false);
+                      reconcileQuality(playerData);
+                      final String videoUrl = playerData.videoUrl;
+                      android.support.v4.app.FragmentActivity uiAct14 = getActivity();
         if (uiAct14 != null) {
                         uiAct14.runOnUiThread(new Runnable() {
                             @Override

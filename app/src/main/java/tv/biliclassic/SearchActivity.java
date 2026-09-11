@@ -20,17 +20,14 @@ import android.widget.Toast;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import tv.biliclassic.api.ConfInfoApi;
 import tv.biliclassic.api.BilibiliIDConverter;
 import tv.biliclassic.api.SearchApi;
 import tv.biliclassic.util.KeyBindingUtil;
-import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.StringUtil;
@@ -48,11 +45,31 @@ public class SearchActivity extends BaseActivity {
     private ProgressBar footerProgressBar;
 
     // 搜索历史
-    private LinearLayout historyContainer;
-    private LinearLayout historyListContainer;
-    private TextView clearHistoryBtn;
-    private LinearLayout historyEmptyView;
     private static final String KEY_SEARCH_HISTORY = "search_history";
+
+    // 排序/筛选下拉（ActionBar 式）
+    private View sortButton;
+    private TextView sortButtonText;
+    // 日期筛选范围（秒），0 表示不限
+    private long filterBeginS = 0;
+    private long filterEndS = 0;
+    private static final String[] MENU_NAMES = {"综合", "相关度", "发布日期", "起始日期", "评论", "弹幕", "收藏", "UP主"};
+    // 每项对应动作：0-5=排序索引；-1=起始日期；-2=UP主
+    private static final int[] MENU_ACTIONS = {0, 1, 2, -1, 3, 4, 5, -2};
+    // 结果态/搜索态切换
+    private View titleSearchBox;
+    private View titleSpacer;
+    private int currentSortIndex = 0;
+    private static final String[] SORT_NAMES = {"综合", "相关度", "发布日期", "评论", "弹幕", "收藏"};
+    private static final String[] SORT_ORDERS = {"", "ranklevel", "pubdate", "scores", "dm", "stow"};
+    private static final int[] SORT_STAT = {
+            SearchResultAdapter.STAT_PLAY,
+            SearchResultAdapter.STAT_PLAY,
+            SearchResultAdapter.STAT_PUBDATE,
+            SearchResultAdapter.STAT_REVIEW,
+            SearchResultAdapter.STAT_DANMAKU,
+            SearchResultAdapter.STAT_FAVORITE
+    };
 
     private SearchResultAdapter adapter;
     private List<SearchResultItem> resultListData = new ArrayList<SearchResultItem>();
@@ -91,11 +108,21 @@ public class SearchActivity extends BaseActivity {
         topLoading = (LinearLayout) findViewById(R.id.top_loading);
         topProgress = (ProgressBar) findViewById(R.id.top_progress);
 
-        // 搜索历史
-        historyContainer = (LinearLayout) findViewById(R.id.history_container);
-        historyListContainer = (LinearLayout) findViewById(R.id.history_list_container);
-        clearHistoryBtn = (TextView) findViewById(R.id.clear_history);
-        historyEmptyView = (LinearLayout) findViewById(R.id.history_empty);
+        // 排序下拉 + 结果态搜索按钮 + 搜索态搜索框
+        sortButton = findViewById(R.id.sort_button);
+        sortButtonText = (TextView) findViewById(R.id.sort_button_text);
+        titleSearchBox = findViewById(R.id.title_search_box);
+        titleSpacer = findViewById(R.id.title_spacer);
+        setupSortButton();
+        View btnSearchTitle = findViewById(R.id.btn_search_title);
+        if (btnSearchTitle != null) {
+            btnSearchTitle.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showSearchBox();
+                }
+            });
+        }
 
         footerView = getLayoutInflater().inflate(R.layout.list_footer, null);
         footerProgressBar = (ProgressBar) footerView.findViewById(R.id.footer_progress);
@@ -113,19 +140,6 @@ public class SearchActivity extends BaseActivity {
         // TV 模式适配：让 ListView 可聚焦
         resultList.setFocusable(true);
         resultList.setFocusableInTouchMode(true);
-
-        // 搜索历史加载
-        loadSearchHistory();
-
-        // 清空历史
-        if (clearHistoryBtn != null) {
-            clearHistoryBtn.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    clearSearchHistory();
-                }
-            });
-        }
 
         resultList.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
@@ -185,9 +199,24 @@ public class SearchActivity extends BaseActivity {
         backBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                finish();
+                if (titleSearchBox != null && titleSearchBox.getVisibility() == View.VISIBLE && hasSearched) {
+                    hideSearchBox();
+                } else {
+                    finish();
+                }
             }
         });
+
+        // bilibili 图标：点击返回（带粉色点击特效）
+        View logoContainer = findViewById(R.id.logo_container);
+        if (logoContainer != null) {
+            logoContainer.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    finish();
+                }
+            });
+        }
 
         searchAction.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -195,6 +224,21 @@ public class SearchActivity extends BaseActivity {
                 performSearch();
             }
         });
+
+        // Holo 搜索框的清除按钮：有文字清空，无文字收起
+        ImageView searchClear = (ImageView) findViewById(R.id.search_clear);
+        if (searchClear != null) {
+            searchClear.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (searchEdit != null && searchEdit.getText().length() > 0) {
+                        searchEdit.setText("");
+                    } else {
+                        hideSearchBox();
+                    }
+                }
+            });
+        }
 
         tv.biliclassic.util.SdkHelper.setOnEditorActionListener(searchEdit, new tv.biliclassic.util.SdkHelper.EditorActionHandler() {
             @Override
@@ -228,6 +272,8 @@ public class SearchActivity extends BaseActivity {
         if (keyword != null && keyword.length() > 0) {
             searchEdit.setText(keyword);
             performSearch();
+        } else {
+            showSearchBox();
         }
 
         // 让搜索框获得焦点（TV 模式）
@@ -237,97 +283,6 @@ public class SearchActivity extends BaseActivity {
                 searchEdit.requestFocus();
             }
         });
-    }
-
-    // 加载搜索历史
-    private void loadSearchHistory() {
-        String historyJson = SharedPreferencesUtil.getString(KEY_SEARCH_HISTORY, "");
-        if (historyJson == null || historyJson.length() == 0) {
-            if (historyEmptyView != null) {
-                historyEmptyView.setVisibility(View.VISIBLE);
-            }
-            return;
-        }
-
-        try {
-            JSONArray arr = new JSONArray(historyJson);
-            if (arr.length() == 0) {
-                if (historyEmptyView != null) {
-                    historyEmptyView.setVisibility(View.VISIBLE);
-                }
-                return;
-            }
-
-            if (historyEmptyView != null) {
-                historyEmptyView.setVisibility(View.GONE);
-            }
-
-            if (historyListContainer != null) {
-                historyListContainer.removeAllViews();
-            }
-
-            for (int i = 0; i < arr.length(); i++) {
-                final String keyword = arr.getString(i);
-                View historyItem = getLayoutInflater().inflate(R.layout.item_search_history, null);
-                TextView tvKeyword = (TextView) historyItem.findViewById(R.id.history_keyword);
-                tvKeyword.setText(keyword);
-
-                historyItem.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        searchEdit.setText(keyword);
-                        performSearch();
-                    }
-                });
-
-                // TV 焦点支持
-                historyItem.setFocusable(true);
-                historyItem.setFocusableInTouchMode(true);
-
-                // 焦点效果（反射）
-                historyItem.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-                    @Override
-                    public void onFocusChange(View v, boolean hasFocus) {
-                        try {
-                            if (hasFocus) {
-                                // setScaleX/Y (API 11+)
-                                try {
-                                    java.lang.reflect.Method setScaleX = View.class.getMethod("setScaleX", float.class);
-                                    setScaleX.invoke(v, 1.05f);
-                                } catch (Exception e) {}
-                                try {
-                                    java.lang.reflect.Method setScaleY = View.class.getMethod("setScaleY", float.class);
-                                    setScaleY.invoke(v, 1.05f);
-                                } catch (Exception e) {}
-                                // setBackgroundColor (API 1+)
-                                v.setBackgroundColor(0x33FFFFFF);
-                            } else {
-                                try {
-                                    java.lang.reflect.Method setScaleX = View.class.getMethod("setScaleX", float.class);
-                                    setScaleX.invoke(v, 1.0f);
-                                } catch (Exception e) {}
-                                try {
-                                    java.lang.reflect.Method setScaleY = View.class.getMethod("setScaleY", float.class);
-                                    setScaleY.invoke(v, 1.0f);
-                                } catch (Exception e) {}
-                                v.setBackgroundColor(0x00000000);
-                            }
-                        } catch (Exception e) {
-                            // 反射失败，静默忽略
-                        }
-                    }
-                });
-
-                historyListContainer.addView(historyItem);
-            }
-
-            if (historyContainer != null) {
-                historyContainer.setVisibility(View.VISIBLE);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     // 保存搜索历史
@@ -369,23 +324,7 @@ public class SearchActivity extends BaseActivity {
         }
     }
 
-    // 清空搜索历史
-    private void clearSearchHistory() {
-        SharedPreferencesUtil.putString(KEY_SEARCH_HISTORY, "");
-        if (historyListContainer != null) {
-            historyListContainer.removeAllViews();
-        }
-        if (historyEmptyView != null) {
-            historyEmptyView.setVisibility(View.VISIBLE);
-        }
-        if (historyContainer != null) {
-            historyContainer.setVisibility(View.GONE);
-        }
-        Toast.makeText(this, this.getString(R.string.search_history_cleared), Toast.LENGTH_SHORT).show();
-    }
-
     private void showFirstLoading() {
-        historyContainer.setVisibility(View.GONE);
         resultListData.clear();
         adapter.notifyDataSetChanged();
         emptyView.setVisibility(View.GONE);
@@ -528,6 +467,302 @@ public class SearchActivity extends BaseActivity {
         return false;
     }
 
+    /** 搜索态：显示搜索框，隐藏排序 + 搜索按钮（模仿 1.8.4 点搜索按钮展开） */
+    private void showSearchBox() {
+        if (sortButton != null) {
+            sortButton.setVisibility(View.GONE);
+        }
+        if (titleSpacer != null) {
+            titleSpacer.setVisibility(View.GONE);
+        }
+        View btn = findViewById(R.id.btn_search_title);
+        if (btn != null) {
+            btn.setVisibility(View.GONE);
+        }
+        if (titleSearchBox != null) {
+            titleSearchBox.setVisibility(View.VISIBLE);
+        }
+        if (searchEdit != null) {
+            searchEdit.requestFocus();
+            searchEdit.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    android.view.inputmethod.InputMethodManager imm =
+                            (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+                    if (imm != null && searchEdit != null) {
+                        imm.showSoftInput(searchEdit, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+                    }
+                }
+            }, 100);
+        }
+    }
+
+    /** 结果态：隐藏搜索框，显示排序 + 搜索按钮 */
+    private void hideSearchBox() {
+        if (titleSearchBox != null) {
+            titleSearchBox.setVisibility(View.GONE);
+        }
+        if (sortButton != null) {
+            sortButton.setVisibility(View.VISIBLE);
+        }
+        if (titleSpacer != null) {
+            titleSpacer.setVisibility(View.VISIBLE);
+        }
+        View btn = findViewById(R.id.btn_search_title);
+        if (btn != null) {
+            btn.setVisibility(View.VISIBLE);
+        }
+        View focus = getCurrentFocus();
+        if (focus != null) {
+            android.view.inputmethod.InputMethodManager imm =
+                    (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(focus.getWindowToken(), 0);
+            }
+        }
+    }
+
+    /** 初始化排序/筛选下拉按钮（点开是 ActionBar 式菜单） */
+    private void setupSortButton() {
+        if (sortButton == null) {
+            return;
+        }
+        if (sortButtonText != null) {
+            sortButtonText.setText(SORT_NAMES[currentSortIndex]);
+        }
+        sortButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showFilterMenu();
+            }
+        });
+    }
+
+    /** 排序/筛选菜单：综合/相关度/发布日期/评论/弹幕/收藏/UP主/日期 */
+    private void showFilterMenu() {
+        android.content.Context ctx = tv.biliclassic.util.DialogUtil.wrap(this);
+        new android.app.AlertDialog.Builder(ctx)
+                .setTitle("排序 / 筛选")
+                .setItems(MENU_NAMES, new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        if (which < 0 || which >= MENU_ACTIONS.length) {
+                            return;
+                        }
+                        int action = MENU_ACTIONS[which];
+                        if (action >= 0) {
+                            selectSort(action);
+                        } else if (action == -1) {
+                            showDateRangeDialog();
+                        } else if (action == -2) {
+                            String kw = searchEdit != null ? searchEdit.getText().toString().trim() : "";
+                            if (kw.length() == 0) {
+                                kw = currentKeyword != null ? currentKeyword : "";
+                            }
+                            if (kw.length() == 0) {
+                                Toast.makeText(SearchActivity.this, "请先输入搜索词", Toast.LENGTH_SHORT).show();
+                            } else {
+                                searchUp(kw);
+                            }
+                        }
+                    }
+                })
+                .show();
+    }
+
+    /** 选择排序方式并重新搜索 */
+    private void selectSort(int index) {
+        currentSortIndex = index;
+        if (sortButtonText != null) {
+            sortButtonText.setText(SORT_NAMES[index]);
+        }
+        if (adapter != null) {
+            adapter.setStatMode(SORT_STAT[index]);
+        }
+        researchWithFilter();
+    }
+
+    /** 搜UP主：走用户搜索，结果直接显示在当前列表（复用 item_following 布局） */
+    private void searchUp(final String name) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    final org.json.JSONObject json = SearchApi.searchUser(name, 1);
+                    final java.util.List<SearchResultItem> users = new java.util.ArrayList<SearchResultItem>();
+                    if (json != null && json.optInt("code", -1) == 0) {
+                        org.json.JSONObject data = json.optJSONObject("data");
+                        if (data != null) {
+                            org.json.JSONArray arr = data.optJSONArray("result");
+                            if (arr != null) {
+                                for (int i = 0; i < arr.length(); i++) {
+                                    org.json.JSONObject u = arr.optJSONObject(i);
+                                    if (u == null) {
+                                        continue;
+                                    }
+                                    String uname = u.optString("uname", "");
+                                    if (uname.length() == 0) {
+                                        continue;
+                                    }
+                                    SearchResultItem it = new SearchResultItem();
+                                    it.isUser = true;
+                                    it.userMid = u.optLong("mid", 0);
+                                    it.userName = uname;
+                                    it.userSign = u.optString("usign", u.optString("sign", ""));
+                                    String upic = u.optString("upic", "");
+                                    if (upic.startsWith("//")) {
+                                        upic = "https:" + upic;
+                                    } else if (upic.startsWith("http://")) {
+                                        upic = "https://" + upic.substring(7);
+                                    }
+                                    it.userAvatar = upic;
+                                    users.add(it);
+                                }
+                            }
+                        }
+                    }
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            hideSearchBox();
+                            hasSearched = true;
+                            isLoading = false;
+                            isEnd = true;
+                            resultListData.clear();
+                            resultListData.addAll(users);
+                            adapter.notifyDataSetChanged();
+                            if (users.size() == 0) {
+                                showEmptyResult();
+                                emptyView.setText("没有找到UP主");
+                            } else {
+                                hideFirstLoadingAndShowList();
+                            }
+                        }
+                    });
+                } catch (final Exception e) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(SearchActivity.this, "搜索UP主失败", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+
+    /** 日期范围：三级菜单，编辑起始日期和截止日期 */
+    private void showDateRangeDialog() {
+        android.content.Context ctx = tv.biliclassic.util.DialogUtil.wrap(this);
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        final android.widget.DatePicker startPicker = new android.widget.DatePicker(ctx);
+        final android.widget.DatePicker endPicker = new android.widget.DatePicker(ctx);
+        // 2009-06-26（B站建站）之前不可选；截止不超过今天
+        final long minMs = 1245945600L * 1000L;
+        final long maxMs = System.currentTimeMillis();
+        setPickerRange(startPicker, minMs, maxMs);
+        setPickerRange(endPicker, minMs, maxMs);
+        // 初始：起始=2009-06-26（B站建站），截止=今天
+        startPicker.updateDate(2009, 5, 26);
+        endPicker.updateDate(cal.get(java.util.Calendar.YEAR),
+                cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH));
+        if (filterBeginS > 0) {
+            java.util.Calendar c = java.util.Calendar.getInstance();
+            c.setTimeInMillis(filterBeginS * 1000L);
+            startPicker.updateDate(c.get(java.util.Calendar.YEAR),
+                    c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH));
+        }
+        if (filterEndS > 0) {
+            java.util.Calendar c = java.util.Calendar.getInstance();
+            c.setTimeInMillis(filterEndS * 1000L);
+            endPicker.updateDate(c.get(java.util.Calendar.YEAR),
+                    c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH));
+        }
+        LinearLayout ll = new LinearLayout(ctx);
+        ll.setOrientation(LinearLayout.VERTICAL);
+        int pad = (int) (getResources().getDisplayMetrics().density * 12);
+        ll.setPadding(pad, pad, pad, pad);
+        TextView st = new TextView(ctx);
+        st.setText("起始日期");
+        TextView et = new TextView(ctx);
+        et.setText("截止日期");
+        ll.addView(st);
+        ll.addView(startPicker);
+        ll.addView(et);
+        ll.addView(endPicker);
+        new android.app.AlertDialog.Builder(ctx)
+                .setTitle("日期范围")
+                .setView(ll)
+                .setPositiveButton("确定", new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        filterBeginS = pickerToSeconds(startPicker);
+                        filterEndS = pickerToSeconds(endPicker) + 86399; // 当天结束
+                        if (filterBeginS > filterEndS) {
+                            long t = filterBeginS;
+                            filterBeginS = filterEndS - 86399;
+                            filterEndS = t + 86399;
+                        }
+                        researchWithFilter();
+                    }
+                })
+                .setNeutralButton("清除", new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        filterBeginS = 0;
+                        filterEndS = 0;
+                        researchWithFilter();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    /** 排序/日期变化后从第一页重新搜索 */
+    private void researchWithFilter() {
+        if (hasSearched && currentKeyword != null && currentKeyword.length() > 0) {
+            ++searchSeq;
+            isLoading = true;
+            isEnd = false;
+            currentPage = 1;
+            selectedPosition = -1;
+            showFirstLoading();
+            doSearchRequest(currentKeyword, 1, 3);
+        }
+    }
+
+    /** DatePicker.setMinDate/setMaxDate 是 API 11+，用反射兼容老设备（否则验证器拒绝整个类） */
+    private void setPickerRange(android.widget.DatePicker picker, long minMs, long maxMs) {
+        if (picker == null) {
+            return;
+        }
+        try {
+            java.lang.reflect.Method setMin = android.widget.DatePicker.class.getMethod("setMinDate", long.class);
+            setMin.invoke(picker, minMs);
+        } catch (Throwable t) {
+        }
+        try {
+            java.lang.reflect.Method setMax = android.widget.DatePicker.class.getMethod("setMaxDate", long.class);
+            setMax.invoke(picker, maxMs);
+        } catch (Throwable t) {
+        }
+    }
+
+    private long pickerToSeconds(android.widget.DatePicker p) {
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        c.set(p.getYear(), p.getMonth(), p.getDayOfMonth(), 0, 0, 0);
+        c.set(java.util.Calendar.MILLISECOND, 0);
+        return c.getTimeInMillis() / 1000L;
+    }
+
+    /** 当前排序对应的接口 order 值（空串=综合） */
+    private String currentOrder() {
+        if (currentSortIndex < 0 || currentSortIndex >= SORT_ORDERS.length) {
+            return "";
+        }
+        return SORT_ORDERS[currentSortIndex];
+    }
+
     private void performSearch() {
         final String keyword = searchEdit.getText().toString().trim();
         if (keyword == null || keyword.length() == 0) {
@@ -547,9 +782,7 @@ public class SearchActivity extends BaseActivity {
 
         saveSearchHistory(keyword);
 
-        if (historyContainer != null) {
-            historyContainer.setVisibility(View.GONE);
-        }
+        hideSearchBox();
 
         hasSearched = true;
         isLoading = true;
@@ -567,6 +800,12 @@ public class SearchActivity extends BaseActivity {
 
     public void onSearchResultClick(SearchActivity.SearchResultItem item, int position) {
         if (item == null) return;
+        if (item.isUser) {
+            Intent userIntent = new Intent(this, UserProfileActivity.class);
+            userIntent.putExtra("mid", item.userMid);
+            startActivity(userIntent);
+            return;
+        }
         Intent intent = new Intent(this, VideoDetailActivity.class);
         intent.putExtra("aid", item.aid);
         startActivity(intent);
@@ -574,11 +813,12 @@ public class SearchActivity extends BaseActivity {
 
     private void doSearchRequest(final String keyword, final int page, final int retryLeft) {
         final int curSeq = searchSeq;
+        final String order = currentOrder();
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    final JSONObject json = SearchApi.search(keyword, page);
+                    final JSONObject json = SearchApi.search(keyword, page, order, filterBeginS, filterEndS);
                     final int code = json.optInt("code", -1);
                     final String message = json.optString("message", "");
 
@@ -653,6 +893,9 @@ public class SearchActivity extends BaseActivity {
                     item.author = obj.optString("author");
                     item.play = obj.optInt("play");
                     item.danmaku = obj.optInt("danmaku");
+                    item.review = obj.optInt("review");
+                    item.favorites = obj.optInt("favorites");
+                    item.pubdate = obj.optLong("pubdate", 0);
 
                     long aid = obj.optLong("aid", 0);
                     String bvid = obj.optString("bvid");
@@ -759,11 +1002,12 @@ public class SearchActivity extends BaseActivity {
 
     private void doLoadMoreRequest(final String keyword, final int page, final int retryLeft) {
         final int curSeq = searchSeq;
+        final String order = currentOrder();
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    final JSONObject json = SearchApi.search(keyword, page);
+                    final JSONObject json = SearchApi.search(keyword, page, order, filterBeginS, filterEndS);
                     final int code = json.optInt("code", -1);
 
                     runOnUiThread(new Runnable() {
@@ -846,6 +1090,9 @@ public class SearchActivity extends BaseActivity {
                     item.author = obj.optString("author");
                     item.play = obj.optInt("play");
                     item.danmaku = obj.optInt("danmaku");
+                    item.review = obj.optInt("review");
+                    item.favorites = obj.optInt("favorites");
+                    item.pubdate = obj.optLong("pubdate", 0);
 
                     long aid = obj.optLong("aid", 0);
                     String bvid = obj.optString("bvid");
@@ -915,6 +1162,12 @@ public class SearchActivity extends BaseActivity {
      */
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        // 搜索框展开时，返回键先收起搜索框
+        if (event.getAction() == KeyEvent.ACTION_DOWN && event.getKeyCode() == KeyEvent.KEYCODE_BACK
+                && titleSearchBox != null && titleSearchBox.getVisibility() == View.VISIBLE && hasSearched) {
+            hideSearchBox();
+            return true;
+        }
         if (handleRemoteKey(event)) {
             return true;
         }
@@ -927,6 +1180,10 @@ public class SearchActivity extends BaseActivity {
      */
     public boolean handleRemoteKey(KeyEvent event) {
         if (resultList == null || adapter == null || resultListData.size() == 0) {
+            return false;
+        }
+        // 排序下拉获得焦点时，方向键交给它处理
+        if (sortButton != null && sortButton.hasFocus()) {
             return false;
         }
         if (event.getAction() != KeyEvent.ACTION_DOWN) {
@@ -1038,7 +1295,16 @@ public class SearchActivity extends BaseActivity {
         public String author;
         public int play;
         public int danmaku;
+        public int review;
+        public int favorites;
+        public long pubdate;
         public long aid;
         public String bvid;
+        // UP主结果（isUser=true 时用下面字段）
+        public boolean isUser;
+        public long userMid;
+        public String userName;
+        public String userSign;
+        public String userAvatar;
     }
 }

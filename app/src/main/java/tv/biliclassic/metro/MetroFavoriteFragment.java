@@ -349,7 +349,7 @@ public class MetroFavoriteFragment extends Fragment implements MetroTurnPage {
                     if (getActivity() instanceof MetroHomeActivity) {
                         ((MetroHomeActivity) getActivity()).openFavoriteFolder(folder.fid, folder.name);
                     } else if (getActivity() != null) {
-                        // 兜底：非 MetroHome 容器（理论不会发生）跳 Classic 收藏视频页
+                        // 非 MetroHome 容器（理论不会发生）跳 Classic 收藏视频页
                         Intent intent = new Intent(getActivity(), FavoriteVideoListActivity.class);
                         intent.putExtra("fid", folder.fid);
                         intent.putExtra("name", folder.name);

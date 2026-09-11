@@ -120,6 +120,7 @@ public class PlayerAnimActivity extends Activity {
         aid = getIntent().getLongExtra("aid", 0);
         cid = getIntent().getLongExtra("cid", 0);
 
+
         // 检测是否在线模式
         isOnlineMode = SettingsActivity.isOnlinePlayEnabled();
 

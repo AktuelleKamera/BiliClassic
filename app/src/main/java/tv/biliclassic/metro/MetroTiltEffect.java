@@ -205,8 +205,7 @@ public class MetroTiltEffect {
             public void run() {
                 if (t == null) return;
                 if (SdkHelper.getSdkInt() >= 11) {
-                    t.setTranslationX(dxPx);
-                    t.setTranslationY(dyPx);
+                    setTranslationCompat(t, dxPx, dyPx);
                 } else {
                     // 用绝对 layout 定位（基准 = 当前位置 - 上次已偏移），避免翻页等重排冲掉偏移
                     applyOffset(t, dxPx, dyPx, mAppliedX, mAppliedY);
@@ -234,10 +233,26 @@ public class MetroTiltEffect {
         int x = mLastX;
         int y = mLastY;
         if (SdkHelper.getSdkInt() >= 11) {
-            mTarget.setTranslationX(x);
-            mTarget.setTranslationY(y);
+            setTranslationCompat(mTarget, x, y);
         } else {
             applyOffset(mTarget, x, y, mAppliedX, mAppliedY);
+        }
+    }
+
+    /** View.setTranslationX/Y 是 API 11+，用反射兼容老设备（否则验证器拒绝整个类） */
+    private static void setTranslationCompat(View v, float x, float y) {
+        if (v == null) {
+            return;
+        }
+        try {
+            java.lang.reflect.Method m = View.class.getMethod("setTranslationX", float.class);
+            m.invoke(v, x);
+        } catch (Throwable t) {
+        }
+        try {
+            java.lang.reflect.Method m = View.class.getMethod("setTranslationY", float.class);
+            m.invoke(v, y);
+        } catch (Throwable t) {
         }
     }
 

@@ -53,7 +53,6 @@
     <string name="VideoView_page_list_selector">選集</string>
     <string name="VideoView_timed_text_split_char">/</string>
     <string name="metro_home_title">哔哩經典</string>
-    <string name="activity_search_641c_1">搜索歷史</string>
     <string name="activity_settings_5207_1">切換彈窗的外觀主題</string>
     <string name="activity_settings_5207_2">切換界面的顯示語言</string>
     <string name="activity_settings_5207_3">切換數據來源</string>
@@ -524,7 +523,6 @@
     <string name="reply_sent">回復發送成功</string>
     <string name="restore_screen">還原屏幕</string>
     <string name="save_failed">保存失敗</string>
-    <string name="search_history_cleared">已清空搜索歷史</string>
     <string name="search_input_required">請輸入搜索內容</string>
     <string name="select_dialog_style">選擇彈窗樣式</string>
     <string name="select_emoji">選擇表情</string>
@@ -631,6 +629,7 @@
     <string name="common_play">播放</string>
     <string name="common_reply">回復</string>
     <string name="common_search">搜索</string>
+    <string name="search_field_author">UP主:</string>
     <string name="common_select">選擇</string>
     <string name="common_select_2">選擇</string>
     <string name="common_select_3">選擇</string>
@@ -726,7 +725,6 @@
     <string name="no_offline_videos">暫無離線視頻</string>
     <string name="no_related_videos">暫無相關視頻</string>
     <string name="no_replies">暫無回復</string>
-    <string name="no_search_history">暫無搜索歷史</string>
     <string name="no_search_results">暫無搜索結果</string>
     <string name="no_videos">暫無視頻</string>
     <string name="offline_manager">離線管理</string>

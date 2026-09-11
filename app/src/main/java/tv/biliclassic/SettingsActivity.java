@@ -1482,7 +1482,7 @@ public class SettingsActivity extends BaseActivity {
     }
 
     // 默认首页选择
-    public static int getDefaultTab() {        return SharedPreferencesUtil.getInt(KEY_DEFAULT_TAB, TAB_NEW_ANIME);
+    public static int getDefaultTab() {        return SharedPreferencesUtil.getInt(KEY_DEFAULT_TAB, TAB_HOME);
     }
 
     private void updateDefaultTabDisplay() {

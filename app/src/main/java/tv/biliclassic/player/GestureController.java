@@ -1015,6 +1015,36 @@ public class GestureController {
         }
     }
 
+    /**
+     * 表冠滚动调节音量（供 CrownScrollHelper 音量模式回调）：
+     * 正=增大，负=减小，每格 1 步。复用手势音量 HUD，1 秒无操作自动隐藏。
+     */
+    public void adjustVolumeBySteps(int steps) {
+        if (steps == 0) {
+            return;
+        }
+        int max = AudioManagerHelper.getStreamMaxVolume(mActivity, android.media.AudioManager.STREAM_MUSIC);
+        if (max <= 0) {
+            return;
+        }
+        int cur = AudioManagerHelper.getStreamVolume(mActivity, android.media.AudioManager.STREAM_MUSIC);
+        int newVol = Math.min(Math.max(cur + steps, 0), max);
+        if (mVolumeBar != null) {
+            mVolumeBar.setVisibility(View.VISIBLE);
+        }
+        if (mVolumeLevel != null) {
+            mVolumeLevel.setMax(max);
+            mVolumeLevel.setProgress(newVol);
+        }
+        try {
+            AudioManagerHelper.setStreamVolume(mActivity, android.media.AudioManager.STREAM_MUSIC, newVol, 0);
+        } catch (Throwable t) {
+            Log.w(TAG, "setStreamVolume failed: " + t);
+        }
+        mHandler.removeCallbacks(mHideBarsRunnable);
+        mHandler.postDelayed(mHideBarsRunnable, 1000);
+    }
+
     private void showSeekProgressHint(int progressMs) {
         Object holder = getToastViewHolder();
         if (holder == null) return;

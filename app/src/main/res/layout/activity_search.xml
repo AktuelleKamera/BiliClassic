@@ -7,130 +7,182 @@
     android:focusableInTouchMode="true"
     android:descendantFocusability="afterDescendants">
 
-    <!-- 搜索栏 -->
+    <!-- 搜索栏（Holo 风格，模仿 1.8.4） -->
     <LinearLayout
         android:id="@+id/search_bar"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/main_title_bar_height"
-        android:background="#FFFFFF"
+        android:layout_height="48dp"
+        android:background="@drawable/titlebar_background"
         android:orientation="horizontal"
-        android:paddingLeft="4dp"
-        android:paddingRight="4dp"
         android:focusable="true"
         android:focusableInTouchMode="true">
 
+        <!-- 小返回箭头（在图标左边，紧贴图标） -->
         <ImageView
             android:id="@+id/back"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="center_vertical"
+            android:layout_width="24dp"
+            android:layout_height="match_parent"
             android:contentDescription="@string/common_back_7"
-            android:padding="1dp"
             android:scaleType="centerInside"
-            android:src="@drawable/ic_action_back"
+            android:src="@drawable/abs__ic_ab_back_holo_light"
             android:focusable="true"
             android:clickable="true" />
 
-        <EditText
-            android:id="@+id/search_edit"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_gravity="center_vertical"
-            android:layout_weight="1"
-            android:background="@drawable/bili_search_edit_background"
-            android:hint="@string/search_input_hint"
-            android:imeOptions="actionSearch"
-            android:inputType="text"
-            android:maxLines="1"
-            android:paddingLeft="12dp"
-            android:paddingRight="12dp"
-            android:singleLine="true"
-            android:textSize="14sp"
+        <!-- bilibili 图标（容器带粉色点击特效，padding 让高亮露出来） -->
+        <FrameLayout
+            android:id="@+id/logo_container"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@drawable/titlebar_pink_item_bg"
+            android:clickable="true"
             android:focusable="true"
-            android:focusableInTouchMode="true" />
+            android:paddingLeft="4dp"
+            android:paddingRight="4dp">
+
+            <ImageView
+                android:id="@+id/logo"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center"
+                android:contentDescription="@null"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_launcher" />
+        </FrameLayout>
+
+        <!-- 排序/筛选下拉（ActionBar 式，点开是菜单） -->
+        <LinearLayout
+            android:id="@+id/sort_button"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_gravity="center_vertical"
+            android:background="@drawable/titlebar_pink_spinner_bg"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minWidth="60dp"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/sort_button_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:text="综合"
+                android:textColor="#333333"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <!-- 结果态：占位 + 搜索按钮 -->
+        <View
+            android:id="@+id/title_spacer"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
 
         <ImageView
-            android:id="@+id/search_action"
+            android:id="@+id/btn_search_title"
             android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="center_vertical"
-            android:contentDescription="@string/common_search"
-            android:padding="1dp"
+            android:layout_height="match_parent"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"
             android:scaleType="centerInside"
-            android:src="@drawable/ic_action_search"
+            android:src="@drawable/abs__ic_search_api_holo_light"
+            android:contentDescription="@string/common_search"
             android:focusable="true"
             android:clickable="true" />
+
+        <!-- 搜索态：Holo 搜索框（默认隐藏，点搜索按钮才显示） -->
+        <LinearLayout
+            android:id="@+id/title_search_box"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:layout_gravity="center_vertical"
+            android:layout_marginLeft="4dp"
+            android:layout_marginRight="8dp"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/abs__textfield_search_default_holo_light"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="8dp"
+                    android:layout_marginRight="4dp"
+                    android:src="@drawable/abs__ic_search_api_holo_light"
+                    android:contentDescription="@null" />
+
+                <EditText
+                    android:id="@+id/search_edit"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@null"
+                    android:hint="@string/search_input_hint"
+                    android:imeOptions="actionSearch"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:paddingLeft="2dp"
+                    android:paddingRight="4dp"
+                    android:singleLine="true"
+                    android:textSize="14sp"
+                    android:gravity="center_vertical"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true" />
+
+                <ImageView
+                    android:id="@+id/search_clear"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:paddingLeft="8dp"
+                    android:paddingRight="8dp"
+                    android:src="@drawable/abs__ic_clear_search_api_holo_light"
+                    android:contentDescription="@string/common_clear"
+                    android:focusable="true"
+                    android:clickable="true" />
+
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/search_action"
+                android:layout_width="48dp"
+                android:layout_height="match_parent"
+                android:background="@drawable/abs__textfield_search_right_default_holo_light"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:src="@drawable/abs__ic_search_api_holo_light"
+                android:scaleType="centerInside"
+                android:contentDescription="@string/common_search"
+                android:focusable="true"
+                android:clickable="true" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
-    <!-- ActionBar下方阴影 -->
+
+    <!-- 搜索栏与内容之间的粗粉线（模仿 1.8.4 的粉色 PagerTabStrip 分隔） -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:background="#D86DA5" />
+
+    <!-- 下方阴影 -->
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="6.0dp"
         android:background="@drawable/shadow_top_dig"
         android:contentDescription="@null" />
 
-    <!-- 搜索历史容器 -->
-    <LinearLayout
-        android:id="@+id/history_container"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="12dp"
-        android:visibility="visible">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="8dp">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/activity_search_641c_1"
-                android:textSize="14sp"
-                android:textColor="#666666" />
-
-            <TextView
-                android:id="@+id/clear_history"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/common_clear"
-                android:textSize="12sp"
-                android:textColor="#D86DA5"
-                android:focusable="true"
-                android:clickable="true"
-                android:padding="8dp" />
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/history_list_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
-
-        <LinearLayout
-            android:id="@+id/history_empty"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:padding="16dp"
-            android:visibility="gone">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/no_search_history"
-                android:textSize="12sp"
-                android:textColor="#999999" />
-
-        </LinearLayout>
-
-    </LinearLayout>
 
     <!-- 顶部加载动画 -->
     <LinearLayout
