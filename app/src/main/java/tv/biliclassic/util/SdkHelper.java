@@ -250,6 +250,20 @@ public class SdkHelper {
         }
     }
 
+    /**
+     * Activity.overridePendingTransition(int,int)（API 5+）；低版本 no-op。
+     * 直接调用会让 API&lt;5 的 verifier 拒绝整个类，故用反射。
+     */
+    public static void overridePendingTransition(android.app.Activity activity, int enterAnim, int exitAnim) {
+        if (activity == null) return;
+        try {
+            android.app.Activity.class
+                    .getMethod("overridePendingTransition", int.class, int.class)
+                    .invoke(activity, Integer.valueOf(enterAnim), Integer.valueOf(exitAnim));
+        } catch (Throwable t) {
+        }
+    }
+
     public interface EditorActionHandler {
         boolean onEditorAction(int actionId, android.view.KeyEvent event);
     }
@@ -279,7 +293,21 @@ public class SdkHelper {
             java.lang.reflect.Method set = android.widget.TextView.class.getMethod("setOnEditorActionListener", iface);
             set.invoke(tv, proxy);
         } catch (Throwable t) {
-            // API < 3 无此接口，忽略
+            // API < 3 无 OnEditorActionListener 接口（如 Android 1.0）：退化为监听物理回车键。
+            // 否则在搜索框里按回车没有任何反应（软键盘也是 API 3+，低版本根本弹不出来）。
+            tv.setOnKeyListener(new android.view.View.OnKeyListener() {
+                @Override
+                public boolean onKey(android.view.View v, int keyCode, android.view.KeyEvent event) {
+                    if (event != null
+                            && event.getAction() == android.view.KeyEvent.ACTION_DOWN
+                            && event.getRepeatCount() == 0
+                            && keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
+                        handler.onEditorAction(0, event);
+                        return true;
+                    }
+                    return false;
+                }
+            });
         }
     }
 

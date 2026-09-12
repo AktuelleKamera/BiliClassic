@@ -158,7 +158,10 @@ public class VideoDetailActivity extends BaseActivity {
             bvid = intent.getStringExtra("bvid");
         }
 
-        if (aid == 0L && (bvid == null || bvid.length() == 0)) {
+        // 搜索番剧结果：直接用 season_id 打开番剧 Fragment（无需 aid）
+        long bangumiSeasonId = intent.getLongExtra("bangumi_season_id", 0);
+
+        if (aid == 0L && (bvid == null || bvid.length() == 0) && bangumiSeasonId <= 0) {
             Toast.makeText(this, this.getString(R.string.videodetailactivity_toast_89c6_1), Toast.LENGTH_SHORT).show();
             finish();
             return;
@@ -191,6 +194,21 @@ public class VideoDetailActivity extends BaseActivity {
                 return true;
             }
         });
+
+        // 搜索番剧结果进入：直接显示番剧详情 Fragment + 评论（两个 Tab）
+        if (bangumiSeasonId > 0) {
+            isBangumi = true;
+            mBangumiMediaId = bangumiSeasonId;
+            String bangumiTitle = intent.getStringExtra("bangumi_title");
+            if (bangumiTitle != null && bangumiTitle.length() > 0) {
+                tvAvid.setText(bangumiTitle);
+            } else {
+                tvAvid.setText(getString(R.string.bangumi_detail));
+            }
+            initBottomButtons();
+            initBangumiView();
+            return;
+        }
 
         // 从番剧分集点击进入（两个 Tab：视频详情 + 评论，显示 AV 号）
         long bangumiMediaId = intent.getLongExtra("bangumi_media_id", 0);

@@ -3,7 +3,22 @@
     android:id="@+id/root_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bili_texture_background">
+    android:background="@android:color/white"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <!-- 小电视水印 -->
+    <ImageView
+        android:id="@+id/tv_watermark"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginRight="-40dp"
+        android:layout_marginBottom="-40dp"
+        android:src="@drawable/bilibili_tv"
+        android:scaleType="fitCenter"
+        android:adjustViewBounds="true"
+        android:contentDescription="@null" />
 
     <!-- Page 1: 询问是否绑定按键 (D-pad 可操作) -->
     <LinearLayout
@@ -13,25 +28,21 @@
         android:orientation="vertical">
 
         <LinearLayout
+            android:id="@+id/ask_title_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="16dp">
+            android:padding="@dimen/setup_page_padding">
 
             <TextView
                 android:id="@+id/title_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/keybinding_ask_title"
-                android:textSize="40sp"
+                android:textSize="@dimen/setup_title_text_size"
                 android:textColor="#D86DA5" />
 
         </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="2dp"
-            android:background="#D86DA5" />
 
         <FrameLayout
             android:layout_width="match_parent"
@@ -40,11 +51,14 @@
 
             <TextView
                 android:id="@+id/btn_text"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
+                android:gravity="center"
+                android:paddingLeft="@dimen/setup_message_padding"
+                android:paddingRight="@dimen/setup_message_padding"
                 android:text="@string/keybinding_ask_message"
-                android:textSize="18sp"
+                android:textSize="@dimen/setup_content_text_size"
                 android:textColor="#666666" />
 
         </FrameLayout>
@@ -54,19 +68,19 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center"
-            android:padding="16dp"
-            android:layout_marginBottom="16dp">
+            android:padding="@dimen/setup_page_padding"
+            android:layout_marginBottom="@dimen/setup_page_padding">
 
             <TextView
                 android:id="@+id/btn_yes"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/keybinding_yes"
-                android:textSize="18sp"
+                android:textSize="@dimen/setup_button_text_size"
                 android:textColor="#FFFFFF"
-                android:background="#D86DA5"
-                android:padding="12dp"
-                android:layout_marginRight="16dp"
+                android:background="@drawable/setup_ask_yes_bg"
+                android:padding="@dimen/setup_button_padding"
+                android:layout_marginRight="@dimen/setup_page_padding"
                 android:clickable="true"
                 android:focusable="true" />
 
@@ -75,10 +89,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/keybinding_no"
-                android:textSize="18sp"
+                android:textSize="@dimen/setup_button_text_size"
                 android:textColor="#D86DA5"
-                android:background="#FFFFFF"
-                android:padding="12dp"
+                android:background="@drawable/setup_ask_no_bg"
+                android:padding="@dimen/setup_button_padding"
                 android:clickable="true"
                 android:focusable="true" />
 
@@ -95,10 +109,11 @@
         android:visibility="gone">
 
         <LinearLayout
+            android:id="@+id/record_title_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="16dp">
+            android:padding="@dimen/setup_page_padding">
 
             <TextView
                 android:id="@+id/record_title"
@@ -106,7 +121,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/keybinding_title"
-                android:textSize="40sp"
+                android:textSize="@dimen/setup_title_text_size"
                 android:textColor="#D86DA5" />
 
             <TextView
@@ -114,19 +129,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/keybinding_exit"
-                android:textSize="18sp"
+                android:textSize="@dimen/setup_button_text_size"
                 android:textColor="#D86DA5"
                 android:background="#FFFFFF"
-                android:padding="8dp"
+                android:padding="@dimen/setup_button_padding"
                 android:clickable="true"
                 android:focusable="false" />
 
         </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="2dp"
-            android:background="#D86DA5" />
 
         <FrameLayout
             android:layout_width="match_parent"
@@ -139,7 +149,7 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:text="@string/keybinding_prompt_prefix"
-                android:textSize="32sp"
+                android:textSize="@dimen/setup_prompt_text_size"
                 android:textColor="#333333" />
 
         </FrameLayout>
@@ -149,7 +159,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:textSize="16sp"
+            android:paddingLeft="@dimen/setup_message_padding"
+            android:paddingRight="@dimen/setup_message_padding"
+            android:textSize="@dimen/setup_progress_text_size"
             android:textColor="#666666" />
 
         <TextView
@@ -157,20 +169,24 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
+            android:paddingLeft="@dimen/setup_message_padding"
+            android:paddingRight="@dimen/setup_message_padding"
             android:text="@string/keybinding_recording_hint"
-            android:textSize="13sp"
+            android:textSize="@dimen/setup_hint_text_size"
             android:textColor="#999999"
-            android:paddingBottom="8dp" />
+            android:paddingBottom="@dimen/setup_button_padding" />
 
         <TextView
             android:id="@+id/exit_hint"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
+            android:paddingLeft="@dimen/setup_message_padding"
+            android:paddingRight="@dimen/setup_message_padding"
             android:text="@string/keybinding_exit_hint"
-            android:textSize="13sp"
+            android:textSize="@dimen/setup_hint_text_size"
             android:textColor="#999999"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="@dimen/setup_page_padding" />
 
     </LinearLayout>
 

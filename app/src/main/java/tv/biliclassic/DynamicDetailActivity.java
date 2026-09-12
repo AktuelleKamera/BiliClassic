@@ -87,8 +87,14 @@ public class DynamicDetailActivity extends BaseActivity {
     }
 
     private boolean isDestroyedCompat() {
-        if (android.os.Build.VERSION.SDK_INT >= 17) {
-            return isDestroyed();
+        // isDestroyed 是 API 17+，直接调用会被低版本 verifier 拒绝整个类；
+        // 且 Build.VERSION.SDK_INT 字段本身就是 API 4+，统一用 SdkHelper + 反射
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 17) {
+            try {
+                return ((Boolean) android.app.Activity.class
+                        .getMethod("isDestroyed").invoke(this)).booleanValue();
+            } catch (Throwable t) {
+            }
         }
         return false;
     }
@@ -190,7 +196,7 @@ public class DynamicDetailActivity extends BaseActivity {
             return;
         }
         if (d.articleId != 0) {
-            openWeb("https://www.bilibili.com/read/cv" + d.articleId, "专栏文章");
+            openArticle(d.articleId, d.videoCard != null ? d.videoCard.title : "专栏文章");
         } else if (d.roomId != 0) {
             openWeb("https://live.bilibili.com/" + d.roomId, "直播间");
         } else if (d.epid != 0) {
@@ -204,6 +210,17 @@ public class DynamicDetailActivity extends BaseActivity {
         intent.putStringArrayListExtra("imageList", new java.util.ArrayList<String>(mDynamic.pics));
         intent.putExtra("index", 0);
         startActivity(intent);
+    }
+
+    private void openArticle(long cvid, String title) {
+        if (cvid == 0) return;
+        try {
+            Intent intent = new Intent(this, ArticleActivity.class);
+            intent.putExtra("cvid", cvid);
+            intent.putExtra("title", title);
+            startActivity(intent);
+        } catch (Throwable ignored) {
+        }
     }
 
     private void openWeb(String url, String title) {

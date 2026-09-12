@@ -201,4 +201,16 @@
         <item name="android:windowExitAnimation">@anim/options_pannel_out</item>
     </style>
 
+    <!-- Holo 主题色按钮（对齐 bilibili 1.8.4 的 AppWidget.Button.ThemeColor） -->
+    <style name="AppWidget.Button.ThemeColor" parent="@android:style/Widget.Button">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">#FFFFFFFF</item>
+        <item name="android:background">@drawable/login_button_holo</item>
+    </style>
+
+    <style name="AppWidget.Button.ThemeColor.Large" parent="@style/AppWidget.Button.ThemeColor">
+        <item name="android:minWidth">96dp</item>
+        <item name="android:minHeight">48dp</item>
+    </style>
+
 </resources>

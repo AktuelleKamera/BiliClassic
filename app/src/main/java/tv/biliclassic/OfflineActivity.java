@@ -179,7 +179,9 @@ public class OfflineActivity extends BaseActivity {
                 }
             }
         }
-        return super.onKeyLongPress(keyCode, event);
+        // onKeyLongPress 是 API 5+，低版本 Activity 没有该方法，直接 super 会被 verifier 拒绝整类；
+        // 默认实现就是返回 false，这里等价处理
+        return false;
     }
 
     @Override

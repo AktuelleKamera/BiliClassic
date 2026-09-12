@@ -29,8 +29,8 @@
             <LinearLayout
                 android:layout_width="@dimen/video_cover_width"
                 android:layout_height="@dimen/video_cover_height"
-                android:background="#FFFFFF"
-                android:padding="2dp">
+                android:background="@drawable/bili_thumb_boarder"
+                android:padding="3dp">
 
                 <ImageView
                     android:id="@+id/iv_cover"

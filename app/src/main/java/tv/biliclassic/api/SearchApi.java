@@ -110,8 +110,32 @@ public class SearchApi {
      * @return 接口完整 JSON 响应（code==0 时 data.result 为结果数组）
      */
     public static JSONObject searchUser(String keyword, int page) throws IOException, JSONException {
+        return searchType(keyword, page, "bili_user");
+    }
+
+    /** 搜索番剧/影视（search_type=media_bangumi） */
+    public static JSONObject searchBangumi(String keyword, int page) throws IOException, JSONException {
+        return searchType(keyword, page, "media_bangumi");
+    }
+
+    /** 搜索生放送/直播（search_type=live） */
+    public static JSONObject searchLive(String keyword, int page) throws IOException, JSONException {
+        return searchType(keyword, page, "live");
+    }
+
+    /** 搜索专栏/文章（search_type=article） */
+    public static JSONObject searchArticle(String keyword, int page) throws IOException, JSONException {
+        return searchType(keyword, page, "article");
+    }
+
+    /**
+     * 按类型搜索（search/type 接口，WBI 签名）
+     * @param type video / media_bangumi / bili_user / live / article ...
+     * @return 接口完整 JSON 响应（code==0）
+     */
+    public static JSONObject searchType(String keyword, int page, String type) throws IOException, JSONException {
         String url = "https://api.bilibili.com/x/web-interface/wbi/search/type?";
-        url += "search_type=bili_user";
+        url += "search_type=" + type;
         url += "&keyword=" + URLEncoder.encode(keyword, "UTF-8");
         url += "&page=" + page;
         url += "&pagesize=20";

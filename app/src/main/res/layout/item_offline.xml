@@ -18,6 +18,9 @@
             android:id="@+id/cover"
             android:layout_width="80dp"
             android:layout_height="60dp"
+            android:background="@drawable/bili_thumb_boarder"
+            android:padding="3dp"
+            android:cropToPadding="true"
             android:scaleType="centerCrop"
             android:src="@drawable/bili_default_image_tv_with_bg" />
 

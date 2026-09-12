@@ -264,7 +264,7 @@ public class DynamicAdapter extends BaseAdapter {
             }
         }
         if (d.articleId != 0) {
-            openWeb("https://www.bilibili.com/read/cv" + d.articleId, "专栏文章");
+            openArticle(d.articleId, d.videoCard != null ? d.videoCard.title : "专栏文章");
             return;
         }
         if (d.roomId != 0) {
@@ -286,6 +286,17 @@ public class DynamicAdapter extends BaseAdapter {
         try {
             Intent intent = new Intent(context, DynamicDetailActivity.class);
             intent.putExtra("id", dynamicId);
+            context.startActivity(intent);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void openArticle(long cvid, String title) {
+        if (context == null || cvid == 0) return;
+        try {
+            Intent intent = new Intent(context, ArticleActivity.class);
+            intent.putExtra("cvid", cvid);
+            intent.putExtra("title", title);
             context.startActivity(intent);
         } catch (Throwable ignored) {
         }

@@ -79,6 +79,11 @@
             android:name=".SearchActivity"
             android:screenOrientation="portrait" />
 
+        <!-- 专栏详情 -->
+        <activity
+            android:name=".ArticleActivity"
+            android:screenOrientation="portrait" />
+
         <!-- 生放送（直播） -->
         <activity
             android:name=".LiveRoomListActivity"
@@ -160,11 +165,6 @@
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="landscape"
             android:theme="@style/PlayerTheme" />
-
-        <!-- 注册 LoginActivity -->
-        <activity
-            android:name=".SpecialLoginActivity"
-            android:screenOrientation="portrait" />
 
         <activity
             android:name=".metro.MetroHomeActivity"

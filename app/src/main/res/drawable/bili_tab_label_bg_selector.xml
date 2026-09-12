@@ -1,18 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 1.8.4 同款 Tab 背景：底色 #D86DA5，底部始终有一条浅粉线，
+     选中时线更粗（底部指示器）。用负 inset + 描边实现，密度无关。 -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 选中：底部粗指示条 -->
     <item android:state_selected="true">
-        <shape>
-            <solid android:color="#c05080" />
-        </shape>
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="#D86DA5" />
+                </shape>
+            </item>
+            <item
+                android:left="-7dp"
+                android:right="-7dp"
+                android:top="-7dp">
+                <shape android:shape="rectangle">
+                    <!-- 老系统(2.x)的 GradientDrawable 在无 solid 时会用默认黑色填充，
+                         这里显式给透明 solid，只保留描边 -->
+                    <solid android:color="#00000000" />
+                    <stroke
+                        android:width="7dp"
+                        android:color="#FF9FC5" />
+                </shape>
+            </item>
+        </layer-list>
     </item>
-    <item android:state_pressed="true">
-        <shape>
-            <solid android:color="#c05080" />
-        </shape>
-    </item>
+    <!-- 未选中：底部细线 -->
     <item>
-        <shape>
-            <solid android:color="#D86DA5" />
-        </shape>
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="#D86DA5" />
+                </shape>
+            </item>
+            <item
+                android:left="-2dp"
+                android:right="-2dp"
+                android:top="-2dp">
+                <shape android:shape="rectangle">
+                    <!-- 老系统(2.x)的 GradientDrawable 在无 solid 时会用默认黑色填充，
+                         这里显式给透明 solid，只保留描边 -->
+                    <solid android:color="#00000000" />
+                    <stroke
+                        android:width="2dp"
+                        android:color="#FF9FC5" />
+                </shape>
+            </item>
+        </layer-list>
     </item>
 </selector>

@@ -41,22 +41,7 @@
             android:textColor="#666666"
             android:gravity="center" />
 
-        <!-- 手动登录按钮 -->
-        <Button
-            android:id="@+id/btn_manual_login"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/manual_login_2"
-            android:background="#D86DA5"
-            android:textColor="#FFFFFF"
-            android:paddingLeft="20dp"
-            android:paddingRight="20dp"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp"
-            android:textSize="12sp" />
-
-        <!-- 返回主页按钮 -->
+        <!-- 返回主页按钮（顶栏已有返回，隐藏保留引用） -->
         <Button
             android:id="@+id/btn_back"
             android:layout_width="wrap_content"
@@ -69,7 +54,8 @@
             android:paddingRight="20dp"
             android:paddingTop="6dp"
             android:paddingBottom="6dp"
-            android:textSize="12sp" />
+            android:textSize="12sp"
+            android:visibility="gone" />
 
     </LinearLayout>
 

@@ -91,6 +91,18 @@ public class SearchResultAdapter extends BaseAdapter {
         if (item != null && item.isUser) {
             return getUserView(position, convertView, parent, item);
         }
+        // 番剧结果：复用视频搜索行布局
+        if (item != null && item.isBangumi) {
+            return getBangumiView(position, convertView, parent, item);
+        }
+        // 生放送结果：复用生放送条目布局
+        if (item != null && item.isLive) {
+            return getLiveView(position, convertView, parent, item);
+        }
+        // 专栏结果：复用视频搜索行布局
+        if (item != null && item.isArticle) {
+            return getArticleView(position, convertView, parent, item);
+        }
 
         ViewHolder holder;
         if (convertView == null || !(convertView.getTag() instanceof ViewHolder)) {
@@ -98,6 +110,7 @@ public class SearchResultAdapter extends BaseAdapter {
             holder = new ViewHolder();
             holder.title = (TextView) convertView.findViewById(R.id.title);
             holder.authorGroup = convertView.findViewById(R.id.author_group);
+            holder.authorLabel = (TextView) convertView.findViewById(R.id.author_label);
             holder.author = (TextView) convertView.findViewById(R.id.author);
             holder.statName = (TextView) convertView.findViewById(R.id.stat_name);
             holder.statValue = (TextView) convertView.findViewById(R.id.stat_value);
@@ -112,6 +125,7 @@ public class SearchResultAdapter extends BaseAdapter {
         final int currentPos = position;
 
         holder.title.setText(item.title);
+        holder.authorLabel.setText(R.string.search_field_author);
         holder.author.setText(item.author != null ? item.author : "");
 
         // 发布日期模式下隐藏 UP 主组，只显示发布日期（与 1.8.4 一致）
@@ -198,6 +212,140 @@ public class SearchResultAdapter extends BaseAdapter {
         return convertView;
     }
 
+    /** 番剧结果行：封面 + 标题 + 地区 + 更新状态 */
+    private View getBangumiView(final int position, View convertView, ViewGroup parent,
+                                final SearchActivity.SearchResultItem item) {
+        ViewHolder holder;
+        if (convertView == null || !(convertView.getTag() instanceof ViewHolder)) {
+            convertView = LayoutInflater.from(context).inflate(R.layout.item_search_result, parent, false);
+            holder = new ViewHolder();
+            holder.title = (TextView) convertView.findViewById(R.id.title);
+            holder.authorGroup = convertView.findViewById(R.id.author_group);
+            holder.authorLabel = (TextView) convertView.findViewById(R.id.author_label);
+            holder.author = (TextView) convertView.findViewById(R.id.author);
+            holder.statName = (TextView) convertView.findViewById(R.id.stat_name);
+            holder.statValue = (TextView) convertView.findViewById(R.id.stat_value);
+            holder.cover = (ImageView) convertView.findViewById(R.id.cover);
+            convertView.setTag(holder);
+        } else {
+            holder = (ViewHolder) convertView.getTag();
+        }
+
+        applyHighlight(convertView, position);
+
+        holder.title.setText(item.bangumiTitle != null ? item.bangumiTitle : "");
+        holder.authorGroup.setVisibility(View.VISIBLE);
+        holder.authorLabel.setText("地区:");
+        holder.author.setText(item.bangumiArea != null ? item.bangumiArea : "");
+        holder.statName.setText("更新:");
+        holder.statValue.setText(item.bangumiIndexShow != null ? item.bangumiIndexShow : "");
+
+        ImageLoader.bind(holder.cover, item.bangumiCover, R.drawable.bili_default_image_tv_with_bg, 88, 66);
+
+        convertView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (context instanceof SearchActivity) {
+                    ((SearchActivity) context).onSearchResultClick(item, position);
+                }
+            }
+        });
+
+        return convertView;
+    }
+
+    /** 专栏结果行：封面 + 标题 + 分区 + 阅读数 */
+    private View getArticleView(final int position, View convertView, ViewGroup parent,
+                                final SearchActivity.SearchResultItem item) {
+        ViewHolder holder;
+        if (convertView == null || !(convertView.getTag() instanceof ViewHolder)) {
+            convertView = LayoutInflater.from(context).inflate(R.layout.item_search_result, parent, false);
+            holder = new ViewHolder();
+            holder.title = (TextView) convertView.findViewById(R.id.title);
+            holder.authorGroup = convertView.findViewById(R.id.author_group);
+            holder.authorLabel = (TextView) convertView.findViewById(R.id.author_label);
+            holder.author = (TextView) convertView.findViewById(R.id.author);
+            holder.statName = (TextView) convertView.findViewById(R.id.stat_name);
+            holder.statValue = (TextView) convertView.findViewById(R.id.stat_value);
+            holder.cover = (ImageView) convertView.findViewById(R.id.cover);
+            convertView.setTag(holder);
+        } else {
+            holder = (ViewHolder) convertView.getTag();
+        }
+
+        applyHighlight(convertView, position);
+
+        holder.title.setText(item.articleTitle != null ? item.articleTitle : "");
+        holder.authorGroup.setVisibility(View.VISIBLE);
+        holder.authorLabel.setText("分区:");
+        holder.author.setText(item.articleCategory != null ? item.articleCategory : "");
+        holder.statName.setText("阅读:");
+        holder.statValue.setText(StringUtil.toWan(item.articleView));
+
+        ImageLoader.bind(holder.cover, item.articleCover, R.drawable.bili_default_image_tv_with_bg, 88, 66);
+
+        convertView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (context instanceof SearchActivity) {
+                    ((SearchActivity) context).onSearchResultClick(item, position);
+                }
+            }
+        });
+
+        return convertView;
+    }
+
+    /** 生放送结果行：复用 LiveRoomAdapter 的 item_live_room 布局 */
+    private View getLiveView(final int position, View convertView, ViewGroup parent,
+                             final SearchActivity.SearchResultItem item) {
+        LiveHolder holder;
+        if (convertView == null || !(convertView.getTag() instanceof LiveHolder)) {
+            convertView = LayoutInflater.from(context).inflate(R.layout.item_live_room, parent, false);
+            holder = new LiveHolder();
+            holder.cover = (ImageView) convertView.findViewById(R.id.cover);
+            holder.title = (TextView) convertView.findViewById(R.id.title);
+            holder.uname = (TextView) convertView.findViewById(R.id.uname);
+            holder.info = (TextView) convertView.findViewById(R.id.info);
+            convertView.setTag(holder);
+        } else {
+            holder = (LiveHolder) convertView.getTag();
+        }
+
+        applyHighlight(convertView, position);
+
+        tv.biliclassic.model.LiveRoom room = item.liveRoom;
+        holder.title.setText(room.title != null ? room.title : "");
+        holder.uname.setText(room.uname != null && room.uname.length() > 0 ? room.uname : "未知主播");
+
+        StringBuilder info = new StringBuilder();
+        if (room.online > 0) {
+            info.append(StringUtil.toWan(room.online)).append("人气");
+        }
+        if (room.area_name != null && room.area_name.length() > 0) {
+            if (info.length() > 0) info.append(" · ");
+            info.append(room.area_name);
+        }
+        if (room.live_status == 1) {
+            if (info.length() > 0) info.append(" · ");
+            info.append("直播中");
+        }
+        holder.info.setText(info.toString());
+
+        ImageLoader.bind(holder.cover, room.pickCover(), R.drawable.bili_default_image_tv_with_bg, 96, 66);
+
+        convertView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (context instanceof SearchActivity) {
+                    ((SearchActivity) context).onSearchResultClick(item, position);
+                }
+            }
+        });
+
+        return convertView;
+    }
+
     private void applyHighlight(View convertView, int position) {
         if (position == selectedPosition && !mHideHighlight) {
             convertView.setBackgroundColor(0x66D86DA5);
@@ -234,6 +382,7 @@ public class SearchResultAdapter extends BaseAdapter {
     static class ViewHolder {
         TextView title;
         View authorGroup;
+        TextView authorLabel;
         TextView author;
         TextView statName;
         TextView statValue;
@@ -245,5 +394,12 @@ public class SearchResultAdapter extends BaseAdapter {
         TextView name;
         TextView sign;
         View btnUnfollow;
+    }
+
+    static class LiveHolder {
+        ImageView cover;
+        TextView title;
+        TextView uname;
+        TextView info;
     }
 }

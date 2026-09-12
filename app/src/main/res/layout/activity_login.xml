@@ -2,7 +2,8 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:background="@drawable/bili_texture_background">
 
     <!-- 顶栏 -->
     <RelativeLayout
@@ -37,41 +38,80 @@
         android:layout_height="2px"
         android:background="#FCA3C5" />
 
-    <!-- ActionBar下方阴影 -->
-    <ImageView
-        android:layout_width="match_parent"
-        android:layout_height="6.0dp"
-        android:background="@drawable/shadow_top_dig"
-        android:contentDescription="@null" />
-
-    <!-- 加载中容器 -->
+    <!-- 登录方式 Tab（古早粉色 TabWidget 风格，与分区页一致） -->
     <LinearLayout
-        android:id="@+id/loading_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:visibility="gone">
-
-        <ProgressBar
-            android:id="@+id/loading_progress"
-            android:layout_width="32dp"
-            android:layout_height="32dp" />
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:background="#D86DA5">
 
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/login_working_hard"
-            android:textSize="12sp"
-            android:textColor="#999999" />
+            android:id="@+id/tab_qr"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:singleLine="true"
+            android:paddingLeft="6dp"
+            android:paddingRight="6dp"
+            android:paddingBottom="4dp"
+            android:text="@string/login_tab_qr"
+            android:textSize="14sp"
+            android:background="@drawable/bili_tab_label_bg_selector"
+            android:textColor="@drawable/bili_tab_label_text_selector" />
+
+        <TextView
+            android:id="@+id/tab_sms"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:singleLine="true"
+            android:paddingLeft="6dp"
+            android:paddingRight="6dp"
+            android:paddingBottom="4dp"
+            android:text="@string/login_tab_sms"
+            android:textSize="14sp"
+            android:background="@drawable/bili_tab_label_bg_selector"
+            android:textColor="@drawable/bili_tab_label_text_selector" />
+
+        <TextView
+            android:id="@+id/tab_web"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:singleLine="true"
+            android:paddingLeft="6dp"
+            android:paddingRight="6dp"
+            android:paddingBottom="4dp"
+            android:text="@string/login_tab_web"
+            android:textSize="14sp"
+            android:background="@drawable/bili_tab_label_bg_selector"
+            android:textColor="@drawable/bili_tab_label_text_selector" />
+
+        <TextView
+            android:id="@+id/tab_cookie"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:singleLine="true"
+            android:paddingLeft="6dp"
+            android:paddingRight="6dp"
+            android:paddingBottom="4dp"
+            android:text="@string/login_tab_cookie"
+            android:textSize="14sp"
+            android:background="@drawable/bili_tab_label_bg_selector"
+            android:textColor="@drawable/bili_tab_label_text_selector" />
 
     </LinearLayout>
 
-    <!-- Fragment 容器 -->
+    <!-- 内容容器（透出纹理背景） -->
     <FrameLayout
         android:id="@+id/fragment_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 
 </LinearLayout>

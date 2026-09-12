@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -72,6 +73,22 @@ public class KeyBindingSetupActivity extends BaseActivity {
         mPageRecord = findViewById(R.id.page_record);
         mPromptText = (TextView) findViewById(R.id.prompt_text);
         mProgressText = (TextView) findViewById(R.id.progress_text);
+
+        // 右下角小电视水印：与 MetroHome / Setup 完全一致的尺寸算法（70% 屏幕长边 + 12% 溢出）
+        ImageView wm = (ImageView) findViewById(R.id.tv_watermark);
+        if (wm != null) {
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            int longSidePx = Math.max(dm.widthPixels, dm.heightPixels);
+            int size = Math.round(longSidePx * 0.70f);
+            int over = Math.round(longSidePx * 0.12f);
+            android.widget.FrameLayout.LayoutParams lp =
+                    (android.widget.FrameLayout.LayoutParams) wm.getLayoutParams();
+            lp.width = size;
+            lp.height = size;
+            lp.rightMargin = -over;
+            lp.bottomMargin = -over;
+            wm.setLayoutParams(lp);
+        }
 
         String mode = getIntent().getStringExtra("mode");
         final boolean isRebind = "rebind".equals(mode);
@@ -175,13 +192,17 @@ public class KeyBindingSetupActivity extends BaseActivity {
     }
 
     @Override
-    public void onBackPressed() {
-        // 询问页允许返回（等同跳过）；录制页不允许用返回键退出（BACK 可能被绑定），
-        // 退出走顶部的触摸"退出"按钮
-        if (mRecording) {
-            return;
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        // 低版本(API<5)框架根本不回调 onBackPressed，只会在 onKeyDown 里直接 finish；
+        // 这里统一在 onKeyDown 接管 BACK，全版本行为一致
+        if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
+            // 询问页允许返回（等同跳过）；录制页 BACK 会在 dispatchKeyEvent 被录入，不会走到这里
+            if (!mRecording) {
+                finish();
+            }
+            return true;
         }
-        super.onBackPressed();
+        return super.onKeyDown(keyCode, event);
     }
 
     private void finishSetup() {

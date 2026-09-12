@@ -19,8 +19,8 @@
         <FrameLayout
             android:layout_width="90dp"
             android:layout_height="60dp"
-            android:background="#FFFFFF"
-            android:padding="2dp">
+            android:background="@drawable/bili_thumb_boarder"
+            android:padding="3dp">
 
             <ImageView
                 android:id="@+id/cover"

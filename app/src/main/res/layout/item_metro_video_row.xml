@@ -21,8 +21,8 @@
         android:id="@+id/cover_container"
         android:layout_width="112dp"
         android:layout_height="66dp"
-        android:background="#FFFFFF"
-        android:padding="2dp">
+        android:background="@drawable/bili_thumb_boarder"
+        android:padding="3dp">
 
         <ImageView
             android:id="@+id/cover"

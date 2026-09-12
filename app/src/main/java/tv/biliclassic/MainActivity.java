@@ -932,11 +932,9 @@ public class MainActivity extends BaseActivity {
             edit.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    android.view.inputmethod.InputMethodManager imm =
-                            (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-                    if (imm != null) {
-                        imm.showSoftInput(edit, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
-                    }
+                    // 直接引用 InputMethodManager 会让老框架 verifier 拒绝整个类，
+                    // 统一走反射（SHOW_IMPLICIT = 1）
+                    tv.biliclassic.util.SdkHelper.showSoftInput(edit, 1);
                 }
             }, 100);
         }
@@ -958,11 +956,7 @@ public class MainActivity extends BaseActivity {
         if (container != null) container.setVisibility(View.GONE);
         View focus = getCurrentFocus();
         if (focus != null) {
-            android.view.inputmethod.InputMethodManager imm =
-                    (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-            if (imm != null) {
-                imm.hideSoftInputFromWindow(focus.getWindowToken(), 0);
-            }
+            tv.biliclassic.util.SdkHelper.hideSoftInputFromWindow(this, focus.getWindowToken(), 0);
         }
         hideMainSearchHistory();
     }

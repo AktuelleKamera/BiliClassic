@@ -106,9 +106,12 @@ public class PartitionDetailActivity extends BaseActivity implements ViewPager.O
             TextView tab = (TextView) LayoutInflater.from(this)
                     .inflate(R.layout.bili_category_tab_label, mTabContainer, false);
             tab.setText(TidData.getNameByTid(mTidArray[i]));
-            tab.setLayoutParams(new ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT));
+            // 与 1.6+ 的 TabWidget.addView 一致：每个 tab 布局参数为 (0, match_parent, weight=1)，
+            // 即所有 tab 等宽铺满整条。低版本不能走 setIndicator(View)，这里手动复刻，外观才一致。
+            tab.setLayoutParams(new LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    1.0f));
             tab.setFocusable(true);
             tab.setOnClickListener(new View.OnClickListener() {
                 @Override

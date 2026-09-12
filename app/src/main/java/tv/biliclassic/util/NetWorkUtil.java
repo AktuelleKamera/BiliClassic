@@ -161,6 +161,34 @@ public class NetWorkUtil {
         sCookieString = mergeCookies(sCookieString, cookie);
     }
 
+    /**
+     * 登录凭证写入后同步本地会话 key：csrf(bili_jct，点赞/评论/收藏 POST 用) 与 mid，
+     * 避免新登录的 SESSDATA 与旧 csrf 不匹配导致“csrf 校验失败”。
+     */
+    public static synchronized void syncLoginState() {
+        try {
+            String cookie = getCookieString();
+            if (cookie == null || cookie.length() == 0) {
+                cookie = SharedPreferencesUtil.getString("cookies", "");
+            }
+            if (cookie == null || cookie.length() == 0) {
+                return;
+            }
+            String csrf = getCsrfFromCookie(cookie);
+            if (csrf != null && csrf.length() > 0) {
+                SharedPreferencesUtil.putString(SharedPreferencesUtil.csrf, csrf);
+            }
+            String mid = getInfoFromCookie("DedeUserID", cookie);
+            if (mid != null && mid.length() > 0) {
+                try {
+                    SharedPreferencesUtil.putLong(SharedPreferencesUtil.mid, Long.parseLong(mid));
+                } catch (NumberFormatException e) {
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
     // Cookie 工具方法
 
     /**

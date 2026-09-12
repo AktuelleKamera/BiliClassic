@@ -112,6 +112,10 @@ public class MetroFolderVideoFragment extends Fragment implements MetroTurnPage 
                 ViewGroup parent = (ViewGroup) srl.getParent();
                 if (parent != null && list != null) {
                     int idx = parent.indexOfChild(srl);
+                    // list 目前还是 srl 的子 View，必须先摘掉才能挂到 parent 上，
+                    // 否则 addView 抛 "child already has a parent"
+                    ViewGroup listParent = (ViewGroup) list.getParent();
+                    if (listParent != null) listParent.removeView(list);
                     parent.removeView(srl);
                     parent.addView(list, idx, srl.getLayoutParams());
                 }

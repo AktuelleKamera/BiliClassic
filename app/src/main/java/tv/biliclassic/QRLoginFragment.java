@@ -1,7 +1,6 @@
 package tv.biliclassic;
 
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
@@ -48,7 +47,6 @@ public class QRLoginFragment extends Fragment {
     // UI组件
     private ImageView qrImageView;
     private TextView scanStat;
-    private Button btnManualLogin;
     private Button btnBack;
 
     // ===== 遥控器按键导航 =====
@@ -93,7 +91,6 @@ public class QRLoginFragment extends Fragment {
 
         qrImageView = (ImageView) view.findViewById(R.id.qrImage);
         scanStat = (TextView) view.findViewById(R.id.scanStat);
-        btnManualLogin = (Button) view.findViewById(R.id.btn_manual_login);
         btnBack = (Button) view.findViewById(R.id.btn_back);
 
         // 二维码容器尺寸按屏幕宽度自动适配（与二维码生成尺寸一致）
@@ -113,19 +110,6 @@ public class QRLoginFragment extends Fragment {
         btnBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                cancelTimer();
-                if (getActivity() != null) {
-                    getActivity().finish();
-                }
-            }
-        });
-
-        btnManualLogin.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(getActivity(), SpecialLoginActivity.class);
-                intent.putExtra("login", true);
-                startActivity(intent);
                 cancelTimer();
                 if (getActivity() != null) {
                     getActivity().finish();
@@ -537,14 +521,19 @@ public class QRLoginFragment extends Fragment {
 
     private void rebuildNavViews() {
         mNavViews.clear();
-        if (qrImageView != null) mNavViews.add(qrImageView);
-        if (btnManualLogin != null) mNavViews.add(btnManualLogin);
-        if (btnBack != null) mNavViews.add(btnBack);
+        addNavView(qrImageView);
+        addNavView(btnBack);
         if (mNavViews.size() > 0 && mNavIndex < 0) {
             mNavIndex = 0;
         }
         if (mNavIndex >= mNavViews.size()) {
             mNavIndex = mNavViews.size() - 1;
+        }
+    }
+
+    private void addNavView(View v) {
+        if (v != null && v.getVisibility() == View.VISIBLE) {
+            mNavViews.add(v);
         }
     }
 
@@ -556,8 +545,6 @@ public class QRLoginFragment extends Fragment {
         int action = tv.biliclassic.util.KeyBindingUtil.classify(event.getKeyCode());
         if (action != tv.biliclassic.util.KeyBindingUtil.ACTION_UP
                 && action != tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
-                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT
-                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT
                 && action != tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
             return false;
         }
@@ -578,13 +565,11 @@ public class QRLoginFragment extends Fragment {
         if (event.getRepeatCount() != 0) {
             return true;
         }
-        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP
-                || action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT) {
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP) {
             mNavIndex = Math.max(0, mNavIndex - 1);
             applyNavHighlight();
             return true;
-        } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
-                || action == tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT) {
+        } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
             mNavIndex = Math.min(mNavViews.size() - 1, mNavIndex + 1);
             applyNavHighlight();
             return true;
@@ -603,7 +588,7 @@ public class QRLoginFragment extends Fragment {
         for (int i = 0; i < mNavViews.size(); i++) {
             View v = mNavViews.get(i);
             if (v == null) continue;
-            if (v == btnManualLogin || v == btnBack) {
+            if (v == btnBack) {
                 // 按钮：选中深粉，未选中原粉 #D86DA5
                 if (i == mNavIndex) {
                     ((Button) v).setBackgroundColor(0xFFC06090);

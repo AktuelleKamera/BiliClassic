@@ -354,13 +354,10 @@ public class MetroSetupActivity extends BaseActivity {
                 : new Intent(this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
-        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 5) {
-            try {
-                // 交叉淡入淡出：替代系统默认"打开动画"，实现最无缝的切换
-                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
-            } catch (Throwable t) {
-            }
-        }
+        // 交叉淡入淡出：替代系统默认"打开动画"。overridePendingTransition 是 API 5+，
+        // 直接调用会让 API<5 的 verifier 拒绝整个类，统一走反射（低版本 no-op）
+        tv.biliclassic.util.SdkHelper.overridePendingTransition(this,
+                android.R.anim.fade_in, android.R.anim.fade_out);
         finish();
     }
 
@@ -476,7 +473,9 @@ public class MetroSetupActivity extends BaseActivity {
         if (mAnimating) return;
         int width = mPageTiles != null ? mPageTiles.getWidth() : 0;
         if (width <= 0) width = getResources().getDisplayMetrics().widthPixels;
-        if (width <= 0) { mOnTheme = false; super.onBackPressed(); return; }
+        // Activity.onBackPressed 是 API 5+，低版本没有该方法，super 调用会被 verifier 拒绝整类；
+        // 默认实现等价于 finish()
+        if (width <= 0) { mOnTheme = false; finish(); return; }
 
         mAnimating = true;
         final ViewGroup themeGroup = (ViewGroup) mPageTheme;
@@ -917,24 +916,30 @@ public class MetroSetupActivity extends BaseActivity {
     }
 
     @Override
-    public void onBackPressed() {
-        if (mAnimating) return;
-        if (mOnTheme) {
-            slideBackFromTheme();
-            return;
-        }
-        if (mOnPage3) {
-            // 录制中按 BACK：退出向导（dispatchKeyEvent 已处理，但还是保留XD）
-            if (mRecording) {
-                finishBinding();
-                return;
+    public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
+        // 低版本(API<5)框架根本不回调 onBackPressed，只会在 onKeyDown 里直接 finish；
+        // 这里统一在 onKeyDown 接管 BACK，全版本行为一致
+        if (keyCode == android.view.KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
+            if (mAnimating) return true;
+            if (mOnTheme) {
+                slideBackFromTheme();
+                return true;
             }
-            slideBackToTiles();
-        } else if (mOnPage2) {
-            slideToWelcome();
-        } else {
-            super.onBackPressed();
+            if (mOnPage3) {
+                // 录制中按 BACK：退出向导（dispatchKeyEvent 已处理，但还是保留XD）
+                if (mRecording) {
+                    finishBinding();
+                    return true;
+                }
+                slideBackToTiles();
+            } else if (mOnPage2) {
+                slideToWelcome();
+            } else {
+                finish();
+            }
+            return true;
         }
+        return super.onKeyDown(keyCode, event);
     }
 
     /**

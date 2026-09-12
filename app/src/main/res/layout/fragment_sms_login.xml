@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="18dp">
+
+        <TextView
+            android:id="@+id/sms_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/login_sms_tip"
+            android:textSize="13sp"
+            android:textColor="#666666" />
+
+        <!-- 手机号行 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingRight="10dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:text="@string/login_sms_cc"
+                android:textColor="#18191C"
+                android:textSize="15sp" />
+
+            <EditText
+                android:id="@+id/sms_tel"
+                style="@style/LoginInput"
+                android:textColor="#333333"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingLeft="8dp"
+                android:paddingRight="8dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:hint="@string/login_sms_tel_hint"
+                android:inputType="phone"
+                android:singleLine="true"
+                android:textSize="15sp"
+                android:background="@drawable/login_input_holo" />
+
+        </LinearLayout>
+
+        <!-- 验证码行 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <EditText
+                android:id="@+id/sms_code"
+                style="@style/LoginInput"
+                android:textColor="#333333"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:paddingLeft="8dp"
+                android:paddingRight="8dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:hint="@string/login_sms_code_hint"
+                android:inputType="number"
+                android:singleLine="true"
+                android:textSize="15sp"
+                android:background="@drawable/login_input_holo" />
+
+            <TextView
+                android:id="@+id/sms_send"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingLeft="10dp"
+                android:paddingRight="2dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:text="@string/login_sms_send"
+                android:textColor="#D86DA5"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/sms_login"
+                style="@style/AppWidget.Button.ThemeColor.Large"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:text="@string/login_sms_login" />
+
+            <Button
+                android:id="@+id/sms_clear"
+                style="@style/AppWidget.Button.ThemeColor.Large"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="8dp"
+                android:text="@string/common_clear_data" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

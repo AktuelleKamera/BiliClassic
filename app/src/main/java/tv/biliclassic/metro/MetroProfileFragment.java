@@ -181,7 +181,8 @@ public class MetroProfileFragment extends Fragment implements MetroTurnPage {
         for (int i = 0; i < count; i++) {
             final View ch = g.getChildAt(i);
             final Animation a;
-            if (android.os.Build.VERSION.SDK_INT < 16) {
+            // SDK_INT 字段是 API 4+，低版本取不到，统一用 SdkHelper
+            if (tv.biliclassic.util.SdkHelper.getSdkInt() < 16) {
                 a = new android.view.animation.AlphaAnimation(in ? 0f : 1f, in ? 1f : 0f);
                 a.setDuration(280);
                 a.setStartOffset(i * 70);

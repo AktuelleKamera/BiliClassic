@@ -83,7 +83,10 @@ public class MetroHomeActivity extends BaseActivity {
 
         mHighlightBg = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
                 new int[]{PINK_LIGHT, PINK});
-        mTouchSlop = android.view.ViewConfiguration.get(this).getScaledTouchSlop();
+        // ViewConfiguration.get(Context)/getScaledTouchSlop() 是 API 3+，直接在字节码里调用会被
+        // 低版本 verifier 拒绝整个类，统一走 ViewConfigHelper 反射兼容
+        android.view.ViewConfiguration vc = android.support.v4.view.ViewConfigHelper.get(this);
+        mTouchSlop = android.support.v4.view.ViewConfigHelper.getScaledTouchSlop(vc);
 
         loadMetroBackground();
 
@@ -279,6 +282,31 @@ public class MetroHomeActivity extends BaseActivity {
                     applyHighlight(v, hasFocus);
                 }
             });
+
+            // 低版本(API<4)老触摸屏抖动大，ScrollView 的 "dy < touchSlop 才算点击" 判定经常失败，
+            // 表现出来就是"只有高亮、点了不跳转"。这里给每个条目自身挂点击（点击不受位移抖动影响），
+            // 并自行处理按压高亮，低版本上不再依赖父容器的手势判定。
+            if (tv.biliclassic.util.SdkHelper.getSdkInt() < 4) {
+                final int index = i;
+                row.setOnTouchListener(new View.OnTouchListener() {
+                    @Override
+                    public boolean onTouch(View v, MotionEvent ev) {
+                        int act = ev.getAction() & MotionEvent.ACTION_MASK;
+                        if (act == MotionEvent.ACTION_DOWN) {
+                            applyHighlight(v, true);
+                        } else if (act == MotionEvent.ACTION_UP || act == MotionEvent.ACTION_CANCEL) {
+                            applyHighlight(v, false);
+                        }
+                        return false;
+                    }
+                });
+                row.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        navigate(index);
+                    }
+                });
+            }
 
             mMenu.addView(row);
             mItems.add(row);

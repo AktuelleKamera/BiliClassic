@@ -26,7 +26,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import tv.biliclassic.api.BilibiliIDConverter;
+import tv.biliclassic.api.LiveApi;
 import tv.biliclassic.api.SearchApi;
+import tv.biliclassic.model.LiveRoom;
 import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
@@ -43,6 +45,7 @@ public class SearchActivity extends BaseActivity {
     private ProgressBar topProgress;
     private View footerView;
     private ProgressBar footerProgressBar;
+    private TextView footerText;
 
     // 搜索历史
     private static final String KEY_SEARCH_HISTORY = "search_history";
@@ -53,9 +56,9 @@ public class SearchActivity extends BaseActivity {
     // 日期筛选范围（秒），0 表示不限
     private long filterBeginS = 0;
     private long filterEndS = 0;
-    private static final String[] MENU_NAMES = {"综合", "相关度", "发布日期", "起始日期", "评论", "弹幕", "收藏", "UP主"};
-    // 每项对应动作：0-5=排序索引；-1=起始日期；-2=UP主
-    private static final int[] MENU_ACTIONS = {0, 1, 2, -1, 3, 4, 5, -2};
+    private static final String[] MENU_NAMES = {"综合", "相关度", "发布日期", "起始日期", "评论", "弹幕", "收藏", "UP主", "番剧", "生放送", "专栏"};
+    // 每项对应动作：0-5=排序索引；-1=起始日期；-2=UP主；-3=番剧；-4=生放送；-5=专栏
+    private static final int[] MENU_ACTIONS = {0, 1, 2, -1, 3, 4, 5, -2, -3, -4, -5};
     // 结果态/搜索态切换
     private View titleSearchBox;
     private View titleSpacer;
@@ -82,6 +85,14 @@ public class SearchActivity extends BaseActivity {
     private boolean isLoading = false;
     private boolean isEnd = false;
     private boolean hasSearched = false;
+
+    // 搜索类型（决定第一页/翻页调用哪个接口）
+    private static final int MODE_VIDEO = 0;
+    private static final int MODE_USER = 1;
+    private static final int MODE_BANGUMI = 2;
+    private static final int MODE_LIVE = 3;
+    private static final int MODE_ARTICLE = 4;
+    private int searchMode = MODE_VIDEO;
 
     private Handler retryHandler = new Handler();
     private int searchSeq = 0;
@@ -126,6 +137,7 @@ public class SearchActivity extends BaseActivity {
 
         footerView = getLayoutInflater().inflate(R.layout.list_footer, null);
         footerProgressBar = (ProgressBar) footerView.findViewById(R.id.footer_progress);
+        footerText = (TextView) footerView.findViewById(R.id.footer_text);
         footerView.setVisibility(View.GONE);
 
         resultList.addFooterView(footerView, null, false);
@@ -487,11 +499,8 @@ public class SearchActivity extends BaseActivity {
             searchEdit.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    android.view.inputmethod.InputMethodManager imm =
-                            (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-                    if (imm != null && searchEdit != null) {
-                        imm.showSoftInput(searchEdit, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
-                    }
+                    // 避免直接引用 InputMethodManager（老框架 verifier 会拒绝整个类）
+                    tv.biliclassic.util.SdkHelper.showSoftInput(searchEdit, 1);
                 }
             }, 100);
         }
@@ -514,11 +523,7 @@ public class SearchActivity extends BaseActivity {
         }
         View focus = getCurrentFocus();
         if (focus != null) {
-            android.view.inputmethod.InputMethodManager imm =
-                    (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-            if (imm != null) {
-                imm.hideSoftInputFromWindow(focus.getWindowToken(), 0);
-            }
+            tv.biliclassic.util.SdkHelper.hideSoftInputFromWindow(this, focus.getWindowToken(), 0);
         }
     }
 
@@ -540,7 +545,9 @@ public class SearchActivity extends BaseActivity {
 
     /** 排序/筛选菜单：综合/相关度/发布日期/评论/弹幕/收藏/UP主/日期 */
     private void showFilterMenu() {
-        android.content.Context ctx = tv.biliclassic.util.DialogUtil.wrap(this);
+        // 与其它弹窗一致：API<11 需要 dialogContext 套自包含浅色主题，否则文字会变白
+        android.content.Context ctx = tv.biliclassic.util.SdkHelper.dialogContext(
+                tv.biliclassic.util.DialogUtil.wrap(this));
         new android.app.AlertDialog.Builder(ctx)
                 .setTitle("排序 / 筛选")
                 .setItems(MENU_NAMES, new android.content.DialogInterface.OnClickListener() {
@@ -554,15 +561,21 @@ public class SearchActivity extends BaseActivity {
                             selectSort(action);
                         } else if (action == -1) {
                             showDateRangeDialog();
-                        } else if (action == -2) {
+                        } else {
                             String kw = searchEdit != null ? searchEdit.getText().toString().trim() : "";
                             if (kw.length() == 0) {
                                 kw = currentKeyword != null ? currentKeyword : "";
                             }
                             if (kw.length() == 0) {
                                 Toast.makeText(SearchActivity.this, "请先输入搜索词", Toast.LENGTH_SHORT).show();
-                            } else {
+                            } else if (action == -2) {
                                 searchUp(kw);
+                            } else if (action == -3) {
+                                searchBangumi(kw);
+                            } else if (action == -4) {
+                                searchLive(kw);
+                            } else if (action == -5) {
+                                searchArticle(kw);
                             }
                         }
                     }
@@ -582,78 +595,57 @@ public class SearchActivity extends BaseActivity {
         researchWithFilter();
     }
 
-    /** 搜UP主：走用户搜索，结果直接显示在当前列表（复用 item_following 布局） */
-    private void searchUp(final String name) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    final org.json.JSONObject json = SearchApi.searchUser(name, 1);
-                    final java.util.List<SearchResultItem> users = new java.util.ArrayList<SearchResultItem>();
-                    if (json != null && json.optInt("code", -1) == 0) {
-                        org.json.JSONObject data = json.optJSONObject("data");
-                        if (data != null) {
-                            org.json.JSONArray arr = data.optJSONArray("result");
-                            if (arr != null) {
-                                for (int i = 0; i < arr.length(); i++) {
-                                    org.json.JSONObject u = arr.optJSONObject(i);
-                                    if (u == null) {
-                                        continue;
-                                    }
-                                    String uname = u.optString("uname", "");
-                                    if (uname.length() == 0) {
-                                        continue;
-                                    }
-                                    SearchResultItem it = new SearchResultItem();
-                                    it.isUser = true;
-                                    it.userMid = u.optLong("mid", 0);
-                                    it.userName = uname;
-                                    it.userSign = u.optString("usign", u.optString("sign", ""));
-                                    String upic = u.optString("upic", "");
-                                    if (upic.startsWith("//")) {
-                                        upic = "https:" + upic;
-                                    } else if (upic.startsWith("http://")) {
-                                        upic = "https://" + upic.substring(7);
-                                    }
-                                    it.userAvatar = upic;
-                                    users.add(it);
-                                }
-                            }
-                        }
-                    }
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            hideSearchBox();
-                            hasSearched = true;
-                            isLoading = false;
-                            isEnd = true;
-                            resultListData.clear();
-                            resultListData.addAll(users);
-                            adapter.notifyDataSetChanged();
-                            if (users.size() == 0) {
-                                showEmptyResult();
-                                emptyView.setText("没有找到UP主");
-                            } else {
-                                hideFirstLoadingAndShowList();
-                            }
-                        }
-                    });
-                } catch (final Exception e) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(SearchActivity.this, "搜索UP主失败", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                }
-            }
-        }).start();
+    /** 搜UP主（search_type=bili_user） */
+    private void searchUp(final String keyword) {
+        startSearch(MODE_USER, "UP主", keyword);
+    }
+
+    /** 统一入口：设置搜索类型并从第一页开始；后续翻页由 loadMoreResults 按同一 searchMode 处理 */
+    private void startSearch(int mode, String label, String keyword) {
+        if (keyword == null || keyword.length() == 0) return;
+        searchMode = mode;
+        currentKeyword = keyword;
+        if (sortButtonText != null) sortButtonText.setText(label);
+        ++searchSeq;
+        hasSearched = true;
+        isLoading = true;
+        isEnd = false;
+        currentPage = 1;
+        selectedPosition = -1;
+        saveSearchHistory(keyword);
+        hideSearchBox();
+        showFirstLoading();
+        doSearchRequest(keyword, 1, 3);
+    }
+
+    /** 各搜索模式对应的"无结果"文案 */
+    private String emptyTextForMode(int mode) {
+        if (mode == MODE_USER) return "没有找到UP主";
+        if (mode == MODE_BANGUMI) return "没有找到番剧";
+        if (mode == MODE_LIVE) return "没有找到生放送";
+        if (mode == MODE_ARTICLE) return "没有找到专栏";
+        return "没有找到相关视频";
+    }
+
+    /** 搜番剧（search_type=media_bangumi） */
+    private void searchBangumi(final String keyword) {
+        startSearch(MODE_BANGUMI, "番剧", keyword);
+    }
+
+    /** 搜生放送（search_type=live） */
+    private void searchLive(final String keyword) {
+        startSearch(MODE_LIVE, "生放送", keyword);
+    }
+
+    /** 搜专栏（search_type=article） */
+    private void searchArticle(final String keyword) {
+        startSearch(MODE_ARTICLE, "专栏", keyword);
     }
 
     /** 日期范围：三级菜单，编辑起始日期和截止日期 */
     private void showDateRangeDialog() {
-        android.content.Context ctx = tv.biliclassic.util.DialogUtil.wrap(this);
+        android.content.Context ctx = tv.biliclassic.util.SdkHelper.dialogContext(
+                tv.biliclassic.util.DialogUtil.wrap(this));
         java.util.Calendar cal = java.util.Calendar.getInstance();
         final android.widget.DatePicker startPicker = new android.widget.DatePicker(ctx);
         final android.widget.DatePicker endPicker = new android.widget.DatePicker(ctx);
@@ -703,6 +695,10 @@ public class SearchActivity extends BaseActivity {
                             filterBeginS = filterEndS - 86399;
                             filterEndS = t + 86399;
                         }
+                        // 同步排序按钮文案，否则选完日期按钮还停在上一个排序，看起来像没生效
+                        if (sortButtonText != null) {
+                            sortButtonText.setText("起始日期");
+                        }
                         researchWithFilter();
                     }
                 })
@@ -711,6 +707,10 @@ public class SearchActivity extends BaseActivity {
                     public void onClick(android.content.DialogInterface dialog, int which) {
                         filterBeginS = 0;
                         filterEndS = 0;
+                        // 清除日期后回到当前排序文案
+                        if (sortButtonText != null) {
+                            sortButtonText.setText(SORT_NAMES[currentSortIndex]);
+                        }
                         researchWithFilter();
                     }
                 })
@@ -721,6 +721,7 @@ public class SearchActivity extends BaseActivity {
     /** 排序/日期变化后从第一页重新搜索 */
     private void researchWithFilter() {
         if (hasSearched && currentKeyword != null && currentKeyword.length() > 0) {
+            searchMode = MODE_VIDEO;
             ++searchSeq;
             isLoading = true;
             isEnd = false;
@@ -787,6 +788,15 @@ public class SearchActivity extends BaseActivity {
         hasSearched = true;
         isLoading = true;
         isEnd = false;
+        searchMode = MODE_VIDEO;
+        // 新搜索回到视频综合模式：同步排序按钮文案/统计列，避免还停在上次的"UP主/番剧/生放送"
+        currentSortIndex = 0;
+        if (sortButtonText != null) {
+            sortButtonText.setText(SORT_NAMES[currentSortIndex]);
+        }
+        if (adapter != null) {
+            adapter.setStatMode(SORT_STAT[currentSortIndex]);
+        }
         currentKeyword = keyword;
         currentPage = 1;
 
@@ -806,6 +816,27 @@ public class SearchActivity extends BaseActivity {
             startActivity(userIntent);
             return;
         }
+        if (item.isBangumi) {
+            // 复用 VideoDetailActivity 里的番剧 Fragment，直接传 season_id
+            Intent bangumiIntent = new Intent(this, VideoDetailActivity.class);
+            bangumiIntent.putExtra("bangumi_season_id", item.bangumiSeasonId);
+            bangumiIntent.putExtra("bangumi_title", item.bangumiTitle);
+            startActivity(bangumiIntent);
+            return;
+        }
+        if (item.isLive && item.liveRoom != null) {
+            Intent liveIntent = new Intent(this, LiveInfoActivity.class);
+            liveIntent.putExtra("room_id", item.liveRoom.realRoomId());
+            startActivity(liveIntent);
+            return;
+        }
+        if (item.isArticle) {
+            Intent articleIntent = new Intent(this, ArticleActivity.class);
+            articleIntent.putExtra("cvid", item.articleId);
+            articleIntent.putExtra("title", item.articleTitle);
+            startActivity(articleIntent);
+            return;
+        }
         Intent intent = new Intent(this, VideoDetailActivity.class);
         intent.putExtra("aid", item.aid);
         startActivity(intent);
@@ -813,12 +844,12 @@ public class SearchActivity extends BaseActivity {
 
     private void doSearchRequest(final String keyword, final int page, final int retryLeft) {
         final int curSeq = searchSeq;
-        final String order = currentOrder();
+        final int mode = searchMode;
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    final JSONObject json = SearchApi.search(keyword, page, order, filterBeginS, filterEndS);
+                    final JSONObject json = requestSearchJson(keyword, page, mode);
                     final int code = json.optInt("code", -1);
                     final String message = json.optString("message", "");
 
@@ -827,9 +858,9 @@ public class SearchActivity extends BaseActivity {
                         public void run() {
                             if (searchSeq != curSeq) return;
                             if (code == 0) {
-                                handleSearchResponse(json);
+                                handleSearchPage(json, keyword, page);
                             } else {
-                                handleSearchError(code, message, keyword, retryLeft);
+                                handleSearchError(code, message, keyword, page, retryLeft);
                             }
                         }
                     });
@@ -841,7 +872,7 @@ public class SearchActivity extends BaseActivity {
                         @Override
                         public void run() {
                             if (searchSeq != curSeq) return;
-                            handleNetworkError(errMsg, keyword, retryLeft);
+                            handleNetworkError(errMsg, keyword, page, retryLeft);
                         }
                     });
                 }
@@ -849,100 +880,203 @@ public class SearchActivity extends BaseActivity {
         }).start();
     }
 
-    private void handleSearchResponse(JSONObject json) {
-        try {
-            JSONObject data = json.optJSONObject("data");
-            if (data == null) {
-                showEmptyResult();
-                isLoading = false;
-                return;
+    /** 按当前 searchMode 调用对应搜索接口 */
+    private JSONObject requestSearchJson(String keyword, int page, int mode) throws Exception {
+        if (mode == MODE_USER) return SearchApi.searchUser(keyword, page);
+        if (mode == MODE_BANGUMI) return SearchApi.searchBangumi(keyword, page);
+        if (mode == MODE_LIVE) return SearchApi.searchLive(keyword, page);
+        if (mode == MODE_ARTICLE) return SearchApi.searchArticle(keyword, page);
+        return SearchApi.search(keyword, page, currentOrder(), filterBeginS, filterEndS);
+    }
+
+    /** 一页搜索结果 */
+    private static class SearchPage {
+        final List<SearchResultItem> items = new ArrayList<SearchResultItem>();
+        boolean hasMore;
+    }
+
+    /** 按 searchMode 解析一页搜索结果 */
+    private SearchPage parseSearchPage(JSONObject json, int mode) {
+        SearchPage sp = new SearchPage();
+        JSONObject data = json.optJSONObject("data");
+        if (data == null) return sp;
+
+        if (mode == MODE_LIVE) {
+            JSONArray arr = null;
+            // live 的 result 可能是对象 { live_room: [...] }，也可能是数组
+            JSONObject resultObj = data.optJSONObject("result");
+            if (resultObj != null) arr = resultObj.optJSONArray("live_room");
+            if (arr == null) arr = data.optJSONArray("result");
+            if (arr == null) return sp;
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject r = arr.optJSONObject(i);
+                if (r == null) continue;
+                LiveRoom room = LiveApi.analyzeRoom(r);
+                if (room.realRoomId() == 0) continue;
+                // 补全协议，否则 ImageLoader 无法加载（直播间封面多为 //i0.hdslb.com/...）
+                room.user_cover = normalizeUrl(room.user_cover);
+                room.cover = normalizeUrl(room.cover);
+                room.keyframe = normalizeUrl(room.keyframe);
+                room.system_cover = normalizeUrl(room.system_cover);
+                SearchResultItem it = new SearchResultItem();
+                it.isLive = true;
+                it.liveRoom = room;
+                sp.items.add(it);
             }
+            sp.hasMore = arr.length() >= 20;
+            return sp;
+        }
 
-            JSONArray result = data.optJSONArray("result");
-            if (result == null || result.length() == 0) {
-                showEmptyResult();
-                isLoading = false;
-                return;
+        JSONArray arr = data.optJSONArray("result");
+        if (arr == null) return sp;
+
+        if (mode == MODE_USER) {
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject u = arr.optJSONObject(i);
+                if (u == null) continue;
+                String uname = u.optString("uname", "");
+                if (uname.length() == 0) continue;
+                SearchResultItem it = new SearchResultItem();
+                it.isUser = true;
+                it.userMid = u.optLong("mid", 0);
+                it.userName = uname;
+                it.userSign = u.optString("usign", u.optString("sign", ""));
+                it.userAvatar = normalizeUrl(u.optString("upic", ""));
+                sp.items.add(it);
             }
-
-            List<SearchResultItem> items = new ArrayList<SearchResultItem>();
-            for (int i = 0; i < result.length(); i++) {
-                JSONObject obj = result.getJSONObject(i);
-                if ("video".equals(obj.optString("type"))) {
-                    SearchResultItem item = new SearchResultItem();
-                    String title = obj.optString("title");
-                    if (title != null) {
-                        title = title.replaceAll("<em class=\"keyword\">", "");
-                        title = title.replaceAll("</em>", "");
-                        item.title = StringUtil.htmlToString(title);
-                    } else {
-                        item.title = "";
-                    }
-
-                    String pic = obj.optString("pic");
-                    if (pic != null && pic.length() > 0) {
-                        if (pic.startsWith("//")) {
-                            pic = "https:" + pic;
-                        } else if (pic.startsWith("http://")) {
-                            pic = "https://" + pic.substring(7);
-                        } else if (!pic.startsWith("https://")) {
-                            pic = "https://" + pic;
-                        }
-                        item.cover = pic;
-                    }
-                    item.author = obj.optString("author");
-                    item.play = obj.optInt("play");
-                    item.danmaku = obj.optInt("danmaku");
-                    item.review = obj.optInt("review");
-                    item.favorites = obj.optInt("favorites");
-                    item.pubdate = obj.optLong("pubdate", 0);
-
-                    long aid = obj.optLong("aid", 0);
-                    String bvid = obj.optString("bvid");
-
-                    if (aid == 0 && bvid != null && bvid.length() > 0) {
-                        try {
-                            aid = BilibiliIDConverter.bvtoaid(bvid);
-                        } catch (Exception e) {
-                            aid = 0;
-                        }
-                    }
-
-                    item.aid = aid;
-                    item.bvid = bvid;
-                    items.add(item);
+        } else if (mode == MODE_BANGUMI) {
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject b = arr.optJSONObject(i);
+                if (b == null) continue;
+                long seasonId = b.optLong("season_id", 0);
+                long mediaId = b.optLong("media_id", 0);
+                if (seasonId <= 0) seasonId = mediaId;
+                if (seasonId <= 0) continue;
+                String title = b.optString("title", "");
+                title = title.replace("<em class=\"keyword\">", "").replace("</em>", "");
+                SearchResultItem it = new SearchResultItem();
+                it.isBangumi = true;
+                it.bangumiSeasonId = seasonId;
+                it.bangumiMediaId = mediaId;
+                it.bangumiTitle = StringUtil.htmlToString(title);
+                it.bangumiCover = normalizeUrl(b.optString("cover", ""));
+                it.bangumiArea = b.optString("areas", "");
+                it.bangumiIndexShow = b.optString("index_show", "");
+                sp.items.add(it);
+            }
+        } else if (mode == MODE_ARTICLE) {
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject a = arr.optJSONObject(i);
+                if (a == null) continue;
+                long id = a.optLong("id", 0);
+                if (id <= 0) continue;
+                String cover = "";
+                JSONArray imgs = a.optJSONArray("image_urls");
+                if (imgs != null && imgs.length() > 0) {
+                    cover = normalizeUrl(imgs.optString(0, ""));
                 }
+                String title = a.optString("title", "");
+                title = title.replace("<em class=\"keyword\">", "").replace("</em>", "");
+                SearchResultItem it = new SearchResultItem();
+                it.isArticle = true;
+                it.articleId = id;
+                it.articleTitle = StringUtil.htmlToString(title);
+                it.articleCover = cover;
+                it.articleCategory = a.optString("category_name", "");
+                it.articleView = a.optInt("view", 0);
+                sp.items.add(it);
             }
+        } else {
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject obj = arr.optJSONObject(i);
+                if (obj == null) continue;
+                SearchResultItem it = parseVideoItem(obj);
+                if (it != null) sp.items.add(it);
+            }
+        }
+        sp.hasMore = arr.length() >= 20;
+        return sp;
+    }
 
-            if (items.size() == 0) {
-                showEmptyResult();
-                isLoading = false;
+    private SearchResultItem parseVideoItem(JSONObject obj) {
+        if (!"video".equals(obj.optString("type"))) return null;
+        SearchResultItem item = new SearchResultItem();
+        String title = obj.optString("title", "");
+        title = title.replace("<em class=\"keyword\">", "").replace("</em>", "");
+        item.title = StringUtil.htmlToString(title);
+        item.cover = normalizeUrl(obj.optString("pic", ""));
+        item.author = obj.optString("author", "");
+        item.play = obj.optInt("play");
+        item.danmaku = obj.optInt("danmaku");
+        item.review = obj.optInt("review");
+        item.favorites = obj.optInt("favorites");
+        item.pubdate = obj.optLong("pubdate", 0);
+        long aid = obj.optLong("aid", 0);
+        String bvid = obj.optString("bvid", "");
+        if (aid == 0 && bvid.length() > 0) {
+            try {
+                aid = BilibiliIDConverter.bvtoaid(bvid);
+            } catch (Exception e) {
+                aid = 0;
+            }
+        }
+        item.aid = aid;
+        item.bvid = bvid;
+        return item;
+    }
+
+    /** 补全协议相对（//xxx）或 http 图片地址；ImageLoader 会再降级为 http 请求 */
+    private String normalizeUrl(String url) {
+        if (url == null || url.length() == 0) return "";
+        if (url.startsWith("//")) return "https:" + url;
+        if (url.startsWith("http://")) return "https://" + url.substring(7);
+        if (!url.startsWith("https://")) return "https://" + url;
+        return url;
+    }
+
+    /** 统一处理一页结果：第一页替换列表，翻页追加；根据 hasMore 决定底部"加载更多/没有更多" */
+    private void handleSearchPage(JSONObject json, final String keyword, final int page) {
+        final boolean loadMore = page > 1;
+        try {
+            SearchPage sp = parseSearchPage(json, searchMode);
+            if (sp.items.size() == 0) {
+                if (loadMore) {
+                    showNoMore();
+                } else {
+                    showEmptyResult();
+                    emptyView.setText(emptyTextForMode(searchMode));
+                    isLoading = false;
+                }
                 return;
             }
 
-            resultListData.clear();
-            resultListData.addAll(items);
+            if (!loadMore) {
+                resultListData.clear();
+            }
+            resultListData.addAll(sp.items);
             adapter.notifyDataSetChanged();
 
-            hideFirstLoadingAndShowList();
+            if (!loadMore) {
+                hideFirstLoadingAndShowList();
+            }
             isLoading = false;
 
-            if (result.length() >= 20) {
-                currentPage = 2;
+            if (sp.hasMore) {
+                currentPage = page + 1;
                 footerView.setVisibility(View.VISIBLE);
             } else {
-                isEnd = true;
-                footerView.setVisibility(View.GONE);
+                showNoMore();
             }
-
         } catch (Exception e) {
             e.printStackTrace();
-            showEmptyResult();
+            footerView.setVisibility(View.GONE);
             isLoading = false;
+            Toast.makeText(this, "解析失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void handleSearchError(int code, String message, final String keyword, final int retryLeft) {
+    private void handleSearchError(int code, String message, final String keyword, final int page, final int retryLeft) {
+        final boolean loadMore = page > 1;
         isLoading = false;
 
         if (retryLeft > 0 && (code == -400 || message.contains("sign") || message.contains("wbi"))) {
@@ -950,22 +1084,27 @@ public class SearchActivity extends BaseActivity {
             retryHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    doSearchRequest(keyword, 1, retryLeft - 1);
+                    doSearchRequest(keyword, page, retryLeft - 1);
                 }
             }, 1000);
         } else if (code == -111) {
             // B 站对搜索敏感词/被屏蔽内容统一返回 -111 "csrf 校验失败"，并非登录或 csrf 问题。
-            showEmptyResult();
-            emptyView.setText("该关键词暂时无法搜索");
+            if (!loadMore) {
+                showEmptyResult();
+                emptyView.setText("该关键词暂时无法搜索");
+            }
             MsgUtil.showMsg(this, "该关键词暂时无法搜索");
         } else {
-            showEmptyResult();
-            emptyView.setText("API错误(" + code + "): " + message);
+            if (!loadMore) {
+                showEmptyResult();
+                emptyView.setText("API错误(" + code + "): " + message);
+            }
             MsgUtil.showMsg(this, "搜索失败: " + message);
         }
     }
 
-    private void handleNetworkError(String errMsg, final String keyword, final int retryLeft) {
+    private void handleNetworkError(String errMsg, final String keyword, final int page, final int retryLeft) {
+        final boolean loadMore = page > 1;
         isLoading = false;
 
         boolean isNetworkError = errMsg != null && (errMsg.contains("Transport endpoint") || errMsg.contains("No route") || errMsg.contains("timeout"));
@@ -975,12 +1114,14 @@ public class SearchActivity extends BaseActivity {
             retryHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    doSearchRequest(keyword, 1, retryLeft - 1);
+                    doSearchRequest(keyword, page, retryLeft - 1);
                 }
             }, 1500);
         } else {
-            showEmptyResult();
-            emptyView.setText("请求失败: " + (errMsg != null ? errMsg : "请检查网络"));
+            if (!loadMore) {
+                showEmptyResult();
+                emptyView.setText("请求失败: " + (errMsg != null ? errMsg : "请检查网络"));
+            }
             MsgUtil.showMsg(this, "请求失败: " + (errMsg != null ? errMsg : "请检查网络"));
         }
     }
@@ -989,170 +1130,36 @@ public class SearchActivity extends BaseActivity {
         if (!hasSearched || isLoading || isEnd) return;
         if (resultListData.size() == 0) return;
 
-        final int nextPage = currentPage;
-
         isLoading = true;
         footerView.setVisibility(View.VISIBLE);
         if (footerProgressBar != null) {
             footerProgressBar.setVisibility(View.VISIBLE);
         }
-
-        doLoadMoreRequest(currentKeyword, nextPage, 2);
-    }
-
-    private void doLoadMoreRequest(final String keyword, final int page, final int retryLeft) {
-        final int curSeq = searchSeq;
-        final String order = currentOrder();
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    final JSONObject json = SearchApi.search(keyword, page, order, filterBeginS, filterEndS);
-                    final int code = json.optInt("code", -1);
-
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (searchSeq != curSeq) return;
-                            handleLoadMoreResponse(json, code, keyword, page, retryLeft);
-                        }
-                    });
-
-                } catch (final Exception e) {
-                    e.printStackTrace();
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (searchSeq != curSeq) return;
-                            handleLoadMoreError(e.getMessage(), keyword, page, retryLeft);
-                        }
-                    });
-                }
-            }
-        }).start();
-    }
-
-    private void handleLoadMoreResponse(JSONObject json, int code, final String keyword, final int page, final int retryLeft) {
-        try {
-            if (code != 0) {
-                if (retryLeft > 0) {
-                    retryHandler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            doLoadMoreRequest(keyword, page, retryLeft - 1);
-                        }
-                    }, 1000);
-                    return;
-                }
-                footerView.setVisibility(View.GONE);
-                isLoading = false;
-                Toast.makeText(this, "加载更多失败: " + json.optString("message"), Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            JSONObject data = json.optJSONObject("data");
-            if (data == null) {
-                showNoMore();
-                return;
-            }
-
-            JSONArray result = data.optJSONArray("result");
-            if (result == null || result.length() == 0) {
-                showNoMore();
-                return;
-            }
-
-            int added = 0;
-            for (int i = 0; i < result.length(); i++) {
-                JSONObject obj = result.getJSONObject(i);
-                if ("video".equals(obj.optString("type"))) {
-                    SearchResultItem item = new SearchResultItem();
-                    String title = obj.optString("title");
-                    if (title != null) {
-                        title = title.replaceAll("<em class=\"keyword\">", "");
-                        title = title.replaceAll("</em>", "");
-                        item.title = StringUtil.htmlToString(title);
-                    } else {
-                        item.title = "";
-                    }
-
-                    String pic = obj.optString("pic");
-                    if (pic != null && pic.length() > 0) {
-                        if (pic.startsWith("//")) {
-                            pic = "https:" + pic;
-                        } else if (pic.startsWith("http://")) {
-                            pic = "https://" + pic.substring(7);
-                        } else if (!pic.startsWith("https://")) {
-                            pic = "https://" + pic;
-                        }
-                        item.cover = pic;
-                    }
-                    item.author = obj.optString("author");
-                    item.play = obj.optInt("play");
-                    item.danmaku = obj.optInt("danmaku");
-                    item.review = obj.optInt("review");
-                    item.favorites = obj.optInt("favorites");
-                    item.pubdate = obj.optLong("pubdate", 0);
-
-                    long aid = obj.optLong("aid", 0);
-                    String bvid = obj.optString("bvid");
-
-                    if (aid == 0 && bvid != null && bvid.length() > 0) {
-                        try {
-                            aid = BilibiliIDConverter.bvtoaid(bvid);
-                        } catch (Exception e) {
-                            aid = 0;
-                        }
-                    }
-
-                    item.aid = aid;
-                    item.bvid = bvid;
-                    resultListData.add(item);
-                    added++;
-                }
-            }
-
-            adapter.notifyDataSetChanged();
-            footerView.setVisibility(View.GONE);
-            isLoading = false;
-
-            if (added == 0 || result.length() < 20) {
-                showNoMore();
-            } else {
-                currentPage = page + 1;
-                footerView.setVisibility(View.VISIBLE);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            footerView.setVisibility(View.GONE);
-            isLoading = false;
-            Toast.makeText(this, "解析失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        if (footerText != null) {
+            footerText.setText(getString(R.string.login_working_hard_6));
+            footerText.setVisibility(View.VISIBLE);
         }
-    }
 
-    private void handleLoadMoreError(String errMsg, final String keyword, final int page, final int retryLeft) {
-        footerView.setVisibility(View.GONE);
-
-        boolean isNetworkError = errMsg != null && (errMsg.contains("Transport endpoint") || errMsg.contains("No route") || errMsg.contains("timeout"));
-
-        if (retryLeft > 0 && isNetworkError) {
-            retryHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    doLoadMoreRequest(keyword, page, retryLeft - 1);
-                }
-            }, 1500);
-        } else {
-            isLoading = false;
-            Toast.makeText(this, "加载更多失败: " + (errMsg != null ? errMsg : "请检查网络"), Toast.LENGTH_SHORT).show();
-        }
+        doSearchRequest(currentKeyword, currentPage, 2);
     }
 
     private void showNoMore() {
         isEnd = true;
-        footerView.setVisibility(View.GONE);
-        Toast.makeText(this, getString(R.string.emoticon__no_more_data), Toast.LENGTH_SHORT).show();
+        showNoMoreFooter();
+    }
+
+    /** 列表到底：隐藏转圈、底部固定显示"没有更多"（与关注/评论/个人主页等列表一致） */
+    private void showNoMoreFooter() {
+        if (footerView != null) {
+            footerView.setVisibility(View.VISIBLE);
+        }
+        if (footerProgressBar != null) {
+            footerProgressBar.setVisibility(View.GONE);
+        }
+        if (footerText != null) {
+            footerText.setText(getString(R.string.emoticon__no_more_data));
+            footerText.setVisibility(View.VISIBLE);
+        }
     }
 
 
@@ -1306,5 +1313,23 @@ public class SearchActivity extends BaseActivity {
         public String userName;
         public String userSign;
         public String userAvatar;
+        // 番剧结果（isBangumi=true）
+        public boolean isBangumi;
+        public long bangumiSeasonId;
+        public long bangumiMediaId;
+        public String bangumiTitle;
+        public String bangumiCover;
+        public String bangumiArea;
+        public String bangumiIndexShow;
+        // 生放送结果（isLive=true）
+        public boolean isLive;
+        public LiveRoom liveRoom;
+        // 专栏结果（isArticle=true）
+        public boolean isArticle;
+        public long articleId;
+        public String articleTitle;
+        public String articleCover;
+        public String articleCategory;
+        public int articleView;
     }
 }

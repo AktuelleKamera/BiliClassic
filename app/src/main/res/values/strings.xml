@@ -790,4 +790,17 @@
     <string name="webpage">网页</string>
     <string name="weekday">星期</string>
     <string name="weekday_wednesday">周三</string>
+
+    <!-- 统一登录页 -->
+    <string name="login_tab_qr">扫码登录</string>
+    <string name="login_tab_sms">验证码登录</string>
+    <string name="login_tab_web">网页登录</string>
+    <string name="login_tab_cookie">手动登录</string>
+    <string name="login_sms_tip">手机号 + 短信验证码登录（仅支持中国大陆 +86）</string>
+    <string name="login_sms_cc">+86</string>
+    <string name="login_sms_tel_hint">请输入手机号</string>
+    <string name="login_sms_code_hint">请输入短信验证码</string>
+    <string name="login_sms_send">获取验证码</string>
+    <string name="login_sms_login">登录</string>
+    <string name="login_cookie_help">支持格式：\n• 浏览器复制的 Cookie 字符串\n• JSON 格式 { "cookies": "..." }\n• 任意包含 SESSDATA 的文本</string>
 </resources>

@@ -196,7 +196,11 @@ public class RecommendGridAdapter extends BaseAdapter {
         boolean night = tv.biliclassic.metro.MetroTheme.isNight();
         if (h.nightBgApplied != night) {
             h.nightBgApplied = night;
-            h.coverContainer.setBackgroundColor(night ? 0xFF484848 : 0xFFFFFFFF);
+            if (night) {
+                h.coverContainer.setBackgroundColor(0xFF484848);
+            } else {
+                h.coverContainer.setBackgroundResource(R.drawable.bili_thumb_boarder);
+            }
         }
         h.title.setTextColor(night ? 0xFFF2F2F2 : 0xFF333333);
 
