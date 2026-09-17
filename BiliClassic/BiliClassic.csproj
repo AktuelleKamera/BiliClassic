@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>10.0.20506</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{2E1956C1-9735-4C2A-B675-DF87F1B86F29}</ProjectGuid>
+    <ProjectTypeGuids>{C089C8C0-30E0-4E22-80C0-CE093F111A43};{fae04ec0-301f-11d3-bf4b-00c04f79efbc}</ProjectTypeGuids>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>BiliClassic</RootNamespace>
+    <AssemblyName>BiliClassic</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <SilverlightVersion>$(TargetFrameworkVersion)</SilverlightVersion>
+    <TargetFrameworkProfile>WindowsPhone</TargetFrameworkProfile>
+    <TargetFrameworkIdentifier>Silverlight</TargetFrameworkIdentifier>
+    <SilverlightApplication>true</SilverlightApplication>
+    <SupportedCultures>
+    </SupportedCultures>
+    <XapOutputs>true</XapOutputs>
+    <GenerateSilverlightManifest>true</GenerateSilverlightManifest>
+    <XapFilename>BiliClassic.xap</XapFilename>
+    <SilverlightManifestTemplate>Properties\AppManifest.xml</SilverlightManifestTemplate>
+    <SilverlightAppEntry>BiliClassic.App</SilverlightAppEntry>
+    <ValidateXaml>true</ValidateXaml>
+    <ThrowErrorsInValidation>true</ThrowErrorsInValidation>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>Bin\Debug</OutputPath>
+    <DefineConstants>DEBUG;TRACE;SILVERLIGHT;WINDOWS_PHONE</DefineConstants>
+    <NoStdLib>true</NoStdLib>
+    <NoConfig>true</NoConfig>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>Bin\Release</OutputPath>
+    <DefineConstants>TRACE;SILVERLIGHT;WINDOWS_PHONE</DefineConstants>
+    <NoStdLib>true</NoStdLib>
+    <NoConfig>true</NoConfig>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.Phone" />
+    <Reference Include="Microsoft.Phone.Interop" />
+    <!-- Pivot / PivotItem 在 Microsoft.Phone.Controls.dll 里（不在 Microsoft.Phone.dll）。
+         这个程序集不在 Reference Assemblies 目录，必须给 HintPath 指到 SDK。 -->
+    <Reference Include="Microsoft.Phone.Controls">
+      <HintPath>C:\Program Files (x86)\Microsoft SDKs\Windows Phone\v7.0\Libraries\Silverlight\Microsoft.Phone.Controls.dll</HintPath>
+    </Reference>
+    <!-- Silverlight for Windows Phone Toolkit：提供页面转场用的 TransitionFrame。
+         来自 NuGet 包 WPtoolkit 的 lib\sl4-windowsphone71。 -->
+    <Reference Include="Microsoft.Phone.Controls.Toolkit">
+      <HintPath>Libs\Microsoft.Phone.Controls.Toolkit.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Windows" />
+    <Reference Include="system" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Net" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="MainPage.xaml.cs">
+      <DependentUpon>MainPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="SearchPage.xaml.cs">
+      <DependentUpon>SearchPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="LoginPage.xaml.cs">
+      <DependentUpon>LoginPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="VideoDetailPage.xaml.cs">
+      <DependentUpon>VideoDetailPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="VideoPlayerPage.xaml.cs">
+      <DependentUpon>VideoPlayerPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="SettingsPage.xaml.cs">
+      <DependentUpon>SettingsPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="MineListPage.xaml.cs">
+      <DependentUpon>MineListPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="AboutPage.xaml.cs">
+      <DependentUpon>AboutPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Api\AppSettings.cs" />
+    <Compile Include="Api\AppSign.cs" />
+    <Compile Include="Api\AvatarLoader.cs" />
+    <Compile Include="Api\UpdateService.cs" />
+    <Compile Include="Api\UserItem.cs" />
+    <Compile Include="BottomAutoLoader.cs" />
+    <Compile Include="UpdateChecker.cs" />
+    <Compile Include="Api\MineService.cs" />
+    <Compile Include="Danmaku\DanmakuContext.cs" />
+    <Compile Include="Danmaku\DanmakuItem.cs" />
+    <Compile Include="Danmaku\DanmakuLoader.cs" />
+    <Compile Include="Danmaku\DanmakuMode.cs" />
+    <Compile Include="Danmaku\DanmakuParser.cs" />
+    <Compile Include="Danmaku\DanmakuView.cs" />
+    <Compile Include="Danmaku\Inflate.cs" />
+    <Compile Include="Api\BiliSession.cs" />
+    <Compile Include="Api\BiliId.cs" />
+    <Compile Include="Api\CookieGenerator.cs" />
+    <Compile Include="Api\CookieHelper.cs" />
+    <Compile Include="Api\CommentService.cs" />
+    <Compile Include="Api\CoverLoader.cs" />
+    <Compile Include="Api\HistoryService.cs" />
+    <Compile Include="Api\Http.cs" />
+    <Compile Include="Api\JsonText.cs" />
+    <Compile Include="Api\LocalStore.cs" />
+    <Compile Include="Api\LoginService.cs" />
+    <Compile Include="Api\Md5Util.cs" />
+    <Compile Include="Api\MediaCache.cs" />
+    <Compile Include="Api\PlayUrlService.cs" />
+    <Compile Include="Api\QrEncoder.cs" />
+    <Compile Include="Api\RecommendService.cs" />
+    <Compile Include="Api\VideoDetailService.cs" />
+    <Compile Include="Api\VideoItem.cs" />
+    <Compile Include="Api\SearchService.cs" />
+    <Compile Include="Api\SmsLoginService.cs" />
+    <Compile Include="Api\WbiSigner.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </ApplicationDefinition>
+    <Page Include="MainPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="SearchPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="LoginPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="VideoDetailPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="VideoPlayerPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="SettingsPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="MineListPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="AboutPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Properties\AppManifest.xml" />
+    <None Include="Properties\WMAppManifest.xml" />
+    <!-- AppResLib 的 rc/build.bat 已不在，产物直接入库，见 AGENTS.md 第五节 -->
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="ApplicationIcon.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Background.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="SplashScreenImage.jpg" />
+    <!-- 底部应用栏的图标（白色前景 + 透明背景 PNG） -->
+    <Content Include="Res\appbar.magnify.png" />
+    <Content Include="Res\appbar.chevron.left.png" />
+    <Content Include="Res\appbar.chevron.right.png" />
+    <!-- 默认占位图：封面/头像都是异步下载的，底下垫一张，
+         图到了再盖住它 —— 既不闪白，也不用空等 -->
+    <Content Include="Res\bili_default_image_tv_with_bg.png" />
+    <Content Include="Res\bili_default_avatar.png" />
+    <!-- 小电视加载动画的 5 帧（从 WM 版 BiliClassic_WM\res\ 拷进 Res\）。
+         和 AppResLib 一样带 Condition：还没拷过来时工程照样能编译，
+         只是加载层上只有灰底没有小电视。 -->
+    <Content Include="Res\bili_anim_tv_chan_1.png" Condition="Exists('Res\bili_anim_tv_chan_1.png')" />
+    <Content Include="Res\bili_anim_tv_chan_3.png" Condition="Exists('Res\bili_anim_tv_chan_3.png')" />
+    <Content Include="Res\bili_anim_tv_chan_5.png" Condition="Exists('Res\bili_anim_tv_chan_5.png')" />
+    <Content Include="Res\bili_anim_tv_chan_7.png" Condition="Exists('Res\bili_anim_tv_chan_7.png')" />
+    <Content Include="Res\bili_anim_tv_chan_9.png" Condition="Exists('Res\bili_anim_tv_chan_9.png')" />
+    <!-- 应用名称多语言资源，由 AppResLib\build.bat (rc.exe + link.exe) 生成。
+         Condition 保证在文件尚未生成时工程依然能正常编译。
+         生成后 WMAppManifest.xml 需改为 Title="@AppResLib.dll,-100"。 -->
+    <Content Include="AppResLib.dll" Condition="Exists('AppResLib.dll')" />
+    <Content Include="AppResLib.dll.0804.mui" Condition="Exists('AppResLib.dll.0804.mui')" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\Silverlight for Phone\$(TargetFrameworkVersion)\Microsoft.Silverlight.$(TargetFrameworkProfile).Overrides.targets" />
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\Silverlight for Phone\$(TargetFrameworkVersion)\Microsoft.Silverlight.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+  <ProjectExtensions />
+</Project>

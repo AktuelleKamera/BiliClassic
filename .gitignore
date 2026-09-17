@@ -1,0 +1,57 @@
+# Visual Studio 2010
+*.suo
+*.user
+*.sdf
+*.opensdf
+*.aps
+*.ncb
+*.plg
+*.exp
+*.ilk
+*.pdb
+*.cache
+*.log
+
+# 生成输出。注意 VS2010 的 Silverlight 项目用的是大写 Bin
+Bin/
+bin/
+obj/
+*.xap
+*.dll.manifest
+
+# ReSharper / VS 2015+
+_ReSharper*/
+.vs/
+
+# AppResLib 的两个产物直接入库：生成用的 AppResLib\build.bat 和 .rc 已不在
+# （WMAppManifest 里 Title="@AppResLib.dll,-100" 依赖它们，缺了应用名就废了）
+# 所以 AppResLib.dll / AppResLib.dll.0804.mui 不在忽略之列
+# 编译中间产物仍然忽略
+BiliClassic/AppResLib/*.res
+
+# 构建输出（上面已按目录名忽略，这里再按项目路径兜一层）
+BiliClassic/Bin/
+BiliClassic/obj/
+[Bb]uild/
+[Ll]ogs/
+[Tt]est[Rr]esult*/
+
+# NuGet
+packages/
+*.nupkg
+
+# 其它编辑器
+.idea/
+*.DotSettings.user
+
+# 杂项
+.DS_Store
+Thumbs.db
+desktop.ini
+*.bak
+*.orig
+*.tmp
+*.tlog
+UpgradeLog*.XML
+
+# 注意：Libs\Microsoft.Phone.Controls.Toolkit.dll 是构建必需的，不要忽略

@@ -1,0 +1,115 @@
+<phone:PhoneApplicationPage
+    x:Class="BiliClassic.SearchPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:phone="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone"
+    xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="696"
+    FontFamily="{StaticResource PhoneFontFamilyNormal}"
+    FontSize="{StaticResource PhoneFontSizeNormal}"
+    Foreground="{StaticResource PhoneForegroundBrush}"
+    SupportedOrientations="Portrait" Orientation="Portrait"
+    xmlns:toolkit="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls.Toolkit"
+    shell:SystemTray.IsVisible="True">
+
+    <!-- 页面转场动画 -->
+    <toolkit:TransitionService.NavigationInTransition>
+        <toolkit:NavigationInTransition>
+            <toolkit:NavigationInTransition.Backward>
+                <toolkit:TurnstileTransition Mode="BackwardIn"/>
+            </toolkit:NavigationInTransition.Backward>
+            <toolkit:NavigationInTransition.Forward>
+                <toolkit:TurnstileTransition Mode="ForwardIn"/>
+            </toolkit:NavigationInTransition.Forward>
+        </toolkit:NavigationInTransition>
+    </toolkit:TransitionService.NavigationInTransition>
+
+    <toolkit:TransitionService.NavigationOutTransition>
+        <toolkit:NavigationOutTransition>
+            <toolkit:NavigationOutTransition.Backward>
+                <toolkit:TurnstileTransition Mode="BackwardOut"/>
+            </toolkit:NavigationOutTransition.Backward>
+            <toolkit:NavigationOutTransition.Forward>
+                <toolkit:TurnstileTransition Mode="ForwardOut"/>
+            </toolkit:NavigationOutTransition.Forward>
+        </toolkit:NavigationOutTransition>
+    </toolkit:TransitionService.NavigationOutTransition>
+
+    <!-- 布局 -->
+    <Grid x:Name="LayoutRoot" Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="12,17,12,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="KeywordBox" Height="72"
+                         KeyDown="KeywordBox_KeyDown" Margin="-12,0,0,0" />
+                <Button x:Name="SearchButton" Grid.Column="1" Content="搜索" Click="SearchButton_Click" Width="109" />
+            </Grid>
+        </StackPanel>
+
+        <!--搜索结果列表-->
+        <ListBox x:Name="ResultList" Grid.Row="1" Margin="12,0,12,0"
+                 SelectionChanged="ResultList_SelectionChanged">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <!-- 封面和默认占位图233 -->
+                        <Border Grid.Column="0" Width="112" Height="70"
+                                Margin="0,0,12,0" Background="#22FFFFFF"
+                                BorderBrush="{StaticResource PhoneSubtleBrush}"
+                                BorderThickness="2">
+                            <Grid>
+                                <Image Stretch="UniformToFill"
+                                       Source="/Res/bili_default_image_tv_with_bg.png"/>
+                                <Image Stretch="UniformToFill" Source="{Binding Cover}"/>
+                            </Grid>
+                        </Border>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="{Binding Title}" TextWrapping="Wrap"
+                                       MaxHeight="72"
+                                       Style="{StaticResource PhoneTextNormalStyle}"/>
+                            <TextBlock Text="{Binding InfoLine}"
+                                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+                        </StackPanel>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!--状态提示与加载更多-->
+        <StackPanel Grid.Row="2" Margin="12,4,12,8">
+            <TextBlock x:Name="StatusText" TextWrapping="Wrap"
+                       Visibility="Collapsed"
+                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+            <Button x:Name="MoreButton" Content="加载更多"
+                    Visibility="Collapsed" Click="MoreButton_Click"/>
+        </StackPanel>
+    </Grid>
+
+    <phone:PhoneApplicationPage.ApplicationBar>
+        <shell:ApplicationBar IsVisible="True" IsMenuEnabled="False">
+            <!-- 翻页：左 = 上一页，右 = 下一页（都是替换当前列表） -->
+            <shell:ApplicationBarIconButton IconUri="/Res/appbar.chevron.left.png"
+                                            Text="上一页"
+                                            Click="PrevPage_Click"/>
+            <shell:ApplicationBarIconButton IconUri="/Res/appbar.chevron.right.png"
+                                            Text="下一页"
+                                            Click="NextPage_Click"/>
+        </shell:ApplicationBar>
+    </phone:PhoneApplicationPage.ApplicationBar>
+
+</phone:PhoneApplicationPage>
