@@ -17,7 +17,7 @@ import tv.biliclassic.util.SdkHelper;
 
 public class AboutFragment extends Fragment {
 
-    // ===== 遥控器按键导航：官网/帮助/GitHub/Oldpods/哔哩哔哩 纵向链接 =====
+    // ===== 遥控器按键导航：官网/帮助/Oldpods/GitHub/哔哩哔哩 纵向链接 =====
     private final java.util.ArrayList<View> mNavItems = new java.util.ArrayList<View>();
     private int mNavIndex = -1;
     private boolean mKeyNavActive = false;
@@ -78,6 +78,24 @@ public class AboutFragment extends Fragment {
             mNavItems.add(helpWebsite);
         }
 
+        TextView oldpodsWebsite = (TextView) view.findViewById(R.id.oldpods_website);
+        if (oldpodsWebsite != null) {
+            oldpodsWebsite.setText(Html.fromHtml("<a href=\"http://oldpods.cn\">老豆荚</a>"));
+            oldpodsWebsite.setFocusable(true);
+            oldpodsWebsite.setClickable(true);
+            oldpodsWebsite.setBackgroundDrawable(createLinkHighlight());
+            oldpodsWebsite.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent intent = new Intent(getActivity(), WebViewActivity.class);
+                    intent.putExtra("url", "http://oldpods.cn");
+                    intent.putExtra("title", "老豆荚");
+                    startActivity(intent);
+                }
+            });
+            mNavItems.add(oldpodsWebsite);
+        }
+
         TextView releaseWebsite = (TextView) view.findViewById(R.id.release_website);
         if (releaseWebsite != null) {
             releaseWebsite.setText(Html.fromHtml("<a href=\"https://github.com/AktuelleKamera/BiliClassic\">GitHub</a>"));
@@ -94,24 +112,6 @@ public class AboutFragment extends Fragment {
                 }
             });
             mNavItems.add(releaseWebsite);
-        }
-
-        TextView oldpodsWebsite = (TextView) view.findViewById(R.id.oldpods_website);
-        if (oldpodsWebsite != null) {
-            oldpodsWebsite.setText(Html.fromHtml("<a href=\"http://2012rs.oldpods.cn\">2012资源站</a>"));
-            oldpodsWebsite.setFocusable(true);
-            oldpodsWebsite.setClickable(true);
-            oldpodsWebsite.setBackgroundDrawable(createLinkHighlight());
-            oldpodsWebsite.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Intent intent = new Intent(getActivity(), WebViewActivity.class);
-                    intent.putExtra("url", "http://2012rs.oldpods.cn");
-                    intent.putExtra("title", "2012资源站");
-                    startActivity(intent);
-                }
-            });
-            mNavItems.add(oldpodsWebsite);
         }
 
         TextView bilibiliWebsite = (TextView) view.findViewById(R.id.bilibili_website);

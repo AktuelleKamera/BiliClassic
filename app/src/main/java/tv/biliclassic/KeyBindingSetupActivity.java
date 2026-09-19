@@ -143,6 +143,10 @@ public class KeyBindingSetupActivity extends BaseActivity {
         }
     }
 
+    private boolean isRebindMode() {
+        return "rebind".equals(getIntent().getStringExtra("mode"));
+    }
+
     private void startRecording() {
         mRecording = true;
         mRecordIndex = 0;
@@ -176,6 +180,18 @@ public class KeyBindingSetupActivity extends BaseActivity {
         // 再按下的键一律忽略（消费但不录入），防止连续快速按键录错。
         if (mRecording && event.getAction() == KeyEvent.ACTION_DOWN
                 && event.getRepeatCount() == 0 && mRecordIndex < RECORD_ORDER.length) {
+            // 返回键是系统保留键，不作为可绑定键录入；按下即退出/跳过向导
+            if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+                if (isRebindMode()) {
+                    finish();
+                } else {
+                    SharedPreferencesUtil.putBoolean("setup_shown", true);
+                    saveVersion();
+                    toast(getString(R.string.keybinding_toast_skip));
+                    enterMain();
+                }
+                return true;
+            }
             long now = System.currentTimeMillis();
             if (now - mLastRecordTime < 1000L) {
                 // 距上次录入不足 1 秒：忽略本次按键，等待下一次

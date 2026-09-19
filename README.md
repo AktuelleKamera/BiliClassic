@@ -1,8 +1,8 @@
-# BiliClassic - 安卓2也要看B站！
+﻿# BiliClassic - 安卓2也要看B站！
 
 <img width="1366" height="767" alt="Android 2" src="https://github.com/user-attachments/assets/52277284-e776-496c-886d-12351b15cc00" />
 
-一个面向各种旧设备的 Bilibili 客户端，支持 Android 1.0+、Windows Mobile 6.0+、webOS 3.0。致力于还原 2013 年前后的经典界面与交互体验，让那些被遗忘在抽屉里的老设备重新获得观看 Bilibili 视频的能力。
+一个面向各种旧设备的第三方哔哩哔哩客户端项目，支持Android 1.0+、Windows Mobile 5.0+、Windows Phone 7.0+和webOS 3.0+。致力于还原2013年前后的经典界面与交互体验，让那些在抽屉里吃灰的老设备能重新看上B站的说~
 
 ---
 
@@ -127,6 +127,11 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 - 处理器: ARM-v7A
 - 物理内存: 256 MB
 
+#### Windows Phone 版推荐配置
+- 系统: Windows Mobile 7.0 及以上
+- 处理器: 能用WP7还担心不能硬解？
+- 物理内存: 256 MB（我想这个内存的设备很少解锁了的喵）
+
 #### 最低配置
 - 系统: Android 1.0 及以上
 - 处理器: ARMv5TE
@@ -181,6 +186,7 @@ BT-5 弹幕引擎为本项目原创，专为 ARMv5TE / ARMv6 等无 VFP 设备�
 | `0.4.x` | 0.4.x 旧版分支（无Ostwind） |
 | `webos` | webOS 3.0 版本 |
 | `wm` | Windows Mobile 版本 |
+| `wp` | Windows Phone 版本 |
 
 0.3.x/0.4.x 分支将仅进行维护性更新，未来的新功能都将在其他分支开发。
 

@@ -155,6 +155,12 @@ public final class KeyBindingUtil {
      * 优先匹配用户绑定值，其次匹配系统默认值。
      */
     public static int classify(int keycode) {
+        // 系统保留键：BACK 永远是返回，不匹配任何逻辑动作。
+        // 否则一旦用户在按键向导里误把返回键录成软键/确认键，返回键就会被劫持
+        // （例如在视频详情页弹出"操作"菜单）。
+        if (keycode == KeyEvent.KEYCODE_BACK) {
+            return -1;
+        }
         // 先匹配用户绑定值
         for (int i = 0; i < ACTION_COUNT; i++) {
             if (isBound(i) && SharedPreferencesUtil.getInt(PREFS_KEYS[i], -1) == keycode) {
