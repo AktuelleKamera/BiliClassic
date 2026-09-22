@@ -6,29 +6,19 @@ namespace BiliClassic.Api
 {
     public sealed class RecommendResult
     {
-        /// <summary>本页解析出的条目</summary>
         public List<VideoItem> Items = new List<VideoItem>();
 
-        /// <summary>本页是否满20条，即还有下一页</summary>
         public bool HasMore;
 
-        /// <summary>非空表示失败，内容给用户看</summary>
         public string Error = "";
     }
 
-    /// <summary>
-    /// 首页推荐，需WBI签名
-    /// 条目在data.item，不是搜索的data.result
-    /// 切到business_card为止，那里也有title/pic
-    /// </summary>
     public static class RecommendService
     {
         public const string Endpoint = "https://api.bilibili.com/x/web-interface/wbi/index/top/feed/rcmd";
 
-        /// <summary>每页20条</summary>
         public const int PageSize = 20;
 
-        /// <summary>单条解析窗口上限</summary>
         private const int MaxWindow = 1500;
 
         private static readonly Regex BvidRegex = new Regex(@"""bvid"":\s*""([^""]+)""");
@@ -40,7 +30,6 @@ namespace BiliClassic.Api
         private static readonly Regex CodeRegex = new Regex(@"""code"":\s*(-?\d+)");
         private static readonly Regex MessageRegex = new Regex(@"""message"":\s*""([^""]*)""");
 
-        /// <summary>取第page页，回调不在UI线程</summary>
         public static void Fetch(int page, Action<RecommendResult> onDone)
         {
             RecommendResult result = new RecommendResult();
@@ -62,13 +51,10 @@ namespace BiliClassic.Api
                 parameters["web_location"] = "1430650";
                 parameters["feed_version"] = "V8";
                 parameters["homepage_ver"] = "1";
-                // 服务端不严格校验此值
-                // 填WP7竖屏真实分辨率
                 parameters["screen"] = "480-800";
                 parameters["fresh_idx"] = page.ToString();
                 parameters["fresh_idx_1h"] = page.ToString();
                 parameters["brush"] = page.ToString();
-                // fetch_row=已取过的条数
                 parameters["fetch_row"] = ((page - 1) * PageSize).ToString();
 
                 string url = WbiSigner.Shared.SignUrl(Endpoint, parameters);
@@ -99,7 +85,6 @@ namespace BiliClassic.Api
 
         private static void Parse(string body, RecommendResult result)
         {
-            // code必须在切分前检查，切出item区域后code就没了
             Match code = CodeRegex.Match(body);
             if (code.Success && code.Groups[1].Value != "0")
             {
@@ -109,7 +94,6 @@ namespace BiliClassic.Api
                 return;
             }
 
-            // 只保留data.item这一段
             int start = body.IndexOf("\"item\":[", StringComparison.Ordinal);
             if (start < 0)
             {
@@ -134,7 +118,6 @@ namespace BiliClassic.Api
                 string after = Window(region, m.Index);
 
                 string pic = FirstGroup(PicRegex, after);
-                // 没封面的基本是广告/直播/横幅，用作过滤条件
                 if (pic.Length == 0)
                 {
                     continue;
@@ -155,8 +138,6 @@ namespace BiliClassic.Api
                 item.Bvid = bvid;
                 item.Pic = pic;
                 item.Title = title;
-                // 取窗口里最后一个"name"，那才是owner.name
-                // 前面的name可能来自别的嵌套对象
                 item.Author = LastGroup(NameRegex, after);
                 item.View = FirstGroup(ViewRegex, after);
                 item.Danmaku = FirstGroup(DanmakuRegex, after);
@@ -166,11 +147,6 @@ namespace BiliClassic.Api
             result.HasMore = result.Items.Count >= PageSize;
         }
 
-        /// <summary>
-        /// 取某个bvid之后的解析窗口
-        /// 上界是下一个bvid，避免字段串到下一项
-        /// 缺bvid时用MaxWindow封顶
-        /// </summary>
         private static string Window(string region, int bvidIndex)
         {
             int next = region.IndexOf("\"bvid\"", bvidIndex + 6, StringComparison.Ordinal);

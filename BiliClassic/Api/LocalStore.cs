@@ -5,11 +5,6 @@ using System.IO.IsolatedStorage;
 
 namespace BiliClassic.Api
 {
-    /// <summary>
-    /// 本地键值存储：IsolatedStorage里的"k=v"文本
-    /// 文件名沿用SmsLoginService旧名
-    /// 已存的buvid3/bili_device_id不会丢
-    /// </summary>
     public static class LocalStore
     {
         private const string FileName = "biliclassic_local.txt";

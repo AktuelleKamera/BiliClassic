@@ -4,31 +4,18 @@ using System.Text;
 
 namespace BiliClassic.Api
 {
-    /// <summary>
-    /// 极简QR编码器，只做版本7+L纠错+字节模式
-    /// 登录二维码内容144字节，v7-L容量154字节
-    /// 掩码固定0，只影响观感，读码器按格式信息自行反算
-    /// 照ISO/IEC 18004实现
-    /// </summary>
     public static class QrEncoder
     {
         private const int Version = 7;
         private const int EcCodewordsPerBlock = 20;
         private const int BlockCount = 2;
         private const int DataCodewordsPerBlock = 78;
-        // 156数据+40纠错
         private const int TotalCodewords = 196;
 
-        /// <summary>矩阵边长，17+4*版本=45</summary>
         public const int Size = 17 + 4 * Version;
 
-        /// <summary>v7-L字节模式容量</summary>
         public const int ByteCapacity = 154;
 
-        /// <summary>
-        /// 校正图形中心坐标，ISO/IEC 18004附录E
-        /// 三个坐标两两组合都要画，只跳过压住定位图形的三角
-        /// </summary>
         private static readonly int[] AlignmentCenters = new int[] { 6, 22, 38 };
 
         private static readonly byte[] GfExp = new byte[512];
@@ -36,7 +23,6 @@ namespace BiliClassic.Api
 
         static QrEncoder()
         {
-            // GF(256)，本原多项式0x11D
             int x = 1;
             for (int i = 0; i < 255; i++)
             {
@@ -54,10 +40,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>
-        /// 编码成模块矩阵，matrix[y, x]，true为黑块
-        /// 超过154字节抛ArgumentException
-        /// </summary>
         public static bool[,] Encode(string content)
         {
             byte[] data = Encoding.UTF8.GetBytes(content ?? "");
@@ -79,23 +61,19 @@ namespace BiliClassic.Api
             return matrix;
         }
 
-        // ---------------- 数据码字与纠错 ----------------
 
         private static byte[] BuildCodewords(byte[] data)
         {
             int totalDataBits = DataCodewordsPerBlock * BlockCount * 8;
             List<bool> bits = new List<bool>();
 
-            // 字节模式
             AppendBits(bits, 0x4, 4);
-            // v7~v9的字节模式字符计数是8位
             AppendBits(bits, data.Length, 8);
             for (int i = 0; i < data.Length; i++)
             {
                 AppendBits(bits, data[i], 8);
             }
 
-            // 终止符
             AppendBits(bits, 0, Math.Min(4, totalDataBits - bits.Count));
             while (bits.Count % 8 != 0)
             {
@@ -113,7 +91,6 @@ namespace BiliClassic.Api
                 dataCodewords.Add((byte)value);
             }
 
-            // 交替填充0xEC/0x11直到156个数据码字
             byte[] pad = new byte[] { 0xEC, 0x11 };
             int padIndex = 0;
             while (dataCodewords.Count < DataCodewordsPerBlock * BlockCount)
@@ -186,10 +163,6 @@ namespace BiliClassic.Api
             return remainder;
         }
 
-        /// <summary>
-        /// 生成多项式(x-a^0)(x-a^1)...(x-a^(ecCount-1))
-        /// 系数最高次在前，首项恒为1，故调用处用generator[j+1]
-        /// </summary>
         private static byte[] BuildGenerator(int ecCount)
         {
             byte[] generator = new byte[] { 1 };
@@ -215,7 +188,6 @@ namespace BiliClassic.Api
             return GfExp[GfLog[a] + GfLog[b]];
         }
 
-        // ---------------- 功能图形 ----------------
 
         private static void DrawFunctionPatterns(bool[,] matrix, bool[,] reserved)
         {
@@ -223,15 +195,12 @@ namespace BiliClassic.Api
             DrawFinder(matrix, reserved, Size - 7, 0);
             DrawFinder(matrix, reserved, 0, Size - 7);
 
-            // 定时图形，第6行/第6列，从第8个模块起
             for (int i = 8; i < Size - 8; i++)
             {
                 SetFunction(matrix, reserved, i, 6, i % 2 == 0);
                 SetFunction(matrix, reserved, 6, i, i % 2 == 0);
             }
 
-            // 校正图形，中心{6,22,38}，只跳过压住定位图形的三角
-            // 必须在定时图形之后画，会覆盖经过的定时图形
             for (int i = 0; i < AlignmentCenters.Length; i++)
             {
                 for (int j = 0; j < AlignmentCenters.Length; j++)
@@ -252,10 +221,8 @@ namespace BiliClassic.Api
                 }
             }
 
-            // 固定深色模块
             SetFunction(matrix, reserved, 8, Size - 8, true);
 
-            // 预留格式信息区
             for (int i = 0; i <= 8; i++)
             {
                 Reserve(reserved, 8, i);
@@ -267,7 +234,6 @@ namespace BiliClassic.Api
                 Reserve(reserved, 8, Size - 1 - i);
             }
 
-            // 预留版本信息区，两块3x6
             for (int i = 0; i < 18; i++)
             {
                 int a = Size - 11 + i % 3;
@@ -277,7 +243,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>定位图形7x7，外带一圈分隔符</summary>
         private static void DrawFinder(bool[,] matrix, bool[,] reserved, int left, int top)
         {
             for (int dy = -1; dy <= 7; dy++)
@@ -293,7 +258,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>校正图形5x5，外圈黑内圈白中心黑</summary>
         private static void DrawAlignment(bool[,] matrix, bool[,] reserved, int cx, int cy)
         {
             for (int dy = -2; dy <= 2; dy++)
@@ -324,14 +288,12 @@ namespace BiliClassic.Api
             }
         }
 
-        // ---------------- 数据摆放 ----------------
 
         private static void PlaceData(bool[,] matrix, bool[,] reserved, byte[] codewords)
         {
             int totalBits = codewords.Length * 8;
             int bitIndex = 0;
 
-            // 从右往左两列一组，蛇形上下走，跳过第6列
             for (int right = Size - 1; right >= 1; right -= 2)
             {
                 if (right == 6)
@@ -358,7 +320,6 @@ namespace BiliClassic.Api
                         }
                         bitIndex++;
 
-                        // 掩码0，(x+y)为偶数时取反
                         if (((x + y) & 1) == 0)
                         {
                             bit = !bit;
@@ -369,11 +330,9 @@ namespace BiliClassic.Api
             }
         }
 
-        // ---------------- 格式信息与版本信息 ----------------
 
         private static void DrawFormatInfo(bool[,] matrix)
         {
-            // 纠错等级L，掩码0
             int bits = FormatBits(1, 0);
 
             for (int i = 0; i <= 5; i++)
@@ -396,7 +355,7 @@ namespace BiliClassic.Api
             {
                 matrix[Size - 15 + i, 8] = GetBit(bits, i);
             }
-            matrix[Size - 8, 8] = true;   // 固定深色模块
+            matrix[Size - 8, 8] = true;
         }
 
         private static void DrawVersionInfo(bool[,] matrix)
@@ -412,7 +371,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>格式信息，5位数据+BCH(15,5)校验0x537，再异或0x5412</summary>
         private static int FormatBits(int ecLevelBits, int mask)
         {
             int data = (ecLevelBits << 3) | mask;
@@ -427,7 +385,6 @@ namespace BiliClassic.Api
             return value ^ 0x5412;
         }
 
-        /// <summary>版本信息，6位版本+BCH(18,6)校验0x1F25，无额外异或</summary>
         private static int VersionBits(int version)
         {
             int value = version << 12;

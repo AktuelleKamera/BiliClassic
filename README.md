@@ -21,20 +21,21 @@
 
 ## 当前版本
 
-**0.1.0 (Sea Ray)**
+**0.2.0 (Eloko)**
 
 ---
 
 ## 技术路线
 
 - 基于 Sliverlight 开发
-- 使用 Visual Studio 2010 构建
+- 使用 Visual Studio 2010/Visual Studio 2015 构建
 
 ---
 
 ## 本项目是如何出现的？
 
 开发者发现WP7还是没有完美的客户端，不想看鱼与熊掌的故事，于是就尝试顺手做了一个喵~
+
 当然WP8也能用的，所以……还记得哔哩Metro吗？
 
 ---
@@ -45,12 +46,14 @@
 |------|------|
 | `wp` | Windows Phone 版开发主线 |
 
+项目里面有一个BiliClassic.WP8文件夹，就是给WP8.1+专门适配的版本（
+
 ---
 
 ## 致谢
 
 - Github —— 让我可以传上来。
-- Visual Studio 2010 —— 去死吧，Gradle！不得不说这是真图形化（）
+- Visual Studio 2010/2015 —— 去死吧，Gradle！不得不说这是真图形化（）
 - 所有还在折腾 Windows Phone 的玩家们……
 ---
 

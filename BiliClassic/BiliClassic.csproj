@@ -47,13 +47,27 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <!--
+    WP7 SDK 可能装在非系统盘。默认系统盘找不到就回退 H:，
+    并让 Silverlight 目标文件的导入路径跟着走。
+    详见 Build\WP7Sdk.targets（在文件末尾 Import）。
+  -->
+  <PropertyGroup>
+    <WP7SdkProgramFiles Condition="'$(WP7SdkProgramFiles)' == '' and Exists('$(MSBuildProgramFiles32)\Microsoft SDKs\Windows Phone\v7.0')">$(MSBuildProgramFiles32)</WP7SdkProgramFiles>
+    <WP7SdkProgramFiles Condition="'$(WP7SdkProgramFiles)' == '' and Exists('H:\Program Files (x86)\Microsoft SDKs\Windows Phone\v7.0')">H:\Program Files (x86)</WP7SdkProgramFiles>
+    <WP7SdkProgramFiles Condition="'$(WP7SdkProgramFiles)' == ''">$(MSBuildProgramFiles32)</WP7SdkProgramFiles>
+    <WP7FrameworkDirectory>$(WP7SdkProgramFiles)\Reference Assemblies\Microsoft\Framework\Silverlight\v4.0\Profile\WindowsPhone</WP7FrameworkDirectory>
+    <WP7SdkLibraries>$(WP7SdkProgramFiles)\Microsoft SDKs\Windows Phone\v7.0\Libraries\Silverlight</WP7SdkLibraries>
+    <MSBuildExtensionsPath>$(WP7SdkProgramFiles)\MSBuild</MSBuildExtensionsPath>
+    <MSBuildExtensionsPath32>$(WP7SdkProgramFiles)\MSBuild</MSBuildExtensionsPath32>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Phone" />
     <Reference Include="Microsoft.Phone.Interop" />
     <!-- Pivot / PivotItem 在 Microsoft.Phone.Controls.dll 里（不在 Microsoft.Phone.dll）。
          这个程序集不在 Reference Assemblies 目录，必须给 HintPath 指到 SDK。 -->
     <Reference Include="Microsoft.Phone.Controls">
-      <HintPath>C:\Program Files (x86)\Microsoft SDKs\Windows Phone\v7.0\Libraries\Silverlight\Microsoft.Phone.Controls.dll</HintPath>
+      <HintPath>$(WP7SdkLibraries)\Microsoft.Phone.Controls.dll</HintPath>
     </Reference>
     <!-- Silverlight for Windows Phone Toolkit：提供页面转场用的 TransitionFrame。
          来自 NuGet 包 WPtoolkit 的 lib\sl4-windowsphone71。 -->
@@ -94,14 +108,52 @@
     <Compile Include="AboutPage.xaml.cs">
       <DependentUpon>AboutPage.xaml</DependentUpon>
     </Compile>
+    <Compile Include="UserProfilePage.xaml.cs">
+      <DependentUpon>UserProfilePage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="BangumiDetailPage.xaml.cs">
+      <DependentUpon>BangumiDetailPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="PrivateMsgPage.xaml.cs">
+      <DependentUpon>PrivateMsgPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="PrivateMsgChatPage.xaml.cs">
+      <DependentUpon>PrivateMsgChatPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="WatchLaterPage.xaml.cs">
+      <DependentUpon>WatchLaterPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OfflinePage.xaml.cs">
+      <DependentUpon>OfflinePage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="RankingPage.xaml.cs">
+      <DependentUpon>RankingPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="FollowDynamicPage.xaml.cs">
+      <DependentUpon>FollowDynamicPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="AudioPlayerPage.xaml.cs">
+      <DependentUpon>AudioPlayerPage.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Api\AppSettings.cs" />
     <Compile Include="Api\AppSign.cs" />
     <Compile Include="Api\AvatarLoader.cs" />
+    <Compile Include="Api\BangumiService.cs" />
     <Compile Include="Api\UpdateService.cs" />
+    <Compile Include="Api\AnnouncementService.cs" />
     <Compile Include="Api\UserItem.cs" />
     <Compile Include="BottomAutoLoader.cs" />
     <Compile Include="UpdateChecker.cs" />
+    <Compile Include="ThemeHelper.cs" />
     <Compile Include="Api\MineService.cs" />
+    <Compile Include="Api\PrivateMsgService.cs" />
+    <Compile Include="Api\EchoHoleService.cs" />
+    <Compile Include="Api\WatchLaterService.cs" />
+    <Compile Include="Api\OfflineStore.cs" />
+    <Compile Include="Api\OfflineService.cs" />
+    <Compile Include="Api\FavoriteService.cs" />
+    <Compile Include="Api\RankingService.cs" />
+    <Compile Include="Api\DynamicService.cs" />
     <Compile Include="Danmaku\DanmakuContext.cs" />
     <Compile Include="Danmaku\DanmakuItem.cs" />
     <Compile Include="Danmaku\DanmakuLoader.cs" />
@@ -115,6 +167,8 @@
     <Compile Include="Api\CookieHelper.cs" />
     <Compile Include="Api\CommentService.cs" />
     <Compile Include="Api\CoverLoader.cs" />
+    <Compile Include="Api\DashMp4.cs" />
+    <Compile Include="Api\DashSource.cs" />
     <Compile Include="Api\HistoryService.cs" />
     <Compile Include="Api\Http.cs" />
     <Compile Include="Api\JsonText.cs" />
@@ -125,6 +179,8 @@
     <Compile Include="Api\PlayUrlService.cs" />
     <Compile Include="Api\QrEncoder.cs" />
     <Compile Include="Api\RecommendService.cs" />
+    <Compile Include="Api\RelatedService.cs" />
+    <Compile Include="Api\UserSpaceService.cs" />
     <Compile Include="Api\VideoDetailService.cs" />
     <Compile Include="Api\VideoItem.cs" />
     <Compile Include="Api\SearchService.cs" />
@@ -169,6 +225,42 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="UserProfilePage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="BangumiDetailPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="PrivateMsgPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="PrivateMsgChatPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="WatchLaterPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="OfflinePage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="RankingPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="FollowDynamicPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="AudioPlayerPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <None Include="Properties\AppManifest.xml" />
@@ -184,13 +276,32 @@
     </Content>
     <Content Include="SplashScreenImage.jpg" />
     <!-- 底部应用栏的图标（白色前景 + 透明背景 PNG） -->
-    <Content Include="Res\appbar.magnify.png" />
     <Content Include="Res\appbar.chevron.left.png" />
     <Content Include="Res\appbar.chevron.right.png" />
+    <!-- 应用栏用的图标，来自 Res\Icon -->
+    <Content Include="Res\Icon\search.png" />
+    <Content Include="Res\Icon\refresh.png" />
+    <Content Include="Res\Icon\settings.png" />
+    <Content Include="Res\Icon\login.png" />
+    <Content Include="Res\Icon\logout.png" />
+    <!-- 播放控制与发评论 -->
+    <Content Include="Res\Icon\play.png" />
+    <Content Include="Res\Icon\pause.png" />
+    <Content Include="Res\Icon\danmuon.png" />
+    <Content Include="Res\Icon\danmuoff.png" />
+    <Content Include="Res\Icon\comment_icon.png" />
+    <Content Include="Res\Icon\share.png" />
+    <!-- 缓存 / 收藏：详情页底部按钮和「我的」磁贴都要用 -->
+    <Content Include="Res\Icon\download_icon.png" />
+    <Content Include="Res\Icon\addfavorite_icon.png" />
+    <!-- 白主题专属：顶部 toplogo 和 bg 水印 -->
+    <Content Include="Res\Icon\toplogo.png" />
+    <Content Include="Res\Icon\bg.png" />
     <!-- 默认占位图：封面/头像都是异步下载的，底下垫一张，
          图到了再盖住它 —— 既不闪白，也不用空等 -->
-    <Content Include="Res\bili_default_image_tv_with_bg.png" />
-    <Content Include="Res\bili_default_avatar.png" />
+    <Content Include="Res\Icon\localcover.png" />
+    <Content Include="Res\Icon\NoAvatar.png" />
+    <Content Include="Res\echo.wav" />
     <!-- 小电视加载动画的 5 帧（从 WM 版 BiliClassic_WM\res\ 拷进 Res\）。
          和 AppResLib 一样带 Condition：还没拷过来时工程照样能编译，
          只是加载层上只有灰底没有小电视。 -->
@@ -207,6 +318,8 @@
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\Silverlight for Phone\$(TargetFrameworkVersion)\Microsoft.Silverlight.$(TargetFrameworkProfile).Overrides.targets" />
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\Silverlight for Phone\$(TargetFrameworkVersion)\Microsoft.Silverlight.CSharp.targets" />
+  <!-- 必须在上面两个之后：覆盖 GetFrameworkPaths / 跳过清单校验 -->
+  <Import Project="Build\WP7Sdk.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

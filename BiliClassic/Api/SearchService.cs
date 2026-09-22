@@ -5,36 +5,21 @@ using System.Text.RegularExpressions;
 
 namespace BiliClassic.Api
 {
-    /// <summary>一页搜索的结果</summary>
     public sealed class SearchResult
     {
-        /// <summary>本页条目，已按bvid页内去重</summary>
         public List<VideoItem> Items = new List<VideoItem>();
 
-        /// <summary>
-        /// 服务端是否返回满一页20条
-        /// 跨页去重后仍有新增才算下一页，判断留给调用方
-        /// </summary>
         public bool FullPage;
 
-        /// <summary>非空表示失败，内容给用户看</summary>
         public string Error = "";
     }
 
-    /// <summary>
-    /// 视频搜索，接口需WBI签名
-    /// 解析以"bvid"为锚点，title/pic/play/video_review往后取600字符
-    /// author往前取200字符内最后一个匹配
-    /// 风控被拦时code可能是0且只返回v_voucher，要先判它
-    /// </summary>
     public static class SearchService
     {
         public const string Endpoint = "https://api.bilibili.com/x/web-interface/wbi/search/type";
 
-        /// <summary>风控兜底端点</summary>
         public const string LegacyEndpoint = "https://api.bilibili.com/x/web-interface/search/type";
 
-        /// <summary>每页20条</summary>
         public const int PageSize = 20;
 
         private static readonly Regex BvidRegex = new Regex(@"""bvid"":\s*""([^""]+)""");
@@ -46,11 +31,18 @@ namespace BiliClassic.Api
         private static readonly Regex CodeRegex = new Regex(@"""code"":\s*(-?\d+)");
         private static readonly Regex MessageRegex = new Regex(@"""message"":\s*""([^""]*)""");
 
-        /// <summary>gaia风控质询</summary>
         private static readonly Regex VoucherRegex = new Regex(@"""v_voucher""");
 
-        /// <summary>搜索第page页，回调不在UI线程</summary>
+        public const long SiteLaunchSeconds = 1245945600L;
+
         public static void Search(string keyword, int page, Action<SearchResult> onDone)
+        {
+            Search(keyword, page, null, 0, 0, onDone);
+        }
+
+        public static void Search(string keyword, int page, string order,
+                                  long pubtimeBeginS, long pubtimeEndS,
+                                  Action<SearchResult> onDone)
         {
             SearchResult result = new SearchResult();
 
@@ -61,20 +53,16 @@ namespace BiliClassic.Api
                 return;
             }
 
-            // WBI密钥全局共享，只补缺失的那次
-            // 拿不到密钥也不失败，旧端点不需签名
             WbiSigner.EnsureReady(delegate(string keyError)
             {
-                DoSearch(keyword, page, result, onDone, string.IsNullOrEmpty(keyError));
+                DoSearch(keyword, page, order, pubtimeBeginS, pubtimeEndS, result, onDone,
+                    string.IsNullOrEmpty(keyError));
             });
         }
 
-        /// <summary>
-        /// 发一次搜索请求，useWbi为false走旧端点不签名
-        /// 被风控会换端点重试一次，可能递归一层
-        /// </summary>
-        private static void DoSearch(string keyword, int page, SearchResult result,
-                                     Action<SearchResult> onDone, bool useWbi)
+        private static void DoSearch(string keyword, int page, string order,
+                                     long pubtimeBeginS, long pubtimeEndS,
+                                     SearchResult result, Action<SearchResult> onDone, bool useWbi)
         {
             string url;
             if (useWbi)
@@ -83,6 +71,20 @@ namespace BiliClassic.Api
                 parameters["search_type"] = "video";
                 parameters["keyword"] = keyword;
                 parameters["page"] = page.ToString();
+                if (!string.IsNullOrEmpty(order))
+                {
+                    parameters["order"] = order;
+                }
+                if (pubtimeEndS > 0)
+                {
+                    parameters["pubtime_begin_s"] =
+                        (pubtimeBeginS > 0 ? pubtimeBeginS : SiteLaunchSeconds).ToString();
+                    parameters["pubtime_end_s"] = pubtimeEndS.ToString();
+                }
+                else if (pubtimeBeginS > 0)
+                {
+                    parameters["pubtime_begin_s"] = pubtimeBeginS.ToString();
+                }
                 url = WbiSigner.Shared.SignUrl(Endpoint, parameters);
             }
             else
@@ -92,13 +94,26 @@ namespace BiliClassic.Api
                     + "&keyword=" + Uri.EscapeDataString(keyword)
                     + "&page=" + page.ToString()
                     + "&pagesize=" + PageSize.ToString();
+                if (!string.IsNullOrEmpty(order))
+                {
+                    url += "&order=" + order;
+                }
+                if (pubtimeEndS > 0)
+                {
+                    url += "&pubtime_begin_s="
+                        + (pubtimeBeginS > 0 ? pubtimeBeginS : SiteLaunchSeconds).ToString()
+                        + "&pubtime_end_s=" + pubtimeEndS.ToString();
+                }
+                else if (pubtimeBeginS > 0)
+                {
+                    url += "&pubtime_begin_s=" + pubtimeBeginS.ToString();
+                }
             }
 
             Http.GetText(url, "https://search.bilibili.com/", delegate(HttpResult http)
             {
                 try
                 {
-                    // 重试复用同一个result，先清上一次残留
                     result.Items.Clear();
                     result.FullPage = false;
                     result.Error = "";
@@ -113,10 +128,9 @@ namespace BiliClassic.Api
                     {
                         Parse(http.Body, result);
 
-                        // WBI端点被gaia拦下但请求是通的，换旧端点再试
                         if (useWbi && result.Items.Count == 0 && VoucherRegex.IsMatch(http.Body))
                         {
-                            DoSearch(keyword, page, result, onDone, false);
+                            DoSearch(keyword, page, order, pubtimeBeginS, pubtimeEndS, result, onDone, false);
                             return;
                         }
                     }
@@ -210,7 +224,6 @@ namespace BiliClassic.Api
 
             result.FullPage = rawCount >= PageSize;
 
-            // 先判风控再判code，风控返回的code是0
             if (result.Items.Count == 0)
             {
                 if (VoucherRegex.IsMatch(body))
@@ -241,6 +254,5 @@ namespace BiliClassic.Api
             }
         }
 
-        // 标题清理已抽到Api\JsonText.cs，搜索与推荐共用
     }
 }

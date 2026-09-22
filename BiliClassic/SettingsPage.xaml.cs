@@ -1,26 +1,20 @@
 using System;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Navigation;
 using BiliClassic.Api;
 using Microsoft.Phone.Controls;
 
 namespace BiliClassic
 {
-    /// <summary>
-    /// 设置页
-    /// 离线播放、弹幕、自动检查更新、清缓存
-    /// </summary>
     public partial class SettingsPage : PhoneApplicationPage
     {
-        /// <summary>
-        /// 给 CheckBox 赋初值会触发 Checked/Unchecked
-        /// 不加标记会反写回存储
-        /// </summary>
         private bool _loading;
 
         public SettingsPage()
         {
             InitializeComponent();
+            ThemeHelper.ApplyPage(this);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -29,9 +23,67 @@ namespace BiliClassic
 
             _loading = true;
             OfflinePlaybackCheck.IsChecked = AppSettings.OfflinePlayback;
+            DashPlaybackCheck.IsChecked = AppSettings.DashPlayback;
             DanmakuCheck.IsChecked = AppSettings.DanmakuEnabled;
             AutoCheckUpdateCheck.IsChecked = AppSettings.AutoCheckUpdate;
+            LoadQuality(AppSettings.PlayQuality);
             _loading = false;
+
+            if (!AppSettings.DashSupported)
+            {
+                DashPlaybackCheck.Visibility = Visibility.Collapsed;
+                DashHintText.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void LoadQuality(int quality)
+        {
+            switch (quality)
+            {
+                case 16:
+                    Quality16.IsChecked = true;
+                    break;
+                case 64:
+                    Quality64.IsChecked = true;
+                    break;
+                case 80:
+                    Quality80.IsChecked = true;
+                    break;
+                default:
+                    Quality32.IsChecked = true;
+                    break;
+            }
+        }
+
+        private void Quality_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            RadioButton button = sender as RadioButton;
+            if (button == null)
+            {
+                return;
+            }
+
+            int quality;
+            if (int.TryParse(button.Tag as string, out quality))
+            {
+                AppSettings.PlayQuality = quality;
+                StatusText.Text = "清晰度已改为 " + button.Content;
+            }
+        }
+
+        private void DashPlayback_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            AppSettings.DashPlayback = DashPlaybackCheck.IsChecked == true;
         }
 
         private void Danmaku_Changed(object sender, RoutedEventArgs e)

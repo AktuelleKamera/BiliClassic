@@ -15,6 +15,22 @@
     xmlns:controls="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls"
     shell:SystemTray.IsVisible="True">
 
+    <phone:PhoneApplicationPage.Resources>
+        <!-- 个人中心磁贴：粉色方块，文字写左下角 -->
+        <Style x:Key="MineTile" TargetType="Border">
+            <Setter Property="Width" Value="190"/>
+            <Setter Property="Height" Value="190"/>
+            <Setter Property="Background" Value="#D26585"/>
+        </Style>
+        <Style x:Key="MineTileText" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Bottom"/>
+            <Setter Property="Margin" Value="10,0,0,10"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+    </phone:PhoneApplicationPage.Resources>
+
     <!-- 页面转场动画 -->
     <toolkit:TransitionService.NavigationInTransition>
         <toolkit:NavigationInTransition>
@@ -54,7 +70,93 @@
         <controls:Pivot x:Name="HomePivot" Grid.Row="1"
                         SelectionChanged="HomePivot_SelectionChanged">
 
-            <controls:PivotItem Header="推荐">
+            <controls:PivotItem Header="个人中心">
+                <ScrollViewer>
+                    <StackPanel Margin="16,0,16,0">
+
+                        <!-- 提示条：长按进入排列 -->
+                        <TextBlock x:Name="MineArrangeHint" Visibility="Collapsed"
+                                   Text="点两个磁贴交换位置，点这里完成"
+                                   Margin="0,0,0,8"
+                                   MouseLeftButtonUp="MineArrangeHint_Tap"
+                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+
+                        <!-- 磁贴：粉色方块，文字写左下角，长按可排序 -->
+                        <toolkit:WrapPanel x:Name="MineTiles"
+                                           MouseLeftButtonDown="MineTiles_Down"
+                                           MouseLeftButtonUp="MineTiles_Up"
+                                           MouseMove="MineTiles_Move">
+
+                            <Border Tag="avatar" Style="{StaticResource MineTile}"
+                                    Margin="0,0,12,12">
+                                <Grid>
+                                    <Image x:Name="AvatarImage" Stretch="UniformToFill"/>
+                                    <TextBlock x:Name="MineName" Text="未登录"
+                                               VerticalAlignment="Bottom" Margin="10,0,0,10"
+                                               Foreground="White" FontSize="26"
+                                               TextWrapping="Wrap" MaxHeight="72"/>
+                                </Grid>
+                            </Border>
+
+                            <Border Tag="private" Style="{StaticResource MineTile}"
+                                    Margin="0,0,12,12">
+                                <TextBlock Text="信息通知" Style="{StaticResource MineTileText}"/>
+                            </Border>
+
+                            <Border Tag="follow" Style="{StaticResource MineTile}"
+                                    Margin="0,0,12,12">
+                                <TextBlock Text="关注动态" Style="{StaticResource MineTileText}"/>
+                            </Border>
+
+                            <Border Tag="local" Style="{StaticResource MineTile}"
+                                    Margin="0,0,12,12">
+                                <TextBlock Text="本地视频" Style="{StaticResource MineTileText}"/>
+                            </Border>
+
+                            <Border Tag="history" Style="{StaticResource MineTile}"
+                                    Margin="0,0,12,12">
+                                <TextBlock Text="播放历史" Style="{StaticResource MineTileText}"/>
+                            </Border>
+
+                            <Border Tag="fav" Style="{StaticResource MineTile}"
+                                    Margin="0,0,12,12">
+                                <TextBlock Text="收藏视频" Style="{StaticResource MineTileText}"/>
+                            </Border>
+
+                            <Border Tag="bangumi" Style="{StaticResource MineTile}"
+                                    Margin="0,0,12,12">
+                                <TextBlock Text="我的追番" Style="{StaticResource MineTileText}"/>
+                            </Border>
+
+                            <Border Tag="watchlater" Style="{StaticResource MineTile}"
+                                    Margin="0,0,12,12">
+                                <TextBlock Text="稍后再看" Style="{StaticResource MineTileText}"/>
+                            </Border>
+
+                            <Border Tag="rank" Style="{StaticResource MineTile}"
+                                    Margin="0,0,12,12">
+                                <TextBlock Text="排行榜" Style="{StaticResource MineTileText}"/>
+                            </Border>
+
+                            <Border Tag="random" Style="{StaticResource MineTile}"
+                                    Margin="0,0,12,12">
+                                <TextBlock Text="手气不错" Style="{StaticResource MineTileText}"/>
+                            </Border>
+
+                            <Border Tag="settings" Style="{StaticResource MineTile}"
+                                    Margin="0,0,12,12">
+                                <TextBlock Text="设置" Style="{StaticResource MineTileText}"/>
+                            </Border>
+                        </toolkit:WrapPanel>
+
+                        <TextBlock x:Name="MineStatus" Text="" TextWrapping="Wrap"
+                                   Margin="0,8,0,0"
+                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </controls:PivotItem>
+
+            <controls:PivotItem Header="精彩推荐">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
@@ -71,21 +173,21 @@
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <Border Grid.Column="0" Width="112" Height="70"
+                                        <Border Grid.Column="0" Width="160" Height="90"
                                                 Margin="0,0,12,0" Background="#22FFFFFF"
                                                 BorderBrush="{StaticResource PhoneSubtleBrush}"
                                                 BorderThickness="2">
                                             <!-- 封面 -->
                                             <Grid>
-                                                <Image Stretch="UniformToFill"
-                                                       Source="/Res/bili_default_image_tv_with_bg.png"/>
+                                                <Image Stretch="Uniform" VerticalAlignment="Center"
+                                                       Source="/Res/Icon/localcover.png"/>
                                                 <Image Stretch="UniformToFill" Source="{Binding Cover}"/>
                                             </Grid>
                                         </Border>
-                                        <StackPanel Grid.Column="1">
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Top">
                                             <!-- 标题截断 -->
                                             <TextBlock Text="{Binding Title}" TextWrapping="Wrap"
-                                                       MaxHeight="50"
+                                                       LineHeight="30" MaxHeight="60"
                                                        Style="{StaticResource PhoneTextNormalStyle}"/>
                                             <TextBlock Text="{Binding InfoLine}"
                                                        Style="{StaticResource PhoneTextSubtleStyle}"/>
@@ -106,78 +208,45 @@
                 </Grid>
             </controls:PivotItem>
 
-            <controls:PivotItem Header="我的">
-                <ScrollViewer>
-                    <StackPanel Margin="12,0,12,0">
-
-                        <!-- 名片 -->
-                        <Grid Margin="0,4,0,20">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-
-                            <!-- 头像 -->
-                            <Border Grid.Column="0" Width="88" Height="88"
-                                    Background="#22FFFFFF"
-                                    BorderBrush="{StaticResource PhoneSubtleBrush}"
-                                    BorderThickness="3">
-                                <Border.Clip>
-                                    <RectangleGeometry Rect="0,0,88,88"/>
-                                </Border.Clip>
-                                <Grid Width="82" Height="82">
-                                    <!-- 显示默认头像 -->
-                                    <Image Stretch="UniformToFill"
-                                           Source="/Res/bili_default_avatar.png"/>
-                                    <Image x:Name="AvatarImage" Stretch="UniformToFill"/>
-                                </Grid>
-                            </Border>
-
-                            <StackPanel Grid.Column="1" Margin="14,0,0,0"
-                                        VerticalAlignment="Center">
-                                <TextBlock x:Name="MineName" Text="未登录"
-                                           Style="{StaticResource PhoneTextTitle3Style}"/>
-                                <TextBlock x:Name="MineLevel" Text=""
-                                           Style="{StaticResource PhoneTextSubtleStyle}"/>
-                                <TextBlock x:Name="MineSign" Text="" TextWrapping="Wrap"
-                                           MaxHeight="60"
-                                           Style="{StaticResource PhoneTextSubtleStyle}"/>
-                            </StackPanel>
-                        </Grid>
-
-                        <Button Content="关注的人" Click="FollowingButton_Click"/>
-                        <Button Content="播放历史" Click="HistoryButton_Click"/>
-                        <Button Content="我的收藏" Click="FavoriteButton_Click"/>
-
-                        <TextBlock x:Name="MineStatus" Text="" TextWrapping="Wrap"
-                                   Margin="0,8,0,0"
-                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
-                    </StackPanel>
-                </ScrollViewer>
-            </controls:PivotItem>
-
         </controls:Pivot>
-    </Grid>
- 
-    <!--底部应用栏-->
-    <phone:PhoneApplicationPage.ApplicationBar>
-        <shell:ApplicationBar IsVisible="True" IsMenuEnabled="True">
-            <shell:ApplicationBarIconButton IconUri="/Res/appbar.chevron.left.png"
-                                            Text="推荐"
-                                            Click="PrevPage_Click"/>
-            <shell:ApplicationBarIconButton IconUri="/Res/appbar.chevron.right.png"
-                                            Text="我的"
-                                            Click="NextPage_Click"/>
-            <shell:ApplicationBarIconButton IconUri="/Res/appbar.magnify.png"
-                                            Text="搜索"
-                                            Click="SearchBarButton_Click"/>
-            <shell:ApplicationBar.MenuItems>
-                <shell:ApplicationBarMenuItem Text="刷新" Click="RefreshMenuItem_Click"/>
-                <shell:ApplicationBarMenuItem Text="登录" Click="LoginMenuItem_Click"/>
-                <shell:ApplicationBarMenuItem Text="设置" Click="SettingsMenuItem_Click"/>
-                <shell:ApplicationBarMenuItem Text="关于" Click="AboutMenuItem_Click"/>
-            </shell:ApplicationBar.MenuItems>
-        </shell:ApplicationBar>
-    </phone:PhoneApplicationPage.ApplicationBar>
 
+        <!-- 回声洞提示音 -->
+        <MediaElement x:Name="EchoSoundPlayer" AutoPlay="False"
+                      Width="0" Height="0" Opacity="0" IsHitTestVisible="False"/>
+
+        <!-- 公告弹窗 -->
+        <Popup x:Name="NoticePopup" IsOpen="False" Grid.RowSpan="2">
+            <Grid Width="{Binding ActualWidth, ElementName=LayoutRoot}"
+                  Height="{Binding ActualHeight, ElementName=LayoutRoot}"
+                  Background="#B0000000">
+                <Border Background="{StaticResource PhoneBackgroundBrush}"
+                        BorderBrush="{StaticResource PhoneSubtleBrush}" BorderThickness="1"
+                        Width="420" VerticalAlignment="Center" HorizontalAlignment="Center"
+                        Padding="16">
+                    <StackPanel>
+                        <TextBlock x:Name="NoticeTitle" TextWrapping="Wrap"
+                                   Style="{StaticResource PhoneTextTitle3Style}"/>
+                        <ScrollViewer MaxHeight="380" Margin="0,8,0,0">
+                            <TextBlock x:Name="NoticeContent" TextWrapping="Wrap"
+                                       Style="{StaticResource PhoneTextNormalStyle}"/>
+                        </ScrollViewer>
+                        <Button x:Name="NoticeVideoButton" Content="观看视频"
+                                Visibility="Collapsed" Margin="0,12,0,0"
+                                Click="NoticeVideo_Click"/>
+                        <Button x:Name="NoticeAudioButton" Content="播放音频"
+                                Visibility="Collapsed" Margin="0,8,0,0"
+                                Click="NoticeAudio_Click"/>
+                        <Button x:Name="NoticeDetailButton" Content="查看详情"
+                                Visibility="Collapsed" Margin="0,8,0,0"
+                                Click="NoticeDetail_Click"/>
+                        <Button x:Name="NoticeNeverButton" Content="不再显示"
+                                Visibility="Collapsed" Margin="0,8,0,0"
+                                Click="NoticeNever_Click"/>
+                        <Button x:Name="NoticeDismissButton" Content="知道了"
+                                Margin="0,12,0,0" Click="NoticeDismiss_Click"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Popup>
+    </Grid>
 </phone:PhoneApplicationPage>

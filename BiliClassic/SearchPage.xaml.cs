@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -9,11 +10,6 @@ using Microsoft.Phone.Controls;
 
 namespace BiliClassic
 {
-    /// <summary>
-    /// 搜索页：上方结果列表，底部一行搜索框（拇指好够到）
-    ///
-    /// 满一页（20条）且跨页去重后仍有新增，才算还有下一页
-    /// </summary>
     public partial class SearchPage : PhoneApplicationPage
     {
         private readonly ObservableCollection<VideoItem> _items = new ObservableCollection<VideoItem>();
@@ -23,16 +19,34 @@ namespace BiliClassic
         private bool _hasMore;
         private bool _loading;
 
-        /// <summary>上次搜索时刻，防连点</summary>
         private DateTime _lastSearchAt = DateTime.MinValue;
+
+        private long _pubtimeBeginS;
+
+        private long _pubtimeEndS;
+
+        private int _timeFilterIndex;
+
+        private int _sortIndex;
+
+        private static readonly string[] TimeFilterNames =
+            new string[] { "不限", "最近一天", "最近一周", "最近一月", "最近半年", "最近一年" };
+
+        private static readonly long[] TimeFilterSeconds =
+            new long[] { 0, 86400, 7 * 86400, 30 * 86400, 182 * 86400, 365 * 86400 };
+
+        private static readonly string[] SortNames =
+            new string[] { "综合排序", "最新发布", "最多播放", "最多弹幕", "最多收藏", "最多评论" };
+
+        private static readonly string[] SortValues =
+            new string[] { "", "pubdate", "click", "dm", "stow", "scores" };
 
         public SearchPage()
         {
             InitializeComponent();
             ResultList.ItemsSource = _items;
+            ThemeHelper.ApplyPage(this);
 
-            // 滚到底部自动翻页
-            // 回调可能连发，靠_loading挡重入
             BottomAutoLoader.Attach(ResultList, delegate
             {
                 MoreButton_Click(null, null);
@@ -42,8 +56,6 @@ namespace BiliClassic
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-            // 转场动画交给Toolkit的TransitionFrame
-            // 不再手动播动画
         }
 
         private void SearchButton_Click(object sender, RoutedEventArgs e)
@@ -53,7 +65,6 @@ namespace BiliClassic
 
         private void KeywordBox_KeyDown(object sender, KeyEventArgs e)
         {
-            // 软键盘回车直接搜索
             if (e.Key == Key.Enter)
             {
                 StartNewSearch();
@@ -83,14 +94,11 @@ namespace BiliClassic
                 return;
             }
 
-            // 输入BV/AV号直接进详情，不当关键词搜
             if (TryOpenById(keyword))
             {
                 return;
             }
 
-            // 防连点：_loading只覆盖请求在途
-            // 键盘弹起收起会让页面位移，一次点击可能落两次
             if ((DateTime.Now - _lastSearchAt).TotalMilliseconds < 800)
             {
                 return;
@@ -106,11 +114,6 @@ namespace BiliClassic
             RunSearch();
         }
 
-        /// <summary>
-        /// BV/AV号直接进详情
-        /// 纯数字不算AV号，照常搜索
-        /// 只在提交时判断，边打字边跳会半路跳走
-        /// </summary>
         private bool TryOpenById(string keyword)
         {
             string bvid = BiliId.ToBvid(keyword);
@@ -128,8 +131,6 @@ namespace BiliClassic
         {
             _loading = true;
 
-            // 只有新搜索才禁用搜索按钮
-            // 翻页共用此方法，但和搜索按钮无关
             if (_page <= 1)
             {
                 SearchButton.IsEnabled = false;
@@ -144,9 +145,17 @@ namespace BiliClassic
             string keyword = _keyword;
             int page = _page;
 
-            SearchService.Search(keyword, page, delegate(SearchResult result)
+            if (page == 1)
             {
-                // 回调不在UI线程，切回UI线程再动集合
+                BangumiService.SearchBangumi(keyword, 1, delegate(List<VideoItem> bangumi, bool full, string berror)
+                {
+                    Dispatcher.BeginInvoke(new Action(delegate { ApplyBangumi(bangumi); }));
+                });
+            }
+
+            SearchService.Search(keyword, page, SortValues[_sortIndex], _pubtimeBeginS, _pubtimeEndS,
+                delegate(SearchResult result)
+            {
                 Dispatcher.BeginInvoke(new Action(delegate
                 {
                     _loading = false;
@@ -174,7 +183,6 @@ namespace BiliClassic
 
             _hasMore = result.FullPage && added > 0;
 
-            // 交给CoverLoader：限流/去重/缓存由它负责
             for (int i = 0; i < result.Items.Count; i++)
             {
                 CoverLoader.Request(result.Items[i]);
@@ -193,8 +201,41 @@ namespace BiliClassic
                 StatusText.Visibility = Visibility.Collapsed;
             }
 
-            // 按钮不再显示，翻页由BottomAutoLoader触发
             MoreButton.Visibility = Visibility.Collapsed;
+        }
+
+        private void ApplyBangumi(List<VideoItem> bangumi)
+        {
+            if (bangumi == null)
+            {
+                return;
+            }
+            for (int i = 0; i < bangumi.Count; i++)
+            {
+                VideoItem item = bangumi[i];
+                if (ContainsSeason(item.SeasonId))
+                {
+                    continue;
+                }
+                _items.Add(item);
+                CoverLoader.Request(item);
+            }
+            if (_items.Count > 0)
+            {
+                StatusText.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private bool ContainsSeason(long seasonId)
+        {
+            for (int i = 0; i < _items.Count; i++)
+            {
+                if (_items[i].SeasonId == seasonId)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private bool ContainsBvid(string bvid)
@@ -209,7 +250,6 @@ namespace BiliClassic
             return false;
         }
 
-        /// <summary>点结果进视频详情</summary>
         private void ResultList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             VideoItem item = ResultList.SelectedItem as VideoItem;
@@ -217,8 +257,14 @@ namespace BiliClassic
             {
                 return;
             }
-            // 立刻清选中态，否则返回还高亮
             ResultList.SelectedIndex = -1;
+
+            if (item.IsBangumi && item.SeasonId > 0)
+            {
+                NavigationService.Navigate(new Uri(
+                    "/BangumiDetailPage.xaml?season=" + item.SeasonId, UriKind.Relative));
+                return;
+            }
 
             if (string.IsNullOrEmpty(item.Bvid))
             {
@@ -237,11 +283,6 @@ namespace BiliClassic
             LoadPage(_page + 1);
         }
 
-        /// <summary>
-        /// 翻页：清空后加载第page页
-        /// 「加载更多」是追加，底部箭头是替换
-        /// 未搜索过（_keyword为空）时箭头不生效
-        /// </summary>
         private void LoadPage(int page)
         {
             if (_loading || _keyword.Length == 0)
@@ -255,6 +296,170 @@ namespace BiliClassic
             MoreButton.Visibility = Visibility.Collapsed;
             ShowStatus("正在搜索第 " + _page + " 页…");
             RunSearch();
+        }
+
+        private void MoreMenuItem_Click(object sender, EventArgs e)
+        {
+            List<string> sorts = new List<string>();
+            for (int i = 0; i < SortNames.Length; i++)
+            {
+                sorts.Add((i == _sortIndex ? "● " : "    ") + SortNames[i]);
+            }
+            SortList.ItemsSource = sorts;
+
+            List<string> times = new List<string>();
+            for (int i = 0; i < TimeFilterNames.Length; i++)
+            {
+                times.Add((i == _timeFilterIndex ? "● " : "    ") + TimeFilterNames[i]);
+            }
+            FilterList.ItemsSource = times;
+
+            FilterOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void SortList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            int index = SortList.SelectedIndex;
+            if (index < 0)
+            {
+                return;
+            }
+            SortList.SelectedIndex = -1;
+            FilterOverlay.Visibility = Visibility.Collapsed;
+
+            _sortIndex = index;
+            ShowStatus("排序：" + SortNames[index]);
+
+            if (_keyword.Length > 0)
+            {
+                _page = 1;
+                _hasMore = false;
+                _items.Clear();
+                RunSearch();
+            }
+        }
+
+        private void FilterList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            int index = FilterList.SelectedIndex;
+            if (index < 0)
+            {
+                return;
+            }
+            FilterList.SelectedIndex = -1;
+            FilterOverlay.Visibility = Visibility.Collapsed;
+
+            _timeFilterIndex = index;
+            long seconds = TimeFilterSeconds[index];
+            _pubtimeBeginS = seconds > 0 ? NowSeconds() - seconds : 0;
+            _pubtimeEndS = 0;
+
+            ShowStatus("起始时间：" + TimeFilterNames[index]);
+
+            if (_keyword.Length > 0)
+            {
+                _page = 1;
+                _hasMore = false;
+                _items.Clear();
+                RunSearch();
+            }
+        }
+
+        private void CancelFilterButton_Click(object sender, RoutedEventArgs e)
+        {
+            FilterOverlay.Visibility = Visibility.Collapsed;
+        }
+
+
+        private void DateRangeButton_Click(object sender, RoutedEventArgs e)
+        {
+            FilterOverlay.Visibility = Visibility.Collapsed;
+
+            DateTime start = new DateTime(2009, 6, 26);
+            DateTime end = DateTime.Now.Date;
+            if (_pubtimeBeginS > 0)
+            {
+                start = SecondsToDate(_pubtimeBeginS);
+            }
+            if (_pubtimeEndS > 0)
+            {
+                end = SecondsToDate(_pubtimeEndS);
+            }
+
+            StartDatePicker.Value = start;
+            EndDatePicker.Value = end;
+            DateRangeOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void OkDateButton_Click(object sender, RoutedEventArgs e)
+        {
+            long begin = DateToSeconds(StartDatePicker.Value);
+            long end = DateToSeconds(EndDatePicker.Value) + 86399;
+            if (begin > end)
+            {
+                long t = begin;
+                begin = end - 86399;
+                end = t + 86399;
+            }
+
+            _pubtimeBeginS = begin;
+            _pubtimeEndS = end;
+            _timeFilterIndex = -1;
+
+            DateRangeOverlay.Visibility = Visibility.Collapsed;
+            ShowStatus("起始时间：自定义");
+            ResearchWithFilter();
+        }
+
+        private void ClearDateButton_Click(object sender, RoutedEventArgs e)
+        {
+            _pubtimeBeginS = 0;
+            _pubtimeEndS = 0;
+            _timeFilterIndex = 0;
+
+            DateRangeOverlay.Visibility = Visibility.Collapsed;
+            ShowStatus("起始时间：不限");
+            ResearchWithFilter();
+        }
+
+        private void CancelDateButton_Click(object sender, RoutedEventArgs e)
+        {
+            DateRangeOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private void ResearchWithFilter()
+        {
+            if (_keyword.Length == 0)
+            {
+                return;
+            }
+            _page = 1;
+            _hasMore = false;
+            _items.Clear();
+            RunSearch();
+        }
+
+        private static long DateToSeconds(DateTime? value)
+        {
+            if (!value.HasValue)
+            {
+                return 0;
+            }
+            DateTime local = value.Value.Date;
+            DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            return (long)(local.ToUniversalTime() - epoch).TotalSeconds;
+        }
+
+        private static DateTime SecondsToDate(long seconds)
+        {
+            DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            return epoch.AddSeconds(seconds).ToLocalTime().Date;
+        }
+
+        private static long NowSeconds()
+        {
+            return (long)(DateTime.UtcNow
+                - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
         }
 
         private void ShowStatus(string message)

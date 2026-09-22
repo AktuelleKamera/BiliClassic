@@ -2,15 +2,10 @@ using System;
 
 namespace BiliClassic.Danmaku
 {
-    /// <summary>
-    /// 极简 raw DEFLATE 解压（RFC 1951），自动识别 gzip / zlib 外壳
-    /// </summary>
     public static class Inflate
     {
-        /// <summary>Huffman 码长上限</summary>
         private const int MaxBits = 15;
 
-        /// <summary>输出上限</summary>
         private const int MaxOutput = 8 * 1024 * 1024;
 
         private static readonly short[] LengthBase = new short[]
@@ -38,16 +33,11 @@ namespace BiliClassic.Danmaku
             7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13
         };
 
-        /// <summary>
-        /// 动态码表里「码长码」本身的码长是按这个顺序存的（RFC 1951 3.2.7），
-        /// 顺序是固定的，不能按 0..18 读。
-        /// </summary>
         private static readonly short[] LengthOrder = new short[]
         {
             16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
         };
 
-        /// <summary>解压。失败抛异常，调用方自己兜。</summary>
         public static byte[] Decompress(byte[] data)
         {
             if (data == null || data.Length == 0)
@@ -55,23 +45,21 @@ namespace BiliClassic.Danmaku
                 throw new ArgumentException("没有数据可解压");
             }
 
-            // 外壳识别。没有外壳的话就是裸 DEFLATE，从头开始。
             int offset = 0;
             if (data.Length > 2 && data[0] == 0x1F && data[1] == 0x8B)
             {
-                offset = 10;                 // gzip 头
+                offset = 10;
             }
             else if (data.Length > 2 && data[0] == 0x78
                 && ((data[0] << 8) | data[1]) % 31 == 0)
             {
-                offset = 2;                  // zlib 头
+                offset = 2;
             }
 
             Worker worker = new Worker(data, offset, data.Length - offset);
             return worker.Run();
         }
 
-        /// <summary>规范 Huffman 表：各码长的数量 + 按长度排好序的符号表。</summary>
         private sealed class Huffman
         {
             public readonly short[] Count = new short[MaxBits + 1];
@@ -136,11 +124,7 @@ namespace BiliClassic.Danmaku
                 return result;
             }
 
-            // ---------------- 位读取 ----------------
 
-            /// <summary>
-            /// 读 need 位，**低位在前**（DEFLATE 的位序和普通整数相反）
-            /// </summary>
             private int ReadBits(int need)
             {
                 int value = _bitBuf;
@@ -159,14 +143,12 @@ namespace BiliClassic.Danmaku
                 return value & ((1 << need) - 1);
             }
 
-            /// <summary>丢弃当前字节里剩下的位，让下一字节对齐</summary>
             private void AlignToByte()
             {
                 _bitBuf = 0;
                 _bitCnt = 0;
             }
 
-            // ---------------- 三种块 ----------------
 
             private void Stored()
             {
@@ -198,7 +180,6 @@ namespace BiliClassic.Danmaku
 
             private static void FixedCodes(Huffman lenCode, Huffman distCode)
             {
-                // 固定码表（RFC 1951 3.2.6）
                 byte[] lengths = new byte[288];
                 for (int i = 0; i < 144; i++) lengths[i] = 8;
                 for (int i = 144; i < 256; i++) lengths[i] = 9;
@@ -303,7 +284,7 @@ namespace BiliClassic.Danmaku
                     }
                     if (symbol == 256)
                     {
-                        return;                  // 块结束
+                        return;
                     }
 
                     symbol -= 257;
@@ -326,7 +307,6 @@ namespace BiliClassic.Danmaku
                         throw new Exception("回溯距离超出已输出范围");
                     }
 
-                    // LZ77 回溯拷贝
                     for (int i = 0; i < length; i++)
                     {
                         Put(_out[_outPos - distance]);
@@ -334,12 +314,7 @@ namespace BiliClassic.Danmaku
                 }
             }
 
-            // Huffman
 
-            /// <summary>
-            /// 由码长表构造规范 Huffman 表。返回剩余可用码数：
-            /// 0 = 完整，&gt;0 = 不完整，&lt;0 = 过度订阅（非法）
-            /// </summary>
             private static int Construct(Huffman h, byte[] lengths, int offset, int n)
             {
                 for (int i = 0; i <= MaxBits; i++)
@@ -358,7 +333,7 @@ namespace BiliClassic.Danmaku
 
                 if (h.Count[0] == n)
                 {
-                    return 0;                    // 一个码都没有（合法，用到就会没马）
+                    return 0;
                 }
 
                 int left = 1;
@@ -391,9 +366,6 @@ namespace BiliClassic.Danmaku
                 return left;
             }
 
-            /// <summary>
-            /// 规范解码
-            /// </summary>
             private int Decode(Huffman h)
             {
                 int code = 0;
@@ -416,7 +388,6 @@ namespace BiliClassic.Danmaku
                 return -10;
             }
 
-            // 输出
 
             private void Put(byte value)
             {

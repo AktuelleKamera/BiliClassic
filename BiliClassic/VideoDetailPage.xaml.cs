@@ -4,27 +4,23 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using BiliClassic.Api;
 using Microsoft.Phone.Controls;
+using Microsoft.Phone.Tasks;
 
 namespace BiliClassic
 {
-    /// <summary>
-    /// 视频详情页，导航参数传bvid
-    ///
-    /// 两个tab：详情（封面/标题/UP主/统计/简介/分P）和评论
-    /// </summary>
     public partial class VideoDetailPage : PhoneApplicationPage
     {
-        private const int CoverWidth = 360;
-        private const int CoverHeight = 203;   // B站封面是 16:9
+        private const int CoverWidth = 352;
+        private const int CoverHeight = 198;
 
         private string _bvid = "";
         private bool _loading;
 
-        /// <summary>最近一次详情，播放按钮取分P的cid</summary>
         private VideoDetail _detail;
 
         private readonly ObservableCollection<CommentItem> _comments =
@@ -33,27 +29,39 @@ namespace BiliClassic
         private int _commentPage = 1;
         private bool _commentHasMore;
         private bool _commentLoading;
+        private bool _sendingComment;
 
-        /// <summary>评论首次切过去才拉</summary>
         private bool _commentsLoaded;
 
-        /// <summary>没有评论时的占位，代码创建，不走XAML的x:Name</summary>
+        private readonly ObservableCollection<VideoItem> _related =
+            new ObservableCollection<VideoItem>();
+
+        private bool _relatedLoaded;
+
         private readonly TextBlock _commentEmpty = new TextBlock();
+
+        private bool _caching;
+
+        private bool _favLoading;
+
+        private bool _favUpdating;
+
+        private List<FavFolderItem> _favOptions = new List<FavFolderItem>();
 
         public VideoDetailPage()
         {
             InitializeComponent();
             CommentList.ItemsSource = _comments;
+            RelatedList.ItemsSource = _related;
             BuildEmptyPlaceholder();
+            ThemeHelper.ApplyPage(this);
 
-            // 评论也滚到底自动翻页
             BottomAutoLoader.Attach(CommentList, delegate
             {
                 MoreCommentButton_Click(null, null);
             });
         }
 
-        /// <summary>把占位文本叠在评论列表那一格，居中</summary>
         private void BuildEmptyPlaceholder()
         {
             _commentEmpty.Text = "暂无评论";
@@ -73,7 +81,6 @@ namespace BiliClassic
             }
             catch (Exception)
             {
-                // 主题样式取不到就用默认字号，不影响显示
             }
 
             Grid host = CommentList.Parent as Grid;
@@ -87,14 +94,14 @@ namespace BiliClassic
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-            // 转场动画交给Toolkit的TransitionFrame
-            // 见App.xaml.cs与本页XAML的TransitionService
 
             string value;
             if (NavigationContext.QueryString.TryGetValue("bvid", out value))
             {
                 _bvid = value;
             }
+
+            BvidText.Text = _bvid;
 
             if (!_loading)
             {
@@ -115,7 +122,6 @@ namespace BiliClassic
 
             VideoDetailService.Fetch(_bvid, delegate(VideoDetail detail)
             {
-                // 回调不在UI线程
                 Dispatcher.BeginInvoke(new Action(delegate
                 {
                     _loading = false;
@@ -137,8 +143,6 @@ namespace BiliClassic
             TitleText.Text = detail.Title;
             AuthorText.Text = "UP主：" + detail.Author;
 
-            // 逐项拼统计，缺的字段跳过
-            // FormatCount对空值返回空串
             string stat = "";
             stat = AppendStat(stat, "播放", detail.View);
             stat = AppendStat(stat, "弹幕", detail.Danmaku);
@@ -146,7 +150,6 @@ namespace BiliClassic
             stat = AppendStat(stat, "投币", detail.Coin);
             stat = AppendStat(stat, "收藏", detail.Favorite);
             stat = AppendStat(stat, "评论", detail.Reply);
-            stat = AppendStat(stat, "时长", VideoPart.FormatDuration(detail.Duration));
             StatText.Text = stat;
 
             string pubDate = VideoDetailService.FormatPubDate(detail.PubDate);
@@ -154,31 +157,31 @@ namespace BiliClassic
 
             DescText.Text = detail.Desc;
 
-            // 单P不占列表
             if (detail.Parts.Count > 1)
             {
-                PartsHeader.Text = "分P（共 " + detail.Parts.Count + " 个）";
-                PartsHeader.Visibility = Visibility.Visible;
+                PartsHeader.Text = "共 " + detail.Parts.Count + " 段视频";
+                PartsBar.Visibility = Visibility.Visible;
                 PartsList.ItemsSource = detail.Parts;
                 PartsList.Visibility = Visibility.Visible;
             }
 
             LoadCover(detail.Pic);
-            ShowStatus("已加载  " + detail.Bvid);
+            ShowStatus("");
+            UpdateCacheButton();
 
-            // 详情一回来就拉评论，不等切tab
-            // 原来只挂在Pivot的SelectionChanged上，事件不来就什么都不发生
             if (!_commentsLoaded)
             {
                 _commentsLoaded = true;
                 LoadComments();
             }
+
+            if (!_relatedLoaded)
+            {
+                _relatedLoaded = true;
+                LoadRelated();
+            }
         }
 
-        /// <summary>
-        /// 封面单独下，不复用CoverLoader
-        /// 详情页只有一张图，直接下即可
-        /// </summary>
         private void LoadCover(string pic)
         {
             string url = VideoItem.BuildThumbUrl(pic, CoverWidth, CoverHeight);
@@ -216,26 +219,253 @@ namespace BiliClassic
                 return;
             }
 
-            // 没选过就播第一个
             int index = PartsList.SelectedIndex;
             PlayPart(index < 0 ? 0 : index);
         }
 
         private void PartsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            // 点分P就直接播这一P
-            // 不清选中态：「播放视频」按钮跟着选中分P走
             int index = PartsList.SelectedIndex;
             if (index >= 0)
             {
+                UpdateCacheButton();
                 PlayPart(index);
             }
         }
 
-        /// <summary>
-        /// 跳到播放页，cid随bvid一起传
-        /// 播放页就不用再查一次详情
-        /// </summary>
+
+        private void UpdateCacheButton()
+        {
+            if (CacheAppBarButton == null)
+            {
+                return;
+            }
+            if (_detail == null || _detail.Parts.Count == 0)
+            {
+                CacheAppBarButton.Text = "缓存";
+                return;
+            }
+
+            CacheAppBarButton.Text = OfflineService.AreAllCached(_detail)
+                ? "已缓存"
+                : "缓存";
+        }
+
+        private void CacheAppBarButton_Click(object sender, EventArgs e)
+        {
+            if (_caching)
+            {
+                return;
+            }
+            if (_detail == null || _detail.Parts.Count == 0)
+            {
+                ShowStatus("还没拿到分P信息，稍等一下");
+                return;
+            }
+
+            if (_detail.Parts.Count == 1)
+            {
+                CachePart(_detail.Parts[0]);
+                return;
+            }
+
+            PartCacheStatus.Text = "";
+            PartOverlay.Visibility = Visibility.Visible;
+            PartCacheList.ItemsSource = _detail.Parts;
+        }
+
+        private void PartCacheList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            VideoPart part = PartCacheList.SelectedItem as VideoPart;
+            if (part == null || _caching)
+            {
+                return;
+            }
+            PartCacheList.SelectedIndex = -1;
+            PartOverlay.Visibility = Visibility.Collapsed;
+            CachePart(part);
+        }
+
+        private void CacheAllButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_caching || _detail == null || _detail.Parts.Count == 0)
+            {
+                return;
+            }
+            PartOverlay.Visibility = Visibility.Collapsed;
+            CacheAll();
+        }
+
+        private void CancelPartButton_Click(object sender, RoutedEventArgs e)
+        {
+            PartOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private void CachePart(VideoPart part)
+        {
+            if (part == null || _detail == null)
+            {
+                return;
+            }
+
+            _caching = true;
+            try
+            {
+                if (CacheAppBarButton != null)
+                {
+                    CacheAppBarButton.IsEnabled = false;
+                }
+            }
+            catch (Exception)
+            {
+            }
+            ShowStatus("正在缓存…");
+
+            OfflineService.Cache(_detail, part,
+                delegate(long received, long total)
+                {
+                    OnCacheProgress(part, received, total);
+                },
+                delegate(bool ok, string error)
+                {
+                    Dispatcher.BeginInvoke(new Action(delegate
+                    {
+                        _caching = false;
+                        try { if (CacheAppBarButton != null) CacheAppBarButton.IsEnabled = true; }
+                        catch (Exception) { }
+                        UpdateCacheButton();
+                        ShowStatus(ok && string.IsNullOrEmpty(error) ? "缓存完成" : error);
+                    }));
+                });
+        }
+
+        private void CacheAll()
+        {
+            _caching = true;
+            CacheAppBarButton.IsEnabled = false;
+            ShowStatus("正在缓存…");
+
+            OfflineService.CacheAll(_detail, OnCacheProgress, delegate(bool ok, string error)
+            {
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    _caching = false;
+                    CacheAppBarButton.IsEnabled = true;
+                    UpdateCacheButton();
+                    ShowStatus(ok && string.IsNullOrEmpty(error) ? "缓存完成" : error);
+                }));
+            });
+        }
+
+        private void OnCacheProgress(VideoPart part, long received, long total)
+        {
+            Dispatcher.BeginInvoke(new Action(delegate
+            {
+                string page = string.IsNullOrEmpty(part.Page) ? "" : "P" + part.Page + " ";
+                string text = "正在缓存 " + page + MediaCache.FormatSize(received);
+                if (total > 0)
+                {
+                    text += " / " + MediaCache.FormatSize(total)
+                        + "（" + (received * 100 / total) + "%）";
+                }
+                ShowStatus(text);
+            }));
+        }
+
+        private void FavoriteAppBarButton_Click(object sender, EventArgs e)
+        {
+            if (_favLoading)
+            {
+                return;
+            }
+            if (_detail == null || string.IsNullOrEmpty(_detail.Aid))
+            {
+                ShowStatus("还没拿到视频信息，稍等一下");
+                return;
+            }
+            if (!BiliSession.IsLoggedIn)
+            {
+                ShowStatus("请先登录");
+                return;
+            }
+
+            long mid;
+            if (!long.TryParse(BiliSession.Mid, out mid) || mid <= 0)
+            {
+                ShowStatus("登录信息不完整");
+                return;
+            }
+
+            _favLoading = true;
+            FavStatus.Text = "正在加载收藏夹…";
+            FavFolderList.ItemsSource = null;
+            FavOverlay.Visibility = Visibility.Visible;
+
+            MineService.FetchFavoriteFolders(mid, false, delegate(List<FavFolder> folders, string error)
+            {
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    _favLoading = false;
+
+                    if (folders == null || folders.Count == 0)
+                    {
+                        FavStatus.Text = string.IsNullOrEmpty(error)
+                            ? "还没有收藏夹，请先在网页上创建"
+                            : error;
+                        return;
+                    }
+
+                    _favOptions = new List<FavFolderItem>();
+                    for (int i = 0; i < folders.Count; i++)
+                    {
+                        FavFolderItem option = new FavFolderItem();
+                        option.Fid = folders[i].Fid;
+                        option.Title = folders[i].Title;
+                        option.Count = folders[i].Count;
+                        _favOptions.Add(option);
+                    }
+
+                    FavStatus.Text = "";
+                    FavFolderList.ItemsSource = _favOptions;
+                }));
+            });
+        }
+
+        private void FavFolderList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            FavFolderItem option = FavFolderList.SelectedItem as FavFolderItem;
+            if (option == null || _favUpdating || _detail == null)
+            {
+                return;
+            }
+            FavFolderList.SelectedIndex = -1;
+
+            _favUpdating = true;
+            FavStatus.Text = "正在收藏…";
+
+            FavoriteService.Add(_detail.Aid, _detail.Bvid, option.Fid, delegate(bool ok, string error)
+            {
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    _favUpdating = false;
+                    if (ok)
+                    {
+                        FavOverlay.Visibility = Visibility.Collapsed;
+                        ShowStatus("已收藏到「" + option.Title + "」");
+                    }
+                    else
+                    {
+                        FavStatus.Text = error;
+                    }
+                }));
+            });
+        }
+
+        private void CancelFavButton_Click(object sender, RoutedEventArgs e)
+        {
+            FavOverlay.Visibility = Visibility.Collapsed;
+        }
+
         private void PlayPart(int index)
         {
             if (_detail == null || index < 0 || index >= _detail.Parts.Count)
@@ -250,25 +480,148 @@ namespace BiliClassic
                 return;
             }
 
-            // 只传bvid和cid，两者只含字母数字，拼URI安全
-            // 标题转义成%XX会让Navigate抛IndexOutOfRangeException
-            // 所以标题不走导航参数
             string url = "/VideoPlayerPage.xaml?bvid=" + _detail.Bvid + "&cid=" + part.Cid;
             NavigationService.Navigate(new Uri(url, UriKind.Relative));
+        }
+
+        private void WatchLaterMenuItem_Click(object sender, EventArgs e)
+        {
+            if (_detail == null || string.IsNullOrEmpty(_detail.Aid))
+            {
+                ShowStatus("还没拿到视频信息，稍等一下");
+                return;
+            }
+            if (!BiliSession.IsLoggedIn)
+            {
+                ShowStatus("请先登录");
+                return;
+            }
+
+            ShowStatus("正在加入稍后再看…");
+            WatchLaterService.Add(_detail.Aid, delegate(bool ok, string error)
+            {
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    ShowStatus(ok ? "已加入稍后再看" : error);
+                }));
+            });
         }
 
         private void ShowStatus(string message)
         {
             StatusText.Text = message;
+
+            StatusText.Visibility = string.IsNullOrEmpty(message)
+                ? Visibility.Collapsed
+                : Visibility.Visible;
         }
 
-        /// <summary>切到评论tab时才拉</summary>
         private void DetailPivot_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (DetailPivot.SelectedIndex == 1 && !_commentsLoaded)
+            if (DetailPivot.SelectedIndex == 1 && !_relatedLoaded)
+            {
+                _relatedLoaded = true;
+                LoadRelated();
+            }
+            if (DetailPivot.SelectedIndex == 2 && !_commentsLoaded)
             {
                 _commentsLoaded = true;
                 LoadComments();
+            }
+        }
+
+        private void LoadRelated()
+        {
+            if (_detail == null)
+            {
+                _relatedLoaded = false;
+                RelatedStatus.Text = "还没拿到视频信息，稍等一下";
+                return;
+            }
+
+            RelatedStatus.Text = "正在加载相关视频…";
+            RelatedEmpty.Visibility = Visibility.Collapsed;
+
+            RelatedService.Fetch(_detail.Bvid, delegate(RelatedResult result)
+            {
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    ApplyRelated(result);
+                }));
+            });
+        }
+
+        private void ApplyRelated(RelatedResult result)
+        {
+            for (int i = 0; i < result.Items.Count; i++)
+            {
+                _related.Add(result.Items[i]);
+                CoverLoader.Request(result.Items[i]);
+            }
+
+            if (!string.IsNullOrEmpty(result.Error))
+            {
+                RelatedStatus.Text = result.Error;
+                RelatedEmpty.Visibility = Visibility.Collapsed;
+            }
+            else if (_related.Count == 0)
+            {
+                RelatedStatus.Text = "";
+                RelatedEmpty.Text = "暂无相关视频";
+                RelatedEmpty.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                RelatedStatus.Text = "";
+                RelatedEmpty.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void RelatedList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            VideoItem item = RelatedList.SelectedItem as VideoItem;
+            if (item == null)
+            {
+                return;
+            }
+            RelatedList.SelectedIndex = -1;
+
+            if (string.IsNullOrEmpty(item.Bvid) || item.Bvid == _bvid)
+            {
+                return;
+            }
+            NavigationService.Navigate(new Uri("/VideoDetailPage.xaml?bvid=" + item.Bvid, UriKind.Relative));
+        }
+
+        private void GoUser(string mid)
+        {
+            if (string.IsNullOrEmpty(mid))
+            {
+                return;
+            }
+            NavigationService.Navigate(new Uri("/UserProfilePage.xaml?mid=" + mid, UriKind.Relative));
+        }
+
+        private void AuthorText_Tap(object sender, MouseButtonEventArgs e)
+        {
+            if (_detail != null)
+            {
+                GoUser(_detail.AuthorMid);
+            }
+        }
+
+        private void CommentAvatar_Tap(object sender, MouseButtonEventArgs e)
+        {
+            FrameworkElement element = sender as FrameworkElement;
+            if (element == null)
+            {
+                return;
+            }
+
+            CommentItem item = element.DataContext as CommentItem;
+            if (item != null && item.Author != null)
+            {
+                GoUser(item.Author.Mid);
             }
         }
 
@@ -282,11 +635,133 @@ namespace BiliClassic
             LoadComments();
         }
 
+        private void CommentAppBarButton_Click(object sender, EventArgs e)
+        {
+            if (_detail == null || string.IsNullOrEmpty(_detail.Aid))
+            {
+                ShowStatus("还没拿到视频信息，稍等一下");
+                return;
+            }
+            if (!BiliSession.IsLoggedIn)
+            {
+                ShowStatus("请先登录");
+                return;
+            }
+
+            CommentBox.Text = "";
+            CommentHint.Text = "";
+            CommentOverlay.Visibility = Visibility.Visible;
+            CommentBox.Focus();
+        }
+
+        private void CancelCommentButton_Click(object sender, RoutedEventArgs e)
+        {
+            CommentOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private void SendCommentButton_Click(object sender, RoutedEventArgs e)
+        {
+            SendComment();
+        }
+
+        private void CommentBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                SendComment();
+            }
+        }
+
+        private void SendComment()
+        {
+            if (_sendingComment)
+            {
+                return;
+            }
+            string text = (CommentBox.Text ?? "").Trim();
+            if (text.Length == 0)
+            {
+                CommentHint.Text = "评论不能为空";
+                return;
+            }
+            if (_detail == null || string.IsNullOrEmpty(_detail.Aid))
+            {
+                CommentHint.Text = "还没拿到视频信息，稍等一下";
+                return;
+            }
+
+            _sendingComment = true;
+            SendCommentButton.IsEnabled = false;
+            CommentHint.Text = "正在发送…";
+
+            CommentService.Add(_detail.Aid, text, delegate(bool ok, string error)
+            {
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    _sendingComment = false;
+                    SendCommentButton.IsEnabled = true;
+
+                    if (!ok)
+                    {
+                        CommentHint.Text = error;
+                        return;
+                    }
+
+                    CommentOverlay.Visibility = Visibility.Collapsed;
+                    CommentBox.Text = "";
+                    CommentStatus.Text = "评论已发送";
+                    DetailPivot.SelectedIndex = 2;
+                    ReloadComments();
+                }));
+            });
+        }
+
+        private void ShareAppBarButton_Click(object sender, EventArgs e)
+        {
+            if (_detail == null)
+            {
+                ShowStatus("还没拿到视频信息，稍等一下");
+                return;
+            }
+
+            string url = !string.IsNullOrEmpty(_detail.Bvid)
+                ? "https://www.bilibili.com/video/" + _detail.Bvid
+                : "https://www.bilibili.com/video/av" + _detail.Aid;
+
+            try
+            {
+#if WP8
+                ShareLinkTask task = new ShareLinkTask();
+                task.Title = _detail.Title;
+                task.LinkUri = new Uri(url);
+                task.Message = string.IsNullOrEmpty(_detail.Bvid) ? url : _detail.Bvid;
+                task.Show();
+#else
+                EmailComposeTask task = new EmailComposeTask();
+                task.Subject = _detail.Title;
+                task.Body = url;
+                task.Show();
+#endif
+            }
+            catch (Exception ex)
+            {
+                ShowStatus("分享失败：" + ex.Message);
+            }
+        }
+
+        private void ReloadComments()
+        {
+            _comments.Clear();
+            _commentPage = 1;
+            _commentHasMore = false;
+            _commentEmpty.Visibility = Visibility.Collapsed;
+            LoadComments();
+        }
+
         private void LoadComments()
         {
             if (_detail == null)
             {
-                // 详情还没回来，撤掉标记，下次切过来再试
                 _commentsLoaded = false;
                 CommentStatus.Text = "还没拿到视频信息，稍等一下";
                 return;
@@ -302,7 +777,6 @@ namespace BiliClassic
             CommentService.Fetch(_detail.Aid, _commentPage,
                 delegate(List<CommentItem> items, bool hasMore, string error)
             {
-                // 回调不在UI线程
                 Dispatcher.BeginInvoke(new Action(delegate
                 {
                     _commentLoading = false;
@@ -325,7 +799,6 @@ namespace BiliClassic
 
             if (!string.IsNullOrEmpty(error) && IsClosed(error))
             {
-                // 评论区关了是服务端的正常状态，不是加载失败
                 CommentStatus.Text = "";
                 _commentEmpty.Text = "评论区已关闭";
                 _commentEmpty.Visibility = Visibility.Visible;
@@ -334,7 +807,6 @@ namespace BiliClassic
             {
                 CommentStatus.Text = error;
 
-                // 一条都没有时把原因当卡片摆出来，状态行太小容易被忽略
                 if (_comments.Count == 0)
                 {
                     CommentItem problem = new CommentItem();
@@ -347,7 +819,6 @@ namespace BiliClassic
             }
             else if (_comments.Count == 0)
             {
-                // 真的没有评论：占位文字居中，状态行不重复
                 CommentStatus.Text = "";
                 _commentEmpty.Text = "暂无评论";
                 _commentEmpty.Visibility = Visibility.Visible;
@@ -358,17 +829,14 @@ namespace BiliClassic
                 _commentEmpty.Visibility = Visibility.Collapsed;
             }
 
-            // 按钮不显示，翻页由滚动触发
             MoreCommentButton.Visibility = Visibility.Collapsed;
         }
 
-        /// <summary>评论区关闭这类错误码按正常状态处理</summary>
         private static bool IsClosed(string error)
         {
             return error.IndexOf("评论区不可用", StringComparison.Ordinal) >= 0;
         }
 
-        /// <summary>拼统计项，值为空则整项跳过</summary>
         private static string AppendStat(string text, string label, string raw)
         {
             string value = VideoItem.FormatCount(raw);

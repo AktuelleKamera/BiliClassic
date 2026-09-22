@@ -5,21 +5,12 @@ using Microsoft.Phone.Tasks;
 
 namespace BiliClassic
 {
-    /// <summary>
-    /// 更新提示
-    /// 只弹窗和跳浏览器，不下载不安装
-    /// </summary>
     public static class UpdateChecker
     {
-        /// <summary>
-        /// 检查更新并提示
-        /// quiet=true 时静默：没更新或失败都不弹窗，只在有新版时提示
-        /// </summary>
         public static void Check(bool quiet, Action onDone)
         {
             UpdateService.Check(delegate(UpdateInfo info)
             {
-                // 回调不在UI线程
                 Deployment.Current.Dispatcher.BeginInvoke(delegate
                 {
                     try
@@ -69,15 +60,17 @@ namespace BiliClassic
                 return;
             }
 
-            // 只跳浏览器：WP已不支持侧载，装包得用户自己来
             if (info.DownloadUrl.Length == 0)
             {
                 return;
             }
 
             WebBrowserTask task = new WebBrowserTask();
-            // WP7.0只有URL这个string属性，Uri是7.1才加的
+#if WP8
+            task.Uri = new Uri(info.DownloadUrl);
+#else
             task.URL = info.DownloadUrl;
+#endif
             task.Show();
         }
     }

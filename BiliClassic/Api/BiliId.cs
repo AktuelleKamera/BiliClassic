@@ -3,15 +3,10 @@ using System.Text.RegularExpressions;
 
 namespace BiliClassic.Api
 {
-    /// <summary>
-    /// BV号与AV号互转
-    /// AV号只认带av前缀的，纯数字当关键词搜
-    /// </summary>
     public static class BiliId
     {
         private const string Table = "fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF";
 
-        /// <summary>BV号里被替换的6个位置</summary>
         private static readonly int[] Positions = new int[] { 11, 10, 3, 8, 4, 6 };
 
         private const long Xor = 177451812L;
@@ -19,10 +14,6 @@ namespace BiliClassic.Api
 
         private static readonly Regex AvRegex = new Regex(@"^[aA][vV](\d+)$");
 
-        /// <summary>
-        /// 用户输入转BV号
-        /// 认BV号原样，认av号换算，其余返回空串
-        /// </summary>
         public static string ToBvid(string input)
         {
             if (string.IsNullOrEmpty(input))
@@ -46,7 +37,6 @@ namespace BiliClassic.Api
             return long.TryParse(av.Groups[1].Value, out aid) ? AidToBvid(aid) : "";
         }
 
-        /// <summary>BV号是BV加10位base58，字母表以外的字符一律不算</summary>
         public static bool IsBvid(string text)
         {
             if (string.IsNullOrEmpty(text) || text.Length != 12)

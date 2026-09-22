@@ -4,14 +4,8 @@ using System.Text;
 
 namespace BiliClassic.Api
 {
-    /// <summary>
-    /// app接口的签名与表单编码
-    /// sign=md5(按key升序拼的k=v + appsec)
-    /// FormEncode对齐Java的URLEncoder，签名靠它，不能改
-    /// </summary>
     public static class AppSign
     {
-        /// <summary>补appkey和ts，算好sign，返回最终请求体</summary>
         public static string BuildBody(Dictionary<string, string> parameters,
                                        string appKey, string appSec)
         {
@@ -49,9 +43,6 @@ namespace BiliClassic.Api
             return sb.ToString();
         }
 
-        /// <summary>
-        /// 保留字母数字和- _ . *，空格变+，其余按UTF-8编成%XX大写
-        /// </summary>
         public static string FormEncode(string value)
         {
             if (string.IsNullOrEmpty(value))

@@ -5,22 +5,16 @@ using System.Text.RegularExpressions;
 
 namespace BiliClassic.Api
 {
-    /// <summary>扫码状态，用官方语义</summary>
     public enum QrLoginState
     {
-        /// <summary>还没扫</summary>
         NotScanned = 86101,
 
-        /// <summary>已扫码，等确认</summary>
         Scanned = 86090,
 
-        /// <summary>二维码过期</summary>
         Expired = 86038,
 
-        /// <summary>确认成功，凭证已保存</summary>
         Success = 0,
 
-        /// <summary>请求或解析出错</summary>
         Failed = -1
     }
 
@@ -30,10 +24,6 @@ namespace BiliClassic.Api
         public string Error = "";
     }
 
-    /// <summary>
-    /// 扫码与短信登录接口
-    /// 轮询时外层code为0，再看内层data.code
-    /// </summary>
     public static class LoginService
     {
         private const string QrGenerateUrl =
@@ -44,11 +34,9 @@ namespace BiliClassic.Api
             "https://passport.bilibili.com/x/passport-login/web/qrcode/poll"
             + "?source=main-fe-header&qrcode_key=";
 
-        /// <summary>跨域地址列表，扫码成功后按它下发凭证</summary>
         private const string SsoListUrl =
             "https://passport.bilibili.com/x/passport-login/web/sso/list";
 
-        /// <summary>TV/APP扫码：成功后cookie以JSON下发，不用解析Set-Cookie</summary>
         private const string TvAppKey = "4409e2ce8ffd12b8";
         private const string TvAppSec = "59b43e04ad6965f34319062b478f83dd";
 
@@ -60,22 +48,12 @@ namespace BiliClassic.Api
         private static string _tvAuthCode = "";
         private static bool _tvMode;
 
-        /// <summary>当前二维码内容</summary>
         public static string QrContent = "";
 
-        /// <summary>
-        /// 收尾过程的一行摘要
-        /// 手机上错误框显示不了长文，关键信息放第一行
-        /// </summary>
         private static string _flowSummary = "";
 
         private static string _qrKey = "";
 
-        /// <summary>
-        /// 获取二维码
-        /// 先用TV/APP扫码：它把cookie放进正文的cookie_info
-        /// 网页版那条路在WP7上抠不到SESSDATA（HttpOnly，框架不给），只作后备
-        /// </summary>
         public static void RequestQrCode(Action<string, string> onDone)
         {
             _tvMode = false;
@@ -94,7 +72,6 @@ namespace BiliClassic.Api
             });
         }
 
-        /// <summary>TV/APP二维码</summary>
         private static void RequestTvQrCode(Action<string, string> onDone)
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>();
@@ -142,7 +119,6 @@ namespace BiliClassic.Api
             });
         }
 
-        /// <summary>网页版二维码，TV那条路不通时的后备</summary>
         private static void RequestWebQrCode(Action<string, string> onDone)
         {
             Http.GetText(QrGenerateUrl, Http.Referer, delegate(HttpResult http)
@@ -158,7 +134,6 @@ namespace BiliClassic.Api
                     else
                     {
                         Match key = Regex.Match(http.Body, @"""qrcode_key"":\s*""([^""]+)""");
-                        // qrcode_key先出现url后出现，取url字段
                         Match url = Regex.Match(http.Body, @"""url"":\s*""([^""]+)""");
                         if (!key.Success || !url.Success)
                         {
@@ -184,7 +159,6 @@ namespace BiliClassic.Api
             });
         }
 
-        /// <summary>轮询扫码状态，成功后凭证已写入BiliSession</summary>
         public static void PollQrCode(Action<QrPollResult> onDone)
         {
             if (_tvMode)
@@ -213,7 +187,6 @@ namespace BiliClassic.Api
                         return;
                     }
 
-                    // 外层code，请求本身是否成功
                     Match outer = Regex.Match(http.Body, @"""code"":\s*(-?\d+)");
                     if (!outer.Success || outer.Groups[1].Value != "0")
                     {
@@ -222,7 +195,6 @@ namespace BiliClassic.Api
                         return;
                     }
 
-                    // 内层data.code是扫码状态，从data之后开始找
                     int dataIndex = http.Body.IndexOf("\"data\"", StringComparison.Ordinal);
                     string tail = dataIndex >= 0 ? http.Body.Substring(dataIndex) : http.Body;
                     Match inner = Regex.Match(tail, @"""code"":\s*(-?\d+)");
@@ -239,7 +211,6 @@ namespace BiliClassic.Api
                     {
                         result.State = QrLoginState.Success;
 
-                        // mid/csrf可能只在这一步给
                         Match mid = Regex.Match(tail, @"""mid"":\s*(\d+)");
                         if (mid.Success)
                         {
@@ -256,7 +227,6 @@ namespace BiliClassic.Api
                             ? UnescapeJson(cross.Groups[1].Value)
                             : "";
 
-                        // 容器不一定收得下跨域cookie，原文也抠一遍
                         BiliSession.MergeSetCookie(http.SetCookie);
                         BiliSession.MergeCookiesInText(http.Body);
                         FinishLogin(crossUrl, http.SetCookie, result, onDone);
@@ -288,10 +258,6 @@ namespace BiliClassic.Api
             });
         }
 
-        /// <summary>
-        /// TV/APP轮询
-        /// 成功时cookie_info里直接是name/value，不用碰Set-Cookie
-        /// </summary>
         private static void PollTvQrCode(Action<QrPollResult> onDone)
         {
             QrPollResult result = new QrPollResult();
@@ -376,7 +342,6 @@ namespace BiliClassic.Api
             });
         }
 
-        /// <summary>从cookie_info.cookies[]按出现顺序配对name/value</summary>
         private static string ExtractCookieInfo(string body)
         {
             int index = body.IndexOf("\"cookie_info\"", StringComparison.Ordinal);
@@ -411,13 +376,10 @@ namespace BiliClassic.Api
             return m.Success && int.TryParse(m.Groups[1].Value, out value) ? value : fallback;
         }
 
-        /// <summary>手动提交cookie，用于验证CookieContainer链路</summary>
         public static void LoginWithCookie(string cookieString)
         {
             string normalized = NormalizeCookieInput(cookieString);
 
-            // 已是标准cookie串就别重建，CookieHelper只保留6个字段
-            // 会丢掉DedeUserID__ckMd5和sid这些风控要的字段
             if (!CookieHelper.LooksLikeCookieString(normalized))
             {
                 string rebuilt = CookieHelper.ParseAndBuildCookie(normalized);
@@ -431,12 +393,6 @@ namespace BiliClassic.Api
             BiliSession.Save();
         }
 
-        /// <summary>
-        /// 收尾，把凭证落进BiliSession
-        /// 轮询那一步可能已经用Set-Cookie下发了，先回读
-        /// 不够再请求跨域地址，最后走sso列表
-        /// 回调放在最后，保证发nav时cookie已就位
-        /// </summary>
         private static void FinishLogin(string crossUrl, string pollSetCookie, QrPollResult result,
                                        Action<QrPollResult> onDone)
         {
@@ -482,7 +438,6 @@ namespace BiliClassic.Api
             });
         }
 
-        /// <summary>正文里有没有SESSDATA，只报有无</summary>
         private static string HasSession(string body)
         {
             if (string.IsNullOrEmpty(body))
@@ -494,13 +449,11 @@ namespace BiliClassic.Api
                 : "没有";
         }
 
-        /// <summary>短摘要用的长度：无 / 数字</summary>
         private static string ShortLen(string setCookie)
         {
             return string.IsNullOrEmpty(setCookie) ? "无" : setCookie.Length.ToString();
         }
 
-        /// <summary>只报长度，不报内容</summary>
         private static string LengthOf(string setCookie)
         {
             if (string.IsNullOrEmpty(setCookie))
@@ -514,7 +467,6 @@ namespace BiliClassic.Api
             return setCookie.Length + "字符";
         }
 
-        /// <summary>只描述地址，不带值</summary>
         private static string Describe(string url)
         {
             if (string.IsNullOrEmpty(url))
@@ -524,7 +476,6 @@ namespace BiliClassic.Api
             return HostOf(url) + PathOf(url) + " 参数名：" + KeysOf(url);
         }
 
-        /// <summary>把跨域地址query里的凭证并进登录态</summary>
         private static void MergeQueryCookies(string url)
         {
             if (string.IsNullOrEmpty(url))
@@ -553,7 +504,6 @@ namespace BiliClassic.Api
                 {
                     continue;
                 }
-                // 保持URL编码，Cookie类不接受带逗号的值
                 cookies.Add(key + "=" + value);
             }
 
@@ -563,10 +513,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>
-        /// 列sso并逐个请求
-        /// 轮询只给一个地址，真正的凭证要这些地址的Set-Cookie
-        /// </summary>
         private static void RequestSsoList(string detail, QrPollResult result,
                                           Action<QrPollResult> onDone)
         {
@@ -586,7 +532,6 @@ namespace BiliClassic.Api
                 List<string> urls = ReadSsoList(http);
                 if (urls.Count == 0)
                 {
-                    // 列表为空就把响应带上，否则查不下去
                     result.State = QrLoginState.Failed;
                     result.Error = "扫码成功但缺SESSDATA（" + _flowSummary + " sso 0）"
                         + "\n" + detail
@@ -601,7 +546,6 @@ namespace BiliClassic.Api
             });
         }
 
-        /// <summary>一个个试，拿到完整凭证就停</summary>
         private static void RequestSsoUrl(List<string> urls, int index, string detail,
                                          QrPollResult result, Action<QrPollResult> onDone)
         {
@@ -637,7 +581,6 @@ namespace BiliClassic.Api
                     return;
                 }
 
-                // 浏览器是直接跳这个地址的，POST不行就再GET一次
                 Http.GetText(one, Http.Referer, delegate(HttpResult got)
                 {
                     string getCookie = got == null ? "" : got.SetCookie;
@@ -666,7 +609,6 @@ namespace BiliClassic.Api
             });
         }
 
-        /// <summary>data.sso是地址数组</summary>
         private static List<string> ReadSsoList(HttpResult http)
         {
             List<string> urls = new List<string>();
@@ -694,7 +636,6 @@ namespace BiliClassic.Api
             return urls;
         }
 
-        /// <summary>只取主机名，query里可能带SESSDATA</summary>
         private static string HostOf(string url)
         {
             try
@@ -707,7 +648,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>只取路径，query里有凭证</summary>
         private static string PathOf(string url)
         {
             try
@@ -720,7 +660,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>只列参数名不列值</summary>
         private static string KeysOf(string url)
         {
             int q = url == null ? -1 : url.IndexOf('?');
@@ -747,7 +686,6 @@ namespace BiliClassic.Api
             return sb.Length > 0 ? sb.ToString() : "(没有参数)";
         }
 
-        /// <summary>容忍整行cookie文本</summary>
         private static string NormalizeCookieInput(string input)
         {
             if (string.IsNullOrEmpty(input))
@@ -756,7 +694,6 @@ namespace BiliClassic.Api
             }
             string text = input.Trim();
             text = text.Replace("\r", " ").Replace("\n", " ").Replace("\t", " ");
-            // 去掉Cookie前缀
             if (text.StartsWith("Cookie:", StringComparison.OrdinalIgnoreCase))
             {
                 text = text.Substring(7).Trim();

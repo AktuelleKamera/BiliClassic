@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  WP8 目标工程：不复制任何源码，全部用 Link 指向 ..\BiliClassic\
+
+  加新文件不用改这里 —— *.cs 是通配的，XAML 页面要手动加一行（见下面 ItemGroup）
+  本工程需要在 VS2012+ / WP8 SDK 下打开；VS2010 打不开，也没法编译
+-->
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>10.0.20506</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{7A3C1F42-9E58-4B6D-A1C7-5D2E8B4F0C31}</ProjectGuid>
+    <ProjectTypeGuids>{C089C8C0-30E0-4E22-80C0-CE093F111A43};{fae04ec0-301f-11d3-bf4b-00c04f79efbc}</ProjectTypeGuids>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>BiliClassic</RootNamespace>
+    <AssemblyName>BiliClassic</AssemblyName>
+    <TargetFrameworkIdentifier>WindowsPhone</TargetFrameworkIdentifier>
+    <TargetFrameworkVersion>v8.1</TargetFrameworkVersion>
+    <SilverlightVersion>$(TargetFrameworkVersion)</SilverlightVersion>
+    <SilverlightApplication>true</SilverlightApplication>
+    <SupportedCultures>
+    </SupportedCultures>
+    <XapOutputs>true</XapOutputs>
+    <GenerateSilverlightManifest>true</GenerateSilverlightManifest>
+    <XapFilename>BiliClassic-WP81_$(Configuration)_$(Platform).xap</XapFilename>
+    <SilverlightManifestTemplate>Properties\AppManifest.xml</SilverlightManifestTemplate>
+    <SilverlightAppEntry>BiliClassic.App</SilverlightAppEntry>
+    <ValidateXaml>true</ValidateXaml>
+    <MinimumVisualStudioVersion>12.0</MinimumVisualStudioVersion>
+    <ThrowErrorsInValidation>true</ThrowErrorsInValidation>
+    <!-- WP8.1 Silverlight 的工程类型标识，Overrides.targets 第24/30行靠这两个认工程
+         版本号跟着目标走，免得和 TargetFrameworkVersion 脱节 -->
+    <ApplicationType>Windows Phone Silverlight</ApplicationType>
+    <ApplicationTypeRevision>$(TargetFrameworkVersion.Substring(1))</ApplicationTypeRevision>
+    <DefaultLanguage>zh-CN</DefaultLanguage>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>Bin\Debug</OutputPath>
+    <DefineConstants>WP8;DEBUG;TRACE;SILVERLIGHT;WINDOWS_PHONE</DefineConstants>
+    <NoStdLib>true</NoStdLib>
+    <NoConfig>true</NoConfig>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>Bin\Release</OutputPath>
+    <DefineConstants>WP8;TRACE;SILVERLIGHT;WINDOWS_PHONE</DefineConstants>
+    <NoStdLib>true</NoStdLib>
+    <NoConfig>true</NoConfig>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- DASH双轨要走本机代理，只有8.1的WinRT才有Windows.Web.Http
+         v8.0编不出LocalProxy，按WP81整块排除 -->
+    <DefineConstants Condition="'$(TargetFrameworkVersion)' == 'v8.1'">$(DefineConstants);WP81</DefineConstants>
+    <!-- WP8 SDK 的库目录，跟着目标版本走，换 v8.0/v8.1 不用改 -->
+    <WPSdkLibs>$(MSBuildProgramFiles32)\Microsoft SDKs\Windows Phone\$(TargetFrameworkVersion)\Libraries</WPSdkLibs>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.Phone" />
+    <Reference Include="Microsoft.Phone.Interop" />
+    <!-- Pivot 在这个程序集里，不在 Microsoft.Phone.dll -->
+    <Reference Include="Microsoft.Phone.Controls">
+      <HintPath>$(WPSdkLibs)\Microsoft.Phone.Controls.dll</HintPath>
+    </Reference>
+    <!-- 转场用：WP8 版 toolkit，和主工程那份不是同一个文件
+         (WP7 版在 ..\Libs\，版本绑定不一致时运行期会加载失败) -->
+    <Reference Include="Microsoft.Phone.Controls.Toolkit">
+      <HintPath>Libs\Microsoft.Phone.Controls.Toolkit.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Windows" />
+    <Reference Include="system" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Net" />
+    <Reference Include="System.Xml" />
+
+  </ItemGroup>
+  <ItemGroup>
+    <!-- 全部源码：通配链接，新增文件不用改工程 -->
+    <Compile Include="..\BiliClassic\**\*.cs"
+             Exclude="..\BiliClassic\obj\**\*.cs;..\BiliClassic\Bin\**\*.cs">
+      <Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- XAML 要逐个列，路径改成 Link 之后才能落在工程根 -->
+    <ApplicationDefinition Include="..\BiliClassic\App.xaml">
+      <Link>App.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </ApplicationDefinition>
+    <Page Include="..\BiliClassic\MainPage.xaml">
+      <Link>MainPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\SearchPage.xaml">
+      <Link>SearchPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\LoginPage.xaml">
+      <Link>LoginPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\VideoDetailPage.xaml">
+      <Link>VideoDetailPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\VideoPlayerPage.xaml">
+      <Link>VideoPlayerPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\SettingsPage.xaml">
+      <Link>SettingsPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\MineListPage.xaml">
+      <Link>MineListPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\AboutPage.xaml">
+      <Link>AboutPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\UserProfilePage.xaml">
+      <Link>UserProfilePage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\BangumiDetailPage.xaml">
+      <Link>BangumiDetailPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\PrivateMsgPage.xaml">
+      <Link>PrivateMsgPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\PrivateMsgChatPage.xaml">
+      <Link>PrivateMsgChatPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\WatchLaterPage.xaml">
+      <Link>WatchLaterPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\OfflinePage.xaml">
+      <Link>OfflinePage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\RankingPage.xaml">
+      <Link>RankingPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\FollowDynamicPage.xaml">
+      <Link>FollowDynamicPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\AudioPlayerPage.xaml">
+      <Link>AudioPlayerPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Properties\AppManifest.xml" />
+    <None Include="Properties\WMAppManifest.xml">
+      <SubType>Designer</SubType>
+    </None>
+    <!-- WP8.1 要两份清单，appx 那份必须进 AppxManifest 项，缺了报 APPX1501 -->
+    <AppxManifest Include="Package.appxmanifest">
+      <SubType>Designer</SubType>
+    </AppxManifest>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- 资源和主工程共用一份，Link 之后在包里仍是 Res\xxx.png -->
+    <Content Include="..\BiliClassic\ApplicationIcon.png">
+      <Link>ApplicationIcon.png</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\BiliClassic\Background.png">
+      <Link>Background.png</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\BiliClassic\SplashScreenImage.jpg">
+      <Link>SplashScreenImage.jpg</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\*.png">
+      <Link>Res\%(Filename)%(Extension)</Link>
+    </Content>
+    <!-- Res\Icon 是子目录，*.png 通配不递归，逐个收 -->
+    <Content Include="..\BiliClassic\Res\Icon\search.png">
+      <Link>Res\Icon\search.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\refresh.png">
+      <Link>Res\Icon\refresh.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\settings.png">
+      <Link>Res\Icon\settings.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\login.png">
+      <Link>Res\Icon\login.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\logout.png">
+      <Link>Res\Icon\logout.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\play.png">
+      <Link>Res\Icon\play.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\pause.png">
+      <Link>Res\Icon\pause.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\danmuon.png">
+      <Link>Res\Icon\danmuon.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\danmuoff.png">
+      <Link>Res\Icon\danmuoff.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\comment_icon.png">
+      <Link>Res\Icon\comment_icon.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\share.png">
+      <Link>Res\Icon\share.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\download_icon.png">
+      <Link>Res\Icon\download_icon.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\addfavorite_icon.png">
+      <Link>Res\Icon\addfavorite_icon.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\toplogo.png">
+      <Link>Res\Icon\toplogo.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\bg.png">
+      <Link>Res\Icon\bg.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\NoAvatar.png">
+      <Link>Res\Icon\NoAvatar.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\Icon\localcover.png">
+      <Link>Res\Icon\localcover.png</Link>
+    </Content>
+    <Content Include="..\BiliClassic\Res\echo.wav">
+      <Link>Res\echo.wav</Link>
+    </Content>
+    <!-- 应用名多语言资源，WP8 上是否还认 AppResLib 待验证 -->
+    <Content Include="..\BiliClassic\AppResLib.dll">
+      <Link>AppResLib.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\BiliClassic\AppResLib.dll.0804.mui">
+      <Link>AppResLib.dll.0804.mui</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\$(TargetFrameworkIdentifier)\$(TargetFrameworkVersion)\Microsoft.$(TargetFrameworkIdentifier).$(TargetFrameworkVersion).Overrides.targets" />
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\$(TargetFrameworkIdentifier)\$(TargetFrameworkVersion)\Microsoft.$(TargetFrameworkIdentifier).CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+  <!-- XapImageFiles 只认工程目录下的实体文件，Link 过去不算
+       打包前从主工程的 Res 拷进来，省得每次换机器手工 copy -->
+  <ItemGroup>
+    <Wp8TileImage Include="..\BiliClassic\Res\Logo.scale-240.png" />
+    <Wp8TileImage Include="..\BiliClassic\Res\SmallLogo.scale-240.png" />
+  </ItemGroup>
+  <Target Name="CopyTileImages" BeforeTargets="XapPackager">
+    <Copy SourceFiles="@(Wp8TileImage)" DestinationFolder="$(MSBuildProjectDirectory)\Res" SkipUnchangedFiles="true" />
+  </Target>
+  <ProjectExtensions />
+</Project>

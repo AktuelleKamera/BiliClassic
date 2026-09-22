@@ -5,47 +5,80 @@ using System.Windows.Media.Imaging;
 
 namespace BiliClassic.Api
 {
-    /// <summary>视频条目，各接口统一映射</summary>
     public sealed class VideoItem : INotifyPropertyChanged
     {
         private BitmapImage _cover;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        /// <summary>BV号，打开详情/播放时用</summary>
         public string Bvid { get; set; }
 
-        /// <summary>封面原始地址，协议相对已补https:</summary>
+        public string Aid { get; set; }
+
+        public string Cid { get; set; }
+
         public string Pic { get; set; }
 
-        /// <summary>标题，已去掉高亮标签</summary>
-        public string Title { get; set; }
+        private const int TitleBudget = 50;
 
-        /// <summary>UP主</summary>
+        private string _title = "";
+
+        public string Title
+        {
+            get { return _title; }
+            set { _title = LimitTitle(value); }
+        }
+
+        public static string LimitTitle(string title)
+        {
+            if (string.IsNullOrEmpty(title))
+            {
+                return "";
+            }
+
+            int budget = TitleBudget - 2;
+
+            int used = 0;
+            int cut = 0;
+            for (int i = 0; i < title.Length; i++)
+            {
+                int width = title[i] > 0x2E80 ? 2 : 1;
+                if (used + width > budget)
+                {
+                    break;
+                }
+                used += width;
+                cut = i + 1;
+            }
+
+            return cut >= title.Length ? title : title.Substring(0, cut) + "…";
+        }
+
         public string Author { get; set; }
 
-        /// <summary>播放量，play/stat.view</summary>
         public string View { get; set; }
 
-        /// <summary>弹幕数，video_review/stat.danmaku</summary>
         public string Danmaku { get; set; }
 
-        /// <summary>第二行自定义文案</summary>
         public string Subtitle { get; set; }
 
-        /// <summary>收藏夹ID，非收藏夹为0</summary>
         public long Fid { get; set; }
 
-        /// <summary>封面右上角角标，空串不显示</summary>
+        public long SeasonId { get; set; }
+
+        public long Epid { get; set; }
+
+        public long RoomId { get; set; }
+
+        public bool IsBangumi { get; set; }
+
         public string Badge { get; set; }
 
-        /// <summary>角标显隐，供XAML直接绑</summary>
         public Visibility BadgeVisibility
         {
             get { return string.IsNullOrEmpty(Badge) ? Visibility.Collapsed : Visibility.Visible; }
         }
 
-        /// <summary>封面位图，null为未加载</summary>
         public BitmapImage Cover
         {
             get { return _cover; }
@@ -64,16 +97,16 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>CoverLoader用的缩略图地址</summary>
         public string CoverUrl
         {
-            get { return BuildThumbUrl(Pic, 240, 150); }
+            get
+            {
+                return IsBangumi
+                    ? BuildThumbUrl(Pic, 180, 240)
+                    : BuildThumbUrl(Pic, 320, 180);
+            }
         }
 
-        /// <summary>
-        /// 卡片第二行：显示播放/弹幕计数
-        /// 两者都空时回退UP主
-        /// </summary>
         public string InfoLine
         {
             get
@@ -107,10 +140,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>
-        /// 数字缩写：万以下原样
-        /// 万以上保留一位小数加万
-        /// </summary>
         public static string FormatCount(string raw)
         {
             long n;
@@ -125,10 +154,6 @@ namespace BiliClassic.Api
             return ((double)(n / 1000) / 10.0).ToString("0.0") + "万";
         }
 
-        /// <summary>
-        /// CDN支持地址后加@宽w_高h_1c.jpg取缩小图
-        /// 只处理hdslb.com的.jpg
-        /// </summary>
         public static string BuildThumbUrl(string url, int width, int height)
         {
             if (string.IsNullOrEmpty(url))

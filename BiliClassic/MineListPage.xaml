@@ -23,16 +23,16 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <Border Grid.Column="0" Width="112" Height="70"
+                <Border Grid.Column="0" Width="160" Height="90"
                         Margin="0,0,12,0" Background="#22FFFFFF"
                         BorderBrush="{StaticResource PhoneSubtleBrush}" BorderThickness="2">
                     <Border.Clip>
-                        <RectangleGeometry Rect="0,0,112,70"/>
+                        <RectangleGeometry Rect="0,0,160,90"/>
                     </Border.Clip>
                     <!-- 默认占位图 -->
                     <Grid>
-                        <Image Stretch="UniformToFill"
-                               Source="/Res/bili_default_image_tv_with_bg.png"/>
+                        <Image Stretch="Uniform" VerticalAlignment="Center"
+                               Source="/Res/Icon/localcover.png"/>
                         <Image Stretch="UniformToFill" Source="{Binding Cover}"/>
                         <!-- 私密收藏夹角标 -->
                         <Border HorizontalAlignment="Right" VerticalAlignment="Top"
@@ -42,8 +42,8 @@
                         </Border>
                     </Grid>
                 </Border>
-                <StackPanel Grid.Column="1">
-                    <TextBlock Text="{Binding Title}" TextWrapping="Wrap" MaxHeight="72"
+                <StackPanel Grid.Column="1" VerticalAlignment="Top">
+                    <TextBlock Text="{Binding Title}" TextWrapping="Wrap" LineHeight="30" MaxHeight="60"
                                Margin="0"
                                Style="{StaticResource PhoneTextNormalStyle}"/>
                     <TextBlock Text="{Binding InfoLine}" TextWrapping="Wrap" MaxHeight="40"
@@ -70,7 +70,7 @@
                     <!-- 显示默认头像 -->
                     <Grid>
                         <Image Stretch="UniformToFill"
-                               Source="/Res/bili_default_avatar.png"/>
+                               Source="/Res/Icon/NoAvatar.png"/>
                         <Image Stretch="UniformToFill" Source="{Binding Avatar}"/>
                     </Grid>
                 </Border>
@@ -79,6 +79,36 @@
                                Margin="0"
                                Style="{StaticResource PhoneTextNormalStyle}"/>
                     <TextBlock Text="{Binding Sign}" TextWrapping="Wrap" MaxHeight="40"
+                               Margin="0,2,0,0"
+                               Style="{StaticResource PhoneTextSubtleStyle}"/>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+
+        <!-- 番剧卡片：封面竖版 -->
+        <DataTemplate x:Key="BangumiCard">
+            <Grid Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Width="120" Height="160"
+                        Margin="0,0,12,0" Background="#22FFFFFF"
+                        BorderBrush="{StaticResource PhoneSubtleBrush}" BorderThickness="2">
+                    <Border.Clip>
+                        <RectangleGeometry Rect="0,0,120,160"/>
+                    </Border.Clip>
+                    <Grid>
+                        <Image Stretch="Uniform" VerticalAlignment="Center"
+                               Source="/Res/Icon/localcover.png"/>
+                        <Image Stretch="UniformToFill" Source="{Binding Cover}"/>
+                    </Grid>
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Top">
+                    <TextBlock Text="{Binding Title}" TextWrapping="Wrap" LineHeight="30" MaxHeight="60"
+                               Margin="0"
+                               Style="{StaticResource PhoneTextNormalStyle}"/>
+                    <TextBlock Text="{Binding InfoLine}" TextWrapping="Wrap" MaxHeight="40"
                                Margin="0,2,0,0"
                                Style="{StaticResource PhoneTextSubtleStyle}"/>
                 </StackPanel>

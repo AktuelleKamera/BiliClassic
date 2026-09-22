@@ -9,41 +9,29 @@ using Microsoft.Phone.Controls;
 
 namespace BiliClassic
 {
-    /// <summary>
-    /// 登录页：扫码登录 + 手动Cookie登录
-    ///
-    /// 取码->渲染->每秒轮询->成功写BiliSession并验证
-    /// 手动Cookie是验证CookieContainer链路的最短路径
-    /// Cookie是受限头，只能靠容器发出去
-    /// </summary>
     public partial class LoginPage : PhoneApplicationPage
     {
-        // 每模块7像素，(45+8)*7=371，480宽放得下
         private const int QrScale = 7;
 
-        /// <summary>Pivot下标：0验证码 1扫码 2信息</summary>
         private const int QrPivotIndex = 1;
         private const int InfoPivotIndex = 2;
 
         private DispatcherTimer _timer;
 
-        /// <summary>发短信得到的captcha_key，登录时带回</summary>
         private string _captchaKey = "";
 
-        /// <summary>二维码是否已取，切到扫码页才取，避免白请求</summary>
         private bool _qrLoaded;
 
         public LoginPage()
         {
             InitializeComponent();
+            ThemeHelper.ApplyPage(this);
             Loaded += OnLoaded;
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-            // 转场动画交给Toolkit的TransitionFrame
-            // 不再手动播动画
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -58,9 +46,6 @@ namespace BiliClassic
             ShowStatus(BiliSession.IsLoggedIn ? "就绪（已登录）" : "就绪");
         }
 
-        /// <summary>
-        /// 切到扫码页才取二维码，切走停轮询
-        /// </summary>
         private void LoginPivot_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (LoginPivot == null)
@@ -91,7 +76,6 @@ namespace BiliClassic
             }
         }
 
-        /// <summary>刷新信息页的登录状态</summary>
         private void ShowAccount()
         {
             if (AccountText == null)
@@ -111,8 +95,7 @@ namespace BiliClassic
             }
             else
             {
-                AccountText.Text = "已登录：" + BiliSession.UserName
-                    + "\nmid：" + BiliSession.Mid;
+                AccountText.Text = "已登录：" + BiliSession.UserName;
             }
         }
 
@@ -235,9 +218,7 @@ namespace BiliClassic
                 {
                     if (ok)
                     {
-                        ShowAccount();
-                        ShowStatus("登录成功：" + BiliSession.UserName
-                            + "（mid " + BiliSession.Mid + "）");
+                        GoBackToMain();
                     }
                     else
                     {
@@ -246,6 +227,20 @@ namespace BiliClassic
                     }
                 }));
             });
+        }
+
+        /// <summary>登录成功回主页，主页在返回时自己刷新</summary>
+        private void GoBackToMain()
+        {
+            StopPolling();
+            if (NavigationService.CanGoBack)
+            {
+                NavigationService.GoBack();
+            }
+            else
+            {
+                NavigationService.Navigate(new Uri("/MainPage.xaml", UriKind.Relative));
+            }
         }
 
         private void SendButton_Click(object sender, RoutedEventArgs e)
@@ -267,8 +262,6 @@ namespace BiliClassic
                     SendButton.IsEnabled = true;
                     if (result.Ok)
                     {
-                        // captcha_key要原样带回登录接口
-                        // 它也是短信是否真发出的信号
                         _captchaKey = result.CaptchaKey;
                         ShowStatus(result.CaptchaKey.Length > 0
                             ? "验证码已发送，请查收短信"
@@ -320,10 +313,6 @@ namespace BiliClassic
             StatusText.Text = message;
         }
 
-        /// <summary>
-        /// 模块矩阵画成位图，四周留4模块静区（QR规范）
-        /// 白底黑块，直接能扫，不依赖页面背景色
-        /// </summary>
         private static WriteableBitmap Render(bool[,] matrix, int scale)
         {
             const int Quiet = 4;

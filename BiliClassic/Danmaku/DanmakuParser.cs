@@ -6,18 +6,11 @@ using System.Windows.Media;
 
 namespace BiliClassic.Danmaku
 {
-    /// <summary>
-    /// 弹幕 XML 解析，BiliDanmukuParser
-    /// </summary>
     public static class DanmakuParser
     {
-        /// <summary>
-        /// 匹配
-        /// </summary>
         private static readonly Regex ItemRegex =
             new Regex("<d\\s+p=\"([^\"]*)\">([^<]*)</d>", RegexOptions.Singleline);
 
-        /// <summary>解析</summary>
         public static List<DanmakuItem> Parse(string xml)
         {
             List<DanmakuItem> items = new List<DanmakuItem>();
@@ -51,7 +44,6 @@ namespace BiliClassic.Danmaku
             }
 
             string[] parts = p.Split(',');
-            // 至少要有 时间/模式/字号/颜色 四位
             if (parts.Length < 4)
             {
                 return null;
@@ -79,7 +71,6 @@ namespace BiliClassic.Danmaku
                 item.Dmid = (long)ParseNumber(parts[7]);
             }
 
-            // 飞掉高级和BAS弹幕，弹幕能飞
             if (!item.Mode.IsSupported())
             {
                 return null;
@@ -104,9 +95,6 @@ namespace BiliClassic.Danmaku
             return DanmakuMode.Scroll;
         }
 
-        /// <summary>
-        /// InvariantCulture，手机区域设置可能是用逗号当小数点的（中文区不是，但欧洲区是），那样会解析失败的说
-        /// </summary>
         private static double ParseNumber(string s)
         {
             double value;
@@ -117,7 +105,6 @@ namespace BiliClassic.Danmaku
             return 0;
         }
 
-        /// <summary>p 第 4 位是十进制 RGB</summary>
         private static Color ParseColor(int rgb)
         {
             byte r = (byte)((rgb >> 16) & 0xFF);
@@ -126,9 +113,6 @@ namespace BiliClassic.Danmaku
             return Color.FromArgb(255, r, g, b);
         }
 
-        /// <summary>
-        /// XML实体反转义
-        /// </summary>
         private static string UnescapeXml(string s)
         {
             if (string.IsNullOrEmpty(s) || s.IndexOf('&') < 0)

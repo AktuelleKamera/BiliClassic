@@ -48,7 +48,8 @@
             <TextBlock Text="设置" Margin="9,-7,0,0" Style="{StaticResource PhoneTextTitle1Style}"/>
         </StackPanel>
 
-        <StackPanel Grid.Row="1" Margin="12,0,12,0">
+        <ScrollViewer Grid.Row="1">
+        <StackPanel Margin="12,0,12,0">
             <CheckBox x:Name="OfflinePlaybackCheck" Content="离线播放"
                       Checked="OfflinePlayback_Changed"
                       Unchecked="OfflinePlayback_Changed"/>
@@ -56,12 +57,33 @@
                        Style="{StaticResource PhoneTextSubtleStyle}"
                        Text="打开后将不再在线播放视频，只要还能播放就建议不要开启的说！"/>
 
+            <CheckBox x:Name="DashPlaybackCheck" Content="DASH 播放（试验）"
+                      Margin="0,20,0,0"
+                      Checked="DashPlayback_Changed"
+                      Unchecked="DashPlayback_Changed"/>
+            <TextBlock x:Name="DashHintText" Margin="12,0,0,0" TextWrapping="Wrap"
+                       Style="{StaticResource PhoneTextSubtleStyle}"
+                       Text="仅支持WP7.1+"/>
+
             <CheckBox x:Name="DanmakuCheck" Content="弹幕"
                       Margin="0,20,0,0"
                       Checked="Danmaku_Changed"
                       Unchecked="Danmaku_Changed"/>
+
+            <!-- 清晰度：Tag里放接口的qn值 -->
+            <TextBlock Text="播放清晰度" Margin="0,20,0,0"
+                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+            <RadioButton x:Name="Quality16" Content="流畅 360P" Tag="16"
+                         GroupName="Quality" Checked="Quality_Changed"/>
+            <RadioButton x:Name="Quality32" Content="清晰 480P" Tag="32"
+                         GroupName="Quality" Checked="Quality_Changed"/>
+            <RadioButton x:Name="Quality64" Content="高清 720P" Tag="64"
+                         GroupName="Quality" Checked="Quality_Changed"/>
+            <RadioButton x:Name="Quality80" Content="超清 1080P" Tag="80"
+                         GroupName="Quality" Checked="Quality_Changed"/>
+
             <CheckBox x:Name="AutoCheckUpdateCheck" Content="自动检查更新"
-                      Margin="0,12,0,0"
+                      Margin="0,20,0,0"
                       Checked="AutoCheckUpdate_Changed"
                       Unchecked="AutoCheckUpdate_Changed"/>
             <Button x:Name="CheckUpdateButton" Content="检查更新"
@@ -73,6 +95,7 @@
             <TextBlock x:Name="StatusText" TextWrapping="Wrap" Margin="0,8,0,0"
                        Style="{StaticResource PhoneTextSubtleStyle}"/>
         </StackPanel>
+        </ScrollViewer>
     </Grid>
 
 </phone:PhoneApplicationPage>

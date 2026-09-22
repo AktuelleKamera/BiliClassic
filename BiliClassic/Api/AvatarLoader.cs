@@ -6,10 +6,6 @@ using System.Windows.Media.Imaging;
 
 namespace BiliClassic.Api
 {
-    /// <summary>
-    /// 头像加载器
-    /// 固定1:1，不能与封面共用
-    /// </summary>
     public static class AvatarLoader
     {
         private const int Size = 240;
@@ -24,8 +20,17 @@ namespace BiliClassic.Api
 
         private static int _active;
 
-        /// <summary>请求加载头像，已加载/加载中/失败都跳过</summary>
         public static void Request(UserItem item)
+        {
+            Request(item, false);
+        }
+
+        public static void Retry(UserItem item)
+        {
+            Request(item, true);
+        }
+
+        private static void Request(UserItem item, bool clearFailed)
         {
             if (item == null || item.Avatar != null)
             {
@@ -36,6 +41,11 @@ namespace BiliClassic.Api
             if (string.IsNullOrEmpty(url))
             {
                 return;
+            }
+
+            if (clearFailed)
+            {
+                Failed.Remove(url);
             }
 
             BitmapImage cached;
@@ -55,10 +65,6 @@ namespace BiliClassic.Api
             Pump();
         }
 
-        /// <summary>
-        /// 头像缩略图地址
-        /// 复用VideoItem.BuildThumbUrl
-        /// </summary>
         private static string ThumbUrl(UserItem item)
         {
             string url = item.AvatarUrl ?? "";

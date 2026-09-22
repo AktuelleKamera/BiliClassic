@@ -5,14 +5,10 @@ using System.Windows.Media;
 
 namespace BiliClassic
 {
-    /// <summary>
-    /// 列表滚到底部自动加载下一页
-    /// </summary>
     public static class BottomAutoLoader
     {
         private const double Threshold = 120;
 
-        /// <summary>监听触底，触发onBottom</summary>
         public static void Attach(ListBox list, Action onBottom)
         {
             if (list == null || onBottom == null)
@@ -20,7 +16,6 @@ namespace BiliClassic
                 return;
             }
 
-            // 判据不依赖ExtentHeight：虚拟化时它只按已实现条目算
             double lastOffset = -1;
             DateTime lastAt = DateTime.MinValue;
 
@@ -44,7 +39,6 @@ namespace BiliClassic
         {
             double offset = viewer.VerticalOffset;
 
-            // 位移必须递增
             if (offset <= lastOffset)
             {
                 return;
@@ -56,7 +50,6 @@ namespace BiliClassic
                 return;
             }
 
-            // 末条已被虚拟化面板生成
             ListBoxItem last = list.ItemContainerGenerator.ContainerFromIndex(count - 1)
                 as ListBoxItem;
             if (last == null)
@@ -64,7 +57,6 @@ namespace BiliClassic
                 return;
             }
 
-            // 量末条的实际Y坐标
             double y;
             try
             {
@@ -80,7 +72,6 @@ namespace BiliClassic
                 return;
             }
 
-            // 冷却800毫秒
             if ((DateTime.Now - lastAt).TotalMilliseconds < 800)
             {
                 return;

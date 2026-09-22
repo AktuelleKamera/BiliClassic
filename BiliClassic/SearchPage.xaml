@@ -68,19 +68,19 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <!-- 封面和默认占位图233 -->
-                        <Border Grid.Column="0" Width="112" Height="70"
+                        <Border Grid.Column="0" Width="160" Height="90"
                                 Margin="0,0,12,0" Background="#22FFFFFF"
                                 BorderBrush="{StaticResource PhoneSubtleBrush}"
                                 BorderThickness="2">
                             <Grid>
-                                <Image Stretch="UniformToFill"
-                                       Source="/Res/bili_default_image_tv_with_bg.png"/>
+                                <Image Stretch="Uniform" VerticalAlignment="Center"
+                                       Source="/Res/Icon/localcover.png"/>
                                 <Image Stretch="UniformToFill" Source="{Binding Cover}"/>
                             </Grid>
                         </Border>
-                        <StackPanel Grid.Column="1">
+                        <StackPanel Grid.Column="1" VerticalAlignment="Top">
                             <TextBlock Text="{Binding Title}" TextWrapping="Wrap"
-                                       MaxHeight="72"
+                                       LineHeight="30" MaxHeight="60"
                                        Style="{StaticResource PhoneTextNormalStyle}"/>
                             <TextBlock Text="{Binding InfoLine}"
                                        Style="{StaticResource PhoneTextSubtleStyle}"/>
@@ -98,10 +98,92 @@
             <Button x:Name="MoreButton" Content="加载更多"
                     Visibility="Collapsed" Click="MoreButton_Click"/>
         </StackPanel>
+
+        <!-- 更多：排序 + 起始时间 -->
+        <Grid x:Name="FilterOverlay" Grid.RowSpan="3" Background="#CC000000"
+              Visibility="Collapsed">
+            <Border Width="420" MaxHeight="600" VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Background="#F01B1B1B" BorderBrush="#D86DA5" BorderThickness="2"
+                    Padding="16">
+                <ScrollViewer>
+                    <StackPanel>
+                        <TextBlock Text="排序" FontSize="24" Foreground="White"/>
+                        <ListBox x:Name="SortList" Margin="0,8,0,0"
+                                 SelectionChanged="SortList_SelectionChanged">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" Margin="0,0,0,8"
+                                               Foreground="White" FontSize="22"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock Text="起始时间" FontSize="24" Foreground="White"
+                                   Margin="0,12,0,0"/>
+                        <ListBox x:Name="FilterList" Margin="0,8,0,0"
+                                 SelectionChanged="FilterList_SelectionChanged">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" Margin="0,0,0,8"
+                                               Foreground="White" FontSize="22"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <Button x:Name="DateRangeButton" Content="自定义日期范围…"
+                                HorizontalAlignment="Left" MinWidth="0" Padding="16,6"
+                                Foreground="White" Margin="0,6,0,0"
+                                Click="DateRangeButton_Click"/>
+
+                        <Button x:Name="CancelFilterButton" Content="取消"
+                                HorizontalAlignment="Right" MinWidth="0" Padding="20,6"
+                                Foreground="White" Margin="0,12,0,0"
+                                Click="CancelFilterButton_Click"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- 自定义日期范围 -->
+        <Grid x:Name="DateRangeOverlay" Grid.RowSpan="3" Background="#CC000000"
+              Visibility="Collapsed">
+            <Border Width="420" MaxHeight="620" VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Background="#F01B1B1B" BorderBrush="#D86DA5" BorderThickness="2"
+                    Padding="16">
+                <ScrollViewer>
+                    <StackPanel>
+                        <TextBlock Text="日期范围" FontSize="24" Foreground="White"/>
+
+                        <TextBlock Text="起始日期" Foreground="#CCFFFFFF"
+                                   Margin="0,10,0,4"/>
+                        <toolkit:DatePicker x:Name="StartDatePicker"/>
+
+                        <TextBlock Text="截止日期" Foreground="#CCFFFFFF"
+                                   Margin="0,10,0,4"/>
+                        <toolkit:DatePicker x:Name="EndDatePicker"/>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                    Margin="0,12,0,0">
+                            <Button x:Name="ClearDateButton" Content="清除"
+                                    MinWidth="0" Padding="16,6" Foreground="White"
+                                    Margin="0,0,10,0" Click="ClearDateButton_Click"/>
+                            <Button x:Name="CancelDateButton" Content="取消"
+                                    MinWidth="0" Padding="16,6" Foreground="White"
+                                    Margin="0,0,10,0" Click="CancelDateButton_Click"/>
+                            <Button x:Name="OkDateButton" Content="确定"
+                                    MinWidth="0" Padding="16,6" Foreground="White"
+                                    Click="OkDateButton_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
     </Grid>
 
     <phone:PhoneApplicationPage.ApplicationBar>
-        <shell:ApplicationBar IsVisible="True" IsMenuEnabled="False">
+        <shell:ApplicationBar IsVisible="True" IsMenuEnabled="True">
             <!-- 翻页：左 = 上一页，右 = 下一页（都是替换当前列表） -->
             <shell:ApplicationBarIconButton IconUri="/Res/appbar.chevron.left.png"
                                             Text="上一页"
@@ -109,6 +191,9 @@
             <shell:ApplicationBarIconButton IconUri="/Res/appbar.chevron.right.png"
                                             Text="下一页"
                                             Click="NextPage_Click"/>
+            <shell:ApplicationBar.MenuItems>
+                <shell:ApplicationBarMenuItem Text="更多" Click="MoreMenuItem_Click"/>
+            </shell:ApplicationBar.MenuItems>
         </shell:ApplicationBar>
     </phone:PhoneApplicationPage.ApplicationBar>
 

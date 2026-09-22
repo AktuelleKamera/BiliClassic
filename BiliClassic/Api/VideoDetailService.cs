@@ -4,16 +4,13 @@ using System.Text.RegularExpressions;
 
 namespace BiliClassic.Api
 {
-    /// <summary>分P</summary>
     public sealed class VideoPart
     {
         public string Cid = "";
         public string Page = "";
-        /// <summary>分P标题，取自part</summary>
         public string Title = "";
         public string Duration = "";
 
-        /// <summary>列表显示名，形如P2  标题</summary>
         public string DisplayTitle
         {
             get
@@ -31,7 +28,16 @@ namespace BiliClassic.Api
             get { return FormatDuration(Duration); }
         }
 
-        /// <summary>秒数转12:34或1:02:03</summary>
+        public string IndexText
+        {
+            get { return "P" + Page; }
+        }
+
+        public string PartTitle
+        {
+            get { return Title ?? ""; }
+        }
+
         public static string FormatDuration(string raw)
         {
             int seconds;
@@ -53,12 +59,13 @@ namespace BiliClassic.Api
     {
         public string Bvid = "";
 
-        /// <summary>评论接口要用的oid</summary>
         public string Aid = "";
 
         public string Title = "";
         public string Pic = "";
         public string Author = "";
+
+        public string AuthorMid = "";
         public string Desc = "";
         public string View = "";
         public string Danmaku = "";
@@ -69,10 +76,8 @@ namespace BiliClassic.Api
         public string PubDate = "";
         public string Duration = "";
 
-        /// <summary>分P列表，单P只有一条</summary>
         public List<VideoPart> Parts = new List<VideoPart>();
 
-        /// <summary>非空即失败</summary>
         public string Error = "";
 
         public bool IsMultiPart
@@ -81,12 +86,6 @@ namespace BiliClassic.Api
         }
     }
 
-    /// <summary>
-    /// 视频详情
-    /// GET https://api.bilibili.com/x/web-interface/view?bvid=BVxxxx
-    /// 公开接口，不需要WBI签名
-    /// 作者在owner.name，统计在stat.*，分P在pages[]
-    /// </summary>
     public static class VideoDetailService
     {
         public const string Endpoint = "https://api.bilibili.com/x/web-interface/view";
@@ -99,6 +98,7 @@ namespace BiliClassic.Api
         private static readonly Regex DurationRegex = new Regex(@"""duration"":\s*(\d+)");
         private static readonly Regex PubDateRegex = new Regex(@"""pubdate"":\s*(\d+)");
         private static readonly Regex NameRegex = new Regex(@"""name"":\s*""([^""]*)""");
+        private static readonly Regex MidRegex = new Regex(@"""mid"":\s*(\d+)");
         private static readonly Regex ViewRegex = new Regex(@"""view"":\s*(\d+)");
         private static readonly Regex DanmakuRegex = new Regex(@"""danmaku"":\s*(\d+)");
         private static readonly Regex LikeRegex = new Regex(@"""like"":\s*(\d+)");
@@ -109,10 +109,6 @@ namespace BiliClassic.Api
         private static readonly Regex PageRegex = new Regex(@"""page"":\s*(\d+)");
         private static readonly Regex PartRegex = new Regex(@"""part"":\s*""((?:[^""\\]|\\.)*)""");
 
-        /// <summary>
-        /// 取详情，回调必被调一次，失败时Error非空
-        /// 回调不在UI线程
-        /// </summary>
         public static void Fetch(string bvid, Action<VideoDetail> onDone)
         {
             VideoDetail detail = new VideoDetail();
@@ -125,7 +121,6 @@ namespace BiliClassic.Api
                 return;
             }
 
-            // bvid只含字母数字，不用编码
             string url = Endpoint + "?bvid=" + bvid;
 
             Http.GetText(url, Http.Referer, delegate(HttpResult http)
@@ -162,7 +157,6 @@ namespace BiliClassic.Api
                 return;
             }
 
-            // 顶层字段取第一个匹配
             detail.Aid = FirstGroup(AidRegex, body);
             detail.Title = JsonText.StripHtml(JsonText.Unescape(FirstGroup(TitleRegex, body)));
             detail.Desc = JsonText.StripHtml(JsonText.Unescape(FirstGroup(DescRegex, body)));
@@ -175,14 +169,14 @@ namespace BiliClassic.Api
                 detail.Pic = "https:" + detail.Pic;
             }
 
-            // 先定位owner，避开staff和pages里的name
             int ownerIndex = body.IndexOf("\"owner\":{", StringComparison.Ordinal);
             if (ownerIndex >= 0)
             {
-                detail.Author = FirstGroup(NameRegex, Slice(body, ownerIndex, 400));
+                string owner = Slice(body, ownerIndex, 400);
+                detail.Author = FirstGroup(NameRegex, owner);
+                detail.AuthorMid = FirstGroup(MidRegex, owner);
             }
 
-            // 统计同理，先定位stat
             int statIndex = body.IndexOf("\"stat\":{", StringComparison.Ordinal);
             if (statIndex >= 0)
             {
@@ -198,7 +192,6 @@ namespace BiliClassic.Api
             ParseParts(body, detail);
         }
 
-        /// <summary>解析pages，单P也有一条</summary>
         private static void ParseParts(string body, VideoDetail detail)
         {
             int start = body.IndexOf("\"pages\":[", StringComparison.Ordinal);
@@ -207,7 +200,6 @@ namespace BiliClassic.Api
                 return;
             }
 
-            // pages每项都是对象，第一个"],"即收尾
             int end = body.IndexOf("],", start, StringComparison.Ordinal);
             if (end < 0)
             {
@@ -224,7 +216,6 @@ namespace BiliClassic.Api
                     continue;
                 }
 
-                // 每项以cid为锚点，窗口到下一个cid
                 int next = region.IndexOf("\"cid\":", m.Index + 6, StringComparison.Ordinal);
                 int limit = next > m.Index ? next : region.Length;
                 if (limit > m.Index + 600)
@@ -238,7 +229,6 @@ namespace BiliClassic.Api
                 part.Page = FirstGroup(PageRegex, after);
                 if (part.Page.Length == 0)
                 {
-                    // page缺失就退回数组下标
                     part.Page = (detail.Parts.Count + 1).ToString();
                 }
                 part.Title = JsonText.StripHtml(JsonText.Unescape(FirstGroup(PartRegex, after)));
@@ -247,7 +237,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>Unix秒转yyyy-MM-dd HH:mm，本地时间</summary>
         public static string FormatPubDate(string raw)
         {
             long seconds;

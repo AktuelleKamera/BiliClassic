@@ -1,0 +1,51 @@
+<phone:PhoneApplicationPage
+    x:Class="BiliClassic.AudioPlayerPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:phone="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone"
+    xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="768"
+    FontFamily="{StaticResource PhoneFontFamilyNormal}"
+    FontSize="{StaticResource PhoneFontSizeNormal}"
+    Foreground="{StaticResource PhoneForegroundBrush}"
+    SupportedOrientations="Portrait" Orientation="Portrait"
+    shell:SystemTray.IsVisible="True">
+
+    <Grid x:Name="LayoutRoot" Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,16">
+            <TextBlock Text="哔哩经典" Style="{StaticResource PhoneTextNormalStyle}"/>
+            <TextBlock x:Name="TitleText" Text="音频" Margin="9,-7,0,0"
+                       Style="{StaticResource PhoneTextTitle1Style}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="16,0,16,0">
+            <TextBlock x:Name="DisText" TextWrapping="Wrap"
+                       Style="{StaticResource PhoneTextNormalStyle}"/>
+
+            <MediaElement x:Name="Audio" AutoPlay="True" Height="1" Width="1" Opacity="0"
+                          MediaOpened="Audio_MediaOpened"
+                          MediaEnded="Audio_MediaEnded"
+                          MediaFailed="Audio_MediaFailed"
+                          CurrentStateChanged="Audio_CurrentStateChanged"/>
+
+            <Slider x:Name="SeekBar" Margin="0,16,0,0" Minimum="0" Maximum="1"
+                    ValueChanged="SeekBar_ValueChanged"/>
+            <TextBlock x:Name="TimeText" Text="0:00 / 0:00" Margin="0,4,0,0"
+                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+            <TextBlock x:Name="StatusText" Text="" TextWrapping="Wrap" Margin="0,8,0,0"
+                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+        </StackPanel>
+
+        <Button Grid.Row="2" x:Name="PlayButton" Content="暂停"
+                Margin="12,0,12,12" Click="PlayButton_Click"/>
+    </Grid>
+
+</phone:PhoneApplicationPage>

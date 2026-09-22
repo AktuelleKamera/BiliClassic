@@ -10,10 +10,8 @@ namespace BiliClassic.Api
         public int Code = -1;
         public string Message = "";
 
-        /// <summary>发短信返回的captcha_key，登录要原样带回</summary>
         public string CaptchaKey = "";
 
-        /// <summary>响应原文，截断后用于定位服务端返回</summary>
         public string RawBody = "";
 
         public bool Ok
@@ -35,13 +33,6 @@ namespace BiliClassic.Api
         }
     }
 
-    /// <summary>
-    /// 短信验证码登录，两个都是app接口，必须做app签名
-    /// sign=md5(按key升序拼的k=v + APP_SEC)
-    /// buvid3必须用B站/spi下发的那个，自造的服务端不认
-    /// 表现为返回code0但短信不发
-    /// dt取不到公钥就不发，是可选字段，故省略
-    /// </summary>
     public static class SmsLoginService
     {
         private const string AppKey = "dfca71928277209b";
@@ -56,12 +47,9 @@ namespace BiliClassic.Api
         private const string SendUrl = "https://passport.bilibili.com/x/passport-login/sms/send";
         private const string LoginUrl = "https://passport.bilibili.com/x/passport-login/login/sms";
 
-        /// <summary>设备标识的本地键</summary>
         private const string KeyDeviceId = "bili_device_id";
 
-        // ---------------- 对外接口 ----------------
 
-        /// <summary>发送短信验证码</summary>
         public static void SendSms(string tel, Action<SmsSendResult> onDone)
         {
             EnsureBuvid(delegate(string buvid)
@@ -70,7 +58,6 @@ namespace BiliClassic.Api
             });
         }
 
-        /// <summary>手机号+验证码登录，成功后凭证并入BiliSession</summary>
         public static void LoginBySms(string tel, string code, string captchaKey, Action<SmsLoginResult> onDone)
         {
             EnsureBuvid(delegate(string buvid)
@@ -118,7 +105,6 @@ namespace BiliClassic.Api
                         if (result.Code == 0)
                         {
                             result.CaptchaKey = ReadString(http.Body, "captcha_key");
-                            // 风控要人机验证时，成功响应也带recaptcha_url
                             string recaptcha = ReadString(http.Body, "recaptcha_url");
                             if (recaptcha.Length > 0)
                             {
@@ -202,12 +188,7 @@ namespace BiliClassic.Api
             });
         }
 
-        // ---------------- buvid ----------------
 
-        /// <summary>
-        /// 取buvid3，统一交给CookieGenerator
-        /// 自造的服务端不认，表现为code0但收不到短信
-        /// </summary>
         private static void EnsureBuvid(Action<string> onDone)
         {
             string cached = CookieGenerator.GetBuvid3();
@@ -236,12 +217,7 @@ namespace BiliClassic.Api
             return id;
         }
 
-        // ---------------- app签名 ----------------
 
-        /// <summary>
-        /// 补appkey和ts，算出sign放进参数，返回最终请求体
-        /// 顺序：先签名，再把sign一起编进body
-        /// </summary>
         private static string SignAndBuildBody(Dictionary<string, string> parameters)
         {
             parameters["appkey"] = AppKey;
@@ -278,11 +254,6 @@ namespace BiliClassic.Api
             return sb.ToString();
         }
 
-        /// <summary>
-        /// 对齐Java的URLEncoder，form-urlencoded
-        /// 保留字母数字和- _ . *，空格变+，其余按UTF-8编成%XX大写
-        /// 签名必须与服务端规范化结果一致，不能改
-        /// </summary>
         private static string FormEncode(string value)
         {
             if (string.IsNullOrEmpty(value))
@@ -323,12 +294,7 @@ namespace BiliClassic.Api
             return headers;
         }
 
-        // ---------------- 响应解析 ----------------
 
-        /// <summary>
-        /// 从data.cookie_info.cookies[]取name/value
-        /// 无JSON库，按出现顺序配对
-        /// </summary>
         private static string ExtractCookies(string body)
         {
             int index = body.IndexOf("\"cookie_info\"", StringComparison.Ordinal);

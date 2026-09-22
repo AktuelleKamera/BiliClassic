@@ -1,0 +1,119 @@
+<phone:PhoneApplicationPage
+    x:Class="BiliClassic.UserProfilePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:phone="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone"
+    xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
+    xmlns:toolkit="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls.Toolkit"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="768"
+    FontFamily="{StaticResource PhoneFontFamilyNormal}"
+    FontSize="{StaticResource PhoneFontSizeNormal}"
+    Foreground="{StaticResource PhoneForegroundBrush}"
+    SupportedOrientations="Portrait" Orientation="Portrait"
+    shell:SystemTray.IsVisible="True">
+
+    <toolkit:TransitionService.NavigationInTransition>
+        <toolkit:NavigationInTransition>
+            <toolkit:NavigationInTransition.Backward>
+                <toolkit:TurnstileTransition Mode="BackwardIn"/>
+            </toolkit:NavigationInTransition.Backward>
+            <toolkit:NavigationInTransition.Forward>
+                <toolkit:TurnstileTransition Mode="ForwardIn"/>
+            </toolkit:NavigationInTransition.Forward>
+        </toolkit:NavigationInTransition>
+    </toolkit:TransitionService.NavigationInTransition>
+
+    <toolkit:TransitionService.NavigationOutTransition>
+        <toolkit:NavigationOutTransition>
+            <toolkit:NavigationOutTransition.Backward>
+                <toolkit:TurnstileTransition Mode="BackwardOut"/>
+            </toolkit:NavigationOutTransition.Backward>
+            <toolkit:NavigationOutTransition.Forward>
+                <toolkit:TurnstileTransition Mode="ForwardOut"/>
+            </toolkit:NavigationOutTransition.Forward>
+        </toolkit:NavigationOutTransition>
+    </toolkit:TransitionService.NavigationOutTransition>
+
+    <Grid x:Name="LayoutRoot" Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 名片 -->
+        <Grid Grid.Row="0" Margin="12,17,12,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Width="88" Height="88"
+                    Background="#22FFFFFF"
+                    BorderBrush="{StaticResource PhoneSubtleBrush}"
+                    BorderThickness="3">
+                <Border.Clip>
+                    <RectangleGeometry Rect="0,0,88,88"/>
+                </Border.Clip>
+                <Grid Width="82" Height="82">
+                    <Image Stretch="UniformToFill"
+                           Source="/Res/Icon/NoAvatar.png"/>
+                    <Image x:Name="AvatarImage" Stretch="UniformToFill"/>
+                </Grid>
+            </Border>
+
+            <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                <TextBlock x:Name="NameText" Text="" TextWrapping="Wrap"
+                           Style="{StaticResource PhoneTextTitle3Style}"/>
+                <TextBlock x:Name="LevelText" Text=""
+                           Style="{StaticResource PhoneTextSubtleStyle}"/>
+                <TextBlock x:Name="SignText" Text="" TextWrapping="Wrap" MaxHeight="60"
+                           Style="{StaticResource PhoneTextSubtleStyle}"/>
+            </StackPanel>
+        </Grid>
+
+        <TextBlock x:Name="SectionText" Grid.Row="1" Text="TA的视频"
+                   Margin="12,4,12,6" Foreground="#D86DA5"/>
+
+        <Grid Grid.Row="2" Margin="12,0,12,0">
+            <ListBox x:Name="VideoList" SelectionChanged="VideoList_SelectionChanged">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Width="160" Height="90"
+                                    Margin="0,0,12,0" Background="#22FFFFFF"
+                                    BorderBrush="{StaticResource PhoneSubtleBrush}"
+                                    BorderThickness="2">
+                                <Grid>
+                                    <Image Stretch="Uniform" VerticalAlignment="Center"
+                                           Source="/Res/Icon/localcover.png"/>
+                                    <Image Stretch="UniformToFill" Source="{Binding Cover}"/>
+                                </Grid>
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Top">
+                                <TextBlock Text="{Binding Title}" TextWrapping="Wrap"
+                                           LineHeight="30" MaxHeight="60"
+                                           Style="{StaticResource PhoneTextNormalStyle}"/>
+                                <TextBlock Text="{Binding InfoLine}"
+                                           Style="{StaticResource PhoneTextSubtleStyle}"/>
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+
+        <StackPanel Grid.Row="3" Margin="12,4,12,8">
+            <TextBlock x:Name="StatusText" Text="正在加载…" TextWrapping="Wrap"
+                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+        </StackPanel>
+    </Grid>
+
+</phone:PhoneApplicationPage>

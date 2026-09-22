@@ -5,16 +5,12 @@ using System.Net;
 
 namespace BiliClassic.Api
 {
-    /// <summary>媒体下载结果</summary>
     public sealed class CachedMedia
     {
-        /// <summary>隔离存储文件名</summary>
         public string FileName = "";
 
-        /// <summary>字节数</summary>
         public long Size;
 
-        /// <summary>失败原因，成功为空</summary>
         public string Error = "";
 
         public bool Ok
@@ -23,10 +19,8 @@ namespace BiliClassic.Api
         }
     }
 
-    /// <summary>离线播放缓存</summary>
     public static class MediaCache
     {
-        /// <summary>离线缓存的文件名前缀</summary>
         private const string Prefix = "media_";
 
         private const int BufferSize = 16384;
@@ -46,13 +40,11 @@ namespace BiliClassic.Api
             public Action<CachedMedia> OnDone;
         }
 
-        /// <summary>离线缓存文件名</summary>
         public static string FileNameFor(string bvid, string cid)
         {
             return Prefix + bvid + "_" + cid + ".mp4";
         }
 
-        /// <summary>本地是否已有这个视频</summary>
         public static CachedMedia Existing(string fileName)
         {
             try
@@ -77,7 +69,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>下载并覆盖缓存文件</summary>
         public static void Download(string url, string fileName,
                                     Action<long, long> onProgress, Action<CachedMedia> onDone)
         {
@@ -104,15 +95,12 @@ namespace BiliClassic.Api
                 state.Request = (HttpWebRequest)WebRequest.Create(uri);
                 state.Request.Method = "GET";
 
-                // 视频十几MB，不能整包缓冲进内存
-                // 关掉缓冲后响应流只能走BeginRead
                 state.Request.AllowReadStreamBuffering = false;
                 state.Request.UserAgent = Http.UserAgent;
 
                 TrySetHeader(state.Request, "Referer", Http.Referer);
                 TrySetHeader(state.Request, "Origin", Http.Origin);
 
-                // Cookie是受限头只能靠容器，不挂就一个都不发
                 try
                 {
                     state.Request.CookieContainer = BiliSession.GetContainer();
@@ -130,17 +118,12 @@ namespace BiliClassic.Api
             state.Request.BeginGetResponse(OnResponse, state);
         }
 
-        /// <summary>打开缓存文件交给MediaElement，换视频时调用方负责关</summary>
         public static IsolatedStorageFileStream Open(string fileName)
         {
             IsolatedStorageFile store = IsolatedStorageFile.GetUserStoreForApplication();
             return store.OpenFile(fileName, FileMode.Open, FileAccess.Read);
         }
 
-        /// <summary>
-        /// 删掉所有离线缓存，返回释放字节数
-        /// 缓存按视频存且播完不删，不清理隔离存储迟早填满
-        /// </summary>
         public static long Clear()
         {
             long freed = 0;
@@ -170,7 +153,6 @@ namespace BiliClassic.Api
             return freed;
         }
 
-        /// <summary>删掉某个缓存文件</summary>
         public static void Delete(string fileName)
         {
             try
@@ -186,7 +168,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>字节数转可读字符串</summary>
         public static string FormatSize(long bytes)
         {
             if (bytes >= 1024L * 1024L)
@@ -210,16 +191,15 @@ namespace BiliClassic.Api
             }
             catch (WebException wex)
             {
-                state.OnDone(Fail("HTTP 失败 [" + wex.Status + "]: " + wex.Message, state.FileName));
+                SafeDone(state, Fail("HTTP 失败 [" + wex.Status + "]: " + wex.Message, state.FileName));
                 return;
             }
             catch (Exception ex)
             {
-                state.OnDone(Fail("请求失败: " + ex.Message, state.FileName));
+                SafeDone(state, Fail("请求失败: " + ex.Message, state.FileName));
                 return;
             }
 
-            // 分块传输时ContentLength是-1，进度只能显示已下载量
             state.Total = state.Response.ContentLength;
 
             try
@@ -233,7 +213,7 @@ namespace BiliClassic.Api
             }
             catch (Exception ex)
             {
-                state.OnDone(Fail("创建缓存文件失败: " + ex.Message, state.FileName));
+                SafeDone(state, Fail("创建缓存文件失败: " + ex.Message, state.FileName));
                 return;
             }
 
@@ -244,7 +224,7 @@ namespace BiliClassic.Api
             }
             catch (Exception ex)
             {
-                state.OnDone(Fail("读取响应流失败: " + ex.Message, state.FileName));
+                SafeDone(state, Fail("读取响应流失败: " + ex.Message, state.FileName));
             }
         }
 
@@ -259,7 +239,7 @@ namespace BiliClassic.Api
             }
             catch (Exception ex)
             {
-                state.OnDone(Fail("下载中断: " + ex.Message, state.FileName));
+                SafeDone(state, Fail("下载中断: " + ex.Message, state.FileName));
                 return;
             }
 
@@ -275,7 +255,7 @@ namespace BiliClassic.Api
             }
             catch (Exception ex)
             {
-                state.OnDone(Fail("写缓存文件失败: " + ex.Message, state.FileName));
+                SafeDone(state, Fail("写缓存文件失败: " + ex.Message, state.FileName));
                 return;
             }
 
@@ -283,7 +263,7 @@ namespace BiliClassic.Api
 
             if (state.OnProgress != null)
             {
-                state.OnProgress(state.Received, state.Total);
+                SafeProgress(state);
             }
 
             try
@@ -292,7 +272,7 @@ namespace BiliClassic.Api
             }
             catch (Exception ex)
             {
-                state.OnDone(Fail("继续下载失败: " + ex.Message, state.FileName));
+                SafeDone(state, Fail("继续下载失败: " + ex.Message, state.FileName));
             }
         }
 
@@ -324,13 +304,40 @@ namespace BiliClassic.Api
             media.FileName = state.FileName;
             media.Size = state.Received;
 
-            // 200也可能返回空body，这种当失败
             if (state.Received <= 0)
             {
                 media.Error = "服务器返回了空内容";
             }
 
-            state.OnDone(media);
+            SafeDone(state, media);
+        }
+
+        private static void SafeDone(State state, CachedMedia media)
+        {
+            try
+            {
+                if (state.OnDone != null)
+                {
+                    state.OnDone(media);
+                }
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        private static void SafeProgress(State state)
+        {
+            try
+            {
+                if (state.OnProgress != null)
+                {
+                    state.OnProgress(state.Received, state.Total);
+                }
+            }
+            catch (Exception)
+            {
+            }
         }
 
         private static bool TryCreateUri(string url, out Uri uri)
@@ -344,7 +351,6 @@ namespace BiliClassic.Api
             {
             }
 
-            // query里未转义的[]会让Uri拒收，编码后服务端照样认
             try
             {
                 uri = new Uri(url.Replace("[", "%5B").Replace("]", "%5D"), UriKind.Absolute);

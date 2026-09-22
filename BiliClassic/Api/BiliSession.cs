@@ -8,7 +8,6 @@ using System.Text.RegularExpressions;
 
 namespace BiliClassic.Api
 {
-    /// <summary>登录态</summary>
     public static class BiliSession
     {
         private const string StoreFile = "biliclassic_cookies.txt";
@@ -17,16 +16,10 @@ namespace BiliClassic.Api
 
         private static readonly CookieContainer Container = new CookieContainer();
 
-        /// <summary>加cookie用的目标Uri</summary>
         private static readonly Uri CookieTarget = new Uri("https://www.bilibili.com");
 
-        /// <summary>跨域那几步落在biligame域上</summary>
         private static readonly Uri GameTarget = new Uri("https://passport.biligame.com");
 
-        /// <summary>
-        /// 回读cookie时逐个问这些主机的容器
-        /// Set-Cookie是发给请求那个主机的，只问www那一个会漏掉
-        /// </summary>
         private static readonly Uri[] CookieTargets = new Uri[]
         {
             new Uri("https://www.bilibili.com"),
@@ -38,22 +31,17 @@ namespace BiliClassic.Api
 
         private static string _cookieString = "";
 
-        /// <summary>当前用户名，验证nav后填</summary>
         public static string UserName = "";
 
-        /// <summary>当前用户mid</summary>
         public static string Mid = "";
 
-        /// <summary>csrf token，写操作要用</summary>
         public static string Csrf = "";
 
-        /// <summary>原始cookie串</summary>
         public static string CookieString
         {
             get { return _cookieString; }
         }
 
-        /// <summary>登录态是否完整，SESSDATA和bili_jct都要有</summary>
         public static bool IsLoggedIn
         {
             get
@@ -63,7 +51,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>登录态里有没有这个cookie名</summary>
         public static bool HasCookie(string name)
         {
             if (string.IsNullOrEmpty(name))
@@ -78,7 +65,6 @@ namespace BiliClassic.Api
             return Container;
         }
 
-        /// <summary>整体替换登录态</summary>
         public static void SetCookieString(string cookieString)
         {
             _cookieString = cookieString ?? "";
@@ -86,10 +72,6 @@ namespace BiliClassic.Api
             SyncLoginState();
         }
 
-        /// <summary>
-        /// 合并cookie，同名以新值为准
-        /// 扫码返回一整套，验证码可能只有一部分
-        /// </summary>
         public static void MergeCookieString(string cookieString)
         {
             if (string.IsNullOrEmpty(cookieString))
@@ -123,7 +105,6 @@ namespace BiliClassic.Api
             Save();
         }
 
-        /// <summary>从IsolatedStorage读回登录态</summary>
         public static void Load()
         {
             try
@@ -168,10 +149,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>
-        /// 请求nav验证登录态，code为0即成功
-        /// 成功时填UserName和Mid
-        /// </summary>
         public static void Verify(Action<bool> onDone)
         {
             Http.GetText("https://api.bilibili.com/x/web-interface/nav", Http.Referer, delegate(HttpResult http)
@@ -190,7 +167,6 @@ namespace BiliClassic.Api
                             {
                                 UserName = name.Groups[1].Value;
                             }
-                            // nav里的mid是权威值，扫码跨域地址不一定带DedeUserID
                             Match mid = Regex.Match(http.Body, @"""mid"":\s*(\d+)");
                             if (mid.Success)
                             {
@@ -215,7 +191,6 @@ namespace BiliClassic.Api
             });
         }
 
-        /// <summary>从cookie串同步mid和csrf</summary>
         private static void SyncLoginState()
         {
             Dictionary<string, string> map = ParseCookies(_cookieString);
@@ -230,11 +205,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>
-        /// 解析k=v; k=v形式的cookie串
-        /// 值保持原样不解码，解码后可能出现逗号，Cookie类会抛异常
-        /// 也正好和浏览器发出的Cookie头一致
-        /// </summary>
         private static Dictionary<string, string> ParseCookies(string cookieString)
         {
             Dictionary<string, string> map = new Dictionary<string, string>();
@@ -316,8 +286,6 @@ namespace BiliClassic.Api
                 {
                 }
 
-                // passport.biligame.com是.bilibili.com之外的域
-                // 不按biligame再灌一份，sso/set那步就带不上登录态
                 try
                 {
                     Container.Add(GameTarget, new Cookie(pair.Key, pair.Value, "/", GameCookieDomain));
@@ -333,14 +301,8 @@ namespace BiliClassic.Api
             RebuildContainer();
         }
 
-        /// <summary>
-        /// 从Set-Cookie原文里抠出name=value
-        /// 不依赖CookieContainer：容器收不收得下是服务端行为和框架共同决定的
-        /// 每个头一行，先取第一段，再扫属性段
-        /// </summary>
         public static void MergeSetCookie(string raw)
         {
-            // 框架挡住Set-Cookie时Http会返回这个标记
             if (string.IsNullOrEmpty(raw) || raw == "!BLOCKED")
             {
                 return;
@@ -356,12 +318,10 @@ namespace BiliClassic.Api
                     continue;
                 }
 
-                // 一个Set-Cookie头里，第一段就是cookie，后面全是属性
                 int semi = line.IndexOf(';');
                 string first = semi >= 0 ? line.Substring(0, semi) : line;
                 AddPair(parts, first);
 
-                // 万一框架把多个头合并成一行，属性段里还藏着别的cookie
                 if (semi >= 0)
                 {
                     string[] rest = line.Substring(semi + 1).Split(new char[] { ',', ';' });
@@ -378,7 +338,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>把一段name=value收进来，属性和非登录名跳过</summary>
         private static void AddPair(List<string> parts, string piece)
         {
             piece = piece.Trim();
@@ -397,11 +356,6 @@ namespace BiliClassic.Api
             parts.Add(name + "=" + value);
         }
 
-        /// <summary>
-        /// 从响应正文里捞cookie
-        /// 跨域那几步的凭证可能是JSON、HTML或JS里的document.cookie
-        /// 只认登录相关的几个名字，避免误抓
-        /// </summary>
         public static bool MergeCookiesInText(string text)
         {
             if (string.IsNullOrEmpty(text))
@@ -417,7 +371,6 @@ namespace BiliClassic.Api
                 parts.Add(m.Groups[1].Value + "=" + m.Groups[2].Value);
             }
 
-            // 另一种形态：{"name":"SESSDATA","value":"..."}
             MatchCollection pairs = Regex.Matches(text,
                 @"""name""\s*:\s*""([^""]+)""\s*,\s*""value""\s*:\s*""([^""]*)""");
             foreach (Match m in pairs)
@@ -428,7 +381,6 @@ namespace BiliClassic.Api
                 }
             }
 
-            // 还有 ["SESSDATA","..."] 这种
             MatchCollection arrays = Regex.Matches(text, @"\[""([^""]+)"",\s*""([^""]*)""\]");
             foreach (Match m in arrays)
             {
@@ -447,14 +399,12 @@ namespace BiliClassic.Api
             return true;
         }
 
-        /// <summary>只认登录相关的几个cookie名</summary>
         private static bool IsLoginCookie(string name)
         {
             return name == "SESSDATA" || name == "bili_jct" || name == "DedeUserID"
                 || name == "DedeUserID__ckMd5" || name == "sid";
         }
 
-        /// <summary>Set-Cookie的属性名，不是cookie</summary>
         private static bool IsCookieAttribute(string key)
         {
             string lower = key.ToLower();
@@ -463,11 +413,9 @@ namespace BiliClassic.Api
                 || lower == "samesite" || lower == "version" || lower == "comment";
         }
 
-        /// <summary>从容器回读cookie</summary>
         public static void HarvestFromContainer()
         {
             List<string> parts = new List<string>();
-            // WP7的BCL里没有HashSet，用List去重
             List<string> seen = new List<string>();
 
             for (int i = 0; i < CookieTargets.Length; i++)
@@ -480,7 +428,6 @@ namespace BiliClassic.Api
                         {
                             continue;
                         }
-                        // 同名cookie跨主机只会重复，取第一次见到的
                         if (seen.Contains(cookie.Name))
                         {
                             continue;
@@ -503,10 +450,6 @@ namespace BiliClassic.Api
             Save();
         }
 
-        /// <summary>
-        /// 调试用：每个主机能看到的cookie名，不含值
-        /// 用来判断Set-Cookie到底有没有进容器
-        /// </summary>
         public static string DescribeCookies()
         {
             StringBuilder sb = new StringBuilder();

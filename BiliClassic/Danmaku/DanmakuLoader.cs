@@ -5,9 +5,6 @@ using BiliClassic.Api;
 
 namespace BiliClassic.Danmaku
 {
-    /// <summary>
-    /// 弹幕拉取
-    /// </summary>
     public static class DanmakuLoader
     {
         public static string UrlFor(string cid)
@@ -61,9 +58,6 @@ namespace BiliClassic.Danmaku
             });
         }
 
-        /// <summary>
-        /// 明文测试
-        /// </summary>
         private static bool TryDecodeXml(byte[] data, out string xml)
         {
             string plain = DecodeUtf8(data, 0, data.Length);
@@ -105,7 +99,6 @@ namespace BiliClassic.Danmaku
         {
             try
             {
-                // 替换回退
                 return Encoding.UTF8.GetString(data, offset, count);
             }
             catch (Exception)

@@ -1,33 +1,61 @@
+﻿using System;
+
 namespace BiliClassic.Api
 {
-    /// <summary>
-    /// 应用设置
-    /// </summary>
     public static class AppSettings
     {
         private const string OfflinePlaybackKey = "offline_playback";
         private const string DanmakuEnabledKey = "danmaku_enabled";
         private const string AutoCheckUpdateKey = "auto_check_update";
+        private const string PlayQualityKey = "play_quality";
+        private const string DashPlaybackKey = "dash_playback";
+        private const string WhiteThemeKey = "white_theme";
 
-        /// <summary>自动检查更新，默认开</summary>
+        public static int PlayQuality
+        {
+            get
+            {
+                int value;
+                return int.TryParse(LocalStore.Get(PlayQualityKey), out value) && value > 0 && value != 6
+                    ? value
+                    : 32;
+            }
+            set { LocalStore.Set(PlayQualityKey, value.ToString()); }
+        }
+
         public static bool AutoCheckUpdate
         {
             get { return LocalStore.Get(AutoCheckUpdateKey) != "0"; }
             set { LocalStore.Set(AutoCheckUpdateKey, value ? "1" : "0"); }
         }
 
-        /// <summary>
-        /// 离线播放
-        /// </summary>
         public static bool OfflinePlayback
         {
             get { return LocalStore.Get(OfflinePlaybackKey) == "1"; }
             set { LocalStore.Set(OfflinePlaybackKey, value ? "1" : "0"); }
         }
 
-        /// <summary>
-        /// 弹幕开关
-        /// </summary>
+        public static bool DashSupported
+        {
+            get
+            {
+                Version version = Environment.OSVersion.Version;
+                return version.Major > 7 || (version.Major == 7 && version.Minor >= 1);
+            }
+        }
+
+        public static bool DashPlayback
+        {
+            get { return LocalStore.Get(DashPlaybackKey) == "1"; }
+            set { LocalStore.Set(DashPlaybackKey, value ? "1" : "0"); }
+        }
+
+        public static bool WhiteTheme
+        {
+            get { return LocalStore.Get(WhiteThemeKey) == "1"; }
+            set { LocalStore.Set(WhiteThemeKey, value ? "1" : "0"); }
+        }
+
         public static bool DanmakuEnabled
         {
             get { return LocalStore.Get(DanmakuEnabledKey) != "0"; }

@@ -1,0 +1,38 @@
+<!--
+  WP7 命令行构建补丁
+  这台机器 C 盘注册表没有登记 Silverlight v4.0 引用程序集，
+  默认的 GetFrameworkPaths 会拿到空路径报“未安装 Silverlight 4 SDK”。
+  这里直接指到实际安装位置（默认系统盘找不到就回退 H:）。
+  由 BiliClassic.csproj 在 Silverlight 目标之后 Import，覆盖同名目标。
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <!-- WP7 SDK 的 Program Files 根，默认系统盘没有就回退 H: -->
+    <WP7SdkProgramFiles Condition="'$(WP7SdkProgramFiles)' == '' and Exists('$(MSBuildProgramFiles32)\Microsoft SDKs\Windows Phone\v7.0')">$(MSBuildProgramFiles32)</WP7SdkProgramFiles>
+    <WP7SdkProgramFiles Condition="'$(WP7SdkProgramFiles)' == '' and Exists('H:\Program Files (x86)\Microsoft SDKs\Windows Phone\v7.0')">H:\Program Files (x86)</WP7SdkProgramFiles>
+    <WP7SdkProgramFiles Condition="'$(WP7SdkProgramFiles)' == ''">$(MSBuildProgramFiles32)</WP7SdkProgramFiles>
+
+    <WP7FrameworkDirectory>$(WP7SdkProgramFiles)\Reference Assemblies\Microsoft\Framework\Silverlight\v4.0\Profile\WindowsPhone</WP7FrameworkDirectory>
+    <WP7SdkLibraries>$(WP7SdkProgramFiles)\Microsoft SDKs\Windows Phone\v7.0\Libraries\Silverlight</WP7SdkLibraries>
+  </PropertyGroup>
+
+  <!-- 覆盖：引用集和库都用上面这套，不再问注册表要 -->
+  <Target Name="GetFrameworkPaths" DependsOnTargets="$(GetFrameworkPathsDependsOn)">
+    <PropertyGroup>
+      <TargetFrameworkDirectory>$(WP7FrameworkDirectory)</TargetFrameworkDirectory>
+      <TargetFrameworkSDKDirectory>$(WP7SdkLibraries)</TargetFrameworkSDKDirectory>
+      <_FullFrameworkReferenceAssemblyPaths>$(TargetFrameworkDirectory)</_FullFrameworkReferenceAssemblyPaths>
+      <FrameworkPathOverride>$(TargetFrameworkDirectory)</FrameworkPathOverride>
+      <SdkPath>$(TargetFrameworkSDKDirectory)</SdkPath>
+      <SilverlightRuntimeVersion>3.0.40624.0</SilverlightRuntimeVersion>
+    </PropertyGroup>
+    <CreateProperty Value="{CandidateAssemblyFiles};$(ReferencePath);{HintPathFromItem};$(TargetFrameworkDirectory);$(TargetFrameworkSDKDirectory);{RawFileName};$(OutDir)">
+      <Output TaskParameter="Value" PropertyName="AssemblySearchPaths" />
+    </CreateProperty>
+  </Target>
+
+  <!-- 覆盖：临时链没有配套的 CapDetect/校验器，清单校验跳过 -->
+  <Target Name="ValidateWMAppManifest" />
+
+</Project>

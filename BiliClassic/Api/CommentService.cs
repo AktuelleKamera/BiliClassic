@@ -6,20 +6,14 @@ using System.Text.RegularExpressions;
 
 namespace BiliClassic.Api
 {
-    /// <summary>
-    /// 一条评论
-    /// </summary>
     public sealed class CommentItem
     {
-        /// <summary>评论者</summary>
         public UserItem Author { get; set; }
 
-        /// <summary>去重用</summary>
         public string Rpid { get; set; }
 
         public string Message { get; set; }
 
-        /// <summary>时间加点赞数</summary>
         public string InfoLine { get; set; }
 
         public CommentItem()
@@ -31,25 +25,18 @@ namespace BiliClassic.Api
         }
     }
 
-    /// <summary>
-    /// 视频评论
-    /// </summary>
     public static class CommentService
     {
         private const string WbiUrl = "https://api.bilibili.com/x/v2/reply/wbi/main";
         private const string LegacyUrl = "https://api.bilibili.com/x/v2/reply";
 
-        /// <summary>每页20条</summary>
         public const int PageSize = 20;
 
-        /// <summary>热度排序</summary>
         private const string SortMode = "3";
 
-        /// <summary>当前游标与是否到底</summary>
         private static string _offset = "";
         private static bool _ended;
 
-        /// <summary>取第page页，回调不在UI线程</summary>
         public static void Fetch(string aid, int page,
                                  Action<List<CommentItem>, bool, string> onDone)
         {
@@ -75,8 +62,6 @@ namespace BiliClassic.Api
             {
                 if (!string.IsNullOrEmpty(keyError))
                 {
-                    // 签不出来就退回老接口
-                    // 老接口也空的话必须把签名错误报出来，否则会被当成"没有评论"
                     FetchLegacy(aid, page, delegate(List<CommentItem> legacy, bool more, string legacyError)
                     {
                         if (legacy.Count == 0 && legacyError.Length == 0)
@@ -91,8 +76,6 @@ namespace BiliClassic.Api
                 FetchWbi(aid, onDone);
             });
         }
-
-        // WBI接口
 
         private static void FetchWbi(string aid, Action<List<CommentItem>, bool, string> onDone)
         {
@@ -119,8 +102,6 @@ namespace BiliClassic.Api
 
                 if (items.Count == 0 && !string.IsNullOrEmpty(error))
                 {
-                    // WBI被拒（风控或参数变了），退回老接口再试
-                    // 老接口也空的话把WBI那条错误报出来，别被吞掉
                     string wbiError = error;
                     FetchLegacy(aid, 1, delegate(List<CommentItem> legacy, bool more, string legacyError)
                     {
@@ -138,7 +119,6 @@ namespace BiliClassic.Api
             });
         }
 
-        /// <summary>老接口</summary>
         private static void FetchLegacy(string aid, int page,
                                         Action<List<CommentItem>, bool, string> onDone)
         {
@@ -154,7 +134,77 @@ namespace BiliClassic.Api
             });
         }
 
-        // 解析
+        private const string AddUrl = "https://api.bilibili.com/x/v2/reply/add";
+
+        public static void Add(string aid, string message, Action<bool, string> onDone)
+        {
+            if (string.IsNullOrEmpty(aid))
+            {
+                onDone(false, "缺少aid");
+                return;
+            }
+            if (!BiliSession.IsLoggedIn)
+            {
+                onDone(false, "请先登录");
+                return;
+            }
+            if (string.IsNullOrEmpty(message))
+            {
+                onDone(false, "评论不能为空");
+                return;
+            }
+            if (message.Length > 1000)
+            {
+                onDone(false, "评论不能超过1000字");
+                return;
+            }
+
+            string form = "oid=" + aid + "&type=1&root=0&parent=0&message="
+                + UrlEncode(message) + "&jsonp=jsonp&csrf=" + BiliSession.Csrf;
+
+            Http.PostForm(AddUrl, form, Http.Referer, delegate(HttpResult http)
+            {
+                if (http == null || string.IsNullOrEmpty(http.Body))
+                {
+                    onDone(false, string.IsNullOrEmpty(http.Error) ? "发送失败" : http.Error);
+                    return;
+                }
+
+                Match code = Regex.Match(JsonText.Head(http.Body, 200), @"""code"":\s*(-?\d+)");
+                if (code.Success && code.Groups[1].Value == "0")
+                {
+                    onDone(true, "");
+                    return;
+                }
+
+                string value = code.Success ? code.Groups[1].Value : "";
+                string friendly = FriendlyCode(value);
+                string message2 = JsonText.ReadString(http.Body, "message");
+                onDone(false, "发送失败 code=" + (value.Length > 0 ? value : "?")
+                    + (friendly.Length > 0 ? "（" + friendly + "）" : "")
+                    + (message2.Length > 0 && message2 != "0" ? " " + message2 : ""));
+            });
+        }
+
+        private static string UrlEncode(string value)
+        {
+            StringBuilder sb = new StringBuilder();
+            byte[] bytes = Encoding.UTF8.GetBytes(value);
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                char c = (char)bytes[i];
+                if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+                    || c == '-' || c == '_' || c == '.' || c == '~')
+                {
+                    sb.Append(c);
+                }
+                else
+                {
+                    sb.Append('%').Append(bytes[i].ToString("X2"));
+                }
+            }
+            return sb.ToString();
+        }
 
         private static string Parse(HttpResult http, List<CommentItem> items, out bool hasMore,
                                     bool cursorPaging)
@@ -176,13 +226,11 @@ namespace BiliClassic.Api
 
             if (items.Count == 0)
             {
-                // 没有rpid就是真的没有评论
                 if (body.IndexOf("\"rpid\"", StringComparison.Ordinal) >= 0)
                 {
                     return "有评论数据但解析到0条：" + JsonText.Head(body, 150);
                 }
 
-                // 没评论就没有下一页，游标一并收尾
                 _offset = "";
                 _ended = true;
                 return "";
@@ -232,6 +280,7 @@ namespace BiliClassic.Api
                 CommentItem item = new CommentItem();
                 item.Rpid = rpid;
                 item.Author.Name = JsonText.ReadString(region, "uname");
+                item.Author.Mid = ReadMid(region);
                 item.Author.AvatarUrl = Normalize(JsonText.ReadString(region, "avatar"));
                 item.Message = message;
 
@@ -241,6 +290,12 @@ namespace BiliClassic.Api
 
                 items.Add(item);
             }
+        }
+
+        private static string ReadMid(string region)
+        {
+            Match m = Regex.Match(region, @"""mid"":\s*""?(\d+)""?");
+            return m.Success ? m.Groups[1].Value : "";
         }
 
         private static bool ContainsRpid(List<CommentItem> items, string rpid)
@@ -255,7 +310,6 @@ namespace BiliClassic.Api
             return false;
         }
 
-        /// <summary>Unix秒转相对时间</summary>
         private static string FormatTimeAgo(long unixSeconds)
         {
             if (unixSeconds <= 0)
@@ -286,14 +340,11 @@ namespace BiliClassic.Api
             return time.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         }
 
-        /// <summary>code非0时返回错误描述，返回null表示正常</summary>
         private static string DescribeCode(string body)
         {
-            // 只看开头：顶层code一定在最前面，往整段里找会被data里的同名键误伤
             Match code = Regex.Match(JsonText.Head(body, 200), @"""code"":\s*(-?\d+)");
             if (!code.Success)
             {
-                // 连code都没有，多半不是接口响应（风控页或半截响应）
                 return "响应里没有code：" + JsonText.Head(body, 120);
             }
 
@@ -310,7 +361,6 @@ namespace BiliClassic.Api
                 + (message.Length > 0 && message != "0" ? " " + message : "");
         }
 
-        /// <summary>常见错误码翻成人话</summary>
         private static string FriendlyCode(string code)
         {
             if (code == "-404" || code == "12061")
@@ -339,10 +389,6 @@ namespace BiliClassic.Api
             return m.Success && long.TryParse(m.Groups[1].Value, out value) ? value : 0;
         }
 
-        /// <summary>
-        /// 把游标包成JSON字符串值
-        /// offset自己就是一段JSON，引号必须转义
-        /// </summary>
         private static string JsonQuote(string value)
         {
             if (string.IsNullOrEmpty(value))

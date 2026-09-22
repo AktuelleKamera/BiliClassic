@@ -3,30 +3,17 @@ using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
 namespace BiliClassic.Danmaku
 {
-    /// <summary>
-    /// 弹幕渲染层
-    /// </summary>
     public sealed class DanmakuView
     {
-        /// <summary>刷新间隔</summary>
         private const int TickMs = 33;
 
-        /// <summary>
-        /// 弹幕丢弃时间
-        /// </summary>
         private const int LateToleranceMs = 1200;
 
-        /// <summary>
-        /// 播放位置跳变
-        /// </summary>
-        private const double JumpBackMs = 400;
-        private const double JumpAheadMs = 2000;
-
-        /// <summary>一条正在显示的弹幕的运行时状态外观</summary>
         private sealed class Live
         {
             public DanmakuItem Item;
@@ -34,12 +21,13 @@ namespace BiliClassic.Danmaku
             public TranslateTransform Transform;
             public double Width;
 
-            /// <summary>出现时刻与消失时刻</summary>
             public double StartMs;
             public double EndMs;
 
             public double FromX;
             public double ToX;
+
+            public Storyboard Story;
         }
 
         private readonly Canvas _canvas;
@@ -47,17 +35,26 @@ namespace BiliClassic.Danmaku
         private readonly List<DanmakuItem> _items = new List<DanmakuItem>();
         private readonly List<Live> _live = new List<Live>();
 
-        /// <summary>每条轨道最早可以放下一条的时刻</summary>
         private double[] _lineFreeAtMs = new double[0];
+
+        private readonly List<FrameworkElement> _pool = new List<FrameworkElement>();
+
+        private readonly Dictionary<Color, SolidColorBrush> _brushes =
+            new Dictionary<Color, SolidColorBrush>();
+
+        private readonly Dictionary<string, double> _widthCache =
+            new Dictionary<string, double>();
 
         private DispatcherTimer _timer;
         private int _cursor;
         private double _lastMs = -1;
         private bool _playing;
 
-        /// <summary>
-        /// 取当前播放位置（毫秒）
-        /// </summary>
+        private double _posMs;
+        private int _lastTick;
+        private int _lastSyncTick;
+        private bool _clockReady;
+
         public Func<double> PositionProvider;
 
         public DanmakuView(Canvas canvas, DanmakuContext context)
@@ -76,13 +73,11 @@ namespace BiliClassic.Danmaku
             get { return _context; }
         }
 
-        /// <summary>已载入多少条弹幕</summary>
         public int TotalCount
         {
             get { return _items.Count; }
         }
 
-        /// <summary>载入弹幕</summary>
         public void Load(List<DanmakuItem> items)
         {
             _items.Clear();
@@ -93,7 +88,6 @@ namespace BiliClassic.Danmaku
             Clear();
         }
 
-        /// <summary>清空</summary>
         public void Clear()
         {
             _lastMs = -1;
@@ -101,9 +95,6 @@ namespace BiliClassic.Danmaku
             RemoveAllLive();
         }
 
-        /// <summary>
-        /// 开关
-        /// </summary>
         public void SetEnabled(bool enabled)
         {
             _context.Enabled = enabled;
@@ -136,20 +127,79 @@ namespace BiliClassic.Danmaku
             }
         }
 
-        /// <summary>
-        /// 播放 / 暂停
-        /// </summary>
         public void SetPlaying(bool playing)
         {
+            bool resume = playing && !_playing;
             _playing = playing;
+
+            for (int i = 0; i < _live.Count; i++)
+            {
+                Storyboard story = _live[i].Story;
+                if (story == null)
+                {
+                    continue;
+                }
+                try
+                {
+                    if (playing)
+                    {
+                        story.Resume();
+                    }
+                    else
+                    {
+                        story.Pause();
+                    }
+                }
+                catch (Exception)
+                {
+                }
+            }
+
+            if (resume)
+            {
+                ResetClock(SafePosition());
+            }
         }
 
-        /// <summary>seek</summary>
         public void Seek(double nowMs)
         {
             RemoveAllLive();
             _cursor = FirstIndexAtOrAfter(nowMs);
             _lastMs = nowMs;
+            ResetClock(nowMs);
+        }
+
+        private void ResetClock(double ms)
+        {
+            int tick = Environment.TickCount;
+            _posMs = ms;
+            _lastTick = tick;
+            _lastSyncTick = tick;
+            _clockReady = true;
+        }
+
+        private double NowMs()
+        {
+            int tick = Environment.TickCount;
+            if (!_clockReady)
+            {
+                ResetClock(SafePosition());
+                return _posMs;
+            }
+
+            _posMs += (uint)(tick - _lastTick);
+            _lastTick = tick;
+
+            if ((uint)(tick - _lastSyncTick) >= 1000)
+            {
+                _lastSyncTick = tick;
+                double real = SafePosition();
+                if (real - _posMs > 1000 || _posMs - real > 1000)
+                {
+                    _posMs = real;
+                }
+            }
+            return _posMs;
         }
 
         private void OnTick(object sender, EventArgs e)
@@ -159,7 +209,7 @@ namespace BiliClassic.Danmaku
                 return;
             }
 
-            double now = SafePosition();
+            double now = NowMs();
             double canvasWidth = _canvas.ActualWidth;
             if (canvasWidth <= 0 || now < 0)
             {
@@ -167,16 +217,7 @@ namespace BiliClassic.Danmaku
                 return;
             }
 
-            // 拖动进度条
-            if (_lastMs >= 0
-                && (now < _lastMs - JumpBackMs || now > _lastMs + JumpAheadMs))
-            {
-                Seek(now);
-                return;
-            }
-
             Spawn(now, canvasWidth);
-            Move(now);
             Retire(now);
 
             _lastMs = now;
@@ -193,8 +234,6 @@ namespace BiliClassic.Danmaku
                 return 0;
             }
         }
-
-        // 弹幕SPAWN！！
 
         private void Spawn(double now, double canvasWidth)
         {
@@ -219,7 +258,6 @@ namespace BiliClassic.Danmaku
                 int line = AllocateLine(item, now);
                 if (line < 0)
                 {
-                    // 丢弃无空轨道的
                     continue;
                 }
 
@@ -227,7 +265,6 @@ namespace BiliClassic.Danmaku
             }
         }
 
-        /// <summary>寻找空轨道</summary>
         private int AllocateLine(DanmakuItem item, double now)
         {
             int lines = _lineFreeAtMs.Length;
@@ -252,41 +289,42 @@ namespace BiliClassic.Danmaku
         {
             double fontSize = _context.FontSizeFor(item.TextSize);
 
-            TextBlock text = new TextBlock();
-            text.Text = item.Text;
-            text.FontSize = fontSize;
-            text.Foreground = new SolidColorBrush(item.Color);
+            TextBlock main;
+            TextBlock shadow;
+            FrameworkElement root = Rent(out main, out shadow);
 
-            FrameworkElement root;
-            if (_context.StrokeEnabled)
+            main.Text = item.Text;
+            main.FontSize = fontSize;
+            main.Foreground = BrushFor(item.Color);
+            if (shadow != null)
             {
-                // 文字描边
-                Grid grid = new Grid();
-
-                TextBlock shadow = new TextBlock();
                 shadow.Text = item.Text;
                 shadow.FontSize = fontSize;
-                shadow.Foreground = new SolidColorBrush(Colors.Black);
-                shadow.Margin = new Thickness(1, 1, 0, 0);
-
-                grid.Children.Add(shadow);
-                grid.Children.Add(text);
-                root = grid;
             }
-            else
-            {
-                root = text;
-            }
-
-            TranslateTransform transform = new TranslateTransform();
-            root.RenderTransform = transform;
             root.Opacity = _context.Opacity;
 
-            root.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            double width = root.DesiredSize.Width;
+            TranslateTransform transform = root.RenderTransform as TranslateTransform;
+            if (transform == null)
+            {
+                transform = new TranslateTransform();
+                root.RenderTransform = transform;
+            }
+
+            string key = item.TextSize + "|" + item.Text;
+            double width;
+            if (!_widthCache.TryGetValue(key, out width))
+            {
+                root.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                width = root.DesiredSize.Width;
+                if (_widthCache.Count < 3000)
+                {
+                    _widthCache[key] = width;
+                }
+            }
 
             Canvas.SetLeft(root, 0);
-            Canvas.SetTop(root, line * _context.LineHeight);
+            Canvas.SetTop(root, 0);
+            transform.Y = line * _context.LineHeight;
 
             bool moving = item.Mode.IsMoving();
             double duration;
@@ -309,7 +347,6 @@ namespace BiliClassic.Danmaku
             }
             else
             {
-                // 顶部/底部弹幕居中不动，靠 EndMs 到点消失
                 duration = _context.TopBottomDurationMs;
                 fromX = (canvasWidth - width) / 2.0;
                 toX = fromX;
@@ -329,12 +366,101 @@ namespace BiliClassic.Danmaku
             _canvas.Children.Add(root);
             _live.Add(live);
 
+            if (moving)
+            {
+                DoubleAnimation move = new DoubleAnimation();
+                move.From = fromX;
+                move.To = toX;
+                move.Duration = new Duration(TimeSpan.FromMilliseconds(duration));
+                Storyboard.SetTarget(move, transform);
+                Storyboard.SetTargetProperty(move, new PropertyPath("X"));
+
+                Storyboard story = new Storyboard();
+                story.Children.Add(move);
+                live.Story = story;
+                story.Begin();
+            }
+
             _lineFreeAtMs[line] = now + OccupiedMs(live);
         }
 
-        /// <summary>
-        /// 存活时间
-        /// </summary>
+        private FrameworkElement Rent(out TextBlock main, out TextBlock shadow)
+        {
+            if (_pool.Count > 0)
+            {
+                FrameworkElement root = _pool[_pool.Count - 1];
+                _pool.RemoveAt(_pool.Count - 1);
+
+                Grid grid = root as Grid;
+                if (grid != null && grid.Children.Count >= 2)
+                {
+                    shadow = (TextBlock)grid.Children[0];
+                    main = (TextBlock)grid.Children[1];
+                }
+                else
+                {
+                    main = (TextBlock)root;
+                    shadow = null;
+                }
+                return root;
+            }
+
+            return CreateRoot(out main, out shadow);
+        }
+
+        private FrameworkElement CreateRoot(out TextBlock main, out TextBlock shadow)
+        {
+            main = new TextBlock();
+            if (!_context.StrokeEnabled)
+            {
+                shadow = null;
+                return main;
+            }
+
+            Grid grid = new Grid();
+            shadow = new TextBlock();
+            shadow.Foreground = BrushFor(Colors.Black);
+            shadow.Margin = new Thickness(1, 1, 0, 0);
+            grid.Children.Add(shadow);
+            grid.Children.Add(main);
+            return grid;
+        }
+
+        private SolidColorBrush BrushFor(Color color)
+        {
+            SolidColorBrush brush;
+            if (_brushes.TryGetValue(color, out brush))
+            {
+                return brush;
+            }
+            brush = new SolidColorBrush(color);
+            _brushes[color] = brush;
+            return brush;
+        }
+
+        private void Recycle(FrameworkElement element)
+        {
+            _canvas.Children.Remove(element);
+            if (_pool.Count < 48)
+            {
+                _pool.Add(element);
+            }
+        }
+
+        private static void StopStory(Live live)
+        {
+            if (live.Story != null)
+            {
+                try
+                {
+                    live.Story.Stop();
+                }
+                catch (Exception)
+                {
+                }
+            }
+        }
+
         private static double OccupiedMs(Live live)
         {
             double duration = live.EndMs - live.StartMs;
@@ -351,40 +477,14 @@ namespace BiliClassic.Danmaku
             return duration * (live.Width / span);
         }
 
-        // 移动与回收
-
-        private void Move(double now)
-        {
-            for (int i = 0; i < _live.Count; i++)
-            {
-                Live live = _live[i];
-                double duration = live.EndMs - live.StartMs;
-                if (duration <= 0)
-                {
-                    continue;
-                }
-
-                double progress = (now - live.StartMs) / duration;
-                if (progress < 0)
-                {
-                    progress = 0;
-                }
-                else if (progress > 1)
-                {
-                    progress = 1;
-                }
-
-                live.Transform.X = live.FromX + (live.ToX - live.FromX) * progress;
-            }
-        }
-
         private void Retire(double now)
         {
             for (int i = _live.Count - 1; i >= 0; i--)
             {
                 if (now >= _live[i].EndMs)
                 {
-                    _canvas.Children.Remove(_live[i].Element);
+                    StopStory(_live[i]);
+                    Recycle(_live[i].Element);
                     _live.RemoveAt(i);
                 }
             }
@@ -394,7 +494,8 @@ namespace BiliClassic.Danmaku
         {
             for (int i = 0; i < _live.Count; i++)
             {
-                _canvas.Children.Remove(_live[i].Element);
+                StopStory(_live[i]);
+                Recycle(_live[i].Element);
             }
             _live.Clear();
             ResetLines();
@@ -417,7 +518,6 @@ namespace BiliClassic.Danmaku
             }
         }
 
-        /// <summary>第一条时间 &gt;= ms 的弹幕下标</summary>
         private int FirstIndexAtOrAfter(double ms)
         {
             int lo = 0;

@@ -39,6 +39,11 @@
 
     <!-- 黑底 -->
     <Grid x:Name="LayoutRoot" Background="Black">
+        <!-- DASH音频轨：和视频轨配成一对播，放视频的那条在它上面 -->
+        <MediaElement x:Name="AudioPlayer" Stretch="Uniform" AutoPlay="False"
+                      MediaOpened="AudioPlayer_MediaOpened"
+                      MediaFailed="AudioPlayer_MediaFailed"/>
+
         <MediaElement x:Name="Player" Stretch="Uniform" AutoPlay="False"
                       MediaOpened="Player_MediaOpened"
                       MediaFailed="Player_MediaFailed"
@@ -56,11 +61,11 @@
 
         <!-- 底部 -->
         <StackPanel VerticalAlignment="Bottom">
-            <Border x:Name="DiagnosticsPanel" Visibility="Collapsed"
-                    Background="#E6101010" Padding="12,8"
-                    MouseLeftButtonUp="DiagnosticsPanel_MouseLeftButtonUp">
-                <TextBlock x:Name="DiagnosticsText" Foreground="#FFFFC966"
-                           TextWrapping="Wrap" FontSize="16"/>
+            <!-- 清晰度选单：点右下角按钮才展开 -->
+            <Border x:Name="QualityPanel" Visibility="Collapsed"
+                    HorizontalAlignment="Right" Margin="0,0,4,0"
+                    Background="#EE101010" Padding="8,6">
+                <StackPanel x:Name="QualityList"/>
             </Border>
 
             <!-- 播放控制条 -->
@@ -68,28 +73,56 @@
                 <StackPanel>
                     <Slider x:Name="SeekBar" Minimum="0" Maximum="1" Value="0"
                             ValueChanged="SeekBar_ValueChanged"/>
-                    <Grid>
+                    <!-- 负上边距盖掉Slider模板自带的空白 -->
+                    <Grid Margin="0,-28,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <Button x:Name="PlayPauseButton" Grid.Column="0" Content="暂停"
-                                MinWidth="0" Padding="12,2"
-                                Click="PlayPauseButton_Click"/>
+                        <!-- 图标用白色蒙版，原图的颜色不影响 -->
+                        <Button x:Name="PlayPauseButton" Grid.Column="0"
+                                MinWidth="0" Padding="8,4"
+                                Background="Transparent" BorderThickness="0"
+                                Click="PlayPauseButton_Click">
+                            <Rectangle Width="40" Height="40" Fill="White">
+                                <Rectangle.OpacityMask>
+                                    <ImageBrush x:Name="PlayPauseMask"
+                                                ImageSource="/Res/Icon/play.png"/>
+                                </Rectangle.OpacityMask>
+                            </Rectangle>
+                        </Button>
                         <TextBlock x:Name="PositionText" Grid.Column="1"
                                    Foreground="White" VerticalAlignment="Center"
                                    TextAlignment="Center" Text="00:00 / --:--"/>
-                        <Button x:Name="DanmakuButton" Grid.Column="2" Content="弹幕开"
+                        <!-- 实际走的是哪条路，开播前为空 -->
+                        <TextBlock x:Name="TransportText" Grid.Column="2" Text=""
+                                   Foreground="White" VerticalAlignment="Center"
+                                   FontSize="16" Margin="0,0,8,0"/>
+                        <Button x:Name="DanmakuButton" Grid.Column="3"
+                                MinWidth="0" Padding="8,4"
+                                Background="Transparent" BorderThickness="0"
+                                Click="DanmakuButton_Click">
+                            <Rectangle x:Name="DanmakuIcon" Width="40" Height="40" Fill="White">
+                                <Rectangle.OpacityMask>
+                                    <ImageBrush x:Name="DanmakuMask"
+                                                ImageSource="/Res/Icon/danmuon.png"/>
+                                </Rectangle.OpacityMask>
+                            </Rectangle>
+                        </Button>
+                        <!-- 右下角：点开清晰度选单 -->
+                        <Button x:Name="QualityButton" Grid.Column="4" Content="720P"
                                 MinWidth="0" Padding="12,2"
-                                Click="DanmakuButton_Click"/>
+                                Click="QualityButton_Click"/>
                     </Grid>
                 </StackPanel>
             </Border>
 
             <Border x:Name="StatusPanel" Background="#99000000" Padding="12,8">
                 <TextBlock x:Name="StatusText" Foreground="White" TextWrapping="Wrap"
-                           Text="正在获取播放地址…"/>
+                           Text="正在获取视频信息…"/>
             </Border>
         </StackPanel>
 
@@ -100,7 +133,7 @@
             <TextBlock x:Name="LoadingText" Margin="12,0,12,20"
                        HorizontalAlignment="Left" VerticalAlignment="Bottom"
                        Foreground="#FF616161" FontSize="18"
-                       Text="正在获取播放地址…"/>
+                       Text="正在获取视频信息…"/>
         </Grid>
     </Grid>
 

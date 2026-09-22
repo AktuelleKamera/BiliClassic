@@ -50,7 +50,7 @@
 
         <ScrollViewer Grid.Row="1">
             <StackPanel Margin="12,0,12,0">
-                <TextBlock Text="哔哩经典 for WP"
+                <TextBlock x:Name="PlatformText" Text="哔哩经典 for WP"
                            Style="{StaticResource PhoneTextTitle3Style}"/>
                 <TextBlock x:Name="VersionText" Text="" Margin="12,4,0,0"
                            Style="{StaticResource PhoneTextSubtleStyle}"/>

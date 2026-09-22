@@ -3,12 +3,8 @@ using System.Text;
 
 namespace BiliClassic.Api
 {
-    /// <summary>
-    /// MD5
-    /// </summary>
     public static class Md5Util
     {
-        /// <summary>每轮左移位数</summary>
         private static readonly int[] ShiftBits = new int[64]
         {
              7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
@@ -17,7 +13,6 @@ namespace BiliClassic.Api
              6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21
         };
 
-        /// <summary>K[i] = floor(2^32 * abs(sin(i+1)))，标准常量表</summary>
         private static readonly uint[] K = new uint[64]
         {
             0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
@@ -38,13 +33,11 @@ namespace BiliClassic.Api
             0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391
         };
 
-        /// <summary>UTF-8字节的MD5，32位小写十六进制</summary>
         public static string Hex(string input)
         {
             return Hex(Encoding.UTF8.GetBytes(input ?? ""));
         }
 
-        /// <summary>字节数组的MD5，32位小写十六进制</summary>
         public static string Hex(byte[] input)
         {
             byte[] hash = Compute(input);
@@ -56,7 +49,6 @@ namespace BiliClassic.Api
             return sb.ToString();
         }
 
-        /// <summary>返回16字节摘要</summary>
         public static byte[] Compute(byte[] input)
         {
             if (input == null)
@@ -64,7 +56,6 @@ namespace BiliClassic.Api
                 input = new byte[0];
             }
 
-            // 填充：补0x80，补0到56(mod 64)，末尾8字节小端位长度
             long bitLength = (long)input.Length * 8L;
             int totalLength = ((input.Length + 8) / 64 + 1) * 64;
 

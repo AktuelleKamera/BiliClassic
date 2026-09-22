@@ -3,27 +3,46 @@ using System.Windows.Media.Imaging;
 
 namespace BiliClassic.Api
 {
-    /// <summary>
-    /// 用户条目
-    /// </summary>
     public sealed class UserItem : INotifyPropertyChanged
     {
         private BitmapImage _avatar;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        /// <summary>用户mid</summary>
         public string Mid { get; set; }
 
         public string Name { get; set; }
 
-        /// <summary>个性签名</summary>
         public string Sign { get; set; }
 
-        /// <summary>头像原始地址</summary>
+        public string SignOneLine
+        {
+            get { return LimitOneLine(Sign, 26); }
+        }
+
+        private static string LimitOneLine(string text, int budget)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return "";
+            }
+            int used = 0;
+            int cut = 0;
+            for (int i = 0; i < text.Length; i++)
+            {
+                int width = text[i] > 0x2E80 ? 2 : 1;
+                if (used + width > budget)
+                {
+                    break;
+                }
+                used += width;
+                cut = i + 1;
+            }
+            return cut >= text.Length ? text : text.Substring(0, cut) + "…";
+        }
+
         public string AvatarUrl { get; set; }
 
-        /// <summary>头像位图，null为未加载</summary>
         public BitmapImage Avatar
         {
             get { return _avatar; }
@@ -35,7 +54,6 @@ namespace BiliClassic.Api
                 }
                 _avatar = value;
 
-                // 异步加载，须通知绑定刷新
                 PropertyChangedEventHandler handler = PropertyChanged;
                 if (handler != null)
                 {

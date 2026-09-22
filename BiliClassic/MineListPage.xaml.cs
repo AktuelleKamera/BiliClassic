@@ -9,17 +9,6 @@ using Microsoft.Phone.Controls;
 
 namespace BiliClassic
 {
-    /// <summary>
-    /// 「我的」下的列表，一个页面四种模式：
-    ///
-    /// follow     关注的人，UserItem + UserCard
-    /// history    播放历史，游标分页
-    /// fav        收藏夹列表
-    /// favvideos  收藏夹内视频，额外带fid
-    ///
-    /// 后三种是视频，共用VideoItem + VideoCard
-    /// 关注的是用户，模型/加载器/模板独立
-    /// </summary>
     public partial class MineListPage : PhoneApplicationPage
     {
         private enum Mode
@@ -27,7 +16,8 @@ namespace BiliClassic
             Following,
             History,
             Folders,
-            FolderVideos
+            FolderVideos,
+            Bangumi
         }
 
         private readonly ObservableCollection<VideoItem> _videos =
@@ -46,9 +36,8 @@ namespace BiliClassic
         public MineListPage()
         {
             InitializeComponent();
+            ThemeHelper.ApplyPage(this);
 
-            // 滚到底部自动翻页
-            // 回调可能连发，靠_loading挡重入
             BottomAutoLoader.Attach(ResultList, delegate
             {
                 MoreButton_Click(null, null);
@@ -77,7 +66,6 @@ namespace BiliClassic
 
             PageTitle.Text = TitleFor(_mode);
 
-            // 关注的是用户，其余是视频，集合模板都换
             if (_mode == Mode.Following)
             {
                 ResultList.ItemsSource = _users;
@@ -86,10 +74,9 @@ namespace BiliClassic
             else
             {
                 ResultList.ItemsSource = _videos;
-                ResultList.ItemTemplate = Resources["VideoCard"] as DataTemplate;
+                ResultList.ItemTemplate = Resources[_mode == Mode.Bangumi ? "BangumiCard" : "VideoCard"] as DataTemplate;
             }
 
-            // mid从登录态取，接口都要求它
             _mid = ParseLong(BiliSession.Mid);
             if (_mid > 0)
             {
@@ -97,7 +84,6 @@ namespace BiliClassic
                 return;
             }
 
-            // 没有mid就先让nav补一次，否则收藏那几个接口全是未登录
             ShowStatus("正在确认登录信息…");
             BiliSession.Verify(delegate(bool ok)
             {
@@ -123,6 +109,10 @@ namespace BiliClassic
             {
                 return Mode.FolderVideos;
             }
+            if (value == "bangumi")
+            {
+                return Mode.Bangumi;
+            }
             return Mode.Following;
         }
 
@@ -136,12 +126,13 @@ namespace BiliClassic
                     return "我的收藏";
                 case Mode.FolderVideos:
                     return "收藏夹";
+                case Mode.Bangumi:
+                    return "我的追番";
                 default:
                     return "关注的人";
             }
         }
 
-        /// <summary>当前列表条数，两种集合分开数</summary>
         private int CurrentCount
         {
             get { return _mode == Mode.Following ? _users.Count : _videos.Count; }
@@ -181,6 +172,10 @@ namespace BiliClassic
                     MineService.FetchFolderVideos(_mid, _fid, page, OnVideosLoaded);
                     break;
 
+                case Mode.Bangumi:
+                    BangumiService.FetchFollowing(_mid, page, OnVideosLoaded);
+                    break;
+
                 default:
                     MineService.FetchFollowing(_mid, page, OnUsersLoaded);
                     break;
@@ -208,7 +203,6 @@ namespace BiliClassic
                     for (int i = 0; i < items.Count; i++)
                     {
                         _videos.Add(items[i]);
-                        // 交给CoverLoader：限流/去重/缓存由它负责
                         CoverLoader.Request(items[i]);
                         added++;
                     }
@@ -231,7 +225,6 @@ namespace BiliClassic
                     for (int i = 0; i < users.Count; i++)
                     {
                         _users.Add(users[i]);
-                        // 头像走AvatarLoader（1:1），不用CoverLoader
                         AvatarLoader.Request(users[i]);
                         added++;
                     }
@@ -254,8 +247,6 @@ namespace BiliClassic
                     {
                         FavFolder folder = folders[i];
 
-                        // 收藏夹不是视频，借VideoItem承载
-                        // Fid存在它自己的字段上，封面是夹子里第一个视频的
                         VideoItem item = new VideoItem();
                         item.Fid = folder.Fid;
                         item.Title = folder.Title;
@@ -271,7 +262,6 @@ namespace BiliClassic
                     }
                 }
 
-                // 收藏夹接口一次返回全部，不分页
                 _hasMore = false;
                 Finish(error);
             }));
@@ -292,14 +282,11 @@ namespace BiliClassic
                 StatusText.Visibility = Visibility.Collapsed;
             }
 
-            // 按钮不再显示，翻页由BottomAutoLoader触发
-            // 元素留在XAML里，MoreButton_Click还复用它
             MoreButton.Visibility = Visibility.Collapsed;
         }
 
         private void ResultList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            // 关注模式选中UserItem，没有bvid可跳
             if (_mode == Mode.Following)
             {
                 ResultList.SelectedIndex = -1;
@@ -311,7 +298,6 @@ namespace BiliClassic
             {
                 return;
             }
-            // 立刻清选中态，否则返回还高亮
             ResultList.SelectedIndex = -1;
 
             if (_mode == Mode.Folders)
@@ -322,6 +308,24 @@ namespace BiliClassic
                 }
                 NavigationService.Navigate(new Uri(
                     "/MineListPage.xaml?mode=favvideos&fid=" + item.Fid, UriKind.Relative));
+                return;
+            }
+
+            if (_mode == Mode.Bangumi)
+            {
+                if (item.SeasonId <= 0)
+                {
+                    return;
+                }
+                NavigationService.Navigate(new Uri(
+                    "/BangumiDetailPage.xaml?season=" + item.SeasonId, UriKind.Relative));
+                return;
+            }
+
+            if (item.IsBangumi && item.Epid > 0)
+            {
+                NavigationService.Navigate(new Uri(
+                    "/BangumiDetailPage.xaml?ep=" + item.Epid, UriKind.Relative));
                 return;
             }
 

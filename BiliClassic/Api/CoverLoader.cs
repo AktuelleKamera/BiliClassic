@@ -6,17 +6,8 @@ using System.Windows.Media.Imaging;
 
 namespace BiliClassic.Api
 {
-    /// <summary>
-    /// 封面加载器
-    /// 不直接给Image绑URL，自己抓的三个原因
-    /// 1限并发，老设备连拉20张打满内存带宽
-    /// 2内存缓存加失败标记，滚动不重试坏图
-    /// 3下载解码分开，解码强制回UI线程
-    /// 队列/缓存/计数只在UI线程改，避免回调线程竞争
-    /// </summary>
     public static class CoverLoader
     {
-        /// <summary>最大并发下载数</summary>
         private const int MaxConcurrent = 3;
 
         private static readonly Dictionary<string, BitmapImage> Cache = new Dictionary<string, BitmapImage>();
@@ -26,7 +17,6 @@ namespace BiliClassic.Api
 
         private static int _active;
 
-        /// <summary>请求加载封面，已加载/加载中/失败都跳过</summary>
         public static void Request(VideoItem item)
         {
             if (item == null || item.Cover != null)
@@ -86,7 +76,6 @@ namespace BiliClassic.Api
             _active++;
             Http.GetBytes(url, Http.Referer, delegate(byte[] bytes, string error)
             {
-                // 回调可能不在UI线程，切回去串行化队列状态
                 Deployment.Current.Dispatcher.BeginInvoke(delegate
                 {
                     _active--;
@@ -103,8 +92,6 @@ namespace BiliClassic.Api
                         try
                         {
                             BitmapImage bitmap = new BitmapImage();
-                            // MemoryStream不能用using提前关
-                            // BitmapImage延后解码，流要活到解码完成
                             bitmap.SetSource(new MemoryStream(bytes));
                             Cache[url] = bitmap;
                             item.Cover = bitmap;

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- WP8.1 Silverlight 要两份清单：这份管 appx 打包，Properties\WMAppManifest.xml 管 Silverlight 运行时
+     Identity 的 Name/Publisher 是占位，正式发布要换成商店预留的值 -->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/2010/manifest"
+  xmlns:m3="http://schemas.microsoft.com/appx/2014/manifest"
+  xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest">
+
+  <!-- Identity 的 Version 是 appx 身份的版本，major 不能是 0，模板给的也是 1.0.0.0 -->
+  <Identity Name="BiliClassic.WP8" Publisher="CN=BiliClassic" Version="1.0.0.0" />
+
+  <!-- 非迁移应用：PhoneProductId 随便给个 GUID，PhonePublisherId 用全 0
+       官方文档这么写，模板 App1 也是全 0 -->
+  <mp:PhoneIdentity
+    PhoneProductId="4c1b9a72-3d5e-4f80-9b21-6e7a0c5d2f18"
+    PhonePublisherId="00000000-0000-0000-0000-000000000000" />
+
+  <Properties>
+    <DisplayName>哔哩经典</DisplayName>
+    <PublisherDisplayName>BiliClassic</PublisherDisplayName>
+    <!-- 引用不带限定符的名字，多分辨率由 MRT 按设备 scale 选 -->
+    <Logo>Res\StoreLogo.png</Logo>
+  </Properties>
+
+  <Prerequisites>
+    <OSMinVersion>6.3.1</OSMinVersion>
+    <OSMaxVersionTested>6.3.1</OSMaxVersionTested>
+  </Prerequisites>
+
+  <Resources>
+    <Resource Language="x-generate" />
+  </Resources>
+
+  <Applications>
+    <!-- Silverlight 8.1 的启动方式：Executable 是 Silverlight 宿主 AGHost.exe，EntryPoint 是起始页路径
+         写成 JS 应用那种 StartPage= 会注册失败（报"无法注册包"） -->
+    <Application Id="App" Executable="AGHost.exe" EntryPoint="MainPage.xaml">
+      <m3:VisualElements
+        DisplayName="哔哩经典"
+        Description="哔哩经典 for WP"
+        Square150x150Logo="Res\Logo.png"
+        Square44x44Logo="Res\SmallLogo.png"
+        ForegroundText="light"
+        BackgroundColor="#1B1B1B">
+        <!-- 磁贴图缺一个就报 APPX3005 -->
+        <m3:DefaultTile
+          Wide310x150Logo="Res\WideLogo.png"
+          Square71x71Logo="Res\Square71x71Logo.png" />
+        <m3:SplashScreen Image="Res\SplashScreen.png" />
+      </m3:VisualElements>
+    </Application>
+  </Applications>
+
+  <!-- 只要联网，和 WMAppManifest 里那条 ID_CAP_NETWORKING 对应
+       privateNetworkClientServer 是给 DASH 的本机回环监听用的 -->
+  <Capabilities>
+    <Capability Name="internetClientServer" />
+    <Capability Name="privateNetworkClientServer" />
+  </Capabilities>
+</Package>

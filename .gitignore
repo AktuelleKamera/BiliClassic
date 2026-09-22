@@ -36,13 +36,23 @@ BiliClassic/obj/
 [Ll]ogs/
 [Tt]est[Rr]esult*/
 
+# 例外：这个 Build 是 WP7 构建配置（WP7Sdk.targets），不是产物
+!BiliClassic/Build/
+!BiliClassic/Build/**
+
 # NuGet
 packages/
 *.nupkg
 
 # 其它编辑器
 .idea/
+*.iml
 *.DotSettings.user
+
+# WP8 打包产物
+*.appx
+*.appxbundle
+*.appxupload
 
 # 杂项
 .DS_Store
@@ -55,3 +65,9 @@ desktop.ini
 UpgradeLog*.XML
 
 # 注意：Libs\Microsoft.Phone.Controls.Toolkit.dll 是构建必需的，不要忽略
+
+# 暂时不上传 WinRT 三兄弟（之后想传了就删掉这一段）
+BiliClassic.WinRT/
+BiliClassic.Win8/
+BiliClassic.Shared/
+BiliClassic.WinRT.sln

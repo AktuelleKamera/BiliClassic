@@ -6,16 +6,12 @@ using System.Text;
 
 namespace BiliClassic.Api
 {
-    /// <summary>请求结果：Body或Error</summary>
     public sealed class HttpResult
     {
-        /// <summary>响应正文，含非2xx的返回</summary>
         public string Body = "";
 
-        /// <summary>传输层失败原因，非空即失败</summary>
         public string Error = "";
 
-        /// <summary>原始Set-Cookie，登录流程手动取凭证用</summary>
         public string SetCookie = "";
 
         public bool Ok
@@ -24,26 +20,16 @@ namespace BiliClassic.Api
         }
     }
 
-    /// <summary>
-    /// 异步HTTP请求
-    /// 无同步GetResponse，只能走回调
-    /// 受限头按系统版本放开，逐次记录到HeaderSupport
-    /// </summary>
     public static class Http
     {
-        /// <summary>固定UA</summary>
         public const string UserAgent =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.95 Safari/537.36";
 
+        // 【重要】播放地址/图片都要它，缺了 CDN 直接 403，喵
         public const string Referer = "https://www.bilibili.com/";
 
-        /// <summary>风控可能用得上，设不上会跳过</summary>
         public const string Origin = "https://www.bilibili.com";
 
-        /// <summary>
-        /// 受限头设置结果，如"Referer=OK"
-        /// 能否设置随系统版本变化，逐次记录
-        /// </summary>
         public static string HeaderSupport = "（还没发过请求）";
 
         private static readonly Dictionary<string, string> HeaderResults =
@@ -51,7 +37,6 @@ namespace BiliClassic.Api
 
         private static readonly object HeaderLock = new object();
 
-        /// <summary>GET文本，失败重试一次，回调必调一次</summary>
         public static void GetText(string url, string referer, Action<HttpResult> onDone)
         {
             GetText(url, referer, onDone, 2);
@@ -107,14 +92,9 @@ namespace BiliClassic.Api
                 }
                 catch (WebException wex)
                 {
-                    // 非2xx（如风控412）也带JSON body
-                    // EndGetResponse抛异常时body在wex.Response里，不能丢
                     result.Body = ReadWebExceptionBody(wex);
                     if (string.IsNullOrEmpty(result.Body))
                     {
-                        // Silverlight的NotFound不是404
-                        // 是传输层失败统称（TLS/证书/连不上）
-                        // 能区分的字段只有wex.Status
                         result.Error = "HTTP 失败 [" + wex.Status + DescribeStatus(wex.Status) + "]: " + wex.Message
                             + (wex.Response == null ? " (无响应对象)" : "")
                             + (wex.InnerException == null
@@ -137,11 +117,6 @@ namespace BiliClassic.Api
             }, null);
         }
 
-        /// <summary>
-        /// WebExceptionStatus译成人话
-        /// 用ToString比名字：Silverlight的枚举是精简过的
-        /// SecureChannelFailure等成员直接引用会编译不过
-        /// </summary>
         private static string DescribeStatus(WebExceptionStatus status)
         {
             string name = status.ToString();
@@ -177,10 +152,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>
-        /// 下载二进制（封面图）
-        /// 回调：字节数组+错误信息，成功时错误为空
-        /// </summary>
         public static void GetBytes(string url, string referer, Action<byte[], string> onDone)
         {
             if (url != null && url.StartsWith("//"))
@@ -201,7 +172,6 @@ namespace BiliClassic.Api
                 request.Method = "GET";
                 request.AllowReadStreamBuffering = true;
                 request.UserAgent = UserAgent;
-                // 受限头交给ApplyCommonHeaders容错
                 ApplyCommonHeaders(request, referer);
             }
             catch (Exception ex)
@@ -240,20 +210,11 @@ namespace BiliClassic.Api
             }, null);
         }
 
-        /// <summary>
-        /// 表单POST（应用登录接口用）
-        /// Content-Type是application/x-www-form-urlencoded
-        /// </summary>
         public static void PostForm(string url, string formBody, string referer, Action<HttpResult> onDone)
         {
             PostForm(url, formBody, referer, null, null, onDone);
         }
 
-        /// <summary>
-        /// 表单POST，可带自定义头和UA
-        /// UA单独传参：在Silverlight里是受限头
-        /// 只能通过UserAgent属性设置
-        /// </summary>
         public static void PostForm(string url, string formBody, string referer,
                                     Dictionary<string, string> headers, string userAgent,
                                     Action<HttpResult> onDone)
@@ -344,11 +305,6 @@ namespace BiliClassic.Api
             return result;
         }
 
-        /// <summary>
-        /// 收下所有Set-Cookie
-        /// 不能只取Headers["Set-Cookie"]：每个cookie一个头，那样只能拿到一条
-        /// response.Cookies是框架解析好的那份，也一起收
-        /// </summary>
         private static string ReadSetCookie(HttpWebResponse response)
         {
             StringBuilder sb = new StringBuilder();
@@ -365,7 +321,6 @@ namespace BiliClassic.Api
                     string value = response.Headers[keys[i]];
                     if (!string.IsNullOrEmpty(value))
                     {
-                        // 用换行分隔，免得和cookie值里的逗号混在一起
                         sb.Append(value).Append('\n');
                     }
                 }
@@ -392,12 +347,6 @@ namespace BiliClassic.Api
             return sb.ToString();
         }
 
-        /// <summary>
-        /// 构造Uri，容错方括号
-        /// bili_ticket的query带context[ts]=
-        /// 未转义的[ ]会被Uri拒收
-        /// 退回百分号编码，服务端能解析
-        /// </summary>
         private static Uri CreateUri(string url)
         {
             try
@@ -411,12 +360,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>
-        /// 公共请求设置：固定头+登录态容器
-        /// 容器必须显式挂，Silverlight默认关cookie
-        /// 不挂则一个cookie都发不出去
-        /// Cookie/Referer是受限头，只能靠CookieContainer
-        /// </summary>
         private static void ApplyCommonHeaders(HttpWebRequest request, string referer)
         {
             TrySetHeader(request, "Accept", "application/json, text/plain, */*");
@@ -432,7 +375,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>设置受限头并记录结果</summary>
         private static void TrySetHeader(HttpWebRequest request, string name, string value)
         {
             if (string.IsNullOrEmpty(value))

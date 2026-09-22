@@ -1,0 +1,170 @@
+<phone:PhoneApplicationPage
+    x:Class="BiliClassic.FollowDynamicPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:phone="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone"
+    xmlns:controls="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls"
+    xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
+    xmlns:toolkit="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls.Toolkit"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="768"
+    FontFamily="{StaticResource PhoneFontFamilyNormal}"
+    FontSize="{StaticResource PhoneFontSizeNormal}"
+    Foreground="{StaticResource PhoneForegroundBrush}"
+    SupportedOrientations="Portrait" Orientation="Portrait"
+    shell:SystemTray.IsVisible="True">
+
+    <toolkit:TransitionService.NavigationInTransition>
+        <toolkit:NavigationInTransition>
+            <toolkit:NavigationInTransition.Backward>
+                <toolkit:TurnstileTransition Mode="BackwardIn"/>
+            </toolkit:NavigationInTransition.Backward>
+            <toolkit:NavigationInTransition.Forward>
+                <toolkit:TurnstileTransition Mode="ForwardIn"/>
+            </toolkit:NavigationInTransition.Forward>
+        </toolkit:NavigationInTransition>
+    </toolkit:TransitionService.NavigationInTransition>
+
+    <toolkit:TransitionService.NavigationOutTransition>
+        <toolkit:NavigationOutTransition>
+            <toolkit:NavigationOutTransition.Backward>
+                <toolkit:TurnstileTransition Mode="BackwardOut"/>
+            </toolkit:NavigationOutTransition.Backward>
+            <toolkit:NavigationOutTransition.Forward>
+                <toolkit:TurnstileTransition Mode="ForwardOut"/>
+            </toolkit:NavigationOutTransition.Forward>
+        </toolkit:NavigationOutTransition>
+    </toolkit:TransitionService.NavigationOutTransition>
+
+    <Grid x:Name="LayoutRoot" Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="12,17,0,10">
+            <TextBlock Text="哔哩经典" Style="{StaticResource PhoneTextNormalStyle}"/>
+        </StackPanel>
+
+        <controls:Pivot Grid.Row="1" x:Name="FollowPivot"
+                        SelectionChanged="FollowPivot_SelectionChanged">
+
+            <controls:PivotItem Header="关注">
+                <Grid Margin="12,0,12,0">
+                    <ListBox x:Name="UserList" SelectionChanged="UserList_SelectionChanged">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Padding" Value="0"/>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Width="70" Height="70"
+                                            VerticalAlignment="Top"
+                                            Margin="0,2,12,0" Background="#22FFFFFF"
+                                            BorderBrush="{StaticResource PhoneSubtleBrush}"
+                                            BorderThickness="2">
+                                        <Border.Clip>
+                                            <RectangleGeometry Rect="0,0,70,70"/>
+                                        </Border.Clip>
+                                        <Grid>
+                                            <Image Stretch="UniformToFill"
+                                                   Source="/Res/Icon/NoAvatar.png"/>
+                                            <Image Stretch="UniformToFill"
+                                                   Source="{Binding Avatar}"/>
+                                        </Grid>
+                                    </Border>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{Binding Name}" TextWrapping="Wrap"
+                                                   MaxHeight="44" Margin="0"
+                                                   Style="{StaticResource PhoneTextNormalStyle}"/>
+                                        <TextBlock Text="{Binding SignOneLine}" TextWrapping="NoWrap"
+                                                   Margin="0,2,0,0"
+                                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <TextBlock x:Name="UserEmptyText" Text="还没有关注的人" TextWrapping="Wrap"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Visibility="Collapsed"
+                               Style="{StaticResource PhoneTextSubtleStyle}"/>
+                </Grid>
+            </controls:PivotItem>
+
+            <controls:PivotItem Header="动态">
+                <Grid Margin="12,0,12,0">
+                    <ListBox x:Name="DynamicList" SelectionChanged="DynamicList_SelectionChanged">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Padding" Value="0"/>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Width="160" Height="90"
+                                            Margin="0,0,12,0" Background="#22FFFFFF"
+                                            BorderBrush="{StaticResource PhoneSubtleBrush}"
+                                            BorderThickness="2">
+                                        <Border.Clip>
+                                            <RectangleGeometry Rect="0,0,160,90"/>
+                                        </Border.Clip>
+                                        <Grid>
+                                            <Image Stretch="Uniform" VerticalAlignment="Center"
+                                                   Source="/Res/Icon/localcover.png"/>
+                                            <Image Stretch="UniformToFill" Source="{Binding Cover}"/>
+                                        </Grid>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Top">
+                                        <TextBlock Text="{Binding Title}" TextWrapping="Wrap"
+                                                   LineHeight="30" MaxHeight="60"
+                                                   Style="{StaticResource PhoneTextNormalStyle}"/>
+                                        <TextBlock Text="{Binding InfoLine}"
+                                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <TextBlock x:Name="DynamicEmptyText" Text="还没有动态" TextWrapping="Wrap"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Visibility="Collapsed"
+                               Style="{StaticResource PhoneTextSubtleStyle}"/>
+                </Grid>
+            </controls:PivotItem>
+
+        </controls:Pivot>
+
+        <StackPanel Grid.Row="2" Margin="12,4,12,8">
+            <TextBlock x:Name="StatusText" TextWrapping="Wrap" Text=""
+                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+        </StackPanel>
+    </Grid>
+
+    <phone:PhoneApplicationPage.ApplicationBar>
+        <shell:ApplicationBar IsVisible="True" IsMenuEnabled="True">
+            <shell:ApplicationBar.Buttons>
+                <shell:ApplicationBarIconButton IconUri="/Res/Icon/refresh.png"
+                                               Text="刷新" Click="RefreshMenuItem_Click"/>
+            </shell:ApplicationBar.Buttons>
+        </shell:ApplicationBar>
+    </phone:PhoneApplicationPage.ApplicationBar>
+
+</phone:PhoneApplicationPage>

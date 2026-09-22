@@ -4,15 +4,8 @@ using System.Text.RegularExpressions;
 
 namespace BiliClassic.Api
 {
-    /// <summary>
-    /// 解析粘贴进来的Cookie文本
-    /// 输入可能是整条Cookie头、片段或JSON
-    /// 多模式抠出关键字段，重建成标准cookie串
-    /// 抠不到SESSDATA返回null
-    /// </summary>
     public static class CookieHelper
     {
-        /// <summary>重建cookie串，无SESSDATA返回null</summary>
         public static string ParseAndBuildCookie(string content)
         {
             if (string.IsNullOrEmpty(content))
@@ -36,11 +29,6 @@ namespace BiliClassic.Api
             return string.Join("; ", parts.ToArray());
         }
 
-        /// <summary>
-        /// 输入是否已是标准cookie串
-        /// 是就不要再重建：重建只留6个字段
-        /// 会丢掉DedeUserID__ckMd5等风控字段
-        /// </summary>
         public static bool LooksLikeCookieString(string content)
         {
             if (string.IsNullOrEmpty(content))
@@ -63,10 +51,6 @@ namespace BiliClassic.Api
             }
         }
 
-        /// <summary>
-        /// 多种模式依次尝试：
-        /// Cookie形式、带引号、JSON "key":"value"、宽松兜底
-        /// </summary>
         private static string ExtractValue(string content, string key)
         {
             string[] patterns = new string[]
