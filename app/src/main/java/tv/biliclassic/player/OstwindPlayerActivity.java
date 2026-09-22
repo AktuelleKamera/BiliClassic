@@ -93,6 +93,12 @@ public class OstwindPlayerActivity extends Activity
     private String mLoadStep2Text;
     private boolean mUrlResolved = false;
     private Handler mUiHandler = new Handler();
+    // 系统栏重新可见时延迟重新隐藏（全面屏）
+    private Runnable mRehideNavRunnable = new Runnable() {
+        public void run() {
+            hideSystemUI();
+        }
+    };
 
     private String mVideoUrl;
     private String mCookie;
@@ -206,6 +212,22 @@ public class OstwindPlayerActivity extends Activity
         // 全屏隐藏状态栏 + 播放时保持屏幕常亮（API 1）
         getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        // 全面屏挖孔适配：API 28+ 延伸到挖孔区域
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 28) {
+            applyCutoutMode();
+        }
+        // API 19+ 沉浸式全屏，系统栏重显后自动再次隐藏
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 19) {
+            hideSystemUI();
+            PlayerCompat.setAutoRehideSystemUiListener(
+                    getWindow().getDecorView(), mUiHandler, mRehideNavRunnable);
+        }
+        // 黑色窗口底色（避免全面屏边缘露白）
+        getWindow().setBackgroundDrawable(
+                new android.graphics.drawable.ColorDrawable(0xFF000000));
+        // API 21+ 消费所有系统窗口插入，防止旋转后安全区/挖孔推回布局
+        PlayerCompat.consumeSystemWindowInsets(getWindow());
 
         setContentView(R.layout.activity_ostwind_player);
         // 表冠滚动：播放器内控制音量（向下转=增大），Toast 节流提示（API<12 内部自动跳过）
@@ -1620,9 +1642,48 @@ public class OstwindPlayerActivity extends Activity
         }
     }
 
+    /** 全面屏挖孔模式：API 28+ 延伸到挖孔区域（反射兼容，低版本跳过） */
+    private void applyCutoutMode() {
+        try {
+            android.view.WindowManager.LayoutParams attrs = getWindow().getAttributes();
+            java.lang.reflect.Field f = android.view.WindowManager.LayoutParams.class
+                    .getField("layoutInDisplayCutoutMode");
+            f.setInt(attrs, 1); // LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            getWindow().setAttributes(attrs);
+        } catch (Throwable t) {
+        }
+    }
+
+    /** 沉浸式全屏：隐藏状态栏/导航栏并延伸到系统栏区域 */
+    private void hideSystemUI() {
+        PlayerCompat.setSystemUiVisibility(getWindow().getDecorView(),
+                android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                | android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | android.view.View.SYSTEM_UI_FLAG_IMMERSIVE);
+    }
+
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // 旋转后重新应用挖孔模式与沉浸式全屏
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 28) {
+            mUiHandler.post(new Runnable() {
+                public void run() {
+                    applyCutoutMode();
+                }
+            });
+        }
+        hideSystemUI();
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
+        // 返回前台后重新进入沉浸式全屏
+        hideSystemUI();
         // 息屏/切后台返回后：确保画面重新绑定（surfaceCreated 可能未触发），
         // 与 surfaceCreated 相同的 seek 强制刷帧，避免黑屏
         if (mUseSoftDecode) {

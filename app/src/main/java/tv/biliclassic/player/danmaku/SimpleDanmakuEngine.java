@@ -65,6 +65,10 @@ public class SimpleDanmakuEngine extends View {
     }
     private VideoTimeProvider mTimeProvider;
 
+    // 生放送（直播）弹幕：无视频时间轴，改用墙钟，收到即显示
+    private boolean mLiveMode;
+    private long mLiveWallStart;
+
     private Bitmap mOffscreen;
     private Canvas mOffscreenCanvas;
 
@@ -147,11 +151,13 @@ public class SimpleDanmakuEngine extends View {
         mFrameCount = 0;
         mSeekOffset = 0;
         mVideoPosition = 0;
-        // 初始化时拿到首帧位置，跳过已错过的弹幕
-        if (mTimeProvider != null) {
+        // 直播模式下使用墙钟，视频模式下拉取首帧位置跳过已错过的弹幕
+        if (mLiveMode) {
+            if (mLiveWallStart == 0) mLiveWallStart = System.currentTimeMillis();
+        } else if (mTimeProvider != null) {
             mVideoPosition = Math.max(0, mTimeProvider.getCurrentPosition());
         }
-        float startT = mVideoPosition / 1000f;
+        float startT = mLiveMode ? getLiveClock() : mVideoPosition / 1000f;
         while (mItemIndex < mItems.size() && mItems.get(mItemIndex).time < startT) {
             mItemIndex++;
         }
@@ -204,7 +210,9 @@ public class SimpleDanmakuEngine extends View {
 
     public void resumeDanmaku() {
         if (!mPaused) return;
-        mTimeOrigin += System.currentTimeMillis() - mTimePaused;
+        long delta = System.currentTimeMillis() - mTimePaused;
+        mTimeOrigin += delta;
+        if (mLiveMode) mLiveWallStart += delta;
         mPaused = false;
         mRunning = true;
     }
@@ -253,7 +261,7 @@ public class SimpleDanmakuEngine extends View {
     }
 
     private void tryStartIfReady() {
-        if (mDataReady && mTimeProvider != null && !mLoaded) {
+        if (mDataReady && (mTimeProvider != null || mLiveMode) && !mLoaded) {
             warmUp();
             start();
         }
@@ -277,6 +285,50 @@ public class SimpleDanmakuEngine extends View {
 
     public void updateVideoPosition(long positionMs) {
         mVideoPosition = positionMs;
+    }
+
+    public void setLiveMode(boolean live) {
+        mLiveMode = live;
+        if (live && mLiveWallStart == 0) mLiveWallStart = System.currentTimeMillis();
+    }
+
+    public boolean isLiveMode() {
+        return mLiveMode;
+    }
+
+    private float getLiveClock() {
+        if (mLiveWallStart == 0) mLiveWallStart = System.currentTimeMillis();
+        return (System.currentTimeMillis() - mLiveWallStart) / 1000f;
+    }
+
+    /**
+     * 追加一条直播弹幕并立即显示（不受视频时间轴影响）。
+     *
+     * @param type 弹幕类型（1 滚动 / 4 底部 / 5 顶部）
+     */
+    public void addLiveDanmaku(String text, int color, int type) {
+        if (text == null || text.length() == 0) return;
+        if (mLiveWallStart == 0) mLiveWallStart = System.currentTimeMillis();
+        if (mItems == null) mItems = new ArrayList<DanmakuItem>();
+        DanmakuItem item = new DanmakuItem();
+        item.text = text;
+        item.color = color;
+        item.type = type;
+        item.time = getLiveClock();
+        synchronized (this) {
+            mItems.add(item);
+            // 长时间直播时截断历史，避免内存无限增长
+            if (mItems.size() > 1200) {
+                int drop = mItems.size() - 900;
+                for (int i = 0; i < drop; i++) mItems.remove(0);
+                if (mItemIndex >= drop) mItemIndex -= drop; else mItemIndex = 0;
+            }
+        }
+        if (!mLoaded) {
+            mDataReady = true;
+            tryStartIfReady();
+        }
+        postInvalidate();
     }
 
     public void setBlockTop(boolean block) { mBlockTop = block; }
@@ -313,10 +365,12 @@ public class SimpleDanmakuEngine extends View {
             mOffscreenCanvas = new Canvas(mOffscreen);
         }
 
-        if (mTimeProvider != null) {
+        if (mLiveMode) {
+            mVideoPosition = (long) (getLiveClock() * 1000f);
+        } else if (mTimeProvider != null) {
             mVideoPosition = mTimeProvider.getCurrentPosition();
         }
-        float t = mVideoPosition / 1000f;
+        float t = mLiveMode ? getLiveClock() : mVideoPosition / 1000f;
         float screenSeconds = 6f / mSpeed + 1f;
 
         while (mItemIndex < mItems.size()
@@ -383,6 +437,7 @@ public class SimpleDanmakuEngine extends View {
 
     private void prepareBitmaps() {
         if (mItems == null || mItems.size() == 0) return;
+        if (mLiveMode) mVideoPosition = (long) (getLiveClock() * 1000f);
         float t = mVideoPosition / 1000f;
         int start = mItemIndex;
         while (start > 0 && start <= mItems.size() && mItems.get(start - 1).time > t - 1f) start--;

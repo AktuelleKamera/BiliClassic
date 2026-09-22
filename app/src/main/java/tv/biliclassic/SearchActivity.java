@@ -476,6 +476,28 @@ public class SearchActivity extends BaseActivity {
             return true;
         }
 
+        // ASPIRINE → 私信
+        if (lowerKeyword.equals("aspirine")) {
+            try {
+                Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+                if (vibrator != null) {
+                    vibrator.vibrate(200);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            Toast.makeText(this, this.getString(R.string.cheat_code_enabled), Toast.LENGTH_LONG).show();
+
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    startActivity(new Intent(SearchActivity.this, PrivateMsgListActivity.class));
+                }
+            }, 800);
+            return true;
+        }
+
         return false;
     }
 

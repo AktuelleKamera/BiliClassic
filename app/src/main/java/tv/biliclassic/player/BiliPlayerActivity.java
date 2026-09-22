@@ -1196,6 +1196,15 @@ public class BiliPlayerActivity extends Activity implements
 
             optionsMenuBtn = controllerView.findViewById(R.id.options_menu);
             optionsMenuStub = (ViewStub) controllerView.findViewById(R.id.options_menu_items_stub);
+
+            // 生放送没有时长，隐藏视频时间与进度条
+            if (isLiveStream) {
+                if (tvCurrentTime != null) tvCurrentTime.setVisibility(View.GONE);
+                if (tvTotalTime != null) tvTotalTime.setVisibility(View.GONE);
+                if (seekBar != null) seekBar.setVisibility(View.GONE);
+                View splitView = controllerView.findViewById(R.id.split_view);
+                if (splitView != null) splitView.setVisibility(View.GONE);
+            }
         }
 
         // 选集按钮
@@ -1497,8 +1506,7 @@ public class BiliPlayerActivity extends Activity implements
         // 初始化弹幕管理器
         mDanmakuContainer = (FrameLayout) findViewById(R.id.danmaku_view);
         if (mDanmakuContainer != null) {
-            mDanmakuManager = new DanmakuManager(this, mDanmakuContainer, mAid, mCid,
-                    danmakuInputStub);
+            mDanmakuManager = createDanmakuManager();
 
             String danmakuCachePath = getIntent().getStringExtra("danmaku_cache_path");
             if (danmakuCachePath != null && danmakuCachePath.length() > 0) {
@@ -1514,6 +1522,15 @@ public class BiliPlayerActivity extends Activity implements
         showControlsWithAutoHide();
         initQualityManager();
         createResetScaleButton();
+    }
+
+    /**
+     * 创建弹幕管理器：生放送传入直播标识与真实房间号，走独立直播弹幕机制。
+     */
+    private DanmakuManager createDanmakuManager() {
+        long liveRoomId = getIntent().getLongExtra("live_room_id", mAid);
+        return new DanmakuManager(this, mDanmakuContainer, mAid, mCid,
+                danmakuInputStub, isLiveStream, liveRoomId);
     }
 
     private boolean handleCommentTouch(MotionEvent event) {
@@ -2341,8 +2358,7 @@ public class BiliPlayerActivity extends Activity implements
         handler.postDelayed(new Runnable() {
             public void run() {
                 if (mDanmakuManager == null && mDanmakuContainer != null) {
-                    mDanmakuManager = new DanmakuManager(BiliPlayerActivity.this,
-                            mDanmakuContainer, mAid, mCid, danmakuInputStub);
+                    mDanmakuManager = createDanmakuManager();
                     mDanmakuManager.init();
                 }
 
@@ -3016,8 +3032,7 @@ public class BiliPlayerActivity extends Activity implements
         handler.postDelayed(new Runnable() {
             public void run() {
                 if (mDanmakuManager == null && mDanmakuContainer != null) {
-                    mDanmakuManager = new DanmakuManager(BiliPlayerActivity.this,
-                            mDanmakuContainer, mAid, mCid, danmakuInputStub);
+                    mDanmakuManager = createDanmakuManager();
                     mDanmakuManager.init();
                 }
 
@@ -4090,8 +4105,7 @@ public class BiliPlayerActivity extends Activity implements
                 sPendingSeekPosition = 0;
                 initPlayer();
                 if (mDanmakuContainer != null) {
-                    mDanmakuManager = new DanmakuManager(BiliPlayerActivity.this,
-                            mDanmakuContainer, mAid, mCid, danmakuInputStub);
+                    mDanmakuManager = createDanmakuManager();
                     mDanmakuManager.init();
                 }
             } else {

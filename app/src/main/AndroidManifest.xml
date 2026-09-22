@@ -126,6 +126,16 @@
             android:name=".FollowingListActivity"
             android:screenOrientation="portrait" />
 
+        <!-- 私信会话列表 -->
+        <activity
+            android:name=".PrivateMsgListActivity"
+            android:screenOrientation="portrait" />
+
+        <!-- 私信聊天 -->
+        <activity
+            android:name=".PrivateMsgActivity"
+            android:screenOrientation="portrait" />
+
         <!-- 注册 SettingsActivity -->
         <activity
             android:name=".SettingsActivity"
@@ -165,6 +175,11 @@
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="landscape"
             android:theme="@style/PlayerTheme" />
+
+        <!-- 公告音频播放页 -->
+        <activity
+            android:name=".player.AudioPlayerActivity"
+            android:screenOrientation="portrait" />
 
         <activity
             android:name=".metro.MetroHomeActivity"

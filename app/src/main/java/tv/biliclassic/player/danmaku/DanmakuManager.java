@@ -23,6 +23,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.zip.Inflater;
 
 import master.flame.danmaku.controller.DrawHandler;
@@ -31,6 +35,8 @@ import master.flame.danmaku.danmaku.loader.IllegalDataException;
 import master.flame.danmaku.danmaku.loader.android.DanmakuLoaderFactory;
 import master.flame.danmaku.danmaku.model.BaseDanmaku;
 import master.flame.danmaku.danmaku.model.DanmakuTimer;
+import master.flame.danmaku.danmaku.model.IDanmakus;
+import master.flame.danmaku.danmaku.model.IDisplayer;
 import master.flame.danmaku.danmaku.model.android.DanmakuGlobalConfig;
 import master.flame.danmaku.danmaku.parser.BaseDanmakuParser;
 import master.flame.danmaku.danmaku.parser.IDataSource;
@@ -38,6 +44,8 @@ import master.flame.danmaku.danmaku.parser.android.BiliDanmukuParser;
 import master.flame.danmaku.ui.widget.DanmakuView;
 import tv.biliclassic.R;
 import tv.biliclassic.api.DanmakuApi;
+import tv.biliclassic.api.LiveApi;
+import tv.biliclassic.model.LiveDanmaku;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.danmaku.ijk.media.player.IMediaPlayer;
@@ -62,10 +70,16 @@ public class DanmakuManager {
     private static final String KEY_BLOCK_COLORFUL = "danmaku_block_colorful";
     private static final String KEY_DUP_MERGE = "danmaku_duplicate_merge";
 
+    // 直播弹幕轮询间隔（gethistory 拉取周期）
+    private static final long LIVE_POLL_INTERVAL_MS = 4000L;
+    private static final int LIVE_SEEN_MAX = 2000;
+
     private final Activity mActivity;
     private final FrameLayout mContainer;
     private final long mAid;
     private final long mCid;
+    private final boolean mIsLive;
+    private final long mLiveRoomId;
 
     private DanmakuView mDanmakuView;
     private SimpleDanmakuEngine mSimpleEngine;
@@ -83,6 +97,13 @@ public class DanmakuManager {
     private long mSeekTarget;
     private boolean mReleased;
 
+    // ===== 生放送弹幕专用状态 =====
+    private IDisplayer mLiveDisplayer;
+    private Thread mLivePollThread;
+    private volatile boolean mLivePolling;
+    private final Set<String> mSeenIds = new HashSet<String>();
+    private final List<LiveDanmaku> mPendingLive = new ArrayList<LiveDanmaku>();
+
     private PopupWindow mOptionsPanel;
     private ViewStub mInputStub;
     private View mInputOverlay;
@@ -93,11 +114,18 @@ public class DanmakuManager {
 
     public DanmakuManager(Activity activity, FrameLayout container, long aid, long cid,
                           ViewStub danmakuInputStub) {
+        this(activity, container, aid, cid, danmakuInputStub, false, 0);
+    }
+
+    public DanmakuManager(Activity activity, FrameLayout container, long aid, long cid,
+                          ViewStub danmakuInputStub, boolean isLive, long liveRoomId) {
         mActivity = activity;
         mContainer = container;
         mAid = aid;
         mCid = cid;
         mInputStub = danmakuInputStub;
+        mIsLive = isLive;
+        mLiveRoomId = liveRoomId > 0 ? liveRoomId : aid;
         mRes = activity.getResources();
     }
 
@@ -145,6 +173,17 @@ public class DanmakuManager {
             }
         }
 
+        // 生放送：走独立弹幕机制（历史弹幕轮询 + 收到即显示），不加载视频弹幕 XML
+        if (mIsLive) {
+            if (mUseSimpleEngine && mSimpleEngine != null) {
+                mSimpleEngine.setLiveMode(true);
+            } else {
+                prepareLiveFullEngine();
+            }
+            startLivePolling();
+            return;
+        }
+
         if (mCid > 0) {
             mDanmakuUrl = "https://comment.bilibili.com/" + mCid + ".xml";
             mDanmakuCacheFile = new File(mActivity.getCacheDir(), "danmaku_" + mCid + ".xml");
@@ -158,6 +197,169 @@ public class DanmakuManager {
         if (mDanmakuUrl != null || (mDanmakuCacheFile != null && mDanmakuCacheFile.exists())) {
             startLoadDanmaku();
         }
+    }
+
+    // ===================== 生放送弹幕机制 =====================
+
+    /**
+     * 直播弹幕没有 XML/时间轴数据，用空解析器把完整版引擎准备好，
+     * 后续通过 addDanmaku(isLive=true) 逐条即时注入。
+     */
+    private void prepareLiveFullEngine() {
+        if (mDanmakuView == null) return;
+        BaseDanmakuParser parser = new BaseDanmakuParser() {
+            @Override
+            protected IDanmakus parse() {
+                return new master.flame.danmaku.danmaku.model.android.Danmakus();
+            }
+
+            @Override
+            public BaseDanmakuParser setDisplayer(IDisplayer disp) {
+                mLiveDisplayer = disp;
+                return super.setDisplayer(disp);
+            }
+        };
+
+        mDanmakuView.setCallback(new DrawHandler.Callback() {
+            @Override
+            public void prepared() {
+                if (mReleased || mDanmakuView == null) return;
+                mLoaded = true;
+                flushPendingLive();
+                if (mEnabled) mDanmakuView.start();
+            }
+
+            @Override
+            public void updateTimer(DanmakuTimer timer) {
+            }
+        });
+
+        mDanmakuView.enableDanmakuDrawingCache(true);
+        mDanmakuView.prepare(parser);
+    }
+
+    /** 启动历史弹幕轮询线程（直播弹幕唯一数据来源） */
+    private void startLivePolling() {
+        if (mLivePolling) return;
+        mLivePolling = true;
+        mLivePollThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                boolean firstPoll = true;
+                while (!mReleased && mLivePolling
+                        && !Thread.currentThread().isInterrupted()) {
+                    try {
+                        final List<LiveDanmaku> list = LiveApi.getHistoryDanmaku(mLiveRoomId);
+                        boolean seedOnly = firstPoll;
+                        if (list != null) firstPoll = false;
+                        if (list != null && list.size() > 0) {
+                            if (seedOnly) {
+                                // 首次仅记录已有历史，不回放进房前的旧弹幕
+                                synchronized (mSeenIds) {
+                                    for (int i = 0; i < list.size(); i++) {
+                                        LiveDanmaku dm = list.get(i);
+                                        if (dm != null && dm.text != null && dm.text.length() > 0) {
+                                            mSeenIds.add(dm.dedupKey());
+                                        }
+                                    }
+                                    if (mSeenIds.size() > LIVE_SEEN_MAX) mSeenIds.clear();
+                                }
+                            } else {
+                                List<LiveDanmaku> fresh = new ArrayList<LiveDanmaku>();
+                                for (int i = 0; i < list.size(); i++) {
+                                    LiveDanmaku dm = list.get(i);
+                                    if (dm == null || dm.text == null || dm.text.length() == 0) continue;
+                                    synchronized (mSeenIds) {
+                                        if (mSeenIds.add(dm.dedupKey())) {
+                                            fresh.add(dm);
+                                        }
+                                    }
+                                }
+                                synchronized (mSeenIds) {
+                                    if (mSeenIds.size() > LIVE_SEEN_MAX) mSeenIds.clear();
+                                }
+                                if (fresh.size() > 0) postLiveDanmakus(fresh);
+                            }
+                        }
+                    } catch (Throwable t) {
+                        android.util.Log.e("DanmakuManager",
+                                "直播弹幕轮询失败: " + t.getMessage());
+                    }
+                    try {
+                        Thread.sleep(LIVE_POLL_INTERVAL_MS);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+                }
+            }
+        }, "LiveDanmakuPoll");
+        mLivePollThread.setPriority(Thread.MIN_PRIORITY);
+        mLivePollThread.start();
+    }
+
+    /** 在 UI 线程把新弹幕注入当前渲染引擎（避免与绘制并发） */
+    private void postLiveDanmakus(final List<LiveDanmaku> list) {
+        if (mReleased || list == null || list.size() == 0) return;
+        mActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (mReleased) return;
+                for (int i = 0; i < list.size(); i++) {
+                    addLiveDanmakuToEngine(list.get(i));
+                }
+            }
+        });
+    }
+
+    private void flushPendingLive() {
+        List<LiveDanmaku> pending;
+        synchronized (mPendingLive) {
+            if (mPendingLive.size() == 0) return;
+            pending = new ArrayList<LiveDanmaku>(mPendingLive);
+            mPendingLive.clear();
+        }
+        for (int i = 0; i < pending.size(); i++) {
+            addLiveDanmakuToEngine(pending.get(i));
+        }
+    }
+
+    private void addLiveDanmakuToEngine(LiveDanmaku dm) {
+        if (dm == null || dm.text == null || dm.text.length() == 0) return;
+        int type = getDanmakuType(dm.mode);
+        int color = 0xFF000000 | (dm.color & 0xFFFFFF);
+
+        if (mSimpleEngine != null) {
+            mSimpleEngine.addLiveDanmaku(dm.text, color, type);
+            return;
+        }
+        if (mDanmakuView == null) return;
+        if (!mLoaded) {
+            // 完整版引擎尚未 prepare 完成，先缓存，prepared() 后再注入
+            synchronized (mPendingLive) {
+                if (mPendingLive.size() < 200) mPendingLive.add(dm);
+            }
+            return;
+        }
+
+        BaseDanmaku danmaku;
+        if (mLiveDisplayer != null) {
+            danmaku = master.flame.danmaku.danmaku.parser.DanmakuFactory
+                    .createDanmaku(type, mLiveDisplayer);
+        } else {
+            danmaku = master.flame.danmaku.danmaku.parser.DanmakuFactory.createDanmaku(type);
+        }
+        if (danmaku == null) return;
+        danmaku.text = dm.text;
+        danmaku.padding = 5;
+        danmaku.priority = 0;
+        danmaku.textColor = color;
+        // 与视频弹幕一致：按屏幕密度缩放，避免高分辨率低密度设备上字号过大
+        float density = mLiveDisplayer != null
+                ? mLiveDisplayer.getDensity() : mRes.getDisplayMetrics().density;
+        danmaku.textSize = 25f * (density - 0.6f);
+        danmaku.time = mDanmakuView.getCurrentTime() + 100;
+        danmaku.isLive = true;
+        mDanmakuView.addDanmaku(danmaku);
     }
 
     private void initSimpleEngine() {
@@ -228,6 +430,7 @@ public class DanmakuManager {
 
     public void release() {
         mReleased = true;
+        stopLivePolling();
         dismissAllPanels();
         if (mSimpleEngine != null) {
             mSimpleEngine.releaseDanmaku();
@@ -238,6 +441,19 @@ public class DanmakuManager {
             mDanmakuView = null;
         }
         mLoaded = false;
+    }
+
+    private void stopLivePolling() {
+        mLivePolling = false;
+        Thread t = mLivePollThread;
+        mLivePollThread = null;
+        if (t != null) t.interrupt();
+        synchronized (mSeenIds) {
+            mSeenIds.clear();
+        }
+        synchronized (mPendingLive) {
+            mPendingLive.clear();
+        }
     }
 
     public interface PositionProvider {
@@ -294,6 +510,7 @@ public class DanmakuManager {
     }
 
     public void seekTo(long positionMs) {
+        if (mIsLive) return;
         mSeekPending = true;
         mSeekTarget = positionMs;
         if (mSimpleEngine != null && mLoaded) {
@@ -805,6 +1022,10 @@ public class DanmakuManager {
 
     private void sendDanmaku(final String text, final int mode, final int textSize,
                              final int color) {
+        if (mIsLive) {
+            sendLiveDanmaku(text, mode, textSize, color);
+            return;
+        }
         if (mCid <= 0) {
             toast("无法发送弹幕：缺少视频信息");
             return;
@@ -846,6 +1067,44 @@ public class DanmakuManager {
                     });
                 } catch (final Exception e) {
                     android.util.Log.e("DanmakuManager", "发送弹幕异常: " + e.getMessage());
+                    final String errMsg = e.getMessage();
+                    mActivity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() { toast("弹幕发送失败: " + errMsg); }
+                    });
+                }
+            }
+        }).start();
+    }
+
+    /** 发送直播弹幕：调用 msg/send，成功后本地即时上屏 */
+    private void sendLiveDanmaku(final String text, final int mode, final int textSize,
+                                 final int color) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    int result = LiveApi.sendLiveDanmaku(mLiveRoomId, text, color, mode,
+                            textSize > 0 ? textSize : 25);
+                    final String msg;
+                    if (result == 0) {
+                        msg = "弹幕发送成功";
+                        final LiveDanmaku dm = new LiveDanmaku();
+                        dm.text = text;
+                        dm.color = color;
+                        dm.mode = mode;
+                        mActivity.runOnUiThread(new Runnable() {
+                            public void run() { addLiveDanmakuToEngine(dm); }
+                        });
+                    } else {
+                        msg = "弹幕发送失败，code=" + result;
+                    }
+                    mActivity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() { toast(msg); }
+                    });
+                } catch (final Exception e) {
+                    android.util.Log.e("DanmakuManager", "发送直播弹幕异常: " + e.getMessage());
                     final String errMsg = e.getMessage();
                     mActivity.runOnUiThread(new Runnable() {
                         @Override

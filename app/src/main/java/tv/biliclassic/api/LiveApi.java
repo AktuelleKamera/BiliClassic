@@ -22,10 +22,12 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
+import tv.biliclassic.model.LiveDanmaku;
 import tv.biliclassic.model.LivePlayInfo;
 import tv.biliclassic.model.LiveRoom;
 import tv.biliclassic.util.NetWorkUtil;
@@ -159,6 +161,117 @@ public class LiveApi {
         JSONObject data = result.optJSONObject("data");
         if (data == null) return null;
         return analyzePlayInfo(data);
+    }
+
+    /**
+     * 获取直播间最近历史弹幕（生放送弹幕轮询数据源）。
+     * 接口：GET https://api.live.bilibili.com/xlive/web-room/v1/dM/gethistory
+     * 失效或异常时返回空列表，不抛异常，便于轮询容错。
+     */
+    public static List<LiveDanmaku> getHistoryDanmaku(long roomId) throws IOException, JSONException {
+        List<LiveDanmaku> out = new ArrayList<LiveDanmaku>();
+        String url = "https://api.live.bilibili.com/xlive/web-room/v1/dM/gethistory";
+        url += new NetWorkUtil.FormData().setUrlParam(true).put("roomid", roomId);
+
+        JSONObject result = getJsonWithRiskRetry(url);
+        if (result == null || result.optInt("code", -1) != 0) return out;
+        JSONObject data = result.optJSONObject("data");
+        if (data == null) return out;
+
+        appendHistory(data.optJSONArray("admin"), out);
+        appendHistory(data.optJSONArray("room"), out);
+        return out;
+    }
+
+    private static void appendHistory(JSONArray arr, List<LiveDanmaku> out) {
+        if (arr == null) return;
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject item = arr.optJSONObject(i);
+            if (item == null) continue;
+            LiveDanmaku dm = analyzeLiveDanmaku(item);
+            if (dm != null && dm.text != null && dm.text.length() > 0) out.add(dm);
+        }
+    }
+
+    /**
+     * 从 gethistory 的单条弹幕 JSON 填充 LiveDanmaku
+     */
+    public static LiveDanmaku analyzeLiveDanmaku(JSONObject json) {
+        if (json == null) return null;
+        LiveDanmaku dm = new LiveDanmaku();
+        dm.id = json.optString("id_str", "");
+        dm.text = json.optString("text", "");
+        dm.uid = json.optLong("uid", 0);
+        dm.nickname = json.optString("nickname", "");
+        dm.timeline = json.optString("timeline", "");
+        dm.isAdmin = json.optInt("isadmin", 0) == 1;
+
+        JSONArray userLevel = json.optJSONArray("user_level");
+        if (userLevel != null && userLevel.length() > 0) {
+            dm.userLevel = userLevel.optInt(0, 0);
+        }
+
+        JSONArray medal = json.optJSONArray("medal");
+        if (medal != null && medal.length() >= 2) {
+            dm.medalLevel = medal.optInt(0, 0);
+            dm.medalName = medal.optString(1, "");
+        }
+
+        // gethistory 不返回弹幕颜色，默认白色；管理员/高等级用户沿用白色
+        dm.color = 0xFFFFFF;
+        dm.mode = 1;
+        return dm;
+    }
+
+    /**
+     * 发送直播弹幕
+     * 接口：POST https://api.live.bilibili.com/msg/send
+     *
+     * @return 0 成功；-101 未登录/缺少 csrf；其它为接口错误码；-1 异常
+     */
+    public static int sendLiveDanmaku(long roomId, String msg, int color, int mode, int fontSize) {
+        try {
+            String url = "https://api.live.bilibili.com/msg/send";
+            String cookie = SharedPreferencesUtil.getString("cookies", "");
+            String csrf = NetWorkUtil.getInfoFromCookie("bili_jct", cookie);
+            if (csrf == null || csrf.length() == 0) {
+                csrf = NetWorkUtil.getCsrf();
+            }
+            if (csrf == null || csrf.length() == 0) {
+                Log.e(TAG, "sendLiveDanmaku csrf 为空，请重新登录");
+                return -101;
+            }
+            if (mode <= 0) mode = 1;
+            if (fontSize <= 0) fontSize = 25;
+
+            long rnd = System.currentTimeMillis() / 1000;
+            String arg = "roomid=" + roomId
+                    + "&msg=" + URLEncoder.encode(msg, "UTF-8")
+                    + "&rnd=" + rnd
+                    + "&fontsize=" + fontSize
+                    + "&color=" + color
+                    + "&mode=" + mode
+                    + "&bubble=0"
+                    + "&room_type=0"
+                    + "&jumpfrom=0"
+                    + "&reply_mid=0"
+                    + "&reply_attr=0"
+                    + "&reply_uname="
+                    + "&replay_dmid="
+                    + "&statistics=" + URLEncoder.encode("{\"appId\":100,\"platform\":5}", "UTF-8")
+                    + "&csrf=" + csrf
+                    + "&csrf_token=" + csrf;
+
+            NetWorkUtil.setCookieString(cookie);
+            String response = NetWorkUtil.post(url, arg, NetWorkUtil.webHeaders, "application/x-www-form-urlencoded");
+            JSONObject result = new JSONObject(response);
+            int code = result.optInt("code", -1);
+            Log.e(TAG, "sendLiveDanmaku code=" + code + " msg=" + result.optString("message"));
+            return code;
+        } catch (Exception e) {
+            Log.e(TAG, "sendLiveDanmaku 失败: " + e.getMessage());
+            return -1;
+        }
     }
 
     /**

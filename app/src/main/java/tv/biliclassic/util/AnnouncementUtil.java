@@ -2,12 +2,17 @@ package tv.biliclassic.util;
 
 import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.TypedValue;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -22,6 +27,8 @@ import java.util.List;
 import java.util.Locale;
 
 import tv.biliclassic.BuildConfig;
+import tv.biliclassic.player.AudioPlayerActivity;
+import tv.biliclassic.player.OstwindPlayerActivity;
 
 /**
  * 公告工具类
@@ -32,6 +39,9 @@ public class AnnouncementUtil {
     private static final String SP_NAME = "announcement";
     private static final String KEY_SHOWN_PREFIX = "shown_";
     private static final String KEY_DISMISSED_PREFIX = "dismissed_";
+
+    /** 本客户端的平台标识：公告 platform 数组含该值才显示（WP 版对应 "wp"） */
+    public static final String PLATFORM_ANDROID = "android";
 
     private static Handler sHandler = new Handler(Looper.getMainLooper());
 
@@ -60,6 +70,14 @@ public class AnnouncementUtil {
         public boolean forceShow;
         public String imageUrl;
         public int priority;  // 优先级，数字越小越先显示
+
+        // 与 WP 版 AnnouncementService 同步的字段
+        public List<String> platforms = new ArrayList<String>();
+        public String videoUrl = "";
+        public String videoText = "";
+        public String audioUrl = "";
+        public String audioText = "";
+        public String audioDisText = "";
 
         public boolean isExpired(Context context) {
             if (version == null || version.length() == 0) {
@@ -206,44 +224,139 @@ public class AnnouncementUtil {
             return;
         }
 
-        // 显示公告对话框
-        AlertDialog.Builder builder = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(context)));
+        // 系统对话框最多 3 个按钮，而 WP 版公告有观看视频/播放音频/查看详情/
+        // 知道了/不再显示，故用自定义视图承载全部按钮。
+        final Context dialogContext =
+                tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(context));
+        AlertDialog.Builder builder = new AlertDialog.Builder(dialogContext);
         builder.setTitle(announcement.title);
-        builder.setMessage(announcement.getDisplayContent());
 
-        if (announcement.url != null && announcement.url.length() > 0) {
-            builder.setNeutralButton("查看详情", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(announcement.url)));
-                }
-            });
-        }
-
-        builder.setPositiveButton(announcement.buttonText, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                if (announcement.showOnce) {
-                    markAnnouncementShown(context, announcement.id);
-                }
-                // 显示下一个公告
-                showAnnouncementQueue(context, announcements, index + 1);
-            }
-        });
-
-        if (!announcement.forceShow) {
-            builder.setNegativeButton("不再显示", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    markAnnouncementDismissed(context, announcement.id);
-                    // 显示下一个公告
-                    showAnnouncementQueue(context, announcements, index + 1);
-                }
-            });
-        }
-
+        final AlertDialog[] dialogHolder = new AlertDialog[1];
+        View contentView = buildAnnouncementContent(dialogContext, context, announcement,
+                announcements, index, dialogHolder);
+        builder.setView(contentView);
         builder.setCancelable(announcement.forceShow);
-        builder.show();
+        dialogHolder[0] = builder.show();
+    }
+
+    /**
+     * 构建公告内容视图：正文 + 各操作按钮（与 WP 版 NoticePopup 对应）
+     */
+    private static View buildAnnouncementContent(final Context dialogContext,
+                                                 final Context context,
+                                                 final Announcement a,
+                                                 final List<Announcement> announcements,
+                                                 final int index,
+                                                 final AlertDialog[] dialogHolder) {
+        LinearLayout root = new LinearLayout(dialogContext);
+        root.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(dialogContext, 16);
+        root.setPadding(pad, pad / 2, pad, pad / 2);
+
+        TextView body = new TextView(dialogContext);
+        body.setText(a.getDisplayContent());
+        body.setTextSize(16);
+        body.setTextColor(0xFF333333);
+        root.addView(body, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        if (a.audioUrl != null && a.audioUrl.length() > 0) {
+            addAnnouncementButton(root, dialogContext,
+                    (a.audioText != null && a.audioText.length() > 0) ? a.audioText : "播放音频",
+                    new View.OnClickListener() {
+                        public void onClick(View v) {
+                            dismissDialog(dialogHolder);
+                            markAnnouncementShown(context, a.id);
+                            Intent intent = new Intent(context, AudioPlayerActivity.class);
+                            intent.putExtra("audio_url", a.audioUrl);
+                            intent.putExtra("title", a.title);
+                            intent.putExtra("dis", a.audioDisText);
+                            startActivitySafely(context, intent);
+                        }
+                    });
+        }
+
+        if (a.videoUrl != null && a.videoUrl.length() > 0) {
+            addAnnouncementButton(root, dialogContext,
+                    (a.videoText != null && a.videoText.length() > 0) ? a.videoText : "观看视频",
+                    new View.OnClickListener() {
+                        public void onClick(View v) {
+                            dismissDialog(dialogHolder);
+                            markAnnouncementShown(context, a.id);
+                            Intent intent = new Intent(context, OstwindPlayerActivity.class);
+                            intent.putExtra("video_url", a.videoUrl);
+                            intent.putExtra("video_title", a.title);
+                            startActivitySafely(context, intent);
+                        }
+                    });
+        }
+
+        if (a.url != null && a.url.length() > 0) {
+            addAnnouncementButton(root, dialogContext, "查看详情",
+                    new View.OnClickListener() {
+                        public void onClick(View v) {
+                            startActivitySafely(context,
+                                    new Intent(Intent.ACTION_VIEW, Uri.parse(a.url)));
+                        }
+                    });
+        }
+
+        addAnnouncementButton(root, dialogContext,
+                (a.buttonText != null && a.buttonText.length() > 0) ? a.buttonText : "知道了",
+                new View.OnClickListener() {
+                    public void onClick(View v) {
+                        dismissDialog(dialogHolder);
+                        if (a.showOnce) {
+                            markAnnouncementShown(context, a.id);
+                        }
+                        showAnnouncementQueue(context, announcements, index + 1);
+                    }
+                });
+
+        if (!a.forceShow) {
+            addAnnouncementButton(root, dialogContext, "不再显示",
+                    new View.OnClickListener() {
+                        public void onClick(View v) {
+                            dismissDialog(dialogHolder);
+                            markAnnouncementDismissed(context, a.id);
+                            showAnnouncementQueue(context, announcements, index + 1);
+                        }
+                    });
+        }
+
+        return root;
+    }
+
+    private static void addAnnouncementButton(LinearLayout root, Context ctx, String text,
+                                              View.OnClickListener listener) {
+        Button button = new Button(ctx);
+        button.setText(text);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dp(ctx, 6);
+        root.addView(button, lp);
+        button.setOnClickListener(listener);
+    }
+
+    private static void dismissDialog(AlertDialog[] holder) {
+        if (holder != null && holder[0] != null && holder[0].isShowing()) {
+            holder[0].dismiss();
+        }
+    }
+
+    private static void startActivitySafely(Context context, Intent intent) {
+        try {
+            context.startActivity(intent);
+        } catch (Exception e) {
+            // 没有可处理的应用时静默忽略
+        }
+    }
+
+    private static int dp(Context context, int value) {
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value,
+                context.getResources().getDisplayMetrics());
     }
 
     private static String fetchAnnouncement(Context context) throws Exception {
@@ -364,11 +477,53 @@ public class AnnouncementUtil {
         announcement.imageUrl = obj.optString("image_url", "");
         announcement.priority = obj.optInt("priority", 100);
 
+        // 与 WP 版 AnnouncementService 同步的字段
+        announcement.platforms = readPlatforms(obj);
+        if (!platformOk(announcement.platforms)) return null;
+        announcement.videoUrl = obj.optString("video_url", "");
+        announcement.videoText = obj.optString("video_text", "");
+        announcement.audioUrl = obj.optString("audio_url", "");
+        announcement.audioText = obj.optString("audio_text", "");
+        announcement.audioDisText = obj.optString("audio_dis_text", "");
+
         if (announcement.id == null || announcement.id.length() == 0) {
             announcement.id = "announcement_" + System.currentTimeMillis();
         }
 
         return announcement;
+    }
+
+    /** 读取 platform 数组（兼容 platform / platforms 两种键名），统一小写 */
+    private static List<String> readPlatforms(JSONObject obj) {
+        List<String> list = new ArrayList<String>();
+        JSONArray arr = obj.optJSONArray("platform");
+        if (arr == null) {
+            arr = obj.optJSONArray("platforms");
+        }
+        if (arr == null) {
+            return list;
+        }
+        for (int i = 0; i < arr.length(); i++) {
+            String value = arr.optString(i, "");
+            if (value != null && value.length() > 0) {
+                list.add(value.toLowerCase(Locale.US));
+            }
+        }
+        return list;
+    }
+
+    /** 平台过滤：platform 数组为空表示全平台，否则必须包含 android */
+    private static boolean platformOk(List<String> platforms) {
+        if (platforms == null || platforms.size() == 0) {
+            return true;
+        }
+        for (int i = 0; i < platforms.size(); i++) {
+            String p = platforms.get(i);
+            if (p != null && p.equalsIgnoreCase(PLATFORM_ANDROID)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void markAnnouncementShown(Context context, String id) {
