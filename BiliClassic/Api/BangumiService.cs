@@ -317,6 +317,12 @@ namespace BiliClassic.Api
 
             WbiSigner.EnsureReady(delegate(string keyError)
             {
+                if (!string.IsNullOrEmpty(keyError))
+                {
+                    onDone(items, false, keyError);
+                    return;
+                }
+
                 Dictionary<string, string> parameters = new Dictionary<string, string>();
                 parameters["search_type"] = "media_bangumi";
                 parameters["keyword"] = keyword;

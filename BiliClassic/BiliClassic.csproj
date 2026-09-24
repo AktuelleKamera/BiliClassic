@@ -152,6 +152,7 @@
     <Compile Include="Api\OfflineStore.cs" />
     <Compile Include="Api\OfflineService.cs" />
     <Compile Include="Api\FavoriteService.cs" />
+    <Compile Include="Api\InteractionService.cs" />
     <Compile Include="Api\RankingService.cs" />
     <Compile Include="Api\DynamicService.cs" />
     <Compile Include="Danmaku\DanmakuContext.cs" />
@@ -275,9 +276,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="SplashScreenImage.jpg" />
-    <!-- 底部应用栏的图标（白色前景 + 透明背景 PNG） -->
-    <Content Include="Res\appbar.chevron.left.png" />
-    <Content Include="Res\appbar.chevron.right.png" />
     <!-- 应用栏用的图标，来自 Res\Icon -->
     <Content Include="Res\Icon\search.png" />
     <Content Include="Res\Icon\refresh.png" />

@@ -38,9 +38,9 @@
 
             <Slider x:Name="SeekBar" Margin="0,16,0,0" Minimum="0" Maximum="1"
                     ValueChanged="SeekBar_ValueChanged"/>
-            <TextBlock x:Name="TimeText" Text="0:00 / 0:00" Margin="0,4,0,0"
+            <TextBlock x:Name="TimeText" Text="0:00 / 0:00" Margin="12,4,0,0"
                        Style="{StaticResource PhoneTextSubtleStyle}"/>
-            <TextBlock x:Name="StatusText" Text="" TextWrapping="Wrap" Margin="0,8,0,0"
+            <TextBlock x:Name="StatusText" Text="" TextWrapping="Wrap" Margin="12,12,0,0"
                        Style="{StaticResource PhoneTextSubtleStyle}"/>
         </StackPanel>
 

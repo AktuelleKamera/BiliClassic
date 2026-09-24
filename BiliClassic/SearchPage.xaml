@@ -18,10 +18,10 @@
     <toolkit:TransitionService.NavigationInTransition>
         <toolkit:NavigationInTransition>
             <toolkit:NavigationInTransition.Backward>
-                <toolkit:TurnstileTransition Mode="BackwardIn"/>
+                <toolkit:SwivelTransition Mode="BackwardIn"/>
             </toolkit:NavigationInTransition.Backward>
             <toolkit:NavigationInTransition.Forward>
-                <toolkit:TurnstileTransition Mode="ForwardIn"/>
+                <toolkit:SlideTransition Mode="SlideDownFadeIn"/>
             </toolkit:NavigationInTransition.Forward>
         </toolkit:NavigationInTransition>
     </toolkit:TransitionService.NavigationInTransition>
@@ -29,10 +29,10 @@
     <toolkit:TransitionService.NavigationOutTransition>
         <toolkit:NavigationOutTransition>
             <toolkit:NavigationOutTransition.Backward>
-                <toolkit:TurnstileTransition Mode="BackwardOut"/>
+                <toolkit:SwivelTransition Mode="BackwardOut"/>
             </toolkit:NavigationOutTransition.Backward>
             <toolkit:NavigationOutTransition.Forward>
-                <toolkit:TurnstileTransition Mode="ForwardOut"/>
+                <toolkit:SwivelTransition Mode="ForwardOut"/>
             </toolkit:NavigationOutTransition.Forward>
         </toolkit:NavigationOutTransition>
     </toolkit:TransitionService.NavigationOutTransition>
@@ -52,7 +52,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBox x:Name="KeywordBox" Height="72"
-                         KeyDown="KeywordBox_KeyDown" Margin="-12,0,0,0" />
+                         KeyDown="KeywordBox_KeyDown" GotFocus="KeywordBox_GotFocus"
+                         Margin="-12,0,0,0" />
                 <Button x:Name="SearchButton" Grid.Column="1" Content="搜索" Click="SearchButton_Click" Width="109" />
             </Grid>
         </StackPanel>
@@ -89,6 +90,35 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
+
+        <!--搜索历史：点搜索框才出现，搜索框正下方的一条等宽白条-->
+        <Border x:Name="HistoryPanel" Grid.Row="1"
+                Background="{StaticResource PhoneBackgroundBrush}"
+                Visibility="Collapsed">
+            <ListBox x:Name="HistoryList" BorderThickness="0"
+                     SelectionChanged="HistoryList_SelectionChanged">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding}" TextWrapping="Wrap"
+                                       VerticalAlignment="Center" Margin="12,12,0,12"/>
+                            <Button Grid.Column="1" Content="✕"
+                                    MinWidth="0" Margin="0,0,6,0"
+                                    Padding="12,2" Click="DeleteHistoryItem_Click"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
 
         <!--状态提示与加载更多-->
         <StackPanel Grid.Row="2" Margin="12,4,12,8">
@@ -184,13 +214,10 @@
 
     <phone:PhoneApplicationPage.ApplicationBar>
         <shell:ApplicationBar IsVisible="True" IsMenuEnabled="True">
-            <!-- 翻页：左 = 上一页，右 = 下一页（都是替换当前列表） -->
-            <shell:ApplicationBarIconButton IconUri="/Res/appbar.chevron.left.png"
-                                            Text="上一页"
-                                            Click="PrevPage_Click"/>
-            <shell:ApplicationBarIconButton IconUri="/Res/appbar.chevron.right.png"
-                                            Text="下一页"
-                                            Click="NextPage_Click"/>
+            <shell:ApplicationBar.Buttons>
+                <shell:ApplicationBarIconButton IconUri="/Res/Icon/refresh.png"
+                                                Text="刷新" Click="RefreshPage_Click"/>
+            </shell:ApplicationBar.Buttons>
             <shell:ApplicationBar.MenuItems>
                 <shell:ApplicationBarMenuItem Text="更多" Click="MoreMenuItem_Click"/>
             </shell:ApplicationBar.MenuItems>

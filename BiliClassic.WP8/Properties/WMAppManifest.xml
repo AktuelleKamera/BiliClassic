@@ -5,7 +5,7 @@
   <!-- Title 暂时写死：WP8 认不认 AppResLib 那套没验证，跑通了再换回 @AppResLib.dll,-100 -->
   <App xmlns="" ProductID="{4C1B9A72-3D5E-4F80-9B21-6E7A0C5D2F18}"
        Title="哔哩经典" RuntimeType="Silverlight"
-       Version="0.2.0.0" Genre="apps.normal"
+       Version="0.3.0.0" Genre="apps.normal"
        Author="BiliClassic author" Description="哔哩经典 for WP"
        Publisher="BiliClassic" PublisherID="{9F2E6B14-8A73-4C95-B0D3-1A4E7C6B5D20}">
     <IconPath IsRelative="true" IsResource="false">Res\SmallLogo.scale-240.png</IconPath>

@@ -7,10 +7,12 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Threading;
 using BiliClassic.Api;
+using Microsoft.Devices;
 using Microsoft.Phone.Controls;
 using Microsoft.Phone.Shell;
 using Microsoft.Phone.Tasks;
@@ -70,6 +72,8 @@ namespace BiliClassic
         {
             base.OnNavigatedTo(e);
 
+            RestoreDefaultTransitions();
+
             bool now = BiliSession.IsLoggedIn;
             if (now != _loggedIn)
             {
@@ -83,21 +87,121 @@ namespace BiliClassic
                 LoadMineCard();
             }
 
-            if (_notices != null && _noticeIndex < _notices.Count && !NoticePopup.IsOpen)
+            if (_notices != null && _noticeIndex < _notices.Count
+                && NoticeOverlay.Visibility != Visibility.Visible)
             {
                 ShowNextNotice();
             }
         }
 
 
+        private int _logoClicks;
+        private DispatcherTimer _logoResetTimer;
+
+        private void TitlePanel_Tap(object sender, MouseButtonEventArgs e)
+        {
+            _logoClicks++;
+            if (_logoClicks == 1)
+            {
+                if (_logoResetTimer == null)
+                {
+                    _logoResetTimer = new DispatcherTimer();
+                    _logoResetTimer.Interval = TimeSpan.FromSeconds(2);
+                    _logoResetTimer.Tick += delegate
+                    {
+                        _logoResetTimer.Stop();
+                        _logoClicks = 0;
+                    };
+                }
+                _logoResetTimer.Stop();
+                _logoResetTimer.Start();
+            }
+            else if (_logoClicks >= 5)
+            {
+                _logoClicks = 0;
+                if (_logoResetTimer != null)
+                {
+                    _logoResetTimer.Stop();
+                }
+                TriggerSpaceQuake();
+            }
+        }
+
+        private void TriggerSpaceQuake()
+        {
+            try
+            {
+                VibrateController.Default.Start(TimeSpan.FromMilliseconds(500));
+            }
+            catch (Exception)
+            {
+            }
+
+            QuakeOverlay.Visibility = Visibility.Visible;
+
+            DispatcherTimer timer = new DispatcherTimer();
+            timer.Interval = TimeSpan.FromMilliseconds(600);
+            timer.Tick += delegate
+            {
+                timer.Stop();
+                QuakeOverlay.Visibility = Visibility.Collapsed;
+            };
+            timer.Start();
+        }
+
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
+            if (!_launchAnimated)
+            {
+                _launchAnimated = true;
+                PlayLaunchAnimation();
+            }
+
             if (_items.Count == 0 && !_loading)
             {
                 Refresh();
                 CheckUpdate();
             }
             CheckAnnouncements();
+        }
+
+        private bool _launchAnimated;
+
+        private void PlayLaunchAnimation()
+        {
+            try
+            {
+                TranslateTransform transform = new TranslateTransform();
+                LayoutRoot.RenderTransform = transform;
+                double distance = ActualHeight > 0 ? ActualHeight : 800;
+
+                DoubleAnimation slide = new DoubleAnimation
+                {
+                    From = distance,
+                    To = 0,
+                    Duration = TimeSpan.FromMilliseconds(450),
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                };
+                Storyboard.SetTarget(slide, transform);
+                Storyboard.SetTargetProperty(slide, new PropertyPath("Y"));
+
+                DoubleAnimation fade = new DoubleAnimation
+                {
+                    From = 0,
+                    To = 1,
+                    Duration = TimeSpan.FromMilliseconds(450)
+                };
+                Storyboard.SetTarget(fade, LayoutRoot);
+                Storyboard.SetTargetProperty(fade, new PropertyPath("Opacity"));
+
+                Storyboard storyboard = new Storyboard();
+                storyboard.Children.Add(slide);
+                storyboard.Children.Add(fade);
+                storyboard.Begin();
+            }
+            catch (Exception)
+            {
+            }
         }
 
         private static bool _noticeChecked;
@@ -137,7 +241,7 @@ namespace BiliClassic
             Announcement a = CurrentNotice();
             if (a == null)
             {
-                NoticePopup.IsOpen = false;
+                NoticeOverlay.Visibility = Visibility.Collapsed;
                 return;
             }
 
@@ -152,6 +256,10 @@ namespace BiliClassic
                 a.AudioUrl.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
             NoticeAudioButton.Content = a.AudioText.Length > 0 ? a.AudioText : "播放音频";
 
+            NoticeLinkButton.Visibility =
+                a.LinkUrl.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+            NoticeLinkButton.Content = a.LinkText.Length > 0 ? a.LinkText : "查看链接";
+
             NoticeDetailButton.Visibility =
                 a.Url.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
             NoticeNeverButton.Visibility =
@@ -159,7 +267,7 @@ namespace BiliClassic
 
             NoticeDismissButton.Content = a.ButtonText.Length > 0 ? a.ButtonText : "知道了";
 
-            NoticePopup.IsOpen = true;
+            NoticeOverlay.Visibility = Visibility.Visible;
         }
 
         private void NoticeVideo_Click(object sender, RoutedEventArgs e)
@@ -170,15 +278,23 @@ namespace BiliClassic
                 return;
             }
 
+            NoticeOverlay.Visibility = Visibility.Collapsed;
+            AnnouncementService.MarkShown(a.Id);
+            _noticeIndex++;
+
+            string bvid = BiliId.ToBvid(a.VideoUrl);
+            if (bvid.Length > 0)
+            {
+                NavigationService.Navigate(new Uri(
+                    "/VideoDetailPage.xaml?bvid=" + bvid, UriKind.Relative));
+                return;
+            }
+
             Uri uri;
             if (!Uri.TryCreate(a.VideoUrl, UriKind.Absolute, out uri))
             {
                 return;
             }
-
-            NoticePopup.IsOpen = false;
-            AnnouncementService.MarkShown(a.Id);
-            _noticeIndex++;
 
             NavigationService.Navigate(new Uri(
                 "/VideoPlayerPage.xaml?src=" + Uri.EscapeDataString(a.VideoUrl)
@@ -199,7 +315,7 @@ namespace BiliClassic
                 return;
             }
 
-            NoticePopup.IsOpen = false;
+            NoticeOverlay.Visibility = Visibility.Collapsed;
             AnnouncementService.MarkShown(a.Id);
             _noticeIndex++;
 
@@ -237,6 +353,23 @@ namespace BiliClassic
             task.Show();
         }
 
+        private void NoticeLink_Click(object sender, RoutedEventArgs e)
+        {
+            Announcement a = CurrentNotice();
+            if (a == null || a.LinkUrl.Length == 0)
+            {
+                return;
+            }
+
+            WebBrowserTask task = new WebBrowserTask();
+#if WP8
+            task.Uri = new Uri(a.LinkUrl);
+#else
+            task.URL = a.LinkUrl;
+#endif
+            task.Show();
+        }
+
         private void NoticeNever_Click(object sender, RoutedEventArgs e)
         {
             Announcement a = CurrentNotice();
@@ -261,7 +394,81 @@ namespace BiliClassic
 
         private void SearchBarButton_Click(object sender, EventArgs e)
         {
+            NavigationOutTransition outTransition = new NavigationOutTransition();
+            outTransition.Backward = new TurnstileTransition
+            {
+                Mode = TurnstileTransitionMode.BackwardOut
+            };
+            outTransition.Forward = new SlideTransition
+            {
+                Mode = SlideTransitionMode.SlideDownFadeOut
+            };
+            TransitionService.SetNavigationOutTransition(this, outTransition);
+
+            NavigationInTransition inTransition = new NavigationInTransition();
+            inTransition.Backward = new SwivelTransition
+            {
+                Mode = SwivelTransitionMode.BackwardIn
+            };
+            inTransition.Forward = new TurnstileTransition
+            {
+                Mode = TurnstileTransitionMode.ForwardIn
+            };
+            TransitionService.SetNavigationInTransition(this, inTransition);
+
             NavigationService.Navigate(new Uri("/SearchPage.xaml", UriKind.Relative));
+        }
+
+        private void NavigateWithSwivel(string page)
+        {
+            NavigationOutTransition outTransition = new NavigationOutTransition();
+            outTransition.Backward = new TurnstileTransition
+            {
+                Mode = TurnstileTransitionMode.BackwardOut
+            };
+            outTransition.Forward = new SwivelTransition
+            {
+                Mode = SwivelTransitionMode.ForwardOut
+            };
+            TransitionService.SetNavigationOutTransition(this, outTransition);
+
+            NavigationInTransition inTransition = new NavigationInTransition();
+            inTransition.Backward = new SwivelTransition
+            {
+                Mode = SwivelTransitionMode.BackwardIn
+            };
+            inTransition.Forward = new TurnstileTransition
+            {
+                Mode = TurnstileTransitionMode.ForwardIn
+            };
+            TransitionService.SetNavigationInTransition(this, inTransition);
+
+            NavigationService.Navigate(new Uri(page, UriKind.Relative));
+        }
+
+        private void RestoreDefaultTransitions()
+        {
+            NavigationOutTransition outTransition = new NavigationOutTransition();
+            outTransition.Backward = new TurnstileTransition
+            {
+                Mode = TurnstileTransitionMode.BackwardOut
+            };
+            outTransition.Forward = new TurnstileTransition
+            {
+                Mode = TurnstileTransitionMode.ForwardOut
+            };
+            TransitionService.SetNavigationOutTransition(this, outTransition);
+
+            NavigationInTransition inTransition = new NavigationInTransition();
+            inTransition.Backward = new TurnstileTransition
+            {
+                Mode = TurnstileTransitionMode.BackwardIn
+            };
+            inTransition.Forward = new TurnstileTransition
+            {
+                Mode = TurnstileTransitionMode.ForwardIn
+            };
+            TransitionService.SetNavigationInTransition(this, inTransition);
         }
 
         private void BuildAppBar()
@@ -335,7 +542,7 @@ namespace BiliClassic
 
         private void SettingsMenuItem_Click(object sender, EventArgs e)
         {
-            NavigationService.Navigate(new Uri("/SettingsPage.xaml", UriKind.Relative));
+            NavigateWithSwivel("/SettingsPage.xaml");
         }
 
         private void EchoHoleMenuItem_Click(object sender, EventArgs e)
@@ -377,7 +584,7 @@ namespace BiliClassic
 
         private void AboutMenuItem_Click(object sender, EventArgs e)
         {
-            NavigationService.Navigate(new Uri("/AboutPage.xaml", UriKind.Relative));
+            NavigateWithSwivel("/AboutPage.xaml");
         }
 
         private void HomePivot_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -722,11 +929,6 @@ namespace BiliClassic
             if (tag == "rank")
             {
                 NavigationService.Navigate(new Uri("/RankingPage.xaml", UriKind.Relative));
-                return;
-            }
-            if (tag == "settings")
-            {
-                NavigationService.Navigate(new Uri("/SettingsPage.xaml", UriKind.Relative));
                 return;
             }
 

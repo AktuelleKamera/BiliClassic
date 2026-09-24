@@ -96,7 +96,7 @@ namespace BiliClassic.Api
             {
                 if (!string.IsNullOrEmpty(keyError))
                 {
-                    onDone(new List<VideoItem>(), false, "WBI 密钥获取失败 → " + keyError);
+                    onDone(new List<VideoItem>(), false, keyError);
                     return;
                 }
 

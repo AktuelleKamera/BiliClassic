@@ -63,8 +63,13 @@ namespace BiliClassic
             {
                 long.TryParse(value, out _fid);
             }
+            string folderTitle = "";
+            if (NavigationContext.QueryString.TryGetValue("title", out value))
+            {
+                folderTitle = value;
+            }
 
-            PageTitle.Text = TitleFor(_mode);
+            PageTitle.Text = folderTitle.Length > 0 ? folderTitle : TitleFor(_mode);
 
             if (_mode == Mode.Following)
             {
@@ -307,7 +312,8 @@ namespace BiliClassic
                     return;
                 }
                 NavigationService.Navigate(new Uri(
-                    "/MineListPage.xaml?mode=favvideos&fid=" + item.Fid, UriKind.Relative));
+                    "/MineListPage.xaml?mode=favvideos&fid=" + item.Fid
+                    + "&title=" + Uri.EscapeDataString(item.Title), UriKind.Relative));
                 return;
             }
 
@@ -336,6 +342,78 @@ namespace BiliClassic
 
             NavigationService.Navigate(new Uri(
                 "/VideoDetailPage.xaml?bvid=" + item.Bvid, UriKind.Relative));
+        }
+
+        private void DeleteItem_Click(object sender, RoutedEventArgs e)
+        {
+            Microsoft.Phone.Controls.MenuItem menu =
+                sender as Microsoft.Phone.Controls.MenuItem;
+            VideoItem item = menu == null ? null : menu.DataContext as VideoItem;
+            if (item == null)
+            {
+                return;
+            }
+
+            if (_mode == Mode.History)
+            {
+                if (MessageBox.Show("删除这条播放历史？", "删除",
+                        MessageBoxButton.OKCancel) != MessageBoxResult.OK)
+                {
+                    return;
+                }
+                InteractionService.DeleteHistory(ItemAid(item),
+                    delegate(bool ok, string error) { OnDeleted(ok, error, item); });
+            }
+            else if (_mode == Mode.Folders)
+            {
+                if (MessageBox.Show("删除收藏夹「" + item.Title + "」？", "删除",
+                        MessageBoxButton.OKCancel) != MessageBoxResult.OK)
+                {
+                    return;
+                }
+                InteractionService.DeleteFolder(item.Fid.ToString(),
+                    delegate(bool ok, string error) { OnDeleted(ok, error, item); });
+            }
+            else if (_mode == Mode.FolderVideos)
+            {
+                if (MessageBox.Show("取消收藏这个视频？", "删除",
+                        MessageBoxButton.OKCancel) != MessageBoxResult.OK)
+                {
+                    return;
+                }
+                InteractionService.DeleteFavorite(ItemAid(item), item.Bvid,
+                    _fid.ToString(),
+                    delegate(bool ok, string error) { OnDeleted(ok, error, item); });
+            }
+        }
+
+        private static string ItemAid(VideoItem item)
+        {
+            if (!string.IsNullOrEmpty(item.Aid))
+            {
+                return item.Aid;
+            }
+            if (!string.IsNullOrEmpty(item.Bvid))
+            {
+                return BiliId.BvidToAid(item.Bvid).ToString();
+            }
+            return "";
+        }
+
+        private void OnDeleted(bool ok, string error, VideoItem item)
+        {
+            Dispatcher.BeginInvoke(new Action(delegate
+            {
+                if (ok)
+                {
+                    _videos.Remove(item);
+                    ShowStatus("已删除");
+                }
+                else
+                {
+                    ShowStatus(error);
+                }
+            }));
         }
 
         private static long ParseLong(string value)

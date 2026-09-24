@@ -95,11 +95,7 @@ namespace BiliClassic.Api
                     result.Body = ReadWebExceptionBody(wex);
                     if (string.IsNullOrEmpty(result.Body))
                     {
-                        result.Error = "HTTP 失败 [" + wex.Status + DescribeStatus(wex.Status) + "]: " + wex.Message
-                            + (wex.Response == null ? " (无响应对象)" : "")
-                            + (wex.InnerException == null
-                                ? ""
-                                : " 内部: " + wex.InnerException.GetType().Name + ": " + wex.InnerException.Message);
+                        result.Error = DescribeWebException(wex);
                     }
                 }
                 catch (Exception ex)
@@ -117,17 +113,19 @@ namespace BiliClassic.Api
             }, null);
         }
 
-        private static string DescribeStatus(WebExceptionStatus status)
+        private static string DescribeWebException(WebException wex)
         {
-            string name = status.ToString();
-            if (name == "TrustFailure") return " (证书不被信任)";
-            if (name == "NameResolutionFailure") return " (DNS 解析失败)";
-            if (name == "ConnectFailure") return " (连不上服务器)";
-            if (name == "Timeout") return " (超时)";
-            if (name == "ProtocolError") return " (HTTP 协议错误)";
-            if (name == "SecureChannelFailure") return " (安全通道失败/TLS)";
-            if (name == "UnknownError") return " (未知错误；Silverlight 下常见于 TLS 握手失败)";
-            return "";
+            switch (wex.Status)
+            {
+                case WebExceptionStatus.NameResolutionFailure:
+                case WebExceptionStatus.ConnectFailure:
+                case WebExceptionStatus.Timeout:
+                case WebExceptionStatus.SecureChannelFailure:
+                case WebExceptionStatus.TrustFailure:
+                case WebExceptionStatus.UnknownError:
+                    return "请检查网络连接";
+            }
+            return "HTTP 失败 [" + wex.Status + "]: " + wex.Message;
         }
 
         private static string ReadWebExceptionBody(WebException wex)
@@ -286,7 +284,7 @@ namespace BiliClassic.Api
                         result.Body = ReadWebExceptionBody(wex);
                         if (string.IsNullOrEmpty(result.Body))
                         {
-                            result.Error = "HTTP 失败 [" + wex.Status + DescribeStatus(wex.Status) + "]: " + wex.Message;
+                            result.Error = DescribeWebException(wex);
                         }
                     }
                     catch (Exception ex)

@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
+using System.Windows.Threading;
 using BiliClassic.Api;
 using Microsoft.Phone.Controls;
 using Microsoft.Phone.Tasks;
@@ -107,6 +108,78 @@ namespace BiliClassic
             {
                 Load();
             }
+        }
+
+        private DispatcherTimer _bvidHoldTimer;
+
+        private void BvidText_Down(object sender, MouseButtonEventArgs e)
+        {
+            if (_bvidHoldTimer == null)
+            {
+                _bvidHoldTimer = new DispatcherTimer();
+                _bvidHoldTimer.Interval = TimeSpan.FromMilliseconds(650);
+                _bvidHoldTimer.Tick += BvidHoldTick;
+            }
+            _bvidHoldTimer.Stop();
+            _bvidHoldTimer.Start();
+        }
+
+        private void BvidText_Up(object sender, MouseButtonEventArgs e)
+        {
+            if (_bvidHoldTimer != null)
+            {
+                _bvidHoldTimer.Stop();
+            }
+        }
+
+        private void BvidHoldTick(object sender, EventArgs e)
+        {
+            _bvidHoldTimer.Stop();
+
+            string text = BvidText.Text;
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+#if WP8
+            try
+            {
+                Clipboard.SetText(text);
+            }
+            catch (Exception)
+            {
+            }
+
+            MessageBox.Show("已复制 " + text, "提示", MessageBoxButton.OK);
+#else
+            MessageBox.Show("复制功能需要WP8及以上系统", "提示", MessageBoxButton.OK);
+#endif
+        }
+
+        private void CommentCopy_Click(object sender, RoutedEventArgs e)
+        {
+            Microsoft.Phone.Controls.MenuItem menu =
+                sender as Microsoft.Phone.Controls.MenuItem;
+            CommentItem item = menu == null ? null : menu.DataContext as CommentItem;
+            if (item == null || string.IsNullOrEmpty(item.Message))
+            {
+                return;
+            }
+
+#if WP8
+            try
+            {
+                Clipboard.SetText(item.Message);
+            }
+            catch (Exception)
+            {
+            }
+
+            MessageBox.Show("已复制评论", "提示", MessageBoxButton.OK);
+#else
+            MessageBox.Show("复制功能需要WP8及以上系统", "提示", MessageBoxButton.OK);
+#endif
         }
 
         private void Load()
@@ -482,6 +555,65 @@ namespace BiliClassic
 
             string url = "/VideoPlayerPage.xaml?bvid=" + _detail.Bvid + "&cid=" + part.Cid;
             NavigationService.Navigate(new Uri(url, UriKind.Relative));
+        }
+
+        private void LikeMenuItem_Click(object sender, EventArgs e)
+        {
+            if (_detail == null || string.IsNullOrEmpty(_detail.Aid))
+            {
+                ShowStatus("还没拿到视频信息，稍等一下");
+                return;
+            }
+
+            ShowStatus("正在点赞…");
+            InteractionService.Like(_detail.Aid, 1, delegate(bool ok, string error)
+            {
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    ShowStatus(ok ? "点赞成功" : error);
+                }));
+            });
+        }
+
+        private void CoinMenuItem_Click(object sender, EventArgs e)
+        {
+            if (_detail == null || string.IsNullOrEmpty(_detail.Aid))
+            {
+                ShowStatus("还没拿到视频信息，稍等一下");
+                return;
+            }
+
+            CoinStatus.Text = "";
+            CoinOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void CoinOne_Click(object sender, RoutedEventArgs e)
+        {
+            Coin(1);
+        }
+
+        private void CoinTwo_Click(object sender, RoutedEventArgs e)
+        {
+            Coin(2);
+        }
+
+        private void CancelCoin_Click(object sender, RoutedEventArgs e)
+        {
+            CoinOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private void Coin(int multiply)
+        {
+            CoinOverlay.Visibility = Visibility.Collapsed;
+
+            ShowStatus("正在投币…");
+            InteractionService.Coin(_detail.Aid, multiply, delegate(bool ok, string error)
+            {
+                Dispatcher.BeginInvoke(new Action(delegate
+                {
+                    ShowStatus(ok ? ("已投 " + multiply + " 枚硬币") : error);
+                }));
+            });
         }
 
         private void WatchLaterMenuItem_Click(object sender, EventArgs e)

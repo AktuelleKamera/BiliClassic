@@ -19,6 +19,11 @@
         <!-- 视频卡片 -->
         <DataTemplate x:Key="VideoCard">
             <Grid Margin="0,0,0,14">
+                <toolkit:ContextMenuService.ContextMenu>
+                    <toolkit:ContextMenu>
+                        <toolkit:MenuItem Header="删除" Click="DeleteItem_Click"/>
+                    </toolkit:ContextMenu>
+                </toolkit:ContextMenuService.ContextMenu>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>

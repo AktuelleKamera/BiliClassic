@@ -51,7 +51,7 @@
         </StackPanel>
 
         <Grid Grid.Row="1" Margin="12,0,12,0">
-            <ListBox x:Name="MessageList">
+            <ListBox x:Name="MessageList" IsTabStop="False">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>

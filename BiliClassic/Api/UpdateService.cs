@@ -18,11 +18,11 @@ namespace BiliClassic.Api
     {
         private const string ManifestUrl = "http://www.biliclassic.cn/wp/api/version.json";
 
-        public const string VersionNumber = "0.2.0.0";
+        public const string VersionNumber = "0.3.0.0";
 
-        public const string DisplayVersion = "0.2.0";
+        public const string DisplayVersion = "0.3.0";
 
-        public const int VersionCode = 200;
+        public const int VersionCode = 300;
 
         public static void Check(Action<UpdateInfo> onDone)
         {

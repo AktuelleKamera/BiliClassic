@@ -82,7 +82,7 @@ namespace BiliClassic.Api
             {
                 if (!string.IsNullOrEmpty(keyError))
                 {
-                    result.Error = "WBI 密钥获取失败 → " + keyError;
+                    result.Error = keyError;
                     onDone(result);
                     return;
                 }
@@ -291,7 +291,7 @@ namespace BiliClassic.Api
             {
                 if (!string.IsNullOrEmpty(keyError))
                 {
-                    result.Error = "WBI 密钥获取失败 → " + keyError;
+                    result.Error = keyError;
                     onDone(result);
                     return;
                 }

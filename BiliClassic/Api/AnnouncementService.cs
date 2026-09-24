@@ -27,6 +27,8 @@ namespace BiliClassic.Api
         public string AudioUrl = "";
         public string AudioText = "";
         public string AudioDisText = "";
+        public string LinkUrl = "";
+        public string LinkText = "";
     }
 
     public static class AnnouncementService
@@ -147,6 +149,8 @@ namespace BiliClassic.Api
             a.AudioUrl = JsonText.ReadString(json, "audio_url");
             a.AudioText = JsonText.ReadString(json, "audio_text");
             a.AudioDisText = JsonText.ReadString(json, "audio_dis_text");
+            a.LinkUrl = JsonText.ReadString(json, "link_url");
+            a.LinkText = JsonText.ReadString(json, "link_text");
             a.ShowOnce = !Regex.IsMatch(json, @"""show_once""\s*:\s*false");
             a.ForceShow = Regex.IsMatch(json, @"""force_show""\s*:\s*true");
             a.MinVersionCode = (int)ReadNumber(json, "min_version_code", -1);
@@ -273,7 +277,7 @@ namespace BiliClassic.Api
         private static List<string> ReadPlatforms(string json)
         {
             List<string> list = new List<string>();
-            Match m = Regex.Match(json, @"""platform""\s*:\s*\[([^\]]*)\]");
+            Match m = Regex.Match(json, @"""(?:platform|platforms)""\s*:\s*\[([^\]]*)\]");
             if (!m.Success)
             {
                 return list;

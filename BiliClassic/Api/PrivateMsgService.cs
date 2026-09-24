@@ -163,12 +163,46 @@ namespace BiliClassic.Api
             {
                 if (first.Count > 0 || !string.IsNullOrEmpty(error))
                 {
+                    SortUnreadFirst(first);
                     onDone(first, error);
                     return;
                 }
                 FetchSessionUrl(Root
-                    + "/session_svr/v1/session_svr/get_sessions?session_type=1&size=50", onDone);
+                    + "/session_svr/v1/session_svr/get_sessions?session_type=1&size=50",
+                    delegate(List<PrivateMsgSession> sessions, string secondError)
+                    {
+                        SortUnreadFirst(sessions);
+                        onDone(sessions, secondError);
+                    });
             });
+        }
+
+        /// <summary>未读排前，组内保持接口原本的时间顺序</summary>
+        private static void SortUnreadFirst(List<PrivateMsgSession> sessions)
+        {
+            if (sessions == null || sessions.Count < 2)
+            {
+                return;
+            }
+
+            List<PrivateMsgSession> sorted = new List<PrivateMsgSession>();
+            for (int i = 0; i < sessions.Count; i++)
+            {
+                if (sessions[i].Unread > 0)
+                {
+                    sorted.Add(sessions[i]);
+                }
+            }
+            for (int i = 0; i < sessions.Count; i++)
+            {
+                if (sessions[i].Unread <= 0)
+                {
+                    sorted.Add(sessions[i]);
+                }
+            }
+
+            sessions.Clear();
+            sessions.AddRange(sorted);
         }
 
         private static void FetchSessionUrl(string url,

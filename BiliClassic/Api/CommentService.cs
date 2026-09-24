@@ -66,7 +66,7 @@ namespace BiliClassic.Api
                     {
                         if (legacy.Count == 0 && legacyError.Length == 0)
                         {
-                            onDone(legacy, false, "取签名密钥失败：" + keyError);
+                            onDone(legacy, false, keyError);
                             return;
                         }
                         onDone(legacy, more, legacyError);

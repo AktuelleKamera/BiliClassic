@@ -66,7 +66,7 @@ namespace BiliClassic
             }
 
             ApplySystemTray(white);
-            EnsureAppBar(page, white);
+            ApplyAppBar(page, white);
             ApplyFrameBackground(white);
 
             page.ClearValue(Control.BackgroundProperty);
@@ -234,32 +234,6 @@ namespace BiliClassic
             ApplyAppBar(page, AppSettings.WhiteTheme);
         }
 
-        // 【重要】无栏页补个空栏盖住系统那片黑底板；透明会露黑，删了转场就黑一截，喵
-        private static void EnsureAppBar(PhoneApplicationPage page, bool white)
-        {
-            if (page.ApplicationBar == null)
-            {
-                ApplicationBar bar = new ApplicationBar();
-                bar.IsVisible = true;
-                bar.IsMenuEnabled = false;
-
-                page.ApplicationBar = bar;
-                ApplyEmptyBarColor(bar, white);
-                return;
-            }
-
-            ApplyAppBar(page, white);
-        }
-
-        private static void ApplyEmptyBarColor(IApplicationBar bar, bool white)
-        {
-            SetInstanceProperty(bar, "Opacity", 0.0);
-            SetInstanceProperty(bar, "BackgroundColor", Colors.Transparent);
-            SetInstanceProperty(bar, "ForegroundColor", Colors.Transparent);
-        }
-
-
-
         private static void ApplyAppBar(PhoneApplicationPage page, bool white)
         {
             IApplicationBar bar = page.ApplicationBar;
@@ -283,12 +257,6 @@ namespace BiliClassic
                 _barSaved = true;
             }
 
-            if (IsEmptyBar(bar))
-            {
-                ApplyEmptyBarColor(bar, white);
-                return;
-            }
-
             if (white)
             {
                 SetInstanceProperty(bar, "BackgroundColor",
@@ -299,18 +267,6 @@ namespace BiliClassic
             {
                 SetInstanceProperty(bar, "BackgroundColor", _barBackground);
                 SetInstanceProperty(bar, "ForegroundColor", _barForeground);
-            }
-        }
-
-        private static bool IsEmptyBar(IApplicationBar bar)
-        {
-            try
-            {
-                return bar.Buttons.Count == 0 && bar.MenuItems.Count == 0;
-            }
-            catch (Exception)
-            {
-                return false;
             }
         }
 

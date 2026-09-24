@@ -61,7 +61,8 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,0">
+        <StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,0"
+                    Background="Transparent" MouseLeftButtonUp="TitlePanel_Tap">
             <TextBlock x:Name="ApplicationTitle" Text="哔哩经典"
                        Style="{StaticResource PhoneTextNormalStyle}"/>
         </StackPanel>
@@ -142,11 +143,6 @@
                                     Margin="0,0,12,12">
                                 <TextBlock Text="手气不错" Style="{StaticResource MineTileText}"/>
                             </Border>
-
-                            <Border Tag="settings" Style="{StaticResource MineTile}"
-                                    Margin="0,0,12,12">
-                                <TextBlock Text="设置" Style="{StaticResource MineTileText}"/>
-                            </Border>
                         </toolkit:WrapPanel>
 
                         <TextBlock x:Name="MineStatus" Text="" TextWrapping="Wrap"
@@ -214,28 +210,46 @@
         <MediaElement x:Name="EchoSoundPlayer" AutoPlay="False"
                       Width="0" Height="0" Opacity="0" IsHitTestVisible="False"/>
 
-        <!-- 公告弹窗 -->
-        <Popup x:Name="NoticePopup" IsOpen="False" Grid.RowSpan="2">
-            <Grid Width="{Binding ActualWidth, ElementName=LayoutRoot}"
-                  Height="{Binding ActualHeight, ElementName=LayoutRoot}"
-                  Background="#B0000000">
-                <Border Background="{StaticResource PhoneBackgroundBrush}"
-                        BorderBrush="{StaticResource PhoneSubtleBrush}" BorderThickness="1"
-                        Width="420" VerticalAlignment="Center" HorizontalAlignment="Center"
-                        Padding="16">
-                    <StackPanel>
-                        <TextBlock x:Name="NoticeTitle" TextWrapping="Wrap"
-                                   Style="{StaticResource PhoneTextTitle3Style}"/>
-                        <ScrollViewer MaxHeight="380" Margin="0,8,0,0">
-                            <TextBlock x:Name="NoticeContent" TextWrapping="Wrap"
-                                       Style="{StaticResource PhoneTextNormalStyle}"/>
-                        </ScrollViewer>
+        <!-- 彩蛋：空间震 -->
+        <Grid x:Name="QuakeOverlay" Grid.RowSpan="2" Background="#FFFF0000"
+              Visibility="Collapsed" IsHitTestVisible="False">
+            <TextBlock Text="空间震！" FontSize="48" FontWeight="Black" Foreground="White"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- 公告浮层 -->
+        <Grid x:Name="NoticeOverlay" Grid.RowSpan="2"
+              Background="#B0000000" Visibility="Collapsed">
+            <Border Background="{StaticResource PhoneBackgroundBrush}"
+                    BorderBrush="{StaticResource PhoneSubtleBrush}" BorderThickness="1"
+                    Width="420" MaxHeight="600"
+                    VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Padding="16">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock x:Name="NoticeTitle" Grid.Row="0" TextWrapping="Wrap"
+                               Style="{StaticResource PhoneTextTitle3Style}"/>
+
+                    <ScrollViewer Grid.Row="1" Margin="0,8,0,0">
+                        <TextBlock x:Name="NoticeContent" TextWrapping="Wrap"
+                                   Style="{StaticResource PhoneTextNormalStyle}"/>
+                    </ScrollViewer>
+
+                    <StackPanel Grid.Row="2">
                         <Button x:Name="NoticeVideoButton" Content="观看视频"
                                 Visibility="Collapsed" Margin="0,12,0,0"
                                 Click="NoticeVideo_Click"/>
                         <Button x:Name="NoticeAudioButton" Content="播放音频"
                                 Visibility="Collapsed" Margin="0,8,0,0"
                                 Click="NoticeAudio_Click"/>
+                        <Button x:Name="NoticeLinkButton" Content="查看链接"
+                                Visibility="Collapsed" Margin="0,8,0,0"
+                                Click="NoticeLink_Click"/>
                         <Button x:Name="NoticeDetailButton" Content="查看详情"
                                 Visibility="Collapsed" Margin="0,8,0,0"
                                 Click="NoticeDetail_Click"/>
@@ -245,8 +259,8 @@
                         <Button x:Name="NoticeDismissButton" Content="知道了"
                                 Margin="0,12,0,0" Click="NoticeDismiss_Click"/>
                     </StackPanel>
-                </Border>
-            </Grid>
-        </Popup>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </phone:PhoneApplicationPage>

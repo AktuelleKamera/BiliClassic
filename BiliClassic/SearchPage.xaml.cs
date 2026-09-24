@@ -99,6 +99,9 @@ namespace BiliClassic
                 return;
             }
 
+            AddHistory(keyword);
+            HistoryPanel.Visibility = Visibility.Collapsed;
+
             if ((DateTime.Now - _lastSearchAt).TotalMilliseconds < 800)
             {
                 return;
@@ -273,14 +276,9 @@ namespace BiliClassic
             NavigationService.Navigate(new Uri("/VideoDetailPage.xaml?bvid=" + item.Bvid, UriKind.Relative));
         }
 
-        private void PrevPage_Click(object sender, EventArgs e)
+        private void RefreshPage_Click(object sender, EventArgs e)
         {
-            LoadPage(_page - 1);
-        }
-
-        private void NextPage_Click(object sender, EventArgs e)
-        {
-            LoadPage(_page + 1);
+            LoadPage(1);
         }
 
         private void LoadPage(int page)
@@ -460,6 +458,100 @@ namespace BiliClassic
         {
             return (long)(DateTime.UtcNow
                 - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+        }
+
+        private const string HistoryKey = "search_history";
+
+        private const char HistorySeparator = '\u0001';
+
+        private const int HistoryMax = 20;
+
+        private void KeywordBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            List<string> history = LoadHistory();
+            HistoryList.ItemsSource = history;
+            HistoryPanel.Visibility =
+                history.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void HistoryList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            string keyword = HistoryList.SelectedItem as string;
+            if (string.IsNullOrEmpty(keyword))
+            {
+                return;
+            }
+            HistoryList.SelectedIndex = -1;
+            KeywordBox.Text = keyword;
+            HistoryPanel.Visibility = Visibility.Collapsed;
+            StartNewSearch();
+        }
+
+        private void DeleteHistoryItem_Click(object sender, RoutedEventArgs e)
+        {
+            Button button = sender as Button;
+            string keyword = button == null ? null : button.DataContext as string;
+            if (string.IsNullOrEmpty(keyword))
+            {
+                return;
+            }
+
+            List<string> list = LoadHistory();
+            list.Remove(keyword);
+            SaveHistory(list);
+
+            if (list.Count > 0)
+            {
+                HistoryList.ItemsSource = list;
+            }
+            else
+            {
+                HistoryPanel.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private static List<string> LoadHistory()
+        {
+            List<string> list = new List<string>();
+            string raw = LocalStore.Get(HistoryKey);
+            if (raw.Length == 0)
+            {
+                return list;
+            }
+
+            string[] parts = raw.Split(HistorySeparator);
+            for (int i = 0; i < parts.Length; i++)
+            {
+                string item = parts[i].Trim();
+                if (item.Length > 0)
+                {
+                    list.Add(item);
+                }
+            }
+            return list;
+        }
+
+        private static void SaveHistory(List<string> list)
+        {
+            LocalStore.Set(HistoryKey, string.Join(
+                new string(HistorySeparator, 1), list.ToArray()));
+        }
+
+        private static void AddHistory(string keyword)
+        {
+            if (string.IsNullOrEmpty(keyword))
+            {
+                return;
+            }
+
+            List<string> list = LoadHistory();
+            list.Remove(keyword);
+            list.Insert(0, keyword);
+            while (list.Count > HistoryMax)
+            {
+                list.RemoveAt(list.Count - 1);
+            }
+            SaveHistory(list);
         }
 
         private void ShowStatus(string message)
