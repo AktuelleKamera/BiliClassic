@@ -56,6 +56,11 @@ namespace BiliClassic
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+
+            List<string> history = LoadHistory();
+            HistoryList.ItemsSource = history;
+            HistoryPanel.Visibility =
+                history.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void SearchButton_Click(object sender, RoutedEventArgs e)

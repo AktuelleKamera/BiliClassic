@@ -1,4 +1,4 @@
-<phone:PhoneApplicationPage
+﻿<phone:PhoneApplicationPage
     x:Class="BiliClassic.VideoPlayerPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -7,12 +7,90 @@
     xmlns:toolkit="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls.Toolkit"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="800"
+    mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="480"
     FontFamily="{StaticResource PhoneFontFamilyNormal}"
     FontSize="{StaticResource PhoneFontSizeNormal}"
     Foreground="{StaticResource PhoneForegroundBrush}"
     SupportedOrientations="Landscape"
-    shell:SystemTray.IsVisible="False">
+    shell:SystemTray.IsVisible="False" Orientation="Landscape">
+	<phone:PhoneApplicationPage.Resources>
+		<Storyboard x:Name="ShowBars">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="TitleText">
+				<EasingDoubleKeyFrame KeyTime="0" Value="-36">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<CubicEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.5" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<CubicEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="ControlPanel">
+				<EasingDoubleKeyFrame KeyTime="0" Value="204">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<CubicEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.5" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<CubicEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="HideBars">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="TitleText">
+				<EasingDoubleKeyFrame KeyTime="0" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<CubicEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.5" Value="-40.5">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<CubicEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="ControlPanel">
+				<EasingDoubleKeyFrame KeyTime="0" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<CubicEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.5" Value="202.5">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<CubicEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="ShowQBars">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="QualityPanel">
+				<EasingDoubleKeyFrame KeyTime="0" Value="128">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<QuarticEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<QuarticEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="HideQBars">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="QualityPanel">
+				<EasingDoubleKeyFrame KeyTime="0" Value="0"/>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="147">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<QuinticEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+	</phone:PhoneApplicationPage.Resources>
 
     <!-- 转场 -->
     <toolkit:TransitionService.NavigationInTransition>
@@ -57,19 +135,36 @@
               MouseLeftButtonUp="TapLayer_MouseLeftButtonUp"/>
 
         <TextBlock x:Name="TitleText" VerticalAlignment="Top" Margin="12,12,12,0"
-                   Foreground="White" TextWrapping="Wrap" MaxHeight="60"/>
+                   Foreground="White" TextWrapping="Wrap" MaxHeight="60" RenderTransformOrigin="0.5,0.5">
+        	<TextBlock.RenderTransform>
+        		<CompositeTransform/>
+        	</TextBlock.RenderTransform>
+        </TextBlock>
 
         <!-- 底部 -->
-        <StackPanel VerticalAlignment="Bottom">
+        <StackPanel x:Name="stackPanel" VerticalAlignment="Bottom" RenderTransformOrigin="0.5,0.5">
+        	<StackPanel.RenderTransform>
+        		<CompositeTransform/>
+        	</StackPanel.RenderTransform>
             <!-- 清晰度选单：点右下角按钮才展开 -->
-            <Border x:Name="QualityPanel" Visibility="Collapsed"
-                    HorizontalAlignment="Right" Margin="0,0,4,0"
-                    Background="#EE101010" Padding="8,6">
-                <StackPanel x:Name="QualityList"/>
+            <Border x:Name="QualityPanel"
+                    HorizontalAlignment="Right" Margin="0,0,0,0"
+                    Background="#CC000000" Padding="8,6" RenderTransformOrigin="0.5,0.5">
+            	<Border.RenderTransform>
+            		<CompositeTransform/>
+            	</Border.RenderTransform>
+                <StackPanel x:Name="QualityList" RenderTransformOrigin="0.5,0.5">
+                	<StackPanel.RenderTransform>
+                		<CompositeTransform/>
+                	</StackPanel.RenderTransform>
+                </StackPanel>
             </Border>
 
             <!-- 播放控制条 -->
-            <Border x:Name="ControlPanel" Background="#CC000000" Padding="12,4">
+            <Border x:Name="ControlPanel" Background="#CC000000" Padding="12,4" RenderTransformOrigin="0.5,0.5">
+            	<Border.RenderTransform>
+            		<CompositeTransform/>
+            	</Border.RenderTransform>
                 <StackPanel>
                     <Slider x:Name="SeekBar" Minimum="0" Maximum="1" Value="0"
                             ValueChanged="SeekBar_ValueChanged"/>
@@ -115,7 +210,7 @@
                         <!-- 右下角：点开清晰度选单 -->
                         <Button x:Name="QualityButton" Grid.Column="4" Content="720P"
                                 MinWidth="0" Padding="12,2"
-                                Click="QualityButton_Click"/>
+                                Click="QualityButton_Click" BorderBrush="Transparent" FontSize="20" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -127,7 +222,7 @@
         </StackPanel>
 
         <!-- 仿安卓版小电视动画~ -->
-        <Grid x:Name="LoadingPanel" Background="#FFBABABA">
+        <Grid x:Name="LoadingPanel" Background="#FFBABABA" Visibility="Collapsed">
             <Image x:Name="LoadingTv" Width="120" Height="120"
                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
             <TextBlock x:Name="LoadingText" Margin="12,0,12,20"

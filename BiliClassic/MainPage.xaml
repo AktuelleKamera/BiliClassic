@@ -6,7 +6,7 @@
     xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="696"
+    mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="768"
     FontFamily="{StaticResource PhoneFontFamilyNormal}"
     FontSize="{StaticResource PhoneFontSizeNormal}"
     Foreground="{StaticResource PhoneForegroundBrush}"
@@ -143,6 +143,8 @@
                                     Margin="0,0,12,12">
                                 <TextBlock Text="手气不错" Style="{StaticResource MineTileText}"/>
                             </Border>
+
+
                         </toolkit:WrapPanel>
 
                         <TextBlock x:Name="MineStatus" Text="" TextWrapping="Wrap"
@@ -160,7 +162,7 @@
                     </Grid.RowDefinitions>
 
                     <Grid Grid.Row="0" Margin="12,0,12,0">
-                        <ListBox x:Name="RecommendList" SelectionChanged="RecommendList_SelectionChanged">
+                        <ListBox x:Name="RecommendList" SelectionChanged="RecommendList_SelectionChanged" toolkit:TiltEffect.IsTiltEnabled="True">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <!-- 卡片模板 -->
