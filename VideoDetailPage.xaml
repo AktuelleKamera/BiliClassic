@@ -1,0 +1,431 @@
+<phone:PhoneApplicationPage
+    x:Class="BiliClassic.VideoDetailPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:phone="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone"
+    xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="696"
+    FontFamily="{StaticResource PhoneFontFamilyNormal}"
+    FontSize="{StaticResource PhoneFontSizeNormal}"
+    Foreground="{StaticResource PhoneForegroundBrush}"
+    SupportedOrientations="Portrait" Orientation="Portrait"
+    xmlns:toolkit="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls.Toolkit"
+    xmlns:controls="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls"
+    shell:SystemTray.IsVisible="True">
+
+    <!-- 页面转场动画 -->
+    <toolkit:TransitionService.NavigationInTransition>
+        <toolkit:NavigationInTransition>
+            <toolkit:NavigationInTransition.Backward>
+                <toolkit:TurnstileTransition Mode="BackwardIn"/>
+            </toolkit:NavigationInTransition.Backward>
+            <toolkit:NavigationInTransition.Forward>
+                <toolkit:TurnstileTransition Mode="ForwardIn"/>
+            </toolkit:NavigationInTransition.Forward>
+        </toolkit:NavigationInTransition>
+    </toolkit:TransitionService.NavigationInTransition>
+
+    <toolkit:TransitionService.NavigationOutTransition>
+        <toolkit:NavigationOutTransition>
+            <toolkit:NavigationOutTransition.Backward>
+                <toolkit:TurnstileTransition Mode="BackwardOut"/>
+            </toolkit:NavigationOutTransition.Backward>
+            <toolkit:NavigationOutTransition.Forward>
+                <toolkit:TurnstileTransition Mode="ForwardOut"/>
+            </toolkit:NavigationOutTransition.Forward>
+        </toolkit:NavigationOutTransition>
+    </toolkit:TransitionService.NavigationOutTransition>
+
+    <Grid x:Name="LayoutRoot" Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 页标题位置直接放BV号，长按复制 -->
+        <StackPanel Grid.Row="0" Margin="12,17,0,0" Background="Transparent"
+                    MouseLeftButtonDown="BvidText_Down"
+                    MouseLeftButtonUp="BvidText_Up">
+            <TextBlock x:Name="BvidText" Text="" Style="{StaticResource PhoneTextNormalStyle}"/>
+        </StackPanel>
+
+        <controls:Pivot x:Name="DetailPivot" Grid.Row="1"
+                        SelectionChanged="DetailPivot_SelectionChanged">
+
+            <controls:PivotItem Header="详情">
+                <ScrollViewer Margin="0">
+                    <StackPanel Margin="0,0,0,24">
+                        <!-- 封面左、标题右，照安卓版 -->
+                        <Grid Margin="12,4,12,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Width="176" Height="99"
+                                    Background="#22FFFFFF"
+                                    BorderBrush="{StaticResource PhoneSubtleBrush}"
+                                    BorderThickness="2">
+                                <Image x:Name="CoverImage" Stretch="UniformToFill"/>
+                            </Border>
+                            <TextBlock x:Name="TitleText" Grid.Column="1" Margin="10,0,0,0"
+                                       TextWrapping="Wrap" FontSize="22"
+                                       LineHeight="30" MaxHeight="90"/>
+                        </Grid>
+
+                        <Border Height="1" Background="#33FFFFFF" Margin="12,10,12,0"/>
+
+                        <!-- UP主、统计、播放按钮一行 -->
+                        <Grid Margin="12,10,12,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <!-- 覆盖样式自带的左边距，两行才对齐 -->
+                            <Border Grid.Row="0" Grid.Column="0" Background="Transparent"
+                                    MouseLeftButtonUp="AuthorText_Tap">
+                                <TextBlock x:Name="AuthorText" TextWrapping="Wrap" Margin="0"
+                                           Style="{StaticResource PhoneTextNormalStyle}"/>
+                            </Border>
+                            <TextBlock x:Name="StatText" Grid.Row="1" Grid.Column="0"
+                                       TextWrapping="Wrap" Margin="0,2,0,0"
+                                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+                            <Button x:Name="PlayButton" Grid.Row="0" Grid.RowSpan="2" Grid.Column="1"
+                                    Content="播放视频" MinWidth="0" Height="80" Padding="30,4"
+                                    FontSize="24"
+                                    Margin="10,0,0,0" VerticalAlignment="Center"
+                                    Background="#D86DA5" Foreground="White"
+                                    BorderThickness="0"
+                                    Click="PlayButton_Click"/>
+                        </Grid>
+
+                        <Border Height="1" Background="#33FFFFFF" Margin="12,10,12,0"/>
+
+                        <TextBlock x:Name="PubDateText" TextWrapping="Wrap" Margin="12,8,12,0"
+                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+
+                        <TextBlock x:Name="DescText" TextWrapping="Wrap" Margin="12,10,12,0"
+                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+
+                        <!-- 分P分隔条，共X段，单P整条隐藏 -->
+                        <Border x:Name="PartsBar" Background="#D86DA5"
+                                Margin="0,16,0,0" Padding="12,6"
+                                Visibility="Collapsed">
+                            <TextBlock x:Name="PartsHeader" Margin="0"
+                                       Foreground="White"
+                                       Style="{StaticResource PhoneTextNormalStyle}"/>
+                        </Border>
+
+                        <ListBox x:Name="PartsList" Visibility="Collapsed"
+                                 SelectionChanged="PartsList_SelectionChanged">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding IndexText}"
+                                                   Foreground="#D86DA5" FontSize="20"
+                                                   Margin="0,0,8,0"/>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding PartTitle}" TextWrapping="Wrap"
+                                                       Style="{StaticResource PhoneTextNormalStyle}"/>
+                                            <TextBlock Text="{Binding DurationText}"
+                                                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </controls:PivotItem>
+
+            <controls:PivotItem Header="相关">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="12,0,12,0">
+                        <ListBox x:Name="RelatedList"
+                                 SelectionChanged="RelatedList_SelectionChanged" toolkit:TiltEffect.IsTiltEnabled="True">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <!-- 卡片与首页推荐同一套模板 -->
+                                    <Grid Margin="0,0,0,14">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="160" Height="90"
+                                                Margin="0,0,12,0" Background="#22FFFFFF"
+                                                BorderBrush="{StaticResource PhoneSubtleBrush}"
+                                                BorderThickness="2">
+                                            <Grid>
+                                                <Image Stretch="Uniform" VerticalAlignment="Center"
+                                                       Source="/Res/Icon/localcover.png"/>
+                                                <Image Stretch="UniformToFill" Source="{Binding Cover}"/>
+                                            </Grid>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Top">
+                                            <TextBlock Text="{Binding Title}" TextWrapping="Wrap"
+                                                       LineHeight="30" MaxHeight="60"
+                                                       Style="{StaticResource PhoneTextNormalStyle}"/>
+                                            <TextBlock Text="{Binding InfoLine}"
+                                                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <!-- 没有相关视频时的居中占位 -->
+                        <TextBlock x:Name="RelatedEmpty" Text="暂无相关视频"
+                                   TextWrapping="Wrap"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Visibility="Collapsed"
+                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+                    </Grid>
+
+                    <StackPanel Grid.Row="1" Margin="12,4,12,8">
+                        <TextBlock x:Name="RelatedStatus" TextWrapping="Wrap" Text=""
+                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+                    </StackPanel>
+                </Grid>
+            </controls:PivotItem>
+
+            <controls:PivotItem Header="评论">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <ListBox x:Name="CommentList" Grid.Row="0" Margin="12,0,12,0" toolkit:TiltEffect.IsTiltEnabled="True">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,14">
+                                    <toolkit:ContextMenuService.ContextMenu>
+                                        <toolkit:ContextMenu>
+                                            <toolkit:MenuItem Header="复制" Click="CommentCopy_Click"/>
+                                        </toolkit:ContextMenu>
+                                    </toolkit:ContextMenuService.ContextMenu>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 头像走AvatarLoader，显式尺寸加Clip -->
+                                    <!-- 顶对齐：默认居中的话和昵称那一行对不上 -->
+                                    <!-- 文字自带12px左边距，这里不再加右边距 -->
+                                    <Border Grid.Column="0" Width="56" Height="56"
+                                            VerticalAlignment="Top"
+                                            Margin="0,2,0,0"
+                                            Background="#22FFFFFF"
+                                            BorderBrush="{StaticResource PhoneSubtleBrush}"
+                                            BorderThickness="2"
+                                            MouseLeftButtonUp="CommentAvatar_Tap">
+                                        <Border.Clip>
+                                            <RectangleGeometry Rect="0,0,56,56"/>
+                                        </Border.Clip>
+                                        <Grid Width="50" Height="50">
+                                            <Image Stretch="UniformToFill"
+                                                   Source="/Res/Icon/NoAvatar.png"/>
+                                            <Image Stretch="UniformToFill"
+                                                   Source="{Binding Author.Avatar}"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- PhoneText*Style自带12px左边距，这里逐个覆盖
+                                         不然头像和文字之间会多出一段空白 -->
+                                    <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                        <TextBlock Text="{Binding Author.Name}" TextWrapping="Wrap"
+                                                   Margin="0"
+                                                   Style="{StaticResource PhoneTextNormalStyle}"/>
+                                        <TextBlock Text="{Binding Message}" TextWrapping="Wrap"
+                                                   Margin="0,2,0,0"
+                                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                        <TextBlock Text="{Binding InfoLine}" Margin="0,4,0,0"
+                                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- 没有评论时的占位由代码创建，见ApplyComments -->
+
+                    <StackPanel Grid.Row="1" Margin="12,4,12,8">
+                        <TextBlock x:Name="CommentStatus" TextWrapping="Wrap" Text=""
+                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+                        <Button x:Name="MoreCommentButton" Content="加载更多"
+                                Visibility="Collapsed" Click="MoreCommentButton_Click"/>
+                    </StackPanel>
+                </Grid>
+            </controls:PivotItem>
+
+        </controls:Pivot>
+
+        <TextBlock x:Name="StatusText" Grid.Row="2" Text="正在加载…" TextWrapping="Wrap"
+                   Margin="12,4,12,8"
+                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+
+        <!-- 收藏夹选择弹窗 -->
+        <Grid x:Name="FavOverlay" Grid.RowSpan="3" Background="#CC000000"
+              Visibility="Collapsed">
+            <Border Width="420" MaxHeight="520" VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Background="#F01B1B1B" BorderBrush="#D86DA5" BorderThickness="2"
+                    Padding="16">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="选择收藏夹" FontSize="24" Foreground="White"/>
+                    <ListBox x:Name="FavFolderList" Grid.Row="1" Margin="0,10,0,0"
+                             SelectionChanged="FavFolderList_SelectionChanged">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Display}" TextWrapping="Wrap"
+                                           Margin="0,0,0,10"
+                                           Foreground="White" FontSize="22"/>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <StackPanel Grid.Row="2" Margin="0,12,0,0">
+                        <TextBlock x:Name="FavStatus" TextWrapping="Wrap"
+                                   Margin="0,0,0,8"
+                                   Foreground="#CCFFFFFF"/>
+                        <Button x:Name="CancelFavButton" Content="取消"
+                                HorizontalAlignment="Right"
+                                MinWidth="0" Padding="20,6" Foreground="White"
+                                Click="CancelFavButton_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- 投币弹窗 -->
+        <Grid x:Name="CoinOverlay" Grid.RowSpan="3" Background="#CC000000"
+              Visibility="Collapsed">
+            <Border Width="380" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Background="#F01B1B1B" BorderBrush="#D86DA5" BorderThickness="2"
+                    Padding="16">
+                <StackPanel>
+                    <TextBlock Text="投币" FontSize="24" Foreground="White"/>
+                    <TextBlock x:Name="CoinStatus" TextWrapping="Wrap" Margin="0,8,0,0"
+                               Foreground="#CCFFFFFF"/>
+                    <Button Content="1 枚硬币" Margin="0,14,0,0" Click="CoinOne_Click"/>
+                    <Button Content="2 枚硬币" Margin="0,8,0,0" Click="CoinTwo_Click"/>
+                    <Button Content="取消" HorizontalAlignment="Right" MinWidth="0"
+                            Padding="20,6" Foreground="White" Margin="0,10,0,0"
+                            Click="CancelCoin_Click"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- 选择缓存分P弹窗 -->
+        <Grid x:Name="PartOverlay" Grid.RowSpan="3" Background="#CC000000"
+              Visibility="Collapsed">
+            <Border Width="420" MaxHeight="560" VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Background="#F01B1B1B" BorderBrush="#3D6DA5" BorderThickness="2"
+                    Padding="16">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="选择要缓存的分P" FontSize="24" Foreground="White"/>
+                    <ListBox x:Name="PartCacheList" Grid.Row="1" Margin="0,10,0,0"
+                             SelectionChanged="PartCacheList_SelectionChanged">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,0,0,10">
+                                    <TextBlock Text="{Binding DisplayTitle}" TextWrapping="Wrap"
+                                               Foreground="White" FontSize="22"/>
+                                    <TextBlock Text="{Binding DurationText}"
+                                               Foreground="#BBFFFFFF" FontSize="18"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <StackPanel Grid.Row="2" Margin="0,12,0,0">
+                        <TextBlock x:Name="PartCacheStatus" TextWrapping="Wrap"
+                                   Margin="0,0,0,8"
+                                   Foreground="#CCFFFFFF"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button x:Name="CacheAllButton" Content="全部缓存"
+                                    MinWidth="0" Padding="16,6" Margin="0,0,10,0"
+                                    Foreground="White"
+                                    Click="CacheAllButton_Click"/>
+                            <Button x:Name="CancelPartButton" Content="取消"
+                                    MinWidth="0" Padding="20,6" Foreground="White"
+                                    Click="CancelPartButton_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- 发评论弹窗 -->
+        <Grid x:Name="CommentOverlay" Grid.RowSpan="3" Background="#CC000000"
+              Visibility="Collapsed">
+            <Border Width="420" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Background="#F01B1B1B" BorderBrush="#D86DA5" BorderThickness="2"
+                    Padding="16">
+                <StackPanel>
+                    <TextBlock Text="发表评论" FontSize="24" Foreground="White"/>
+                    <TextBox x:Name="CommentBox" TextWrapping="Wrap" MaxHeight="160"
+                             Margin="0,10,0,0" KeyDown="CommentBox_KeyDown"/>
+                    <TextBlock x:Name="CommentHint" TextWrapping="Wrap" Margin="0,8,0,0"
+                               Foreground="#CCFFFFFF"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                Margin="0,12,0,0">
+                        <Button x:Name="CancelCommentButton" Content="取消"
+                                MinWidth="0" Padding="20,6" Margin="0,0,10,0"
+                                Foreground="White"
+                                Click="CancelCommentButton_Click"/>
+                        <Button x:Name="SendCommentButton" Content="发送"
+                                MinWidth="0" Padding="20,6" Foreground="White"
+                                Click="SendCommentButton_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+
+    <phone:PhoneApplicationPage.ApplicationBar>
+        <shell:ApplicationBar IsVisible="True" IsMenuEnabled="True">
+            <shell:ApplicationBarIconButton x:Name="CacheAppBarButton"
+                                            IconUri="/Res/Icon/download_icon.png"
+                                            Text="缓存" Click="CacheAppBarButton_Click"/>
+            <shell:ApplicationBarIconButton x:Name="FavoriteAppBarButton"
+                                            IconUri="/Res/Icon/addfavorite_icon.png"
+                                            Text="收藏" Click="FavoriteAppBarButton_Click"/>
+            <shell:ApplicationBarIconButton IconUri="/Res/Icon/comment_icon.png"
+                                            Text="评论" Click="CommentAppBarButton_Click"/>
+            <shell:ApplicationBarIconButton IconUri="/Res/Icon/share.png"
+                                            Text="分享" Click="ShareAppBarButton_Click"/>
+            <shell:ApplicationBar.MenuItems>
+                <shell:ApplicationBarMenuItem Text="点赞" Click="LikeMenuItem_Click"/>
+                <shell:ApplicationBarMenuItem Text="投币" Click="CoinMenuItem_Click"/>
+                <shell:ApplicationBarMenuItem Text="稍后再看" Click="WatchLaterMenuItem_Click"/>
+            </shell:ApplicationBar.MenuItems>
+        </shell:ApplicationBar>
+    </phone:PhoneApplicationPage.ApplicationBar>
+
+</phone:PhoneApplicationPage>
