@@ -1,0 +1,311 @@
+<phone:PhoneApplicationPage 
+    x:Class="BiliClassic.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:phone="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone"
+    xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="768"
+    FontFamily="{StaticResource PhoneFontFamilyNormal}"
+    FontSize="{StaticResource PhoneFontSizeNormal}"
+    Foreground="{StaticResource PhoneForegroundBrush}"
+    SupportedOrientations="Portrait" Orientation="Portrait"
+    xmlns:toolkit="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls.Toolkit"
+    xmlns:controls="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls"
+    shell:SystemTray.IsVisible="True">
+
+    <phone:PhoneApplicationPage.Resources>
+        <!-- 个人中心磁贴：粉色方块，文字写左下角 -->
+        <Style x:Key="MineTileBcg" TargetType="Border">
+            <Setter Property="Width" Value="190"/>
+            <Setter Property="Height" Value="190"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style x:Key="MineTile" TargetType="Grid">
+            <Setter Property="Width" Value="190"/>
+            <Setter Property="Height" Value="190"/>
+            <Setter Property="Background" Value="#D26585"/>
+        </Style>
+        <Style x:Key="MineTileText" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Bottom"/>
+            <Setter Property="Margin" Value="10,0,0,10"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+    </phone:PhoneApplicationPage.Resources>
+
+    <!-- 页面转场动画 -->
+    <toolkit:TransitionService.NavigationInTransition>
+        <toolkit:NavigationInTransition>
+            <toolkit:NavigationInTransition.Backward>
+                <toolkit:TurnstileTransition Mode="BackwardIn"/>
+            </toolkit:NavigationInTransition.Backward>
+            <toolkit:NavigationInTransition.Forward>
+                <toolkit:TurnstileTransition Mode="ForwardIn"/>
+            </toolkit:NavigationInTransition.Forward>
+        </toolkit:NavigationInTransition>
+    </toolkit:TransitionService.NavigationInTransition>
+
+    <toolkit:TransitionService.NavigationOutTransition>
+        <toolkit:NavigationOutTransition>
+            <toolkit:NavigationOutTransition.Backward>
+                <toolkit:TurnstileTransition Mode="BackwardOut"/>
+            </toolkit:NavigationOutTransition.Backward>
+            <toolkit:NavigationOutTransition.Forward>
+                <toolkit:TurnstileTransition Mode="ForwardOut"/>
+            </toolkit:NavigationOutTransition.Forward>
+        </toolkit:NavigationOutTransition>
+    </toolkit:TransitionService.NavigationOutTransition>
+
+    <!--LayoutRoot是包含所有页面内容的根网格-->
+    <Grid x:Name="LayoutRoot" Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,0"
+                    Background="Transparent" MouseLeftButtonUp="TitlePanel_Tap">
+            <TextBlock x:Name="ApplicationTitle" Text="哔哩经典"
+                       Style="{StaticResource PhoneTextNormalStyle}"/>
+        </StackPanel>
+
+        <!-- Pivot -->
+        <controls:Pivot x:Name="HomePivot" Grid.Row="1"
+                        SelectionChanged="HomePivot_SelectionChanged">
+
+            <controls:PivotItem Header="个人中心">
+                <ScrollViewer>
+                    <StackPanel Margin="16,0,16,0">
+
+                        <!-- 提示条：长按进入排列 -->
+                        <TextBlock x:Name="MineArrangeHint" Visibility="Collapsed"
+                                   Text="点两个磁贴交换位置，点这里完成"
+                                   Margin="0,0,0,8"
+                                   MouseLeftButtonUp="MineArrangeHint_Tap"
+                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+
+                        <!-- 磁贴：粉色方块，文字写左下角，长按可排序 -->
+                        <toolkit:WrapPanel x:Name="MineTiles"
+                                           MouseLeftButtonDown="MineTiles_Down"
+                                           MouseLeftButtonUp="MineTiles_Up"
+                                           MouseMove="MineTiles_Move"
+                                           toolkit:TiltEffect.IsTiltEnabled="False">
+
+                            <Border Tag="avatar" Style="{StaticResource MineTileBcg}"
+                                    Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
+                                <Grid Style="{StaticResource MineTile}">
+                                    <Image x:Name="AvatarImage" Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/user.png" />
+                                    <TextBlock x:Name="MineName" Text="未登录"
+                                               VerticalAlignment="Bottom" Margin="10,0,0,10"
+                                               Foreground="White" FontSize="20"
+                                               TextWrapping="Wrap" MaxHeight="72"/>
+                                    <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
+                                </Grid>
+                            </Border>
+
+                            <Border Tag="private" Style="{StaticResource MineTileBcg}"
+                                    Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
+                                <Grid Style="{StaticResource MineTile}">
+                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/xiaoxi.png" />
+                                    <TextBlock Text="信息通知" Style="{StaticResource MineTileText}"/>
+                                    <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
+                                </Grid>
+                            </Border>
+
+                            <Border Tag="follow" Style="{StaticResource MineTileBcg}"
+                                    Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
+                                <Grid Style="{StaticResource MineTile}">
+                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/dongtai.png" />
+                                    <TextBlock Text="关注动态" Style="{StaticResource MineTileText}"/>
+                                    <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
+                                </Grid>
+                            </Border>
+
+                            <Border Tag="local" Style="{StaticResource MineTileBcg}"
+                                    Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
+                                <Grid Style="{StaticResource MineTile}">
+                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/bendi.png" />
+                                    <TextBlock Text="本地视频" Style="{StaticResource MineTileText}"/>
+                                    <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
+                                </Grid>
+                            </Border>
+
+                            <Border Tag="history" Style="{StaticResource MineTileBcg}"
+                                    Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
+                                <Grid Style="{StaticResource MineTile}">
+                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/lishi.png" />
+                                    <TextBlock Text="播放历史" Style="{StaticResource MineTileText}"/>
+                                    <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
+                                </Grid>
+                            </Border>
+
+                            <Border Tag="fav" Style="{StaticResource MineTileBcg}"
+                                    Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
+                                <Grid Style="{StaticResource MineTile}">
+                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/shoucang.png" />
+                                    <TextBlock Text="收藏视频" Style="{StaticResource MineTileText}"/>
+                                    <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
+                                </Grid>
+                            </Border>
+
+                            <Border Tag="bangumi" Style="{StaticResource MineTileBcg}"
+                                    Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
+                                <Grid Style="{StaticResource MineTile}">
+                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/zhuifan.png" />
+                                    <TextBlock Text="我的追番" Style="{StaticResource MineTileText}"/>
+                                    <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
+                                </Grid>
+                            </Border>
+
+                            <Border Tag="watchlater" Style="{StaticResource MineTileBcg}"
+                                    Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
+                                <Grid Style="{StaticResource MineTile}">
+                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/shaohou.png" />
+                                    <TextBlock Text="稍后再看" Style="{StaticResource MineTileText}"/>
+                                    <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
+                                </Grid>
+                            </Border>
+
+                            <Border Tag="rank" Style="{StaticResource MineTileBcg}"
+                                    Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
+                                <Grid Style="{StaticResource MineTile}">
+                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/paihang.png" />
+                                    <TextBlock Text="排行榜" Style="{StaticResource MineTileText}"/>
+                                    <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
+                                </Grid>
+                            </Border>
+
+                            <Border Tag="random" Style="{StaticResource MineTileBcg}"
+                                    Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
+                                <Grid Style="{StaticResource MineTile}">
+                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/yunqi.png" />
+                                    <TextBlock Text="手气不错" Style="{StaticResource MineTileText}"/>
+                                    <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
+                                </Grid>
+                            </Border>
+
+
+                        </toolkit:WrapPanel>
+
+                        <TextBlock x:Name="MineStatus" Text="" TextWrapping="Wrap"
+                                   Margin="0,8,0,0"
+                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </controls:PivotItem>
+
+            <controls:PivotItem Header="精彩推荐">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="12,0,12,0">
+                        <ListBox x:Name="RecommendList" SelectionChanged="RecommendList_SelectionChanged" toolkit:TiltEffect.IsTiltEnabled="True">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <!-- 卡片模板 -->
+                                    <Grid Margin="0,0,0,14">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="160" Height="90"
+                                                Margin="0,0,12,0" Background="#22FFFFFF"
+                                                BorderBrush="{StaticResource PhoneSubtleBrush}"
+                                                BorderThickness="2">
+                                            <!-- 封面 -->
+                                            <Grid>
+                                                <Image Stretch="Uniform" VerticalAlignment="Center"
+                                                       Source="/Res/Icon/localcover.png"/>
+                                                <Image Stretch="UniformToFill" Source="{Binding Cover}"/>
+                                            </Grid>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Top">
+                                            <!-- 标题截断 -->
+                                            <TextBlock Text="{Binding Title}" TextWrapping="Wrap"
+                                                       LineHeight="30" MaxHeight="60"
+                                                       Style="{StaticResource PhoneTextNormalStyle}"/>
+                                            <TextBlock Text="{Binding InfoLine}"
+                                                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+
+                    <!--状态提示与"加载更多"-->
+                    <StackPanel Grid.Row="1" Margin="12,4,12,8">
+                        <TextBlock x:Name="StatusText" TextWrapping="Wrap" Text=""
+                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+                        <Button x:Name="MoreButton" Content="加载更多"
+                                Visibility="Collapsed" Click="MoreButton_Click"/>
+                    </StackPanel>
+                </Grid>
+            </controls:PivotItem>
+
+        </controls:Pivot>
+
+        <!-- 回声洞提示音 -->
+        <MediaElement x:Name="EchoSoundPlayer" AutoPlay="False"
+                      Width="0" Height="0" Opacity="0" IsHitTestVisible="False"/>
+
+        <!-- 彩蛋：空间震 -->
+        <Grid x:Name="QuakeOverlay" Grid.RowSpan="2" Background="#FFFF0000"
+              Visibility="Collapsed" IsHitTestVisible="False">
+            <TextBlock Text="空间震！" FontSize="48" FontWeight="Black" Foreground="White"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- 公告浮层 -->
+        <Grid x:Name="NoticeOverlay" Grid.RowSpan="2"
+              Background="#B0000000" Visibility="Collapsed">
+            <Border Background="{StaticResource PhoneBackgroundBrush}"
+                    BorderBrush="{StaticResource PhoneSubtleBrush}" BorderThickness="1"
+                    Width="420" MaxHeight="600"
+                    VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Padding="16">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock x:Name="NoticeTitle" Grid.Row="0" TextWrapping="Wrap"
+                               Style="{StaticResource PhoneTextTitle3Style}"/>
+
+                    <ScrollViewer Grid.Row="1" Margin="0,8,0,0">
+                        <TextBlock x:Name="NoticeContent" TextWrapping="Wrap"
+                                   Style="{StaticResource PhoneTextNormalStyle}"/>
+                    </ScrollViewer>
+
+                    <StackPanel Grid.Row="2">
+                        <Button x:Name="NoticeVideoButton" Content="观看视频"
+                                Visibility="Collapsed" Margin="0,12,0,0"
+                                Click="NoticeVideo_Click"/>
+                        <Button x:Name="NoticeAudioButton" Content="播放音频"
+                                Visibility="Collapsed" Margin="0,8,0,0"
+                                Click="NoticeAudio_Click"/>
+                        <Button x:Name="NoticeLinkButton" Content="查看链接"
+                                Visibility="Collapsed" Margin="0,8,0,0"
+                                Click="NoticeLink_Click"/>
+                        <Button x:Name="NoticeDetailButton" Content="查看详情"
+                                Visibility="Collapsed" Margin="0,8,0,0"
+                                Click="NoticeDetail_Click"/>
+                        <Button x:Name="NoticeNeverButton" Content="不再显示"
+                                Visibility="Collapsed" Margin="0,8,0,0"
+                                Click="NoticeNever_Click"/>
+                        <Button x:Name="NoticeDismissButton" Content="知道了"
+                                Margin="0,12,0,0" Click="NoticeDismiss_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</phone:PhoneApplicationPage>
