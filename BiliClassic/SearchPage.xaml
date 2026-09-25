@@ -53,14 +53,20 @@
                 </Grid.ColumnDefinitions>
                 <TextBox x:Name="KeywordBox" Height="72"
                          KeyDown="KeywordBox_KeyDown" GotFocus="KeywordBox_GotFocus"
-                         Margin="-12,0,0,0" />
-                <Button x:Name="SearchButton" Grid.Column="1" Content="搜索" Click="SearchButton_Click" Width="109" />
+                         Margin="-12,0,44,0" />
+                <Button x:Name="SearchButton" Click="SearchButton_Click" Margin="395,1,-4,6" BorderThickness="0" Height="65" HorizontalContentAlignment="Left" VerticalContentAlignment="Top" Padding="0" Grid.ColumnSpan="2">
+                    <Rectangle x:Name="DanmakuIcon" Width="45" Height="45" Fill="White" Grid.Column="1" Margin="0" HorizontalAlignment="Left" VerticalAlignment="Top">
+                        <Rectangle.OpacityMask>
+                            <ImageBrush x:Name="DanmakuMask" ImageSource="/Res/Icon/search.png" />
+                        </Rectangle.OpacityMask>
+                    </Rectangle>
+                </Button>
             </Grid>
         </StackPanel>
 
         <!--搜索结果列表-->
         <ListBox x:Name="ResultList" Grid.Row="1" Margin="12,0,12,0"
-                 SelectionChanged="ResultList_SelectionChanged">
+                 SelectionChanged="ResultList_SelectionChanged" toolkit:TiltEffect.IsTiltEnabled="True">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <Grid Margin="0,0,0,14">
@@ -113,7 +119,7 @@
                                        VerticalAlignment="Center" Margin="12,12,0,12"/>
                             <Button Grid.Column="1" Content="✕"
                                     MinWidth="0" Margin="0,0,6,0"
-                                    Padding="12,2" Click="DeleteHistoryItem_Click"/>
+                                    Padding="12,2" Click="DeleteHistoryItem_Click" BorderThickness="0"/>
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>

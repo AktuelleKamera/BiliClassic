@@ -163,6 +163,8 @@ namespace BiliClassic
         {
             base.OnNavigatedTo(e);
 
+            HideQBars.Begin();
+
             string direct;
             if (NavigationContext.QueryString.TryGetValue("src", out direct) && direct.Length > 0)
             {
@@ -978,7 +980,8 @@ namespace BiliClassic
             _dashActive = false;
             if (source != null)
             {
-                try { source.Stop(); } catch (Exception) { }
+                try { source.Stop(); }
+                catch (Exception) { }
             }
         }
 
@@ -1192,7 +1195,14 @@ namespace BiliClassic
 
         private void TapLayer_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            SetControlsVisible(!_controlsVisible);
+            if (_qualityMenuOpen)
+            {
+                CloseQualityMenu();
+            }
+            else
+            {
+                SetControlsVisible(!_controlsVisible);
+            }
         }
 
         private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
@@ -1244,14 +1254,19 @@ namespace BiliClassic
 
         private void SetControlsVisible(bool visible)
         {
-            _controlsVisible = visible;
-            ControlPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-            TitleText.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-
             if (!visible)
             {
-                CloseQualityMenu();
+                HideBars.Begin();
+                //CloseQualityMenu();
             }
+            else
+            {
+                ShowBars.Begin();
+            }
+            _controlsVisible = visible;
+            //ControlPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            //TitleText.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+
         }
 
         private void UpdatePlayPauseIcon()
@@ -1306,7 +1321,7 @@ namespace BiliClassic
                 Button button = new Button();
                 button.Tag = qualities[i];
                 button.MinWidth = 0;
-                button.Padding = new Thickness(12, 2, 12, 2);
+                //button.Padding = new Thickness(12, 2, 12, 2);
                 button.Click += QualityOption_Click;
                 QualityList.Children.Add(button);
             }
@@ -1337,6 +1352,13 @@ namespace BiliClassic
                 }
 
                 int quality = (int)button.Tag;
+                //修改一下~
+                //button.BorderBrush = new SolidColorBrush(Colors.Transparent);
+                button.BorderThickness = new Thickness(0);
+                button.FontSize = 20;
+
+
+
                 button.Content = (quality == AppSettings.PlayQuality ? "● " : "    ")
                     + PlayUrlService.Describe(quality);
             }
@@ -1345,7 +1367,8 @@ namespace BiliClassic
         private void CloseQualityMenu()
         {
             _qualityMenuOpen = false;
-            QualityPanel.Visibility = Visibility.Collapsed;
+            //QualityPanel.Visibility = Visibility.Collapsed;
+            HideQBars.Begin();
         }
 
         private void QualityButton_Click(object sender, RoutedEventArgs e)
@@ -1354,11 +1377,12 @@ namespace BiliClassic
             if (_qualityMenuOpen)
             {
                 RefreshQualityMenu();
-                QualityPanel.Visibility = Visibility.Visible;
+                //QualityPanel.Visibility = Visibility.Visible;
+                ShowQBars.Begin();
                 return;
             }
-
-            QualityPanel.Visibility = Visibility.Collapsed;
+            HideQBars.Begin();
+            //QualityPanel.Visibility = Visibility.Collapsed;
         }
 
         private void QualityOption_Click(object sender, RoutedEventArgs e)
