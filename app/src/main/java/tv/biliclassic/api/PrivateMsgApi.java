@@ -138,31 +138,68 @@ public class PrivateMsgApi {
     }
 
     // 批量获取用户信息
-    public static HashMap<Long, UserInfo> getUsersInfo(List<Long> uidList) throws IOException, JSONException {
+    public static HashMap<Long, UserInfo> getUsersInfo(List<Long> uidList) {
         HashMap<Long, UserInfo> userMap = new HashMap<Long, UserInfo>();
         if (uidList == null || uidList.size() == 0) {
             return userMap;
         }
-        StringBuffer sb = new StringBuffer();
+        ArrayList<Long> uids = new ArrayList<Long>();
         for (int i = 0; i < uidList.size(); i++) {
-            if (i > 0) sb.append(",");
-            sb.append(uidList.get(i));
+            Long uid = uidList.get(i);
+            if (uid != null && uid > 0 && !uids.contains(uid)) {
+                uids.add(uid);
+            }
         }
-        String url = "https://api.vc.bilibili.com/account/v1/user/cards?uids=" + sb.toString();
-        JSONObject root = NetWorkUtil.getJson(url);
-        if (root == null || !root.has("data") || root.isNull("data")) {
-            return userMap;
-        }
-        JSONArray data = root.getJSONArray("data");
-        for (int i = 0; i < data.length(); i++) {
-            JSONObject userJson = data.getJSONObject(i);
-            UserInfo user = new UserInfo();
-            user.mid = userJson.optLong("mid", 0);
-            user.name = userJson.optString("name", "");
-            user.avatar = normalizeUrl(userJson.optString("face", ""));
-            userMap.put(user.mid, user);
+        // 单次请求 uid 过多接口会异常，分批拉取
+        final int CHUNK = 20;
+        for (int start = 0; start < uids.size(); start += CHUNK) {
+            int end = Math.min(start + CHUNK, uids.size());
+            StringBuffer sb = new StringBuffer();
+            for (int i = start; i < end; i++) {
+                if (i > start) sb.append(",");
+                sb.append(uids.get(i));
+            }
+            try {
+                String url = "https://api.vc.bilibili.com/account/v1/user/cards?uids=" + sb.toString();
+                JSONObject root = NetWorkUtil.getJson(url);
+                parseUserCards(root, userMap);
+            } catch (Exception ignore) {
+            }
         }
         return userMap;
+    }
+
+    // 解析用户名片列表（data 可能是数组或按 mid 键控的对象）
+    private static void parseUserCards(JSONObject root, HashMap<Long, UserInfo> userMap) throws JSONException {
+        if (root == null || !root.has("data") || root.isNull("data")) {
+            return;
+        }
+        JSONArray data = root.optJSONArray("data");
+        if (data != null) {
+            for (int i = 0; i < data.length(); i++) {
+                putUserCard(data.optJSONObject(i), userMap);
+            }
+            return;
+        }
+        JSONObject dataObj = root.optJSONObject("data");
+        if (dataObj != null) {
+            java.util.Iterator it = dataObj.keys();
+            while (it.hasNext()) {
+                Object key = it.next();
+                putUserCard(dataObj.optJSONObject(String.valueOf(key)), userMap);
+            }
+        }
+    }
+
+    private static void putUserCard(JSONObject userJson, HashMap<Long, UserInfo> userMap) {
+        if (userJson == null) return;
+        long mid = userJson.optLong("mid", 0);
+        if (mid <= 0) return;
+        UserInfo user = new UserInfo();
+        user.mid = mid;
+        user.name = userJson.optString("name", "");
+        user.avatar = normalizeUrl(userJson.optString("face", ""));
+        userMap.put(mid, user);
     }
 
     // 单个用户名片，用于补全昵称头像
@@ -194,6 +231,18 @@ public class PrivateMsgApi {
             return "https:" + url;
         }
         return url;
+    }
+
+    // 头像请求服务端缩略图，减小体积加快加载
+    public static String avatarUrl(String url) {
+        url = normalizeUrl(url);
+        if (url.length() == 0 || !url.startsWith("http")) {
+            return url;
+        }
+        if (url.endsWith(".gif") || url.indexOf("afdian") >= 0 || url.indexOf('@') > 0) {
+            return url;
+        }
+        return url + "@0e_50q_128w_128h_1c.jpeg";
     }
 
     // 发送私信

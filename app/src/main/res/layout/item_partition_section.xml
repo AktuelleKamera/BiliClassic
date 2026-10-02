@@ -117,7 +117,7 @@
             android:gravity="left|top"
             android:paddingLeft="8dp"
             android:paddingTop="5dp"
-            android:text="@string/bangumi"
+            android:text="@string/videodetail_tab_bangumi"
             android:textColor="#FFFFFF"
             android:textSize="18sp"/>
 

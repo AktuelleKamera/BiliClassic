@@ -79,7 +79,7 @@ public class CookieLoginFragment extends Fragment {
 
         // 1) 智能解析（Cookie 字符串 / JSON / 任意含 SESSDATA 的文本）
         String cookies = CookieHelper.parseAndBuildCookie(raw);
-        // 2) JSON 兜底：{"cookies":"..."}
+        // 2) JSON：{"cookies":"..."}
         if (cookies == null || cookies.length() == 0) {
             try {
                 JSONObject json = new JSONObject(raw);

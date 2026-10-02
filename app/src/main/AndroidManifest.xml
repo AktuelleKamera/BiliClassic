@@ -75,6 +75,34 @@
             </intent-filter>
         </activity>
 
+        <!-- 外部链接分发 -->
+        <activity
+            android:name=".LinkActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="bilibili.com" />
+                <data android:host="*.bilibili.com" />
+                <data android:host="b23.tv" />
+                <data android:host="*.b23.tv" />
+                <data android:host="b23.com" />
+                <data android:host="*.b23.com" />
+                <data android:host="bili2233.cn" />
+                <data android:host="*.bili2233.cn" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="bilibili" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".SearchActivity"
             android:screenOrientation="portrait" />

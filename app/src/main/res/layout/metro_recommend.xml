@@ -19,7 +19,7 @@
             android:layout_marginLeft="24dp"
             android:layout_marginTop="16dp"
             android:layout_marginBottom="10dp"
-            android:text="@string/recommended_videos"
+            android:text="@string/mainactivity_tab_recommend"
             android:textSize="44sp"
             android:textColor="#D86DA5"/>
 

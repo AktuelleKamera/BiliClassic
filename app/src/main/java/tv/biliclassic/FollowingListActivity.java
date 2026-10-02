@@ -124,7 +124,7 @@ public class FollowingListActivity extends BaseActivity {
         footerView.setVisibility(visible ? View.VISIBLE : View.GONE);
         if (footerText != null) {
             footerText.setText(visible
-                    ? getString(R.string.login_working_hard_6)
+                    ? getString(R.string.login_working_hard)
                     : "");
         }
     }
@@ -240,8 +240,8 @@ public class FollowingListActivity extends BaseActivity {
         if (action != tv.biliclassic.util.KeyBindingUtil.ACTION_UP
                 && action != tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
                 && action != tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM
-                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2
-                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
             return super.dispatchKeyEvent(event);
         }
         if (selectedPosition < 0) {
@@ -283,9 +283,9 @@ public class FollowingListActivity extends BaseActivity {
                 selectedPosition = Math.max(0, selectedPosition - 1);
             } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
                 selectedPosition = Math.min(count - 1, selectedPosition + 1);
-            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2) {
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP) {
                 selectedPosition = pageMove(-1);
-            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
                 selectedPosition = pageMove(1);
             }
             applySelection();

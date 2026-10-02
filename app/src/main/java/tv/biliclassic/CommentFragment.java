@@ -1,5 +1,6 @@
 package tv.biliclassic;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -222,7 +223,7 @@ public class CommentFragment extends Fragment {
                     intent.putExtra("mid", mid);
                     startActivity(intent);
                 } else {
-                    Toast.makeText(getActivity(), getActivity().getString(R.string.load_user_info_failed_3), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.load_user_info_failed), Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -540,7 +541,7 @@ public class CommentFragment extends Fragment {
             progressBar.setVisibility(View.GONE);
             adapter.updateData(commentList);
             if (commentList.size() == 0) {
-                emptyView.setText(getString(R.string.no_comments_2));
+                emptyView.setText(getString(R.string.no_comments));
                 emptyView.setVisibility(View.VISIBLE);
             } else {
                 emptyView.setVisibility(View.GONE);
@@ -703,7 +704,7 @@ public class CommentFragment extends Fragment {
                 adapter.updateData(commentList);
 
                 if (commentList.size() == 0) {
-                    emptyView.setText(getString(R.string.no_comments_2));
+                    emptyView.setText(getString(R.string.no_comments));
                     emptyView.setVisibility(View.VISIBLE);
                 } else {
                     emptyView.setVisibility(View.GONE);
@@ -1044,7 +1045,7 @@ public class CommentFragment extends Fragment {
         if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 14) {
             android.graphics.drawable.GradientDrawable inputBg = new android.graphics.drawable.GradientDrawable();
             inputBg.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-            inputBg.setStroke(dpToPx(2), 0xFFD0D0D0);
+            inputBg.setStroke(DeviceUtil.dpToPx(2), 0xFFD0D0D0);
             inputBg.setColor(0xFFFFFFFF);
             input.setBackgroundDrawable(inputBg);
         }
@@ -1052,14 +1053,14 @@ public class CommentFragment extends Fragment {
         // 顶部按钮行：图片（仅根评论）+ 表情
         final LinearLayout btnRow = new LinearLayout(getActivity());
         btnRow.setOrientation(LinearLayout.HORIZONTAL);
-        btnRow.setPadding(0, 0, 0, dpToPx(6));
+        btnRow.setPadding(0, 0, 0, DeviceUtil.dpToPx(6));
 
         if (isNewComment) {
             final TextView imageBtn = new TextView(getActivity());
             imageBtn.setText(getString(R.string.add_image));
             imageBtn.setTextSize(13);
             imageBtn.setTextColor(0xFFD86DA5);
-            imageBtn.setPadding(0, 0, dpToPx(12), 0);
+            imageBtn.setPadding(0, 0, DeviceUtil.dpToPx(12), 0);
             imageBtn.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
             imageBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -1100,7 +1101,7 @@ public class CommentFragment extends Fragment {
         layout.addView(input, lp);
 
         final TextView clearText = new TextView(getActivity());
-        clearText.setText(getString(R.string.common_clear_2));
+        clearText.setText(getString(R.string.common_clear));
         clearText.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         clearText.setPadding(0, 8, 0, 0);
         clearText.setTextSize(14);
@@ -1213,7 +1214,7 @@ public class CommentFragment extends Fragment {
         final android.widget.ScrollView scroll = new android.widget.ScrollView(getActivity());
         final android.widget.LinearLayout list = new android.widget.LinearLayout(getActivity());
         list.setOrientation(android.widget.LinearLayout.VERTICAL);
-        list.setPadding(0, dpToPx(8), 0, dpToPx(8));
+        list.setPadding(0, DeviceUtil.dpToPx(8), 0, DeviceUtil.dpToPx(8));
 
         for (int i = 0; i < EMOJIS.length; i++) {
             final String emoji = EMOJIS[i];
@@ -1221,7 +1222,7 @@ public class CommentFragment extends Fragment {
             tv.setText(emoji);
             tv.setTextSize(16);
             tv.setTextColor(0xFF333333);
-            tv.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8));
+            tv.setPadding(DeviceUtil.dpToPx(16), DeviceUtil.dpToPx(8), DeviceUtil.dpToPx(16), DeviceUtil.dpToPx(8));
             tv.setClickable(true);
             android.graphics.drawable.GradientDrawable emojiNormal = new android.graphics.drawable.GradientDrawable();
             emojiNormal.setColor(0xFFF0F0F0);
@@ -1264,23 +1265,7 @@ public class CommentFragment extends Fragment {
         builder.show();
     }
 
-    private int dpToPx(int dp) {
-        if (getActivity() == null) return dp;
-        float density = getActivity().getResources().getDisplayMetrics().density;
-        return (int) (dp * density + 0.5f);
-    }
 
-    private String extractCsrfFromCookie(String cookie) {
-        if (cookie == null || cookie.length() == 0) {
-            return null;
-        }
-        Pattern p = Pattern.compile("bili_jct=([a-f0-9]+)");
-        Matcher m = p.matcher(cookie);
-        if (m.find()) {
-            return m.group(1);
-        }
-        return null;
-    }
 
     private void showError(final String msg) {
         if (getActivity() == null) return;
@@ -1435,8 +1420,8 @@ public class CommentFragment extends Fragment {
         if (action != KeyBindingUtil.ACTION_UP
                 && action != KeyBindingUtil.ACTION_DOWN
                 && action != KeyBindingUtil.ACTION_CONFIRM
-                && action != KeyBindingUtil.ACTION_NUM_2
-                && action != KeyBindingUtil.ACTION_NUM_8) {
+                && action != KeyBindingUtil.ACTION_PAGE_UP
+                && action != KeyBindingUtil.ACTION_PAGE_DOWN) {
             return false;
         }
         if (selectedCommentPosition < 0) {
@@ -1449,9 +1434,9 @@ public class CommentFragment extends Fragment {
                 selectedCommentPosition = Math.max(0, selectedCommentPosition - 1);
             } else if (action == KeyBindingUtil.ACTION_DOWN) {
                 selectedCommentPosition = Math.min(count - 1, selectedCommentPosition + 1);
-            } else if (action == KeyBindingUtil.ACTION_NUM_2) {
+            } else if (action == KeyBindingUtil.ACTION_PAGE_UP) {
                 selectedCommentPosition = pageMove(-1);
-            } else if (action == KeyBindingUtil.ACTION_NUM_8) {
+            } else if (action == KeyBindingUtil.ACTION_PAGE_DOWN) {
                 selectedCommentPosition = pageMove(1);
             } else if (action == KeyBindingUtil.ACTION_CONFIRM) {
                 CommentItem item = commentList.get(selectedCommentPosition);
@@ -1509,7 +1494,7 @@ public class CommentFragment extends Fragment {
     // 显示全部回复
     public void showAllReplies(CommentItem item) {
         if (item == null || item.replies == null || item.replies.size() == 0) {
-            Toast.makeText(getActivity(), getActivity().getString(R.string.no_replies_2), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.no_replies), Toast.LENGTH_SHORT).show();
             return;
         }
 

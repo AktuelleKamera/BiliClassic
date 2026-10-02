@@ -66,8 +66,8 @@ public class RelatedVideosFragment extends Fragment {
         if (action != KeyBindingUtil.ACTION_UP
                 && action != KeyBindingUtil.ACTION_DOWN
                 && action != KeyBindingUtil.ACTION_CONFIRM
-                && action != KeyBindingUtil.ACTION_NUM_2
-                && action != KeyBindingUtil.ACTION_NUM_8) {
+                && action != KeyBindingUtil.ACTION_PAGE_UP
+                && action != KeyBindingUtil.ACTION_PAGE_DOWN) {
             return false;
         }
         if (selectedPosition < 0) {
@@ -84,9 +84,9 @@ public class RelatedVideosFragment extends Fragment {
                 selectedPosition = Math.max(0, selectedPosition - 1);
             } else if (action == KeyBindingUtil.ACTION_DOWN) {
                 selectedPosition = Math.min(count - 1, selectedPosition + 1);
-            } else if (action == KeyBindingUtil.ACTION_NUM_2) {
+            } else if (action == KeyBindingUtil.ACTION_PAGE_UP) {
                 selectedPosition = pageMove(-1);
-            } else if (action == KeyBindingUtil.ACTION_NUM_8) {
+            } else if (action == KeyBindingUtil.ACTION_PAGE_DOWN) {
                 selectedPosition = pageMove(1);
             } else if (action == KeyBindingUtil.ACTION_CONFIRM) {
                 VideoCard video = videoList.get(selectedPosition);
@@ -193,7 +193,7 @@ public class RelatedVideosFragment extends Fragment {
                 long mid = SharedPreferencesUtil.getLong("mid", 0);
                 String cookies = SharedPreferencesUtil.getString("cookies", "");
                 if (mid == 0 || cookies == null || cookies.length() == 0) {
-                    Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first_5), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 showFavoriteDialog(video.aid);
@@ -216,7 +216,7 @@ public class RelatedVideosFragment extends Fragment {
 
         final long mid = SharedPreferencesUtil.getLong("mid", 0);
         if (mid == 0) {
-            Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first_5), Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -473,7 +473,7 @@ public class RelatedVideosFragment extends Fragment {
                 }
 
                 if (videoList.size() == 0) {
-                    emptyView.setText(getString(R.string.no_related_videos_2));
+                    emptyView.setText(getString(R.string.no_related_videos));
                     emptyView.setVisibility(View.VISIBLE);
                 } else {
                     emptyView.setVisibility(View.GONE);

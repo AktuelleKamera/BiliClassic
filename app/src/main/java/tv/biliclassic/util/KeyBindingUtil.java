@@ -22,55 +22,38 @@ import android.view.KeyEvent;
  * 按键绑定表工具类。
  *
  * 集中管理"逻辑动作 → keycode"的绑定读写，作为按键判定的唯一事实来源。
- * 未绑定的动作回退到系统默认 keycode（DPAD_* / SOFT_* / 数字 / STAR / POUND），
+ * 只保留应用里真正有功能的逻辑动作，命名一律用功能称呼（菜单/返回/翻页/刷新）。
+ * 未绑定的动作回退到系统默认 keycode（DPAD_* / SOFT_* / 数字 2、8、5），
  * 保证老用户、跳过绑定、清数据等场景行为不变。
  */
 public final class KeyBindingUtil {
 
     // ===== 逻辑动作常量 =====
-    public static final int ACTION_SOFT_LEFT = 0;
-    public static final int ACTION_SOFT_RIGHT = 1;
+    public static final int ACTION_MENU = 0;
+    public static final int ACTION_RETURN = 1;
     public static final int ACTION_UP = 2;
     public static final int ACTION_DOWN = 3;
     public static final int ACTION_LEFT = 4;
     public static final int ACTION_RIGHT = 5;
     public static final int ACTION_CONFIRM = 6;
-    public static final int ACTION_NUM_0 = 7;
-    public static final int ACTION_NUM_1 = 8;
-    public static final int ACTION_NUM_2 = 9;
-    public static final int ACTION_NUM_3 = 10;
-    public static final int ACTION_NUM_4 = 11;
-    public static final int ACTION_NUM_5 = 12;
-    public static final int ACTION_NUM_6 = 13;
-    public static final int ACTION_NUM_7 = 14;
-    public static final int ACTION_NUM_8 = 15;
-    public static final int ACTION_NUM_9 = 16;
-    public static final int ACTION_STAR = 17;
-    public static final int ACTION_POUND = 18;
+    public static final int ACTION_PAGE_UP = 7;
+    public static final int ACTION_PAGE_DOWN = 8;
+    public static final int ACTION_REFRESH = 9;
 
-    public static final int ACTION_COUNT = 19;
+    public static final int ACTION_COUNT = 10;
 
-    // ===== SharedPreferences key 常量（前缀 key_） =====
+    // ===== SharedPreferences key 常量（前缀 key_，沿用旧名以兼容存量绑定） =====
     private static final String[] PREFS_KEYS = {
-        "key_soft_left",     // 0
-        "key_soft_right",    // 1
+        "key_soft_left",     // 0 菜单键
+        "key_soft_right",    // 1 返回键
         "key_up",            // 2
         "key_down",          // 3
         "key_left",          // 4
         "key_right",         // 5
         "key_confirm",       // 6
-        "key_num_0",         // 7
-        "key_num_1",         // 8
-        "key_num_2",         // 9
-        "key_num_3",         // 10
-        "key_num_4",         // 11
-        "key_num_5",         // 12
-        "key_num_6",         // 13
-        "key_num_7",         // 14
-        "key_num_8",         // 15
-        "key_num_9",         // 16
-        "key_star",          // 17
-        "key_pound"          // 18
+        "key_num_2",         // 7 上一页
+        "key_num_8",         // 8 下一页
+        "key_num_5"          // 9 刷新键
     };
 
     private KeyBindingUtil() {
@@ -104,25 +87,16 @@ public final class KeyBindingUtil {
      */
     public static int getDefaultKey(int action) {
         switch (action) {
-            case ACTION_SOFT_LEFT: return KeyEvent.KEYCODE_SOFT_LEFT;
-            case ACTION_SOFT_RIGHT: return KeyEvent.KEYCODE_SOFT_RIGHT;
+            case ACTION_MENU: return KeyEvent.KEYCODE_SOFT_LEFT;
+            case ACTION_RETURN: return KeyEvent.KEYCODE_SOFT_RIGHT;
             case ACTION_UP: return KeyEvent.KEYCODE_DPAD_UP;
             case ACTION_DOWN: return KeyEvent.KEYCODE_DPAD_DOWN;
             case ACTION_LEFT: return KeyEvent.KEYCODE_DPAD_LEFT;
             case ACTION_RIGHT: return KeyEvent.KEYCODE_DPAD_RIGHT;
             case ACTION_CONFIRM: return KeyEvent.KEYCODE_DPAD_CENTER;
-            case ACTION_NUM_0: return KeyEvent.KEYCODE_0;
-            case ACTION_NUM_1: return KeyEvent.KEYCODE_1;
-            case ACTION_NUM_2: return KeyEvent.KEYCODE_2;
-            case ACTION_NUM_3: return KeyEvent.KEYCODE_3;
-            case ACTION_NUM_4: return KeyEvent.KEYCODE_4;
-            case ACTION_NUM_5: return KeyEvent.KEYCODE_5;
-            case ACTION_NUM_6: return KeyEvent.KEYCODE_6;
-            case ACTION_NUM_7: return KeyEvent.KEYCODE_7;
-            case ACTION_NUM_8: return KeyEvent.KEYCODE_8;
-            case ACTION_NUM_9: return KeyEvent.KEYCODE_9;
-            case ACTION_STAR: return KeyEvent.KEYCODE_STAR;
-            case ACTION_POUND: return KeyEvent.KEYCODE_POUND;
+            case ACTION_PAGE_UP: return KeyEvent.KEYCODE_2;
+            case ACTION_PAGE_DOWN: return KeyEvent.KEYCODE_8;
+            case ACTION_REFRESH: return KeyEvent.KEYCODE_5;
             default: return -1;
         }
     }
@@ -156,7 +130,7 @@ public final class KeyBindingUtil {
      */
     public static int classify(int keycode) {
         // 系统保留键：BACK 永远是返回，不匹配任何逻辑动作。
-        // 否则一旦用户在按键向导里误把返回键录成软键/确认键，返回键就会被劫持
+        // 否则一旦用户在按键向导里误把返回键录成菜单键/确认键，返回键就会被劫持
         // （例如在视频详情页弹出"操作"菜单）。
         if (keycode == KeyEvent.KEYCODE_BACK) {
             return -1;

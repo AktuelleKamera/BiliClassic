@@ -1,5 +1,6 @@
 package tv.biliclassic;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -29,7 +30,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -47,16 +47,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import tv.biliclassic.adapter.BaseObservableAdapter;
 import tv.biliclassic.api.ReplyApi;
 import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.NetWorkUtil;
 
-public class CommentAdapter extends BaseAdapter {
+public class CommentAdapter extends BaseObservableAdapter<CommentFragment.CommentItem> {
 
-    private Context context;
-    private List<CommentFragment.CommentItem> list;
     private long mAid;
     private String mBvid;
     private CommentFragment mFragment;
@@ -70,14 +69,6 @@ public class CommentAdapter extends BaseAdapter {
     public void setBvid(String bvid) { mBvid = bvid; }
 
     private float mDensity;
-
-    // 键盘光标选中的项，-1 表示无选中
-    private int selectedPosition = -1;
-
-    public void setSelectedPosition(int position) {
-        this.selectedPosition = position;
-        notifyDataSetChanged();
-    }
 
     public interface OnUserClickListener {
         void onUserClick(long mid, String userName);
@@ -108,8 +99,7 @@ public class CommentAdapter extends BaseAdapter {
     }
 
     public CommentAdapter(Context context, List<CommentFragment.CommentItem> list, long aid, CommentFragment fragment) {
-        this.context = context;
-        this.list = list;
+        super(context, list);
         this.mAid = aid;
         this.mFragment = fragment;
         mDensity = context.getResources().getDisplayMetrics().density;
@@ -124,21 +114,6 @@ public class CommentAdapter extends BaseAdapter {
 
     public void reloadExecutor() {
         ImageLoader.reloadExecutor();
-    }
-
-    @Override
-    public int getCount() {
-        return list.size();
-    }
-
-    @Override
-    public Object getItem(int position) {
-        return list.get(position);
-    }
-
-    @Override
-    public long getItemId(int position) {
-        return position;
     }
 
     @Override
@@ -336,7 +311,7 @@ public class CommentAdapter extends BaseAdapter {
                                                 h2.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                             }
                                             h2.likeCount.setText(String.valueOf(item.likeCount));
-                                            Toast.makeText(context, context.getString(R.string.operation_failed), Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(context, context.getString(R.string.dynamicfragment_toast_op_fail), Toast.LENGTH_SHORT).show();
                                         }
                                     });
                                 } else {
@@ -387,9 +362,9 @@ public class CommentAdapter extends BaseAdapter {
                     final String imgUrl = item.pictureList.get(i);
                     final int clickIndex = i;
                     ImageView imgView = new ImageView(context);
-                    int size = dpToPx(80);
+                    int size = DeviceUtil.dpToPx(80);
                     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
-                    lp.rightMargin = dpToPx(4);
+                    lp.rightMargin = DeviceUtil.dpToPx(4);
                     imgView.setLayoutParams(lp);
                     imgView.setScaleType(ImageView.ScaleType.CENTER_CROP);
                     imgView.setImageResource(R.drawable.bili_default_image_tv_with_bg);
@@ -413,9 +388,9 @@ public class CommentAdapter extends BaseAdapter {
                     moreTv.setTextColor(0xFFFFFFFF);
                     moreTv.setGravity(Gravity.CENTER);
                     moreTv.setBackgroundColor(0x88000000);
-                    int size = dpToPx(80);
+                    int size = DeviceUtil.dpToPx(80);
                     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
-                    lp.rightMargin = dpToPx(4);
+                    lp.rightMargin = DeviceUtil.dpToPx(4);
                     moreTv.setLayoutParams(lp);
                     holder.pictureContainer.addView(moreTv);
                     moreTv.setOnClickListener(new View.OnClickListener() {
@@ -459,7 +434,7 @@ public class CommentAdapter extends BaseAdapter {
                             intent.putExtra("mid", mid);
                             context.startActivity(intent);
                         } else {
-                            Toast.makeText(context, context.getString(R.string.load_user_info_failed_2), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(context, context.getString(R.string.load_user_info_failed), Toast.LENGTH_SHORT).show();
                         }
                     }
                     @Override
@@ -549,7 +524,7 @@ public class CommentAdapter extends BaseAdapter {
                     intent.putExtra("mid", mid);
                     context.startActivity(intent);
                 } else {
-                    Toast.makeText(context, context.getString(R.string.load_user_info_failed_2), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, context.getString(R.string.load_user_info_failed), Toast.LENGTH_SHORT).show();
                 }
             }
         };
@@ -574,20 +549,11 @@ public class CommentAdapter extends BaseAdapter {
         try {
             Drawable borderDrawable = context.getResources().getDrawable(R.drawable.image_border_overlay);
             imageView.setBackgroundDrawable(borderDrawable);
-            int paddingPx = dpToPx(2);
+            int paddingPx = DeviceUtil.dpToPx(2);
             imageView.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
         } catch (Exception e) {}
     }
 
-    private int dpToPx(int dp) {
-        float density = context.getResources().getDisplayMetrics().density;
-        return (int) (dp * density + 0.5f);
-    }
-
-    public void updateData(List<CommentFragment.CommentItem> newList) {
-        this.list = newList;
-        notifyDataSetChanged();
-    }
 
     public void clearCache() {
     }

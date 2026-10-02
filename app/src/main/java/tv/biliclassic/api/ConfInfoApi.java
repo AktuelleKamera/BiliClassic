@@ -5,13 +5,10 @@ import android.net.Uri;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,6 +28,11 @@ public class ConfInfoApi {
 
     private static String sWbiMixinKey = "";
     private static int sLastWbiDate = 0;
+    // nav 拉取失败后的重试冷却，避免每次搜索都打一次 nav
+    private static long sWbiRetryAtMs = 0;
+    private static final long WBI_RETRY_INTERVAL_MS = 60 * 1000L;
+    // 仅在拉不到 nav 时使用，不持久化
+    private static final String FALLBACK_WBI_KEY = "604f662d63f4ee19c94bd8ac0de3f84d";
 
     private static final String SP_KEY_WBI_MIXIN = "wbi_mixin_key";
     private static final String SP_KEY_WBI_DATE = "wbi_date";
@@ -52,12 +54,14 @@ public class ConfInfoApi {
         return key.toString();
     }
 
-    public static String signWBI(String url_query) throws IOException, JSONException {
-        String mixin_key;
+    /**
+     * 取当日 WBI key：成功才记日期，失败不当天锁死（60秒冷却后重试）
+     */
+    private static synchronized String ensureWbiMixinKey() {
         int curr = getDateCurr();
 
         // 从 SharedPreferences 恢复上次缓存的 WBI key（进程被杀后避免重新请求 nav）
-        if (sWbiMixinKey == null || sWbiMixinKey.length() == 0 || sLastWbiDate != curr) {
+        if (sWbiMixinKey == null || sWbiMixinKey.length() == 0) {
             int savedDate = SharedPreferencesUtil.getInt(SP_KEY_WBI_DATE, 0);
             String savedKey = SharedPreferencesUtil.getString(SP_KEY_WBI_MIXIN, "");
             if (savedDate == curr && savedKey != null && savedKey.length() > 0) {
@@ -66,38 +70,55 @@ public class ConfInfoApi {
             }
         }
 
-        if (sLastWbiDate < curr) {
-            sLastWbiDate = curr;
-            try {
-                android.util.Log.d("NetDiag", "signWBI: 首次获取WBI key, 请求nav接口");
-                long t0 = System.currentTimeMillis();
-                String rawKey = getWBIRawKey();
-                android.util.Log.d("NetDiag", "signWBI: nav接口耗时=" + (System.currentTimeMillis() - t0) + "ms, rawKeyLen=" + (rawKey == null ? -1 : rawKey.length()));
-                mixin_key = getWBIMixinKey(rawKey);
-                sWbiMixinKey = mixin_key;
-                SharedPreferencesUtil.putString(SP_KEY_WBI_MIXIN, mixin_key);
-                SharedPreferencesUtil.putInt(SP_KEY_WBI_DATE, curr);
-            } catch (Exception e) {
-                android.util.Log.e("NetDiag", "signWBI: 获取WBI key失败 " + e.getClass().getName() + ": " + e.getMessage());
-                if (sWbiMixinKey == null || sWbiMixinKey.length() == 0) {
-                    sWbiMixinKey = "604f662d63f4ee19c94bd8ac0de3f84d";
-                }
-                mixin_key = sWbiMixinKey;
-            }
-        } else {
-            if (sWbiMixinKey == null || sWbiMixinKey.length() == 0) {
-                try {
-                    String rawKey = getWBIRawKey();
-                    sWbiMixinKey = getWBIMixinKey(rawKey);
-                    SharedPreferencesUtil.putString(SP_KEY_WBI_MIXIN, sWbiMixinKey);
-                    SharedPreferencesUtil.putInt(SP_KEY_WBI_DATE, curr);
-                } catch (Exception e) {
-                    android.util.Log.e("NetDiag", "signWBI: 缓存WBI key为空且获取失败 " + e.getMessage());
-                    sWbiMixinKey = "604f662d63f4ee19c94bd8ac0de3f84d";
-                }
-            }
-            mixin_key = sWbiMixinKey;
+        boolean hasKey = sWbiMixinKey != null && sWbiMixinKey.length() > 0;
+        if (hasKey && sLastWbiDate == curr) {
+            return sWbiMixinKey;
         }
+        if (hasKey && System.currentTimeMillis() < sWbiRetryAtMs) {
+            // 刚失败过，冷却期内先用旧 key 签名
+            return sWbiMixinKey;
+        }
+
+        try {
+            android.util.Log.d("NetDiag", "signWBI: 请求nav接口获取WBI key");
+            long t0 = System.currentTimeMillis();
+            String rawKey = getWBIRawKey();
+            android.util.Log.d("NetDiag", "signWBI: nav接口耗时=" + (System.currentTimeMillis() - t0) + "ms, rawKeyLen=" + (rawKey == null ? -1 : rawKey.length()));
+            if (rawKey == null || rawKey.length() < 64) {
+                // 被风控时 data 无 wbi_img，拿到的串不完整
+                throw new IOException("nav 返回的 wbi_img 不完整");
+            }
+            sWbiMixinKey = getWBIMixinKey(rawKey);
+            sLastWbiDate = curr;
+            sWbiRetryAtMs = 0;
+            SharedPreferencesUtil.putString(SP_KEY_WBI_MIXIN, sWbiMixinKey);
+            SharedPreferencesUtil.putInt(SP_KEY_WBI_DATE, curr);
+        } catch (Exception e) {
+            android.util.Log.e("NetDiag", "signWBI: 获取WBI key失败 " + e.getClass().getName() + ": " + e.getMessage());
+            // 失败不写日期，下次可重试；限频防止拖慢搜索
+            sLastWbiDate = 0;
+            sWbiRetryAtMs = System.currentTimeMillis() + WBI_RETRY_INTERVAL_MS;
+            if (sWbiMixinKey == null || sWbiMixinKey.length() == 0) {
+                sWbiMixinKey = FALLBACK_WBI_KEY;
+            }
+        }
+        return sWbiMixinKey;
+    }
+
+    /**
+     * WBI key 失效（签名校验类错误），下次调用重新拉 nav。
+     * 不加锁：可能从主线程调用，而取 key 时会持锁做网络请求
+     */
+    public static void invalidateWbiKey() {
+        sWbiMixinKey = "";
+        sLastWbiDate = 0;
+        sWbiRetryAtMs = 0;
+        SharedPreferencesUtil.putString(SP_KEY_WBI_MIXIN, "");
+        SharedPreferencesUtil.putInt(SP_KEY_WBI_DATE, 0);
+    }
+
+    public static String signWBI(String url_query) throws IOException, JSONException {
+        String mixin_key = ensureWbiMixinKey();
 
         String wts = String.valueOf(System.currentTimeMillis() / 1000);
 
@@ -121,11 +142,55 @@ public class ConfInfoApi {
             paramStr = "wts=" + wts;
         }
 
-        String sortedParams = sortUrlParams(paramStr);
+        String sortedParams = sortUrlParams(filterWbiParam(paramStr));
         String calc_str = sortedParams + mixin_key;
         String w_rid = md5(calc_str);
 
         return baseUrl + sortedParams + "&w_rid=" + w_rid;
+    }
+
+    /**
+     * WBI 签名要求参数值过滤 !'()* ，返回的 URL 与 w_rid 同源，天然一致
+     */
+    private static String filterWbiParam(String paramStr) {
+        if (paramStr == null || paramStr.length() == 0 || !needWbiFilter(paramStr)) {
+            return paramStr;
+        }
+        String[] params = paramStr.split("&");
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < params.length; i++) {
+            String param = params[i];
+            int eq = param.indexOf('=');
+            if (eq >= 0) {
+                String name = param.substring(0, eq);
+                String value = param.substring(eq + 1);
+                try {
+                    value = java.net.URLDecoder.decode(value, "UTF-8");
+                    value = value.replace("!", "").replace("'", "")
+                            .replace("(", "").replace(")", "").replace("*", "");
+                    value = java.net.URLEncoder.encode(value, "UTF-8");
+                } catch (Exception e) {
+                    // 解码失败保持原样，不破坏请求
+                }
+                param = name + "=" + value;
+            }
+            if (i > 0) {
+                sb.append("&");
+            }
+            sb.append(param);
+        }
+        return sb.toString();
+    }
+
+    // 是否含需过滤的字符（裸的或已百分号编码的）
+    private static boolean needWbiFilter(String s) {
+        if (s.indexOf('!') >= 0 || s.indexOf('\'') >= 0 || s.indexOf('(') >= 0
+                || s.indexOf(')') >= 0 || s.indexOf('*') >= 0) {
+            return true;
+        }
+        String u = s.toUpperCase();
+        return u.indexOf("%21") >= 0 || u.indexOf("%27") >= 0 || u.indexOf("%28") >= 0
+                || u.indexOf("%29") >= 0 || u.indexOf("%2A") >= 0;
     }
 
     public static String sortUrlParams(String urlQuery) {
@@ -186,25 +251,17 @@ public class ConfInfoApi {
     }
 
     private static String httpGet(String urlStr) throws IOException {
-        HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
-        // Android 2.x-4.x 默认 TLS 栈老旧，需显式启用现代协议/套件，否则 WBI key 请求慢/失败
-        tv.biliclassic.util.NetWorkUtil.applySSLCompat(conn, urlStr);
-        conn.setRequestMethod("GET");
-        conn.setConnectTimeout(12000);
-        conn.setReadTimeout(12000);
-        conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
-        conn.setRequestProperty("Accept-Encoding", "identity");
-        conn.connect();
-
-        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line);
-        }
-        reader.close();
-        conn.disconnect();
-        return sb.toString();
+        ArrayList headers = new ArrayList();
+        headers.add("Accept-Language");
+        headers.add(NetWorkUtil.getAcceptLanguage());
+        // nav 缺 Referer/Origin 会被风控拦截，导致 WBI key 拉不到
+        headers.add("Referer");
+        headers.add("https://www.bilibili.com/");
+        headers.add("Origin");
+        headers.add("https://www.bilibili.com");
+        headers.add("Accept-Encoding");
+        headers.add("identity");
+        return NetWorkUtil.get(urlStr, headers);
     }
 
     private static String md5(String input) {

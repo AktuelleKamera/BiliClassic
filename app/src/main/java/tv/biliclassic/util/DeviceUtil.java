@@ -2,11 +2,9 @@ package tv.biliclassic.util;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
-import android.os.Build;
 import android.util.Log;
 import android.widget.Toast;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 import tv.biliclassic.R;
@@ -16,6 +14,41 @@ public class DeviceUtil {
     private static final String TAG = "DeviceUtil";
 
     private static final String KEY_FORCE_TV_MODE = "force_tv_mode";
+
+    /** 「平板模式」开关 key未写入=按设备尺寸自动判断 */
+    private static final String KEY_TABLET_MODE = "tablet_mode";
+
+    /** 返回 null 表示未强制，仍按 values-large/xlarge 自动判断 */
+    public static Boolean getTabletModeOverride() {
+        if (!SharedPreferencesUtil.contains(KEY_TABLET_MODE)) {
+            return null;
+        }
+        return Boolean.valueOf(SharedPreferencesUtil.getBoolean(KEY_TABLET_MODE, false));
+    }
+
+    /** 强制按平板或手机版式渲染 仅在读 is_tablet 时生效 */
+    public static void setTabletMode(boolean on) {
+        SharedPreferencesUtil.putBoolean(KEY_TABLET_MODE, on);
+    }
+
+    /** 当前生效版式 有强制用强制 没有按资源判断 */
+    public static boolean isTabletMode(android.content.res.Resources res) {
+        Boolean override = getTabletModeOverride();
+        if (override != null) {
+            return override.booleanValue();
+        }
+        if (res == null) {
+            return false;
+        }
+        return SdkHelper.getBooleanResource(res, R.bool.is_tablet);
+    }
+
+    /** dp 转 px，取系统资源 density，无需 context */
+    public static int dpToPx(int dp) {
+        float density = android.content.res.Resources.getSystem()
+                .getDisplayMetrics().density;
+        return (int) (dp * density + 0.5f);
+    }
 
     public static boolean isForceTvModeEnabled() {
         return SharedPreferencesUtil.getBoolean(KEY_FORCE_TV_MODE, false);
@@ -33,7 +66,7 @@ public class DeviceUtil {
 
         // 首次（未设置）：自动识别电视设备
         // 检测 Android 版本
-        int sdkInt = getSdkInt();
+        int sdkInt = SdkHelper.getSdkInt();
         Log.d(TAG, "SDK_INT: " + sdkInt);
 
         // Android 4.0 (API 14) 以下不支持 TV 模式
@@ -72,22 +105,6 @@ public class DeviceUtil {
 
         Log.d(TAG, "isTv: 判定为非电视设备");
         return false;
-    }
-
-    // 获取 SDK_INT，兼容 Android 2.2
-    public static int getSdkInt() {
-        try {
-            Field field = Build.VERSION.class.getField("SDK_INT");
-            return field.getInt(null);
-        } catch (Exception e) {
-            // Android 2.2 及以下没有 SDK_INT，使用 VERSION.SDK
-            try {
-                Field field = Build.VERSION.class.getField("SDK");
-                return Integer.parseInt(field.get(null).toString());
-            } catch (Exception ex) {
-                return 0;
-            }
-        }
     }
 
     // 检测系统特征（兼容 Android 2.2）。featureName 传真实 feature 字符串

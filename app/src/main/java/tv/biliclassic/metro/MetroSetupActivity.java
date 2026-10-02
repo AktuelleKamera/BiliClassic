@@ -1,5 +1,6 @@
 package tv.biliclassic.metro;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -20,10 +21,6 @@ import android.view.animation.TranslateAnimation;
 import android.widget.ScrollView;
 import android.widget.FrameLayout;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -31,11 +28,15 @@ import android.widget.TextView;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+
 import tv.biliclassic.BaseActivity;
 import tv.biliclassic.MainActivity;
 import tv.biliclassic.R;
 import tv.biliclassic.util.KeyBindingUtil;
+import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.UpdateUtil;
 
 public class MetroSetupActivity extends BaseActivity {
 
@@ -52,7 +53,19 @@ public class MetroSetupActivity extends BaseActivity {
     private boolean mOnPage2 = false;
     private boolean mOnPage3 = false;
     private JSONArray mPendingChangelog = null;
-    private boolean mPendingChangelogFailed = false;
+
+    // 更新日志与磁贴页转场共用同一条时间轴：记录转场起点与正文预定起始延迟，
+    // 数据晚到时按剩余延迟追赶，避免出现"标题跑完正文才播"的第二段动画
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
+    private long mTilesTransitionStart = 0L;
+    private int mTilesRowBaseDelay = -1;
+    private boolean mTilesTransition = false;
+    private final Runnable mFinishTilesTransition = new Runnable() {
+        @Override
+        public void run() {
+            finishTilesTransition();
+        }
+    };
 
     // ===== 磁贴按键导航 =====
     // 按键机（有物理按键设备）在磁贴页可用方向键移动光标、确认键选中；
@@ -65,32 +78,21 @@ public class MetroSetupActivity extends BaseActivity {
 
     // ===== 按键绑定（Setup 第三页，复用 KeyBindingSetupActivity 的录制逻辑） =====
     private static final int[] RECORD_ORDER = {
-        KeyBindingUtil.ACTION_SOFT_LEFT,
-        KeyBindingUtil.ACTION_SOFT_RIGHT,
+        KeyBindingUtil.ACTION_MENU,
+        KeyBindingUtil.ACTION_RETURN,
         KeyBindingUtil.ACTION_UP,
         KeyBindingUtil.ACTION_DOWN,
         KeyBindingUtil.ACTION_LEFT,
         KeyBindingUtil.ACTION_RIGHT,
         KeyBindingUtil.ACTION_CONFIRM,
-        KeyBindingUtil.ACTION_NUM_0,
-        KeyBindingUtil.ACTION_NUM_1,
-        KeyBindingUtil.ACTION_NUM_2,
-        KeyBindingUtil.ACTION_NUM_3,
-        KeyBindingUtil.ACTION_NUM_4,
-        KeyBindingUtil.ACTION_NUM_5,
-        KeyBindingUtil.ACTION_NUM_6,
-        KeyBindingUtil.ACTION_NUM_7,
-        KeyBindingUtil.ACTION_NUM_8,
-        KeyBindingUtil.ACTION_NUM_9,
-        KeyBindingUtil.ACTION_STAR,
-        KeyBindingUtil.ACTION_POUND
+        KeyBindingUtil.ACTION_PAGE_UP,
+        KeyBindingUtil.ACTION_PAGE_DOWN,
+        KeyBindingUtil.ACTION_REFRESH
     };
     private static final String[] RECORD_NAMES = {
-        "左软键", "右软键", "上方向键", "下方向键",
-        "左方向键", "右方向键", "确认键",
-        "数字键 0", "数字键 1", "数字键 2", "数字键 3", "数字键 4",
-        "数字键 5", "数字键 6", "数字键 7", "数字键 8", "数字键 9",
-        "* 星号键", "# 井号键"
+        "菜单键", "返回键", "上键", "下键",
+        "左键", "右键", "确认键",
+        "上一页", "下一页", "刷新键"
     };
     private boolean mRecording = false;
     private int mRecordIndex = 0;
@@ -156,7 +158,7 @@ public class MetroSetupActivity extends BaseActivity {
             titleText.setText(getString(R.string.update_done));
             btnText.setText(getString(R.string.welcome_back));
         } else {
-            titleText.setText(getString(R.string.setup_first_meeting_2));
+            titleText.setText(getString(R.string.setup_first_meeting));
         }
 
         mPageWelcome = findViewById(R.id.page_welcome);
@@ -196,7 +198,7 @@ public class MetroSetupActivity extends BaseActivity {
             page2Title.setText(getString(R.string.setupactivity_settext_66f4_1));
             generateChangelog();
         } else {
-            page2Title.setText(getString(R.string.choose_default_home_2));
+            page2Title.setText(getString(R.string.choose_default_home));
             generateTiles();
         }
 
@@ -968,8 +970,8 @@ public class MetroSetupActivity extends BaseActivity {
             row.setOrientation(LinearLayout.HORIZONTAL);
             // 铺不满的一行从左边开始排，避免整行居中
             row.setGravity(Gravity.LEFT);
-            int rowPad = dpToPx(8);
-            int rowPadV = dpToPx(4);
+            int rowPad = DeviceUtil.dpToPx(8);
+            int rowPadV = DeviceUtil.dpToPx(4);
             row.setPadding(rowPad, rowPadV, rowPad, rowPadV);
 
             for (int c = 0; c < mTileCols; c++) {
@@ -986,8 +988,8 @@ public class MetroSetupActivity extends BaseActivity {
 
     private FrameLayout createTile(final int index) {
         // 磁贴宽度 = (屏幕宽 - 容器padding - 单磁贴左右margin) / 列数
-        int paddingPx = dpToPx(8) * 2;
-        int marginPx = dpToPx(8) * 2;
+        int paddingPx = DeviceUtil.dpToPx(8) * 2;
+        int marginPx = DeviceUtil.dpToPx(8) * 2;
         int tileSizePx = (getResources().getDisplayMetrics().widthPixels - paddingPx - marginPx) / mTileCols;
         int minTilePx = (int) getResources().getDimension(R.dimen.setup_tile_min_width);
         if (tileSizePx < minTilePx) {
@@ -998,13 +1000,13 @@ public class MetroSetupActivity extends BaseActivity {
         if (tileSizePx > maxTilePx) {
             tileSizePx = maxTilePx;
         }
-        if (tileSizePx < dpToPx(40)) {
-            tileSizePx = dpToPx(40);
+        if (tileSizePx < DeviceUtil.dpToPx(40)) {
+            tileSizePx = DeviceUtil.dpToPx(40);
         }
 
         FrameLayout tile = new FrameLayout(this);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(tileSizePx, (int) (tileSizePx * 0.7f));
-        int tileMargin = dpToPx(8);
+        int tileMargin = DeviceUtil.dpToPx(8);
         lp.setMargins(tileMargin, tileMargin, tileMargin, tileMargin);
         tile.setLayoutParams(lp);
         tile.setFocusable(true);
@@ -1165,10 +1167,10 @@ public class MetroSetupActivity extends BaseActivity {
         ImageView checkIcon = new ImageView(this);
         checkIcon.setImageResource(R.drawable.abs__ic_cab_done_holo_dark);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                dpToPx(28), dpToPx(28)
+                DeviceUtil.dpToPx(28), DeviceUtil.dpToPx(28)
         );
         lp.gravity = Gravity.BOTTOM | Gravity.RIGHT;
-        lp.setMargins(0, 0, dpToPx(8), dpToPx(8));
+        lp.setMargins(0, 0, DeviceUtil.dpToPx(8), DeviceUtil.dpToPx(8));
         checkIcon.setLayoutParams(lp);
         return checkIcon;
     }
@@ -1176,8 +1178,10 @@ public class MetroSetupActivity extends BaseActivity {
     private void slideToTiles() {
         if (mAnimating) return;
         mAnimating = true;
+        mTilesTransition = true;
+        mTilesTransitionStart = android.os.SystemClock.uptimeMillis();
         final int width = mPageWelcome.getWidth();
-        if (width <= 0) { mAnimating = false; return; }
+        if (width <= 0) { mAnimating = false; mTilesTransition = false; return; }
 
         final ScrollView tileScroll = (ScrollView) findViewById(R.id.tile_scroll);
         if (tileScroll != null) tileScroll.scrollTo(0, 0);
@@ -1219,11 +1223,10 @@ public class MetroSetupActivity extends BaseActivity {
             tileIdx++;
         }
 
-        // 磁贴行逐行滑入（速度与 slideToBinding 的磁贴行滑出一致：duration 300、行间隔 60），
-        // 完成监听器挂到最后一个磁贴行，保证所有行都滑入后才结束转场。
+        // 磁贴行逐行滑入（速度与 slideToBinding 的磁贴行滑出一致：duration 300、行间隔 60）
         final LinearLayout tileContainer = (LinearLayout) findViewById(R.id.tile_container);
         int rowBase = baseDelay + tileIdx * 80 + 60;
-        int lastRow = tileContainer.getChildCount() - 1;
+        mTilesRowBaseDelay = rowBase;
         for (int i = 0; i < tileContainer.getChildCount(); i++) {
             View row = tileContainer.getChildAt(i);
             TranslateAnimation a = new TranslateAnimation(width, 0, 0, 0);
@@ -1231,30 +1234,33 @@ public class MetroSetupActivity extends BaseActivity {
             a.setStartOffset(rowBase + i * 60);
             a.setInterpolator(new DecelerateInterpolator());
             a.setFillAfter(true);
-            if (i == lastRow) {
-                a.setAnimationListener(new Animation.AnimationListener() {
-                    @Override
-                    public void onAnimationStart(Animation animation) {
-                    }
-                    @Override
-                    public void onAnimationEnd(Animation animation) {
-                        mAnimating = false;
-                        mOnPage2 = true;
-                        mPageWelcome.setVisibility(View.GONE);
-                        findViewById(R.id.btn_start).setEnabled(true);
-                        clearChildAnimations(welcomeGroup);
-                        clearChildAnimations(tilesGroup);
-                        for (int j = 0; j < tileContainer.getChildCount(); j++) {
-                            tileContainer.getChildAt(j).clearAnimation();
-                        }
-                        applyPendingChangelog();
-                    }
-                    @Override
-                    public void onAnimationRepeat(Animation animation) {
-                    }
-                });
-            }
             row.startAnimation(a);
+        }
+
+        // 用定时器收尾，不把 onAnimationEnd 挂在某个子 View 上：
+        // 更新日志正文可能在转场中途替换掉正在动画的那个 View，
+        // 挂上去的监听会随 View 一起丢失，导致 mAnimating 永远为 true 卡死
+        int totalMs = rowBase + tileContainer.getChildCount() * 60 + 300 + 40;
+        mHandler.removeCallbacks(mFinishTilesTransition);
+        mHandler.postDelayed(mFinishTilesTransition, totalMs);
+    }
+
+    private void finishTilesTransition() {
+        if (!mTilesTransition) {
+            return;
+        }
+        mTilesTransition = false;
+        mAnimating = false;
+        mOnPage2 = true;
+        final ViewGroup welcomeGroup = (ViewGroup) mPageWelcome;
+        final ViewGroup tilesGroup = (ViewGroup) mPageTiles;
+        final LinearLayout tileContainer = (LinearLayout) findViewById(R.id.tile_container);
+        mPageWelcome.setVisibility(View.GONE);
+        findViewById(R.id.btn_start).setEnabled(true);
+        clearChildAnimations(welcomeGroup);
+        clearChildAnimations(tilesGroup);
+        for (int j = 0; j < tileContainer.getChildCount(); j++) {
+            tileContainer.getChildAt(j).clearAnimation();
         }
     }
 
@@ -1289,24 +1295,12 @@ public class MetroSetupActivity extends BaseActivity {
         }).start();
     }
 
-    private void applyPendingChangelog() {
-        if (mPendingChangelog != null || mPendingChangelogFailed) {
-            renderChangelogIfReady(true);
-        }
-    }
-
     private void renderChangelogIfReady() {
-        renderChangelogIfReady(false);
-    }
-
-    private void renderChangelogIfReady(boolean animateRows) {
-        // 转场中不填充，避免 removeAllViews 打断滑入动画
-        if (mAnimating || isFinishing()) return;
+        if (isFinishing()) return;
         final LinearLayout container = (LinearLayout) findViewById(R.id.tile_container);
         container.removeAllViews();
         final JSONArray changelog = mPendingChangelog;
         mPendingChangelog = null;
-        mPendingChangelogFailed = false;
         if (changelog == null) {
             TextView errorText = new TextView(MetroSetupActivity.this);
             errorText.setText("\u83B7\u53D6\u66F4\u65B0\u65E5\u5FD7\u5931\u8D25");
@@ -1328,7 +1322,7 @@ public class MetroSetupActivity extends BaseActivity {
             if (line.length() == 0) {
                 View spacer = new View(MetroSetupActivity.this);
                 spacer.setLayoutParams(new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(12)));
+                        LinearLayout.LayoutParams.MATCH_PARENT, DeviceUtil.dpToPx(12)));
                 container.addView(spacer);
             } else if (line.startsWith("-")) {
                 TextView tv = new TextView(MetroSetupActivity.this);
@@ -1336,7 +1330,7 @@ public class MetroSetupActivity extends BaseActivity {
                 tv.setTextColor(textColor);
                 tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,
                         getResources().getDimension(R.dimen.setup_changelog_text_size));
-                tv.setPadding(dpToPx(24), dpToPx(4), dpToPx(16), dpToPx(4));
+                tv.setPadding(DeviceUtil.dpToPx(24), DeviceUtil.dpToPx(4), DeviceUtil.dpToPx(16), DeviceUtil.dpToPx(4));
                 tv.setLayoutParams(new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -1348,7 +1342,7 @@ public class MetroSetupActivity extends BaseActivity {
                 tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,
                         getResources().getDimension(R.dimen.setup_changelog_title_size));
                 tv.setTypeface(null, Typeface.BOLD);
-                tv.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(4));
+                tv.setPadding(DeviceUtil.dpToPx(16), DeviceUtil.dpToPx(8), DeviceUtil.dpToPx(16), DeviceUtil.dpToPx(4));
                 tv.setLayoutParams(new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -1356,49 +1350,51 @@ public class MetroSetupActivity extends BaseActivity {
             }
         }
 
-        // 若日志在转场结束后才填充，则逐行补一次滑入动画
-        if (animateRows) {
-            animateRowsIn(container);
+        // 正文到达时页面若已可见就补一次滑入；处于转场中则对齐转场时间轴追赶，
+        // 晚到多少就少等多少，避免另起一段"标题已跑完正文才播"的动画
+        if (mPageTiles != null && mPageTiles.getVisibility() == View.VISIBLE) {
+            long startAfter = 0L;
+            if (mTilesTransition && mTilesRowBaseDelay >= 0) {
+                long elapsed = android.os.SystemClock.uptimeMillis() - mTilesTransitionStart;
+                startAfter = mTilesRowBaseDelay - elapsed;
+                if (startAfter < 0L) {
+                    startAfter = 0L;
+                }
+            }
+            animateRowsIn(container, startAfter);
         }
     }
 
-    private void animateRowsIn(final LinearLayout container) {
+    private void animateRowsIn(final LinearLayout container, long startAfterMs) {
         final int width = mPageTiles != null ? mPageTiles.getWidth() : 0;
         if (width <= 0) return;
         for (int i = 0; i < container.getChildCount(); i++) {
             View row = container.getChildAt(i);
             TranslateAnimation a = new TranslateAnimation(width, 0, 0, 0);
             a.setDuration(300);
-            a.setStartOffset(i * 40);
+            a.setStartOffset(startAfterMs + i * 60);
             a.setInterpolator(new DecelerateInterpolator());
             row.startAnimation(a);
         }
     }
 
     private JSONArray fetchChangelog() {
+        // 更新检查通常已经拉过 version.json，直接复用可让正文赶在转场前渲染
+        JSONArray cached = UpdateUtil.getCachedChangelog();
+        if (cached != null) {
+            return cached;
+        }
         String[] urls = {
                 "http://www.biliclassic.cn/api/version.json",
                 "http://7891vip.top/biliclassic/update.php"
         };
         for (String urlStr : urls) {
-            HttpURLConnection conn = null;
             try {
-                URL url = new URL(urlStr);
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setConnectTimeout(12000);
-                conn.setReadTimeout(12000);
-                conn.setRequestMethod("GET");
-                conn.setRequestProperty("User-Agent", "BiliClassic");
-                if (conn.getResponseCode() != 200) continue;
-                BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(conn.getInputStream(), "UTF-8"));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    sb.append(line);
-                }
-                reader.close();
-                JSONObject json = new JSONObject(sb.toString());
+                ArrayList headers = new ArrayList();
+                headers.add("User-Agent");
+                headers.add("BiliClassic");
+                // 非 200/非 JSON 会抛异常，转下一个源
+                JSONObject json = NetWorkUtil.getJson(urlStr, headers);
                 JSONObject versions = json.optJSONObject("versions");
                 if (versions == null) continue;
                 JSONObject branch = versions.optJSONObject("0.4");
@@ -1409,8 +1405,6 @@ public class MetroSetupActivity extends BaseActivity {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-            } finally {
-                if (conn != null) conn.disconnect();
             }
         }
         return null;
@@ -1425,6 +1419,12 @@ public class MetroSetupActivity extends BaseActivity {
         for (int i = 0; i < group.getChildCount(); i++) {
             group.getChildAt(i).clearAnimation();
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        mHandler.removeCallbacks(mFinishTilesTransition);
+        super.onDestroy();
     }
 
     private void slideToWelcome() {
@@ -1506,7 +1506,4 @@ public class MetroSetupActivity extends BaseActivity {
         }
     }
 
-    private int dpToPx(int dp) {
-        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
-    }
 }

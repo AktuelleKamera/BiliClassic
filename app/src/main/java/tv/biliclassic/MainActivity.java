@@ -1,5 +1,6 @@
 package tv.biliclassic;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -38,7 +39,9 @@ import tv.biliclassic.metro.MetroSetupActivity;
 import tv.biliclassic.util.DeviceInfoUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.PermissionUtil;
+import tv.biliclassic.util.SdkHelper;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.UpdateUtil;
 import tv.biliclassic.util.DialogUtil;
 
 public class MainActivity extends BaseActivity {
@@ -75,21 +78,6 @@ public class MainActivity extends BaseActivity {
         FragmentInfo(String title, Class<? extends Fragment> clss) {
             this.title = title;
             this.clss = clss;
-        }
-    }
-
-    // 兼容 Android 1.5 获取 SDK 版本
-    private int getSdkInt() {
-        try {
-            java.lang.reflect.Field field = android.os.Build.VERSION.class.getField("SDK_INT");
-            return field.getInt(null);
-        } catch (Exception e) {
-            try {
-                java.lang.reflect.Field field = android.os.Build.VERSION.class.getField("SDK");
-                return Integer.parseInt(field.get(null).toString());
-            } catch (Exception ex) {
-                return 0;
-            }
         }
     }
 
@@ -142,7 +130,7 @@ public class MainActivity extends BaseActivity {
         }
 
         NetWorkUtil.refreshHeaders();
-        int sdkInt = getSdkInt();
+        int sdkInt = SdkHelper.getSdkInt();
 
         // 主题设置：Metro → 打开 MetroHome；Classic → 进入经典主界面（默认）
         if (SettingsActivity.getUiTheme() == SettingsActivity.THEME_METRO) {
@@ -194,8 +182,8 @@ public class MainActivity extends BaseActivity {
 
         final PagerTabStrip tabStrip = (PagerTabStrip) findViewById(R.id.pager_tab_strip);
         if (tabStrip != null) {
-            tabStrip.setTabIndicatorColor(0xFFFCA3C5);
-            tabStrip.setBackgroundColor(0xFFD86DA5);
+            tabStrip.setTabIndicatorColor(0xFFFF9FC5);
+            tabStrip.setBackgroundResource(R.drawable.tab_background);
             tabStrip.setTextColor(0xFFFFFFFF);
             // 手表（小屏）适配：固定 TAB 栏高度 + 缩小 padding 让背景随文字变小；
             // 手机上保持原生 wrap_content 行为
@@ -274,6 +262,15 @@ public class MainActivity extends BaseActivity {
                 @Override
                 public void onClick(View v) {
                     expandTitleSearch();
+                }
+            });
+        }
+        View btnHomeBack = findViewById(R.id.btn_home_back);
+        if (btnHomeBack != null) {
+            btnHomeBack.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    collapseTitleSearch();
                 }
             });
         }
@@ -394,68 +391,23 @@ public class MainActivity extends BaseActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                boolean success = false;
                 String versionJson = null;
 
                 try {
-                    java.net.URL url = new java.net.URL("http://www.biliclassic.cn/api/version.json");
-                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(12000);
-                    conn.setReadTimeout(12000);
-                    conn.setRequestMethod("GET");
-                    conn.setRequestProperty("User-Agent", "BiliClassic");
-
-                    int responseCode = conn.getResponseCode();
-                    if (responseCode == 200) {
-                        java.io.InputStream is = conn.getInputStream();
-                        java.io.BufferedReader reader = new java.io.BufferedReader(
-                                new java.io.InputStreamReader(is, "UTF-8"));
-                        StringBuilder sb = new StringBuilder();
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            sb.append(line);
-                        }
-                        reader.close();
-                        is.close();
-                        versionJson = sb.toString();
-                        success = true;
-                    }
-                    conn.disconnect();
+                    versionJson = UpdateUtil.fetchVersionJson(
+                            "http://www.biliclassic.cn/api/version.json");
                 } catch (Exception e) {}
 
-                if (!success) {
+                if (versionJson == null) {
                     try {
-                        java.net.URL url = new java.net.URL(
+                        versionJson = UpdateUtil.fetchVersionJson(
                                 "http://7891vip.top/biliclassic/update.php");
-                        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
-                        conn.setConnectTimeout(12000);
-                        conn.setReadTimeout(12000);
-                        conn.setRequestMethod("GET");
-                        conn.setRequestProperty("User-Agent", "BiliClassic");
-
-                        int responseCode = conn.getResponseCode();
-                        if (responseCode == 200) {
-                            java.io.InputStream is = conn.getInputStream();
-                            java.io.BufferedReader reader = new java.io.BufferedReader(
-                                    new java.io.InputStreamReader(is, "UTF-8"));
-                            StringBuilder sb = new StringBuilder();
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                sb.append(line);
-                            }
-                            reader.close();
-                            is.close();
-                            versionJson = sb.toString();
-                            success = true;
-                        }
-                        conn.disconnect();
                     } catch (Exception e) {}
                 }
 
                 final String finalVersionJson = versionJson;
-                final boolean finalSuccess = success;
 
-                if (finalSuccess && finalVersionJson != null && finalVersionJson.length() > 0) {
+                if (finalVersionJson != null && finalVersionJson.length() > 0) {
                     mHandler.post(new Runnable() {
                         @Override
                         public void run() {
@@ -502,7 +454,7 @@ public class MainActivity extends BaseActivity {
                 hasUpdate = compareVersions(currentVersionName, latestVersionName);
             }
 
-            int sdkVersion = getSdkInt();
+            int sdkVersion = SdkHelper.getSdkInt();
             if (minSdk > 0 && sdkVersion < minSdk) {
                 return;
             }
@@ -704,13 +656,16 @@ public class MainActivity extends BaseActivity {
 
             group.addView(logo);
             group.addView(search);
+
+            // 圆屏才隐藏更多按钮
+            View more = findViewById(R.id.btn_title_more);
+            if (more != null) {
+                more.setVisibility(View.GONE);
+            }
         } catch (Throwable t) {
         }
     }
 
-    private int dpToPx(int dp) {
-        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
-    }
 
     private void checkAndShowCrashDialog() {
         boolean hasCrash = getSharedPreferences("crash", MODE_PRIVATE)
@@ -925,7 +880,12 @@ public class MainActivity extends BaseActivity {
         View btnSearch = findViewById(R.id.btn_search);
         View container = findViewById(R.id.title_search_container);
         final EditText edit = (EditText) findViewById(R.id.title_search_edit);
+        View back = findViewById(R.id.btn_home_back);
+        ImageView logo = (ImageView) findViewById(R.id.logo);
         if (btnSearch != null) btnSearch.setVisibility(View.GONE);
+        // 返回键插到 logo 左边，logo 换成应用图标
+        if (logo != null) logo.setImageResource(R.drawable.ic_launcher);
+        if (back != null) back.setVisibility(View.VISIBLE);
         if (container != null) container.setVisibility(View.VISIBLE);
         if (edit != null) {
             edit.requestFocus();
@@ -948,11 +908,16 @@ public class MainActivity extends BaseActivity {
 
     /** 收起内联搜索框，恢复 logo 和搜索图标 */
     private void collapseTitleSearch() {
-        View logo = findViewById(R.id.logo);
+        ImageView logo = (ImageView) findViewById(R.id.logo);
         View btnSearch = findViewById(R.id.btn_search);
         View container = findViewById(R.id.title_search_container);
-        if (logo != null) logo.setVisibility(View.VISIBLE);
+        if (logo != null) {
+            logo.setImageResource(R.drawable.ic_home);
+            logo.setVisibility(View.VISIBLE);
+        }
         if (btnSearch != null) btnSearch.setVisibility(View.VISIBLE);
+        View back = findViewById(R.id.btn_home_back);
+        if (back != null) back.setVisibility(View.GONE);
         if (container != null) container.setVisibility(View.GONE);
         View focus = getCurrentFocus();
         if (focus != null) {
@@ -998,14 +963,26 @@ public class MainActivity extends BaseActivity {
         } catch (Exception e) {
         }
         final float density = getResources().getDisplayMetrics().density;
-        for (final String kw : items) {
+        int divH = (int) (1 * density + 0.5f);
+        int padH = (int) (12 * density + 0.5f);
+        int padV = (int) (8 * density + 0.5f);
+        for (int i = 0; i < items.size(); i++) {
+            if (i > 0) {
+                View div = new View(this);
+                div.setBackgroundColor(0xFFC8C8C8);
+                listContainer.addView(div, new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, divH));
+            }
+            final String kw = items.get(i);
             android.widget.TextView tv = new android.widget.TextView(this);
             tv.setText(kw);
-            tv.setTextSize(14);
-            tv.setTextColor(0xFF333333);
+            tv.setTextSize(16);
+            tv.setTextColor(0xFF525252);
             tv.setSingleLine(true);
             tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            tv.setPadding(0, (int) (8 * density + 0.5f), 0, (int) (8 * density + 0.5f));
+            tv.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            tv.setPadding(padH, padV, padH, padV);
+            tv.setBackgroundResource(R.drawable.titlebar_pink_item_bg);
             tv.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -1016,7 +993,9 @@ public class MainActivity extends BaseActivity {
                     submitTitleSearch();
                 }
             });
-            listContainer.addView(tv);
+            listContainer.addView(tv, new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT));
         }
         container.setVisibility(items.size() > 0 ? View.VISIBLE : View.GONE);
     }
@@ -1288,28 +1267,6 @@ public class MainActivity extends BaseActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    private void showMenuLogoutDialog() {
-        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.really_leave_title))
-                .setMessage(getString(R.string.logout_confirm_message))
-                .setPositiveButton("留下来", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        Toast.makeText(MainActivity.this, MainActivity.this.getString(R.string.stay_message), Toast.LENGTH_SHORT).show();
-                        dialog.dismiss();
-                    }
-                })
-                .setNegativeButton("狠心离开", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        doMenuLogout();
-                        dialog.dismiss();
-                    }
-                })
-                .setCancelable(true)
-                .show();
-    }
-
     private void checkLegacyVersionCompatibility() {
         if (DeviceInfoUtil.isLegacy) {
             boolean isLegacyDevice = DeviceInfoUtil.isLegacyDevice();
@@ -1334,19 +1291,6 @@ public class MainActivity extends BaseActivity {
                         .show();
             }
         }
-    }
-
-    private void doMenuLogout() {
-        SharedPreferencesUtil.removeValue("cookies");
-        SharedPreferencesUtil.removeValue("mid");
-        SharedPreferencesUtil.removeValue("csrf");
-        SharedPreferencesUtil.removeValue("refresh_token");
-
-        Toast.makeText(this, this.getString(R.string.logged_out_message), Toast.LENGTH_SHORT).show();
-
-        Intent intent = getIntent();
-        finish();
-        startActivity(intent);
     }
 
     private class ViewPagerAdapter extends FragmentStatePagerAdapter {

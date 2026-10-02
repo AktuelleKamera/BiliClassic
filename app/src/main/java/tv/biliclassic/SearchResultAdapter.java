@@ -4,7 +4,6 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -12,10 +11,11 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
+import tv.biliclassic.adapter.BaseObservableAdapter;
 import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.StringUtil;
 
-public class SearchResultAdapter extends BaseAdapter {
+public class SearchResultAdapter extends BaseObservableAdapter<SearchActivity.SearchResultItem> {
 
     // 结果行第二个统计字段的显示模式（随排序方式切换，模仿 1.8.4）
     public static final int STAT_PLAY = 0;
@@ -23,16 +23,6 @@ public class SearchResultAdapter extends BaseAdapter {
     public static final int STAT_FAVORITE = 2;
     public static final int STAT_REVIEW = 3;
     public static final int STAT_PUBDATE = 4;
-
-    private Context context;
-    private List<SearchActivity.SearchResultItem> list;
-    private volatile boolean mScrolling = false;
-
-    // 键盘光标选中的项，-1 表示无选中
-    private int selectedPosition = -1;
-
-    // 触摸滑动中是否隐藏光标高亮（滑动时隐藏，再次按键时恢复）
-    private boolean mHideHighlight = false;
 
     // 当前统计字段显示模式
     private int statMode = STAT_PLAY;
@@ -42,45 +32,8 @@ public class SearchResultAdapter extends BaseAdapter {
         notifyDataSetChanged();
     }
 
-    public void setSelectedPosition(int position) {
-        this.selectedPosition = position;
-        notifyDataSetChanged();
-    }
-
-    /**
-     * 触摸滑动时隐藏/显示光标高亮（值不变时跳过重绘）。
-     */
-    public void setHideHighlight(boolean hide) {
-        if (this.mHideHighlight == hide) {
-            return;
-        }
-        this.mHideHighlight = hide;
-        notifyDataSetChanged();
-    }
-
     public SearchResultAdapter(Context context, List<SearchActivity.SearchResultItem> list) {
-        this.context = context;
-        this.list = list;
-    }
-
-    /** 滚动状态变化时由 ListView 的 OnScrollListener 调用 */
-    public void setScrolling(boolean scrolling) {
-        ImageLoader.setScrolling(scrolling);
-    }
-
-    @Override
-    public int getCount() {
-        return list.size();
-    }
-
-    @Override
-    public Object getItem(int position) {
-        return list.get(position);
-    }
-
-    @Override
-    public long getItemId(int position) {
-        return position;
+        super(context, list);
     }
 
     @Override
@@ -368,15 +321,6 @@ public class SearchResultAdapter extends BaseAdapter {
         } catch (Exception e) {
             return "";
         }
-    }
-
-    public void updateData(List<SearchActivity.SearchResultItem> newList) {
-        this.list = newList;
-        notifyDataSetChanged();
-    }
-
-    public void clearCache() {
-        ImageLoader.clearCache();
     }
 
     static class ViewHolder {

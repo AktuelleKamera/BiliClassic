@@ -18,12 +18,12 @@
 
     <!-- skip_frame -->
     <string-array name="decoder_skip_frame_entries">
-        <item>不跳過任何幀</item>
-        <item>默認策略</item>
-        <item>跳過非參考幀</item>
-        <item>跳過雙向預測幀</item>
-        <item>跳過非關鍵幀</item>
-        <item>跳過所有幀</item>
+        <item>不跳過任何影格</item>
+        <item>預設策略</item>
+        <item>跳過非參考影格</item>
+        <item>跳過雙向預測影格</item>
+        <item>跳過非關鍵影格</item>
+        <item>跳過所有影格</item>
     </string-array>
     <string-array name="decoder_skip_frame_values">
         <item>-16</item>
@@ -36,11 +36,11 @@
 
     <!-- framedrop -->
     <string-array name="decoder_framedrop_entries">
-        <item>不丟幀</item>
-        <item>默認</item>
-        <item>積極丟幀</item>
+        <item>不丟影格</item>
+        <item>預設</item>
+        <item>積極丟影格</item>
         <item>較積極</item>
-        <item>輕度丟幀</item>
+        <item>輕度丟影格</item>
         <item>極輕度</item>
     </string-array>
     <string-array name="decoder_framedrop_values">
@@ -72,13 +72,13 @@
 
     <!-- video-pictq-size -->
     <string-array name="decoder_pictq_size_entries">
-        <item>3 幀 (默認, 最小延遲)</item>
-        <item>4 幀</item>
-        <item>5 幀</item>
-        <item>6 幀</item>
-        <item>8 幀</item>
-        <item>10 幀</item>
-        <item>16 幀 (最大, 最流暢)</item>
+        <item>3 影格 (預設, 最小延遲)</item>
+        <item>4 影格</item>
+        <item>5 影格</item>
+        <item>6 影格</item>
+        <item>8 影格</item>
+        <item>10 影格</item>
+        <item>16 影格 (最大, 最流暢)</item>
     </string-array>
     <string-array name="decoder_pictq_size_values">
         <item>3</item>
@@ -119,7 +119,7 @@
 
     <!-- player_preference -->
     <string-array name="player_entries">
-        <item>內置播放器</item>
+        <item>內建播放器</item>
         <item>系統播放器</item>
     </string-array>
     <string-array name="player_values">

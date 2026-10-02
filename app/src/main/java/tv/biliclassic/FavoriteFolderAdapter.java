@@ -8,7 +8,6 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -26,64 +25,21 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import tv.biliclassic.adapter.BaseObservableAdapter;
 import tv.biliclassic.model.FavoriteFolder;
 import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
-public class FavoriteFolderAdapter extends BaseAdapter {
+public class FavoriteFolderAdapter extends BaseObservableAdapter<FavoriteFolder> {
 
-    private Context context;
-    private List<FavoriteFolder> list;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
-    private volatile boolean mScrolling = false;
 
     public FavoriteFolderAdapter(Context context, List<FavoriteFolder> list) {
-        this.context = context;
-        this.list = list;
+        super(context, list);
         if (this.list == null) {
             this.list = new ArrayList<FavoriteFolder>();
         }
-    }
-
-    /** 滚动状态变化时由 ListView 的 OnScrollListener 调用 */
-    public void setScrolling(boolean scrolling) {
-        ImageLoader.setScrolling(scrolling);
-    }
-
-    // ===== 遥控器方向键选中的条目（-1 = 未选中），用于整行高亮 =====
-    private int selectedPosition = -1;
-    private boolean mHideHighlight = false;
-
-    public void setSelectedPosition(int position) {
-        this.selectedPosition = position;
-        notifyDataSetChanged();
-    }
-
-    public void setHideHighlight(boolean hide) {
-        if (this.mHideHighlight == hide) {
-            return;
-        }
-        this.mHideHighlight = hide;
-        notifyDataSetChanged();
-    }
-
-    @Override
-    public int getCount() {
-        return list == null ? 0 : list.size();
-    }
-
-    @Override
-    public Object getItem(int position) {
-        if (list == null || position < 0 || position >= list.size()) {
-            return null;
-        }
-        return list.get(position);
-    }
-
-    @Override
-    public long getItemId(int position) {
-        return position;
     }
 
     @Override
@@ -168,21 +124,6 @@ public class FavoriteFolderAdapter extends BaseAdapter {
         });
 
         return convertView;
-    }
-
-    public void updateData(List<FavoriteFolder> newList) {
-        if (newList == null) {
-            this.list.clear();
-            notifyDataSetChanged();
-            return;
-        }
-        this.list.clear();
-        this.list.addAll(newList);
-        notifyDataSetChanged();
-    }
-
-    public void clearCache() {
-        ImageLoader.clearCache();
     }
 
     static class ViewHolder {

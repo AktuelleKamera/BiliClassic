@@ -25,6 +25,11 @@ public class WebViewActivity extends BaseActivity {
     private String pageTitle;
 
     @Override
+    protected boolean hasTitleActions() {
+        return false;
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_webview);
@@ -51,7 +56,7 @@ public class WebViewActivity extends BaseActivity {
         if (pageTitle != null && pageTitle.length() > 0) {
             tvTitle.setText(pageTitle);
         } else {
-            tvTitle.setText(getString(R.string.webpage_2));
+            tvTitle.setText(getString(R.string.webpage));
         }
 
         if (url == null || url.length() == 0) {
@@ -128,12 +133,13 @@ public class WebViewActivity extends BaseActivity {
             setDomStorageEnabled.invoke(settings, true);
         } catch (Exception e) {}
 
-        // 缩放 (API 1 就有)
+        // 缩放：双指缩放保留，内置 +/- 按钮禁用
+        // ZoomButtonsController 反注册不同步会在 API 17 崩
         try {
             webView.getSettings().setSupportZoom(true);
             java.lang.reflect.Method setBuiltInZoomControls = webView.getSettings().getClass()
                     .getMethod("setBuiltInZoomControls", boolean.class);
-            setBuiltInZoomControls.invoke(webView.getSettings(), true);
+            setBuiltInZoomControls.invoke(webView.getSettings(), false);
         } catch (Exception e) {}
     }
 

@@ -244,7 +244,7 @@ public class ProfileFragment extends Fragment {
                         Toast.makeText(getActivity(), getActivity().getString(R.string.load_user_failed), Toast.LENGTH_SHORT).show();
                     }
                 } else {
-                    Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first_4), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first), Toast.LENGTH_SHORT).show();
                 }
             }
         };
@@ -295,7 +295,7 @@ public class ProfileFragment extends Fragment {
             @Override
             public void onClick(View v) {
                 if (!isLoggedIn()) {
-                    Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first_4), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 Intent intent = new Intent(getActivity(), FavoriteFolderListActivity.class);
@@ -307,7 +307,7 @@ public class ProfileFragment extends Fragment {
             @Override
             public void onClick(View v) {
                 if (!isLoggedIn()) {
-                    Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first_4), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 Intent intent = new Intent(getActivity(), FollowingListActivity.class);
@@ -613,7 +613,7 @@ public class ProfileFragment extends Fragment {
             } else {
                 mainHandler.post(new Runnable() {
                     public void run() {
-                        if (isAdded() && tvUserId != null) tvUserId.setText(getString(R.string.username_2));
+                        if (isAdded() && tvUserId != null) tvUserId.setText(getString(R.string.username));
                     }
                 });
             }
@@ -800,12 +800,12 @@ public class ProfileFragment extends Fragment {
 
     private void showLogoutDialog() {
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(getActivity())))
-                .setTitle(getString(R.string.really_leave_title_2))
-                .setMessage(getString(R.string.logout_confirm_message_2))
+                .setTitle(getString(R.string.really_leave_title))
+                .setMessage(getString(R.string.logout_confirm_message))
                 .setPositiveButton("留下来", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        Toast.makeText(getActivity(), getActivity().getString(R.string.stay_message_2), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getActivity(), getActivity().getString(R.string.stay_message), Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
                     }
                 })

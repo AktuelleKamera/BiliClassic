@@ -17,16 +17,14 @@ import android.widget.TextView;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 import tv.biliclassic.BuildConfig;
+import tv.biliclassic.VideoDetailActivity;
+import tv.biliclassic.WebViewActivity;
 import tv.biliclassic.player.AudioPlayerActivity;
 import tv.biliclassic.player.OstwindPlayerActivity;
 
@@ -78,6 +76,8 @@ public class AnnouncementUtil {
         public String audioUrl = "";
         public String audioText = "";
         public String audioDisText = "";
+        public String linkUrl = "";
+        public String linkText = "";
 
         public boolean isExpired(Context context) {
             if (version == null || version.length() == 0) {
@@ -284,9 +284,29 @@ public class AnnouncementUtil {
                         public void onClick(View v) {
                             dismissDialog(dialogHolder);
                             markAnnouncementShown(context, a.id);
-                            Intent intent = new Intent(context, OstwindPlayerActivity.class);
-                            intent.putExtra("video_url", a.videoUrl);
-                            intent.putExtra("video_title", a.title);
+                            // video_url 若为 BV/AV 号，跳转对应视频详情；否则当直链播放
+                            Intent direct = buildVideoDetailIntent(context, a.videoUrl);
+                            if (direct != null) {
+                                startActivitySafely(context, direct);
+                            } else {
+                                Intent intent = new Intent(context, OstwindPlayerActivity.class);
+                                intent.putExtra("video_url", a.videoUrl);
+                                intent.putExtra("video_title", a.title);
+                                startActivitySafely(context, intent);
+                            }
+                        }
+                    });
+        }
+
+        if (a.linkUrl != null && a.linkUrl.length() > 0) {
+            addAnnouncementButton(root, dialogContext,
+                    (a.linkText != null && a.linkText.length() > 0) ? a.linkText : "查看链接",
+                    new View.OnClickListener() {
+                        public void onClick(View v) {
+                            Intent intent = new Intent(context, WebViewActivity.class);
+                            intent.putExtra("url", a.linkUrl);
+                            intent.putExtra("title",
+                                    (a.title != null && a.title.length() > 0) ? a.title : "链接");
                             startActivitySafely(context, intent);
                         }
                     });
@@ -354,6 +374,33 @@ public class AnnouncementUtil {
         }
     }
 
+    /**
+     * video_url 若填写 BV 号（BVxxxx）或 AV 号（av123）则返回跳转视频详情的 Intent，
+     * 否则返回 null（按视频直链处理）。
+     */
+    private static Intent buildVideoDetailIntent(Context context, String videoUrl) {
+        if (videoUrl == null) return null;
+        String v = videoUrl.trim();
+        if (v.length() < 2) return null;
+        String lower = v.toLowerCase(Locale.US);
+        if (lower.startsWith("bv")) {
+            Intent intent = new Intent(context, VideoDetailActivity.class);
+            intent.putExtra("bvid", v);
+            return intent;
+        }
+        if (lower.startsWith("av")) {
+            try {
+                long aid = Long.parseLong(v.substring(2).trim());
+                Intent intent = new Intent(context, VideoDetailActivity.class);
+                intent.putExtra("aid", aid);
+                return intent;
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
     private static int dp(Context context, int value) {
         return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value,
                 context.getResources().getDisplayMetrics());
@@ -361,33 +408,14 @@ public class AnnouncementUtil {
 
     private static String fetchAnnouncement(Context context) throws Exception {
         String url = "http://www.biliclassic.cn/api/announcement.json";
-        HttpURLConnection conn = null;
+        ArrayList headers = new ArrayList();
+        headers.add("User-Agent");
+        headers.add("BiliClassic/" + getVersionName(context));
         try {
-            HttpURLConnection.setFollowRedirects(true);
-            conn = (HttpURLConnection) new URL(url).openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(12000);
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("User-Agent", "BiliClassic/" + getVersionName(context));
-
-            int responseCode = conn.getResponseCode();
-            if (responseCode != 200) {
-                return null;
-            }
-
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(conn.getInputStream(), "UTF-8"));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
-            }
-            reader.close();
-            return sb.toString();
-        } finally {
-            if (conn != null) {
-                conn.disconnect();
-            }
+            // 非 200/非 JSON 会抛异常，这里统一按取不到处理
+            return NetWorkUtil.getJson(url, headers).toString();
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -485,6 +513,8 @@ public class AnnouncementUtil {
         announcement.audioUrl = obj.optString("audio_url", "");
         announcement.audioText = obj.optString("audio_text", "");
         announcement.audioDisText = obj.optString("audio_dis_text", "");
+        announcement.linkUrl = obj.optString("link_url", "");
+        announcement.linkText = obj.optString("link_text", "");
 
         if (announcement.id == null || announcement.id.length() == 0) {
             announcement.id = "announcement_" + System.currentTimeMillis();

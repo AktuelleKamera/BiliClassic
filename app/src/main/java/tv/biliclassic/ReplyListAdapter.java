@@ -1,5 +1,6 @@
 package tv.biliclassic;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -22,7 +23,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -42,16 +42,15 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import tv.biliclassic.adapter.BaseObservableAdapter;
 import tv.biliclassic.api.ReplyApi;
 import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.NetWorkUtil;
 
-public class ReplyListAdapter extends BaseAdapter {
+public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.ReplyData> {
 
-    private Context context;
-    private List<ReplyListActivity.ReplyData> list;
     private OnReplyClickListener replyClickListener;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Set<Long> expandedRpids = new HashSet<Long>();
@@ -62,7 +61,6 @@ public class ReplyListAdapter extends BaseAdapter {
     private long mMid;
 
     // 键盘光标高亮
-    private int selectedPosition = -1;
     private boolean hideHighlight = false;
 
     public void setSelectedPosition(int position) {
@@ -91,24 +89,8 @@ public class ReplyListAdapter extends BaseAdapter {
     }
 
     public ReplyListAdapter(Context context, List<ReplyListActivity.ReplyData> list) {
-        this.context = context;
-        this.list = list;
+        super(context, list);
         mDensity = context.getResources().getDisplayMetrics().density;
-    }
-
-    @Override
-    public int getCount() {
-        return list.size();
-    }
-
-    @Override
-    public Object getItem(int position) {
-        return list.get(position);
-    }
-
-    @Override
-    public long getItemId(int position) {
-        return position;
     }
 
     @Override
@@ -274,7 +256,7 @@ public class ReplyListAdapter extends BaseAdapter {
                                                 h2.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                             }
                                             h2.likeCount.setText(String.valueOf(rd.likeCount));
-                                            Toast.makeText(context, context.getString(R.string.operation_failed_3), Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(context, context.getString(R.string.dynamicfragment_toast_op_fail), Toast.LENGTH_SHORT).show();
                                         }
                                     });
                                 }
@@ -294,7 +276,7 @@ public class ReplyListAdapter extends BaseAdapter {
                                             h2.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                         }
                                         h2.likeCount.setText(String.valueOf(rd.likeCount));
-                                        Toast.makeText(context, context.getString(R.string.network_error_3), Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(context, context.getString(R.string.network_error), Toast.LENGTH_SHORT).show();
                                     }
                                 });
                             }
@@ -325,8 +307,8 @@ public class ReplyListAdapter extends BaseAdapter {
 
                 boolean expanded = expandedRpids.contains(rd.rpid);
                 int showCount = expanded ? Math.min(rd.pictureList.size(), 9) : Math.min(rd.pictureList.size(), 3);
-                int imgSize = dpToPx(80);
-                int margin = dpToPx(4);
+                int imgSize = DeviceUtil.dpToPx(80);
+                int margin = DeviceUtil.dpToPx(4);
 
                 holder.pictureContainer.setOrientation(LinearLayout.VERTICAL);
                 int cols = 3;
@@ -380,7 +362,7 @@ public class ReplyListAdapter extends BaseAdapter {
                         collapseTv.setTextSize(12);
                         collapseTv.setTextColor(0xFFD86DA5);
                         collapseTv.setGravity(Gravity.CENTER);
-                        collapseTv.setPadding(0, dpToPx(4), 0, 0);
+                        collapseTv.setPadding(0, DeviceUtil.dpToPx(4), 0, 0);
                         toggleView = collapseTv;
                     }
                     toggleView.setOnClickListener(new View.OnClickListener() {
@@ -445,13 +427,9 @@ public class ReplyListAdapter extends BaseAdapter {
         try {
             Drawable borderDrawable = context.getResources().getDrawable(R.drawable.image_border_overlay);
             imageView.setBackgroundDrawable(borderDrawable);
-            int paddingPx = dpToPx(2);
+            int paddingPx = DeviceUtil.dpToPx(2);
             imageView.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
         } catch (Exception e) {}
-    }
-    private int dpToPx(int dp) {
-        float density = context.getResources().getDisplayMetrics().density;
-        return (int) (dp * density + 0.5f);
     }
     private void copyToClipboard(String text) {
         if (text != null && text.length() > 0) {
@@ -508,11 +486,6 @@ public class ReplyListAdapter extends BaseAdapter {
             }
         }).start();
     }
-    public void updateData(List<ReplyListActivity.ReplyData> newList) {
-        this.list = newList;
-        notifyDataSetChanged();
-    }
-
     public void clearCache() {
     }
 

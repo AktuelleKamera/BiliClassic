@@ -1,4 +1,4 @@
-﻿# BiliClassic - 安卓2也要看B站！
+# BiliClassic - 安卓2也要看B站！
 
 <img width="1366" height="767" alt="Android 2" src="https://github.com/user-attachments/assets/52277284-e776-496c-886d-12351b15cc00" />
 

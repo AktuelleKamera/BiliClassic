@@ -437,7 +437,7 @@ public class VideoDetailFragment extends Fragment {
 
     private void loadVideoData() {
         if (!isAdded() || getActivity() == null) return;
-        tvTitle.setText(getString(R.string.common_loading_2));
+        tvTitle.setText(getString(R.string.common_loading));
 
         if (mOfflineMode) {
             loadVideoDataFromOffline();
@@ -464,7 +464,7 @@ public class VideoDetailFragment extends Fragment {
                                 @Override
                                 public void run() {
                                     if (!isAdded() || getActivity() == null) return;
-                                    tvTitle.setText(getString(R.string.args_error_2));
+                                    tvTitle.setText(getString(R.string.args_error));
                                     Toast.makeText(getActivity(), getActivity().getString(R.string.missing_video_args), Toast.LENGTH_SHORT).show();
                                 }
                             });
@@ -489,7 +489,7 @@ public class VideoDetailFragment extends Fragment {
                             @Override
                             public void run() {
                                 if (!isAdded() || getActivity() == null) return;
-                                tvTitle.setText(getString(R.string.videodetailfragment_settext_52a0_1));
+                                tvTitle.setText(getString(R.string.load_failed));
                                 Toast.makeText(getActivity(), "加载失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                             }
                         });
@@ -505,19 +505,8 @@ public class VideoDetailFragment extends Fragment {
             @Override
             public void run() {
                 try {
-                    java.io.File downloadDir;
-                    if (PermissionUtil.hasWriteStorage(getActivity())) {
-                        downloadDir = new java.io.File(
-                                android.os.Environment.getExternalStorageDirectory(), "BiliClassic/Download");
-                        if (!downloadDir.isDirectory()) {
-                            downloadDir = null;
-                        }
-                    } else {
-                        downloadDir = null;
-                    }
-                    if (downloadDir == null) {
-                        downloadDir = new java.io.File(getActivity().getFilesDir(), "Download");
-                    }
+                    java.io.File downloadDir =
+                            tv.biliclassic.download.DownloadPathUtil.getDownloadDir(getActivity());
 
                     tv.biliclassic.download.VideoDownloadEnvironment env =
                             new tv.biliclassic.download.VideoDownloadEnvironment(downloadDir);
@@ -1189,19 +1178,8 @@ public class VideoDetailFragment extends Fragment {
             actualPage = videoInfo.pages.get(pageIndex);
         }
 
-        java.io.File downloadDir;
-        if (PermissionUtil.hasWriteStorage(getActivity())) {
-            downloadDir = new java.io.File(
-                    android.os.Environment.getExternalStorageDirectory(), "BiliClassic/Download");
-            if (!downloadDir.isDirectory()) {
-                downloadDir = null;
-            }
-        } else {
-            downloadDir = null;
-        }
-        if (downloadDir == null) {
-            downloadDir = new java.io.File(getActivity().getFilesDir(), "Download");
-        }
+        java.io.File downloadDir =
+                tv.biliclassic.download.DownloadPathUtil.getDownloadDir(getActivity());
 
         tv.biliclassic.download.VideoDownloadEnvironment env =
                 new tv.biliclassic.download.VideoDownloadEnvironment(downloadDir,

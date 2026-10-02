@@ -113,10 +113,10 @@ public class TimelineFragment extends Fragment {
         } else if (action == KeyBindingUtil.ACTION_DOWN) {
             scrollByLines(1);
             return true;
-        } else if (action == KeyBindingUtil.ACTION_NUM_2) {
+        } else if (action == KeyBindingUtil.ACTION_PAGE_UP) {
             scrollByLines(-getVisibleLineCount());
             return true;
-        } else if (action == KeyBindingUtil.ACTION_NUM_8) {
+        } else if (action == KeyBindingUtil.ACTION_PAGE_DOWN) {
             scrollByLines(getVisibleLineCount());
             return true;
         }
@@ -195,7 +195,7 @@ public class TimelineFragment extends Fragment {
                             listView.setVisibility(View.VISIBLE);
                             listView.requestFocus();
 
-                            if (isNetworkAvailable()) {
+                            if (NetWorkUtil.isNetworkAvailable(getActivity())) {
                                 new Thread(new Runnable() {
                                     @Override
                                     public void run() {
@@ -207,7 +207,7 @@ public class TimelineFragment extends Fragment {
                         }
 
                         // 无缓存，检查网络
-                        if (!isNetworkAvailable()) {
+                        if (!NetWorkUtil.isNetworkAvailable(getActivity())) {
                             showNoNetwork();
                             return;
                         }
@@ -270,7 +270,7 @@ public class TimelineFragment extends Fragment {
         } catch (final Exception e) {
             e.printStackTrace();
             if (getActivity() == null) return;
-            if (!isNetworkAvailable()) {
+            if (!NetWorkUtil.isNetworkAvailable(getActivity())) {
                 runUi(new Runnable() {
                     @Override
                     public void run() {
@@ -293,18 +293,6 @@ public class TimelineFragment extends Fragment {
                     }
                 });
             }
-        }
-    }
-
-    private boolean isNetworkAvailable() {
-        try {
-            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
-                    getActivity().getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
-            if (cm == null) return false;
-            android.net.NetworkInfo info = cm.getActiveNetworkInfo();
-            return info != null && info.isConnected();
-        } catch (Exception e) {
-            return true;
         }
     }
 

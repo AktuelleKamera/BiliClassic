@@ -22,13 +22,12 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
+
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+
+
+
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -460,38 +459,18 @@ public class FavoriteApi {
         Log.d(TAG, "csrf: " + csrf);
         Log.d(TAG, "请求数据: " + data);
 
-        URL urlObj = new URL(url);
-        HttpURLConnection conn = (HttpURLConnection) urlObj.openConnection();
-        conn.setRequestMethod("POST");
-        conn.setDoOutput(true);
-        conn.setConnectTimeout(10000);
-        conn.setReadTimeout(10000);
+        ArrayList headers = new ArrayList();
+        headers.add("Referer");
+        headers.add("https://www.bilibili.com/");
+        headers.add("Cookie");
+        headers.add(NetWorkUtil.getCookieString());
+        headers.add("Origin");
+        headers.add("https://www.bilibili.com");
+        String responseBody = NetWorkUtil.post(url, data, headers);
 
-        conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
-        conn.setRequestProperty("Referer", "https://www.bilibili.com/");
-        conn.setRequestProperty("Cookie", NetWorkUtil.getCookieString());
-        conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-        conn.setRequestProperty("Origin", "https://www.bilibili.com");
+        Log.d(TAG, "添加收藏响应: " + responseBody);
 
-        OutputStream os = conn.getOutputStream();
-        os.write(data.getBytes("UTF-8"));
-        os.flush();
-        os.close();
-
-        int responseCode = conn.getResponseCode();
-        InputStream is = (responseCode >= 400) ? conn.getErrorStream() : conn.getInputStream();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line);
-        }
-        reader.close();
-        conn.disconnect();
-
-        Log.d(TAG, "添加收藏响应: " + sb.toString());
-
-        JSONObject result = new JSONObject(sb.toString());
+        JSONObject result = new JSONObject(responseBody);
         return result.optInt("code", -1);
     }
 
@@ -532,38 +511,18 @@ public class FavoriteApi {
 
         String data = "resources=" + aid + ":" + TYPE_VIDEO + "&media_id=" + delFid + "&csrf=" + csrf;
 
-        URL urlObj = new URL(url);
-        HttpURLConnection conn = (HttpURLConnection) urlObj.openConnection();
-        conn.setRequestMethod("POST");
-        conn.setDoOutput(true);
-        conn.setConnectTimeout(12000);
-        conn.setReadTimeout(12000);
+        ArrayList headers = new ArrayList();
+        headers.add("Referer");
+        headers.add("https://space.bilibili.com/");
+        headers.add("Cookie");
+        headers.add(NetWorkUtil.getCookieString());
+        headers.add("Origin");
+        headers.add("https://space.bilibili.com");
+        String responseBody = NetWorkUtil.post(url, data, headers);
 
-        conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
-        conn.setRequestProperty("Referer", "https://space.bilibili.com/");
-        conn.setRequestProperty("Cookie", NetWorkUtil.getCookieString());
-        conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-        conn.setRequestProperty("Origin", "https://space.bilibili.com");
+        Log.d(TAG, "删除收藏响应: " + responseBody);
 
-        OutputStream os = conn.getOutputStream();
-        os.write(data.getBytes("UTF-8"));
-        os.flush();
-        os.close();
-
-        int responseCode = conn.getResponseCode();
-        InputStream is = (responseCode >= 400) ? conn.getErrorStream() : conn.getInputStream();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line);
-        }
-        reader.close();
-        conn.disconnect();
-
-        Log.d(TAG, "删除收藏响应: " + sb.toString());
-
-        JSONObject result = new JSONObject(sb.toString());
+        JSONObject result = new JSONObject(responseBody);
         return result.optInt("code", -1);
     }
 }

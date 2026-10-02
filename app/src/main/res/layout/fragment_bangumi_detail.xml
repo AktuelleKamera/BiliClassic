@@ -223,7 +223,7 @@
                 android:paddingLeft="8dp"
                 android:paddingRight="8dp"
                 android:paddingTop="2dp"
-                android:text="@string/common_expand_2"
+                android:text="@string/common_expand"
                 android:textColor="#D86DA5"
                 android:textSize="13sp"
                 android:visibility="gone" />

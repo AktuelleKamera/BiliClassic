@@ -165,7 +165,7 @@ public class BiliAppLogin {
         }
     }
 
-    /** 兜底：POST /x/safecenter/captcha/pre 取极验参数（app 场景，滑动验证） */
+    /** POST /x/safecenter/captcha/pre 取极验参数（app 场景，滑动验证） */
     public static SendResult preCapture() {
         SendResult r = new SendResult();
         try {

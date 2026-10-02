@@ -72,7 +72,7 @@
             android:paddingRight="8dp"
             android:paddingTop="2dp"
             android:paddingBottom="2dp"
-            android:text="@string/common_expand_3"
+            android:text="@string/common_expand"
             android:textSize="12sp"
             android:textColor="#D86DA5"
             android:background="@drawable/item_click_effect"
@@ -101,7 +101,7 @@
                 android:layout_width="16dp"
                 android:layout_height="16dp"
                 android:src="@drawable/ic_action_like"
-                android:contentDescription="@string/common_like" />
+                android:contentDescription="@string/videodetail_like" />
 
             <TextView
                 android:id="@+id/like_count"

@@ -1,5 +1,6 @@
 package tv.biliclassic;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -50,6 +51,7 @@ import tv.biliclassic.util.ReplyHelper;
 import tv.biliclassic.api.ReplyApi;
 import tv.biliclassic.api.VideoInfoApi;
 import tv.biliclassic.download.VideoDownloadService;
+import tv.biliclassic.download.DownloadPathUtil;
 import tv.biliclassic.download.VideoDownloadEnvironment;
 import tv.biliclassic.util.BroadcastConstants;
 import tv.biliclassic.model.FavoriteFolder;
@@ -108,9 +110,8 @@ public class VideoDetailActivity extends BaseActivity {
     // ===== 焦点光标系统 =====
     // 视频详情页按键交互模型（Nokia 功能机范式）：
     //   方向键循环：返回 → 播放 → UP主 → 标签 → 分P（内容区操作）；
-    //   左软键：呼出"操作菜单"（下载/评论/收藏/分享/三连）；
-    //   右软键：返回（finish）；
-    //   数字键 1：上一个 Tab；数字键 3：下一个 Tab；
+    //   菜单键：呼出"操作菜单"（下载/评论/收藏/分享/三连）；
+    //   返回键：返回（finish）；
     //   确认键：触发当前焦点项（标签→列表对话框；分P→进入分P浏览模式）；
     // 通过 dispatchKeyEvent 在事件分发给 ViewPager/View 树之前处理。
     private final java.util.List<View> mFocusableViews = new java.util.ArrayList<View>();
@@ -134,13 +135,24 @@ public class VideoDetailActivity extends BaseActivity {
             }
         });
 
+        // bilibili 图标：点击返回（与搜索页/个人空间一致的粉色点击特效）
+        View logoContainer = findViewById(R.id.logo_container);
+        if (logoContainer != null) {
+            logoContainer.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    finish();
+                }
+            });
+        }
+
         mOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
         fromBangumi = getIntent().getBooleanExtra("from_bangumi", false);
 
         PagerTabStrip tabStrip = (PagerTabStrip) findViewById(R.id.pager_tab_strip);
         if (tabStrip != null) {
-            tabStrip.setTabIndicatorColor(0xFFFCA3C5);
-            tabStrip.setBackgroundColor(0xFFD86DA5);
+            tabStrip.setTabIndicatorColor(0xFFFF9FC5);
+            tabStrip.setBackgroundResource(R.drawable.tab_background);
             tabStrip.setTextColor(0xFFFFFFFF);
             applyTabTextSize(tabStrip);
         }
@@ -162,7 +174,7 @@ public class VideoDetailActivity extends BaseActivity {
         long bangumiSeasonId = intent.getLongExtra("bangumi_season_id", 0);
 
         if (aid == 0L && (bvid == null || bvid.length() == 0) && bangumiSeasonId <= 0) {
-            Toast.makeText(this, this.getString(R.string.videodetailactivity_toast_89c6_1), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.invalid_video_args), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -379,8 +391,8 @@ public class VideoDetailActivity extends BaseActivity {
     private void initBangumiView() {
         PagerTabStrip tabStrip = (PagerTabStrip) findViewById(R.id.pager_tab_strip);
         if (tabStrip != null) {
-            tabStrip.setTabIndicatorColor(0xFFFCA3C5);
-            tabStrip.setBackgroundColor(0xFFD86DA5);
+            tabStrip.setTabIndicatorColor(0xFFFF9FC5);
+            tabStrip.setBackgroundResource(R.drawable.tab_background);
             tabStrip.setTextColor(0xFFFFFFFF);
             applyTabTextSize(tabStrip);
         }
@@ -519,7 +531,7 @@ public class VideoDetailActivity extends BaseActivity {
         mOriginalBackgrounds.clear();
 
         // 焦点列表：播放 → UP主 → 标签 → 分P
-        // 返回由 BACK / 右软键，不占用焦点项
+        // 返回由 BACK / 返回键，不占用焦点项
 
         // 1. 播放按钮（fragment 中的核心操作）
         View btnPlay = findViewById(R.id.btn_play);
@@ -683,7 +695,7 @@ public class VideoDetailActivity extends BaseActivity {
                 // 播放按钮本身是粉色 #D86DA5，选中时保持粉色不变，
                 // 仅加粗文字 + 白色光晕表示选中（不再替换为深红高亮色）。
                 // 其他焦点项叠加深红色粗边框（同圆角）作为选中标识。
-                int corner = dpToPx(2);
+                int corner = DeviceUtil.dpToPx(2);
                 Drawable bg = v.getBackground();
                 if (v.getId() == R.id.btn_play) {
                     try {
@@ -700,7 +712,7 @@ public class VideoDetailActivity extends BaseActivity {
                     GradientDrawable border = new GradientDrawable();
                     border.setShape(GradientDrawable.RECTANGLE);
                     border.setCornerRadius(corner);
-                    border.setStroke(dpToPx(5), FOCUS_COLOR);
+                    border.setStroke(DeviceUtil.dpToPx(5), FOCUS_COLOR);
                     border.setColor(0x00000000);
                     Drawable[] layers;
                     if (bg != null) {
@@ -768,7 +780,7 @@ public class VideoDetailActivity extends BaseActivity {
     }
 
     /**
-     * 左软键：呼出操作菜单（下载/评论/收藏/分享/三连）。
+     * 菜单键：呼出操作菜单（下载/评论/收藏/分享/三连）。
      * 由 AlertDialog.setItems，Android 系统原生支持方向键/确认键导航。
      */
     private void showActionMenu() {
@@ -810,7 +822,7 @@ public class VideoDetailActivity extends BaseActivity {
         }
         java.util.ArrayList<String> tags = videoDetailFragment.getValidTags();
         if (tags == null || tags.size() == 0) {
-            Toast.makeText(this, getString(R.string.videodetailactivity_toast_65e0_1), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.load_video_info_failed), Toast.LENGTH_SHORT).show();
             return;
         }
         final String[] arr = new String[tags.size()];
@@ -833,7 +845,7 @@ public class VideoDetailActivity extends BaseActivity {
 
     // ===== 分P浏览模式 =====
     // 焦点在"分P列表"上按确认键进入：上下方向键翻分P（选中高亮），
-    // 确认键播放当前分P，左/右软键或 BACK 退出浏览回到内容区焦点。
+    // 确认键播放当前分P，菜单/返回键或 BACK 退出浏览回到内容区焦点。
     private void enterPartBrowsing() {
         if (videoDetailFragment == null || videoDetailFragment.getPartCount() <= 0) {
             return;
@@ -895,7 +907,7 @@ public class VideoDetailActivity extends BaseActivity {
             // 防止 ListView/ScrollView 的内置"长按持续滚动"干扰光标系统
             boolean firstPress = (event.getRepeatCount() == 0);
 
-            // 分P浏览模式：方向键翻分P、确认播放、左/右软键或 BACK 退出
+            // 分P浏览模式：方向键翻分P、确认播放、菜单/返回键或 BACK 退出
             if (mPartBrowsing) {
                 if (firstPress) {
                     if (action == KeyBindingUtil.ACTION_UP) {
@@ -904,8 +916,8 @@ public class VideoDetailActivity extends BaseActivity {
                         movePart(1);
                     } else if (action == KeyBindingUtil.ACTION_CONFIRM) {
                         playCurrentPart();
-                    } else if (action == KeyBindingUtil.ACTION_SOFT_LEFT
-                            || action == KeyBindingUtil.ACTION_SOFT_RIGHT) {
+                    } else if (action == KeyBindingUtil.ACTION_MENU
+                            || action == KeyBindingUtil.ACTION_RETURN) {
                         exitPartBrowsing();
                     } else if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
                         exitPartBrowsing();
@@ -934,13 +946,13 @@ public class VideoDetailActivity extends BaseActivity {
                     return true;
                 }
 
-                // 左软键：呼出操作菜单
-                if (action == KeyBindingUtil.ACTION_SOFT_LEFT) {
+                // 菜单键：呼出操作菜单
+                if (action == KeyBindingUtil.ACTION_MENU) {
                     showActionMenu();
                     return true;
                 }
-                // 右软键：返回
-                if (action == KeyBindingUtil.ACTION_SOFT_RIGHT) {
+                // 返回键：返回
+                if (action == KeyBindingUtil.ACTION_RETURN) {
                     finish();
                     return true;
                 }
@@ -1069,7 +1081,7 @@ public class VideoDetailActivity extends BaseActivity {
                         }
                         final long finalAid = getCorrectAid();
                         if (finalAid == 0L) {
-                            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_65e0_1), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.load_video_info_failed), Toast.LENGTH_SHORT).show();
                             return;
                         }
                         long mid = SharedPreferencesUtil.getLong("mid", 0);
@@ -1104,7 +1116,7 @@ public class VideoDetailActivity extends BaseActivity {
                         long mid = SharedPreferencesUtil.getLong("mid", 0);
                         String cookies = SharedPreferencesUtil.getString("cookies", "");
                         if (mid == 0 || cookies == null || cookies.length() == 0) {
-                            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.please_login_first_8), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.please_login_first), Toast.LENGTH_SHORT).show();
                             return;
                         }
                         showSendCommentDialog();
@@ -1230,7 +1242,7 @@ public class VideoDetailActivity extends BaseActivity {
                 Toast.makeText(this, getString(R.string.videodetail_toast_copied, copyText), Toast.LENGTH_SHORT).show();
             }
         } catch (Exception e) {
-            Toast.makeText(this, this.getString(R.string.copy_failed_3), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.copy_failed), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1244,7 +1256,7 @@ public class VideoDetailActivity extends BaseActivity {
             shareText = bvid;
             shareUrl = "https://www.bilibili.com/video/" + bvid;
         } else {
-            Toast.makeText(this, this.getString(R.string.videodetailactivity_toast_65e0_1), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.load_video_info_failed), Toast.LENGTH_SHORT).show();
             return;
         }
         final String finalShareText = shareText;
@@ -1294,7 +1306,7 @@ public class VideoDetailActivity extends BaseActivity {
         if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 14) {
             android.graphics.drawable.GradientDrawable inputBg = new android.graphics.drawable.GradientDrawable();
             inputBg.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-            inputBg.setStroke(dpToPx(2), 0xFFD0D0D0);
+            inputBg.setStroke(DeviceUtil.dpToPx(2), 0xFFD0D0D0);
             inputBg.setColor(0xFFFFFFFF);
             input.setBackgroundDrawable(inputBg);
         }
@@ -1302,13 +1314,13 @@ public class VideoDetailActivity extends BaseActivity {
         // 顶部按钮行：图片 + 表情
         final LinearLayout btnRow = new LinearLayout(this);
         btnRow.setOrientation(LinearLayout.HORIZONTAL);
-        btnRow.setPadding(0, 0, 0, dpToPx(6));
+        btnRow.setPadding(0, 0, 0, DeviceUtil.dpToPx(6));
 
         final TextView imageBtn = new TextView(this);
-        imageBtn.setText(getString(R.string.add_image_2));
+        imageBtn.setText(getString(R.string.add_image));
         imageBtn.setTextSize(13);
         imageBtn.setTextColor(0xFFD86DA5);
-        imageBtn.setPadding(0, 0, dpToPx(12), 0);
+        imageBtn.setPadding(0, 0, DeviceUtil.dpToPx(12), 0);
         imageBtn.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
         imageBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -1329,7 +1341,7 @@ public class VideoDetailActivity extends BaseActivity {
         }
 
         final TextView emojiBtn = new TextView(this);
-        emojiBtn.setText(getString(R.string.emoji_3));
+        emojiBtn.setText(getString(R.string.emoji));
         emojiBtn.setTextSize(13);
         emojiBtn.setTextColor(0xFFD86DA5);
         emojiBtn.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
@@ -1348,7 +1360,7 @@ public class VideoDetailActivity extends BaseActivity {
         layout.addView(input, lp);
 
         final TextView clearText = new TextView(this);
-        clearText.setText(getString(R.string.common_clear_4));
+        clearText.setText(getString(R.string.common_clear));
         clearText.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         clearText.setPadding(0, 8, 0, 0);
         clearText.setTextSize(14);
@@ -1417,7 +1429,7 @@ public class VideoDetailActivity extends BaseActivity {
         ReplyHelper.sendReply(this, finalAid, 0, 0, text, new ReplyHelper.ReplyCallback() {
             @Override
             public void onSuccess(String responseJson) {
-                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_8bc4_1), Toast.LENGTH_SHORT).show();
+                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.comment_sent), Toast.LENGTH_SHORT).show();
                 CommentFragment.CommentItem newItem = CommentFragment.parseCommentFromResponse(responseJson);
                 Fragment fragment = getSupportFragmentManager().findFragmentByTag(
                         "android:switcher:" + R.id.viewpager + ":" + (isBangumi ? 1 : 2));
@@ -1442,7 +1454,7 @@ public class VideoDetailActivity extends BaseActivity {
                 new ReplyHelper.ReplyCallback() {
             @Override
             public void onSuccess(String responseJson) {
-                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_8bc4_1), Toast.LENGTH_SHORT).show();
+                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.comment_sent), Toast.LENGTH_SHORT).show();
                 CommentFragment.CommentItem newItem = CommentFragment.parseCommentFromResponse(responseJson);
                 Fragment fragment = getSupportFragmentManager().findFragmentByTag(
                         "android:switcher:" + R.id.viewpager + ":" + (isBangumi ? 1 : 2));
@@ -1531,7 +1543,7 @@ public class VideoDetailActivity extends BaseActivity {
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.image_upload_failed_2), Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.image_upload_failed), Toast.LENGTH_SHORT).show();
                                     }
                                 });
                             }
@@ -1552,12 +1564,12 @@ public class VideoDetailActivity extends BaseActivity {
 
     private void showEmojiPicker(final EditText input) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)));
-        builder.setTitle(getString(R.string.videodetailactivity_settitle_9009_2));
+        builder.setTitle(getString(R.string.select_emoji));
 
         final android.widget.ScrollView scroll = new android.widget.ScrollView(this);
         final LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(0, dpToPx(8), 0, dpToPx(8));
+        list.setPadding(0, DeviceUtil.dpToPx(8), 0, DeviceUtil.dpToPx(8));
 
         for (int i = 0; i < EMOJIS.length; i++) {
             final String emoji = EMOJIS[i];
@@ -1565,7 +1577,7 @@ public class VideoDetailActivity extends BaseActivity {
             tv.setText(emoji);
             tv.setTextSize(16);
             tv.setTextColor(0xFF333333);
-            tv.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8));
+            tv.setPadding(DeviceUtil.dpToPx(16), DeviceUtil.dpToPx(8), DeviceUtil.dpToPx(16), DeviceUtil.dpToPx(8));
             tv.setClickable(true);
             android.graphics.drawable.GradientDrawable emojiNormal = new android.graphics.drawable.GradientDrawable();
             emojiNormal.setColor(0xFFF0F0F0);
@@ -1626,22 +1638,7 @@ public class VideoDetailActivity extends BaseActivity {
         }
     }
 
-    private int dpToPx(int dp) {
-        float density = getResources().getDisplayMetrics().density;
-        return (int) (dp * density + 0.5f);
-    }
 
-    private String extractCsrfFromCookie(String cookie) {
-        if (cookie == null || cookie.length() == 0) {
-            return null;
-        }
-        java.util.regex.Pattern p = java.util.regex.Pattern.compile("bili_jct=([a-f0-9]+)");
-        java.util.regex.Matcher m = p.matcher(cookie);
-        if (m.find()) {
-            return m.group(1);
-        }
-        return null;
-    }
 
     private void refreshComments() {
         if (viewPager != null) {
@@ -1698,7 +1695,7 @@ public class VideoDetailActivity extends BaseActivity {
     private void showInteractionMenu() {
         final long finalAid = getCorrectAid();
         if (finalAid == 0L) {
-            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_65e0_1), Toast.LENGTH_SHORT).show();
+            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.load_video_info_failed), Toast.LENGTH_SHORT).show();
             return;
         }
         long mid = SharedPreferencesUtil.getLong("mid", 0);
@@ -1749,7 +1746,7 @@ public class VideoDetailActivity extends BaseActivity {
                         } else if (which == 1) {
                             final String[] coinItems = {"1枚硬币", "2枚硬币"};
                             new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(VideoDetailActivity.this)))
-                                    .setTitle(getString(R.string.insert_coin))
+                                    .setTitle(getString(R.string.videodetail_coin))
                                     .setItems(coinItems, new DialogInterface.OnClickListener() {
                                         @Override
                                         public void onClick(DialogInterface coinDialog, int coinWhich) {
@@ -1830,7 +1827,7 @@ public class VideoDetailActivity extends BaseActivity {
         final long finalAid = getCorrectAid();
         if (finalAid == 0L) {
             if (!isFinishing()) {
-                Toast.makeText(this, this.getString(R.string.videodetailactivity_toast_65e0_1), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.load_video_info_failed), Toast.LENGTH_SHORT).show();
             }
             return;
         }
@@ -1862,7 +1859,7 @@ public class VideoDetailActivity extends BaseActivity {
                             if (isFinishing()) return;
                             mIsFavoriteLoading = false;
                             if (folders == null || folders.size() == 0) {
-                                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.no_folder_create_web_2), Toast.LENGTH_LONG).show();
+                                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.no_folder_create_web), Toast.LENGTH_LONG).show();
                                 return;
                             }
 
@@ -1902,7 +1899,7 @@ public class VideoDetailActivity extends BaseActivity {
                             };
 
                             new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(VideoDetailActivity.this)))
-                                    .setTitle(getString(R.string.videodetailactivity_settitle_9009_1))
+                                    .setTitle(getString(R.string.select_folder))
                                     .setAdapter(adapter, new DialogInterface.OnClickListener() {
                                         @Override
                                         public void onClick(DialogInterface dialog, int which) {
@@ -1962,11 +1959,11 @@ public class VideoDetailActivity extends BaseActivity {
                             mIsFavoriteUpdating = false;
                             if (code == 0) {
                                 mIsFavorited = true;
-                                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.favorited_ok_2), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.favorited_ok), Toast.LENGTH_SHORT).show();
                                 sendBroadcast(new Intent(BroadcastConstants.ACTION_FAVORITE_CHANGED));
                             } else if (code == 11201) {
                                 mIsFavorited = true;
-                                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.videodetailactivity_toast_5df2_2), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.already_favorited), Toast.LENGTH_SHORT).show();
                             } else {
                                 Toast.makeText(VideoDetailActivity.this, "收藏失败喵: " + code, Toast.LENGTH_SHORT).show();
                             }
@@ -2072,7 +2069,7 @@ public class VideoDetailActivity extends BaseActivity {
     private void deleteOfflineVideo() {
         final long finalAid = getCorrectAid();
         if (finalAid == 0L) {
-            Toast.makeText(this, this.getString(R.string.videodetailactivity_toast_65e0_1), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.load_video_info_failed), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -2085,7 +2082,7 @@ public class VideoDetailActivity extends BaseActivity {
                 Toast.makeText(this, this.getString(R.string.videodetailactivity_toast_5df2_1), Toast.LENGTH_SHORT).show();
                 finish();
             } else {
-                Toast.makeText(this, this.getString(R.string.delete_failed_4), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.delete_failed), Toast.LENGTH_SHORT).show();
             }
         } else {
             Toast.makeText(this, this.getString(R.string.offline_cache_missing), Toast.LENGTH_SHORT).show();
@@ -2120,7 +2117,7 @@ public class VideoDetailActivity extends BaseActivity {
 
         mPages = videoDetailFragment.getVideoPages();
         if (mPages == null || mPages.size() == 0) {
-            Toast.makeText(this, this.getString(R.string.videodetailactivity_toast_65e0_1), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.load_video_info_failed), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -2155,16 +2152,16 @@ public class VideoDetailActivity extends BaseActivity {
                 int checkedId = qualityGroup.getCheckedRadioButtonId();
                 if (checkedId == R.id.quality_360) {
                     mSelectedQuality = 16;
-                    mSelectedQualityName = getString(R.string.videodetail_q_360p);
+                    mSelectedQualityName = getString(R.string.quality_360p);
                 } else if (checkedId == R.id.quality_480) {
                     mSelectedQuality = 32;
                     mSelectedQualityName = getString(R.string.videodetail_q_480p);
                 } else if (checkedId == R.id.quality_720) {
                     mSelectedQuality = 64;
-                    mSelectedQualityName = getString(R.string.videodetail_q_720p);
+                    mSelectedQualityName = getString(R.string.quality_720p);
                 } else {
                     mSelectedQuality = 80;
-                    mSelectedQualityName = getString(R.string.videodetail_q_1080p);
+                    mSelectedQualityName = getString(R.string.quality_1080p);
                 }
 
                 for (int i = 0; i < mPages.size(); i++) {
@@ -2307,19 +2304,7 @@ public class VideoDetailActivity extends BaseActivity {
     }
 
     private File getDownloadDir() {
-        if (isSDCardAvailable() && PermissionUtil.hasWriteStorage(this)) {
-            File sdDownload = new File(Environment.getExternalStorageDirectory(), "BiliClassic/Download");
-            if (!sdDownload.exists()) sdDownload.mkdirs();
-            return sdDownload;
-        }
-        File internalDownload = new File(getFilesDir(), "Download");
-        if (!internalDownload.exists()) internalDownload.mkdirs();
-        return internalDownload;
-    }
-
-    private boolean isSDCardAvailable() {
-        String state = Environment.getExternalStorageState();
-        return Environment.MEDIA_MOUNTED.equals(state);
+        return DownloadPathUtil.getDownloadDir(this);
     }
 
     public void setVideoDetailFragment(Fragment fragment) {

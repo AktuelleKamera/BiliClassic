@@ -30,35 +30,24 @@ public class KeyBindingSetupActivity extends BaseActivity {
     // 防抖：记录上一次成功录入的时间（毫秒），1 秒内忽略后续按键
     private long mLastRecordTime = 0L;
 
-    // 录制顺序：软左→软右→上→下→左→右→确认→数字0..9→*→#
+    // 录制顺序：菜单→返回→上→下→左→右→确认→上一页→下一页→刷新
     private static final int[] RECORD_ORDER = {
-        KeyBindingUtil.ACTION_SOFT_LEFT,
-        KeyBindingUtil.ACTION_SOFT_RIGHT,
+        KeyBindingUtil.ACTION_MENU,
+        KeyBindingUtil.ACTION_RETURN,
         KeyBindingUtil.ACTION_UP,
         KeyBindingUtil.ACTION_DOWN,
         KeyBindingUtil.ACTION_LEFT,
         KeyBindingUtil.ACTION_RIGHT,
         KeyBindingUtil.ACTION_CONFIRM,
-        KeyBindingUtil.ACTION_NUM_0,
-        KeyBindingUtil.ACTION_NUM_1,
-        KeyBindingUtil.ACTION_NUM_2,
-        KeyBindingUtil.ACTION_NUM_3,
-        KeyBindingUtil.ACTION_NUM_4,
-        KeyBindingUtil.ACTION_NUM_5,
-        KeyBindingUtil.ACTION_NUM_6,
-        KeyBindingUtil.ACTION_NUM_7,
-        KeyBindingUtil.ACTION_NUM_8,
-        KeyBindingUtil.ACTION_NUM_9,
-        KeyBindingUtil.ACTION_STAR,
-        KeyBindingUtil.ACTION_POUND
+        KeyBindingUtil.ACTION_PAGE_UP,
+        KeyBindingUtil.ACTION_PAGE_DOWN,
+        KeyBindingUtil.ACTION_REFRESH
     };
 
     private static final String[] RECORD_NAMES = {
-        "左软键", "右软键", "上方向键", "下方向键",
-        "左方向键", "右方向键", "确认键",
-        "数字键 0", "数字键 1", "数字键 2", "数字键 3", "数字键 4",
-        "数字键 5", "数字键 6", "数字键 7", "数字键 8", "数字键 9",
-        "* 星号键", "# 井号键"
+        "菜单键", "返回键", "上键", "下键",
+        "左键", "右键", "确认键",
+        "上一页", "下一页", "刷新键"
     };
 
     private int mRecordIndex = 0;

@@ -6,7 +6,6 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -16,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import tv.biliclassic.adapter.BaseObservableAdapter;
 import tv.biliclassic.api.PrivateMsgApi;
 import tv.biliclassic.model.PrivateMessage;
 import tv.biliclassic.model.PrivateMsgSession;
@@ -25,56 +25,21 @@ import tv.biliclassic.util.ImageLoader;
 /**
  * 私信会话列表适配器
  */
-public class PrivateMsgSessionAdapter extends BaseAdapter {
+public class PrivateMsgSessionAdapter extends BaseObservableAdapter<PrivateMsgSession> {
 
-    private final Context context;
-    private final List<PrivateMsgSession> list;
     private final HashMap<Long, UserInfo> userMap;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor = Executors.newFixedThreadPool(4);
     private final HashSet<Long> requestedUids = new HashSet<Long>();
-
-    private int selectedPosition = -1;
-    private boolean mHideHighlight = false;
 
     public PrivateMsgSessionAdapter(Context context, List<PrivateMsgSession> list,
                                     HashMap<Long, UserInfo> userMap) {
-        this.context = context;
-        this.list = list;
+        super(context, list);
         this.userMap = userMap;
     }
 
     public void release() {
         executor.shutdownNow();
-    }
-
-    public void setSelectedPosition(int position) {
-        this.selectedPosition = position;
-        notifyDataSetChanged();
-    }
-
-    public void setHideHighlight(boolean hide) {
-        if (this.mHideHighlight == hide) {
-            return;
-        }
-        this.mHideHighlight = hide;
-        notifyDataSetChanged();
-    }
-
-    @Override
-    public int getCount() {
-        return list == null ? 0 : list.size();
-    }
-
-    @Override
-    public Object getItem(int position) {
-        if (list == null || position < 0 || position >= list.size()) return null;
-        return list.get(position);
-    }
-
-    @Override
-    public long getItemId(int position) {
-        return position;
     }
 
     @Override
@@ -116,7 +81,7 @@ public class PrivateMsgSessionAdapter extends BaseAdapter {
         if (isBlank(avatarUrl)) {
             avatarUrl = session.talkerFace;
         }
-        avatarUrl = PrivateMsgApi.normalizeUrl(avatarUrl);
+        avatarUrl = PrivateMsgApi.avatarUrl(avatarUrl);
 
         name.setText(displayName);
         content.setText(previewText(session));

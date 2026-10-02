@@ -1290,24 +1290,6 @@ public class OstwindPlayerActivity extends Activity
     }
 
     // 当前播放位置（软硬解分派）
-    private int getEnginePosition() {
-        if (mUseSoftDecode) {
-            if (mSoftPlayer != null) {
-                try {
-                    return (int) mSoftPlayer.nativeGetCurrTime();
-                } catch (Throwable t) {
-                }
-            }
-            return 0;
-        }
-        if (mPlayer != null) {
-            try {
-                return mPlayer.getCurrentPosition();
-            } catch (Exception e) {
-            }
-        }
-        return 0;
-    }
 
     // 总时长（软硬解分派）
     private int getEngineDuration() {
@@ -1480,23 +1462,6 @@ public class OstwindPlayerActivity extends Activity
         }
     }
 
-    private void showStatus(String msg) {
-        if (mLoadingOverlay != null) {
-            mLoadingOverlay.setVisibility(View.VISIBLE);
-            // 显示到 preloading 底部状态栏（有则显示，无则忽略）
-            if (msg != null && msg.length() > 0) {
-                try {
-                    TextView statusBar = (TextView) mLoadingOverlay.findViewById(R.id.video_preloading_status_bar);
-                    if (statusBar != null) {
-                        statusBar.setText(msg);
-                        statusBar.setVisibility(View.VISIBLE);
-                    }
-                } catch (Throwable t) {
-                }
-            }
-            startLoadingAnimation();
-        }
-    }
 
     private void hideStatus() {
         if (mLoadingOverlay != null) {

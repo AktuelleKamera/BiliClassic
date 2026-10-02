@@ -25,13 +25,24 @@ public class PlayerApi {
         final long timestamp;
         final String[] qnStrList;
         final int[] qnValueList;
-        CachedUrl(String videoUrl, String audioUrl, int actualQn, long timestamp, String[] qnStrList, int[] qnValueList) {
+        // 必须一起缓存：DASH 的极简 MPD 不带时长，靠它生成 mediaPresentationDuration，
+        // 漏掉会导致缓存命中时 getDuration()==0（进度显示 00:00、seek 偏移）
+        final long durationMs;
+        // 续播位置同样只在真请求里赋值，缓存命中时必须恢复，否则重进会从 0 开始
+        final long cidHistory;
+        final int progress;
+        CachedUrl(String videoUrl, String audioUrl, int actualQn, long timestamp,
+                  String[] qnStrList, int[] qnValueList, long durationMs,
+                  long cidHistory, int progress) {
             this.videoUrl = videoUrl;
             this.audioUrl = audioUrl;
             this.actualQn = actualQn;
             this.timestamp = timestamp;
             this.qnStrList = qnStrList;
             this.qnValueList = qnValueList;
+            this.durationMs = durationMs;
+            this.cidHistory = cidHistory;
+            this.progress = progress;
         }
     }
 
@@ -128,6 +139,9 @@ public class PlayerApi {
                 }
                 playerData.qnStrList = cached.qnStrList;
                 playerData.qnValueList = cached.qnValueList;
+                playerData.durationMs = cached.durationMs;
+                playerData.cidHistory = cached.cidHistory;
+                playerData.progress = cached.progress;
                 playerData.timeStamp = System.currentTimeMillis();
                 return;
             }
@@ -276,7 +290,8 @@ public class PlayerApi {
         if (!download && videoUrl.length() > 0) {
             synchronized (sUrlCache) {
                 sUrlCache.put(cacheKey, new CachedUrl(videoUrl, audioUrl, playerData.qn,
-                        System.currentTimeMillis(), qnStrList, qnValueList));
+                        System.currentTimeMillis(), qnStrList, qnValueList, playerData.durationMs,
+                        playerData.cidHistory, playerData.progress));
             }
         }
 
@@ -354,12 +369,70 @@ public class PlayerApi {
         }
 
         JSONObject data = body.getJSONObject("result");
-        JSONArray durl = data.getJSONArray("durl");
-        JSONObject videoUrlObj = durl.getJSONObject(0);
-        String videoUrl = videoUrlObj.getString("url");
+
+        String videoUrl = null;
+        String audioUrl = "";
+        // 与普通视频共用同一个「播放格式」开关：选 DASH 才优先取 dash，拿不到再退 durl
+        boolean dashRequested = tv.biliclassic.SettingsActivity.getPlayStreamFormat() == 16;
+        JSONObject dash = data.optJSONObject("dash");
+
+        // ========== 优先解析 dash（与 getVideo 同一套逻辑） ==========
+        if (dashRequested && dash != null) {
+            android.util.Log.e("PlayerApi", "番剧使用 dash 格式");
+            JSONArray video = dash.optJSONArray("video");
+            JSONArray audio = dash.optJSONArray("audio");
+            JSONObject videoEntry = null;
+            if (video != null && video.length() > 0) {
+                videoEntry = selectDashVideoEntry(video, playerData.qn);
+            }
+            if (videoEntry != null) {
+                android.util.Log.e("PlayerApi", "dash video codecs=" + videoEntry.optString("codecs", "?")
+                        + " id=" + videoEntry.optString("id", "?"));
+                videoUrl = videoEntry.optString("baseUrl", "");
+                JSONArray backupUrl = videoEntry.optJSONArray("backupUrl");
+                if ((videoUrl == null || videoUrl.length() == 0) && backupUrl != null && backupUrl.length() > 0) {
+                    videoUrl = backupUrl.getString(0);
+                }
+                // 实际画质以选中流为准（目标画质不可用时会被降级）
+                playerData.qn = videoEntry.optInt("id", playerData.qn);
+            }
+            if (audio != null && audio.length() > 0) {
+                JSONObject firstAudio = audio.getJSONObject(0);
+                android.util.Log.e("PlayerApi", "dash audio codecs=" + firstAudio.optString("codecs", "?"));
+                audioUrl = firstAudio.optString("baseUrl", "");
+                JSONArray backupUrl = firstAudio.optJSONArray("backupUrl");
+                if ((audioUrl == null || audioUrl.length() == 0) && backupUrl != null && backupUrl.length() > 0) {
+                    audioUrl = backupUrl.getString(0);
+                }
+                android.util.Log.e("PlayerApi", "番剧音频地址: " + audioUrl);
+            }
+        }
+
+        // ========== 取不到 dash 再退回 durl（MP4 单文件，下载/不支持 DASH 时用） ==========
+        if ((videoUrl == null || videoUrl.length() == 0) && data.has("durl")) {
+            JSONArray durl = data.getJSONArray("durl");
+            if (durl.length() > 0) {
+                JSONObject videoUrlObj = durl.getJSONObject(0);
+                videoUrl = videoUrlObj.getString("url");
+                android.util.Log.e("PlayerApi", "番剧使用 durl 格式, codec=" + videoUrlObj.optString("codecs", "?"));
+            }
+        }
+
+        if (videoUrl == null || videoUrl.length() == 0) {
+            android.util.Log.e("PlayerApi", "番剧无法获取视频地址");
+            return;
+        }
 
         playerData.videoUrl = videoUrl;
-        android.util.Log.e("PlayerApi", "videoUrl=" + playerData.videoUrl);
+        playerData.audioUrl = audioUrl;
+        // DASH 的极简 MPD 不带时长，必须透传给本地代理生成 mediaPresentationDuration
+        playerData.durationMs = data.optLong("timelength", 0);
+        if (playerData.durationMs <= 0 && dash != null) {
+            // dash.duration 单位是秒
+            playerData.durationMs = dash.optLong("duration", 0) * 1000L;
+        }
+        android.util.Log.e("PlayerApi", "videoUrl=" + playerData.videoUrl
+                + ", audioUrl=" + playerData.audioUrl + ", durationMs=" + playerData.durationMs);
 
         playerData.danmakuUrl = "https://comment.bilibili.com/" + playerData.cid + ".xml";
 

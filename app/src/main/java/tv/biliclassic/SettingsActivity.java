@@ -26,11 +26,12 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 
+import tv.biliclassic.download.DownloadPathUtil;
 import tv.biliclassic.subsettings.DecoderSettingsActivity;
+import tv.biliclassic.util.FolderPickerDialog;
 import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.LocaleHelper;
@@ -115,6 +116,8 @@ public class SettingsActivity extends BaseActivity {
     private LinearLayout clearCacheItem;
     private TextView playCacheSizeText;
     private LinearLayout clearPlayCacheItem;
+    private TextView downloadLocationText;
+    private LinearLayout downloadLocationItem;
     private LinearLayout playerChoiceItem;
     private TextView playerChoiceText;
     private LinearLayout decoderChoiceItem;
@@ -174,6 +177,12 @@ public class SettingsActivity extends BaseActivity {
 
     private int currentVersionCode = -1;
     private String currentVersionName = "";
+
+    // 原版设置页右上角无搜索与溢出按钮
+    @Override
+    protected boolean hasTitleActions() {
+        return false;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -389,7 +398,7 @@ public class SettingsActivity extends BaseActivity {
                             if (!isBuiltinPlayerSupported()
                                     && getPlayerPreference() != PLAYER_OSTWIND) {
                                 new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(SettingsActivity.this)))
-                                        .setTitle(getString(R.string.common_hint_2))
+                                        .setTitle(getString(R.string.common_hint))
                                         .setMessage(getString(R.string.settingsactivity_setmessage_ostwind))
                                         .setPositiveButton("切换并开启", new DialogInterface.OnClickListener() {
                                             @Override
@@ -532,6 +541,19 @@ public class SettingsActivity extends BaseActivity {
                 @Override
                 public void onClick(View v) {
                     showClearPlayCacheDialog();
+                }
+            });
+        }
+
+        // 离线缓存位置
+        downloadLocationItem = (LinearLayout) findViewById(R.id.download_location_item);
+        downloadLocationText = (TextView) findViewById(R.id.download_location_text);
+        if (downloadLocationItem != null && downloadLocationText != null) {
+            updateDownloadLocationDisplay();
+            downloadLocationItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showDownloadLocationDialog();
                 }
             });
         }
@@ -846,6 +868,34 @@ public class SettingsActivity extends BaseActivity {
         }
 
         // 隐私模式开关（不记录播放历史）
+        // 平板模式：强制按平板或手机版式渲染
+        final CheckBox checkboxTabletMode = (CheckBox) findViewById(R.id.checkbox_tablet_mode);
+        LinearLayout tabletModeItem = (LinearLayout) findViewById(R.id.tablet_mode_item);
+
+        if (checkboxTabletMode != null) {
+            checkboxTabletMode.setChecked(tv.biliclassic.util.DeviceUtil.isTabletMode(getResources()));
+
+            checkboxTabletMode.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    tv.biliclassic.util.DeviceUtil.setTabletMode(isChecked);
+                    Toast.makeText(SettingsActivity.this,
+                            isChecked ? "已开启：强制按平板版式显示，重启后完全生效"
+                                      : "已关闭：强制按手机版式显示，重启后完全生效",
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            if (tabletModeItem != null) {
+                tabletModeItem.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        checkboxTabletMode.toggle();
+                    }
+                });
+            }
+        }
+
         final CheckBox checkboxPrivacy = (CheckBox) findViewById(R.id.checkbox_privacy_mode);
         LinearLayout privacyItem = (LinearLayout) findViewById(R.id.privacy_mode_item);
 
@@ -1229,9 +1279,9 @@ public class SettingsActivity extends BaseActivity {
         } else if (quality == QUALITY_720P) {
             videoQualityText.setText(getString(R.string.quality_720p));
         } else if (quality == QUALITY_480P) {
-            videoQualityText.setText(getString(R.string.quality_480p));
+            videoQualityText.setText(getString(R.string.videodetail_q_480p));
         } else {
-            videoQualityText.setText(getString(R.string.quality_360p_2));
+            videoQualityText.setText(getString(R.string.quality_360p));
         }
     }
 
@@ -1262,7 +1312,7 @@ public class SettingsActivity extends BaseActivity {
         }
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.video_render_method_2))
+                .setTitle(getString(R.string.video_render_method))
                 .setSingleChoiceItems(modes, checkedIndex, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         SharedPreferencesUtil.putInt(SharedPreferencesUtil.RENDERER_TYPE, values[which]);
@@ -1329,7 +1379,7 @@ public class SettingsActivity extends BaseActivity {
         int checkedIndex = Math.min(current, 1);
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.danmaku_engine_2))
+                .setTitle(getString(R.string.danmaku_engine))
                 .setSingleChoiceItems(modes, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -1491,7 +1541,7 @@ public class SettingsActivity extends BaseActivity {
         if (index >= 0 && index < tabNames.length) {
             defaultTabText.setText(tabNames[index]);
         } else {
-            defaultTabText.setText(getString(R.string.new_anime_special_2));
+            defaultTabText.setText(getString(R.string.mainactivity_tab_newanime));
         }
     }
 
@@ -1671,7 +1721,7 @@ public class SettingsActivity extends BaseActivity {
         if (checkedIndex == 1 && current != 3) checkedIndex = 2;
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.image_load_threads_2))
+                .setTitle(getString(R.string.image_load_threads))
                 .setSingleChoiceItems(items, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -1817,7 +1867,7 @@ public class SettingsActivity extends BaseActivity {
         if ("zh_TW".equals(current)) {
             textView.setText(getString(R.string.lang_traditional_chinese));
         } else {
-            textView.setText(getString(R.string.lang_simplified_chinese_2));
+            textView.setText(getString(R.string.lang_simplified_chinese));
         }
     }
 
@@ -1894,7 +1944,7 @@ public class SettingsActivity extends BaseActivity {
         long totalSize = getTotalCacheSize();
         String sizeText = formatFileSize(totalSize);
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.clear_image_cache_2))
+                .setTitle(getString(R.string.clear_image_cache))
                 .setMessage("将清除以下缓存：\n\n• 头像缓存\n• 番剧封面缓存\n\n共 " + sizeText + "，清除后下次启动会自动重新下载。")
                 .setPositiveButton("清除", new DialogInterface.OnClickListener() {
                     @Override
@@ -2032,7 +2082,7 @@ public class SettingsActivity extends BaseActivity {
 
         String totalSize = formatFileSize(getPlayCacheTotalSize());
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.settingsactivity_settitle_6e05_1))
+                .setTitle(getString(R.string.clear_playback_cache))
                 .setMessage("确定要清除所有播放缓存吗？\n" +
                         "共 " + fileCount + " 个视频文件，总计 " + totalSize + "\n" +
                         "清除后可释放存储空间。")
@@ -2040,6 +2090,65 @@ public class SettingsActivity extends BaseActivity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         clearPlayCache();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void updateDownloadLocationDisplay() {
+        if (downloadLocationText == null) {
+            return;
+        }
+        downloadLocationText.setText(DownloadPathUtil.getDownloadDirDisplay(this));
+    }
+
+    private void showDownloadLocationDialog() {
+        final String[] options = new String[]{
+                getString(R.string.download_location_internal),
+                getString(R.string.download_location_external),
+                getString(R.string.download_location_custom)
+        };
+        final int currentIndex = DownloadPathUtil.isCustomChosen(this) ? 2
+                : (DownloadPathUtil.isExternalChosen(this) ? 1 : 0);
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
+                .setTitle(R.string.download_location)
+                .setSingleChoiceItems(options, currentIndex, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (which == 1 && !DownloadPathUtil.hasExternalSd(SettingsActivity.this)) {
+                            Toast.makeText(SettingsActivity.this,
+                                    R.string.settings_no_external_sd, Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        if (which == 2) {
+                            // 自定义：先选目录，选完才切换生效
+                            dialog.dismiss();
+                            String start = DownloadPathUtil.getCustomPath(SettingsActivity.this);
+                            FolderPickerDialog.show(SettingsActivity.this, start,
+                                    R.string.download_location_custom,
+                                    new FolderPickerDialog.Callback() {
+                                        @Override
+                                        public void onPicked(String path) {
+                                            boolean writable = DownloadPathUtil.isPathWritable(path);
+                                            DownloadPathUtil.setCustomPath(SettingsActivity.this, path);
+                                            DownloadPathUtil.setChoice(SettingsActivity.this,
+                                                    DownloadPathUtil.PATH_CUSTOM);
+                                            updateDownloadLocationDisplay();
+                                            if (writable) {
+                                                Toast.makeText(SettingsActivity.this, path, Toast.LENGTH_SHORT).show();
+                                            } else {
+                                                Toast.makeText(SettingsActivity.this,
+                                                        R.string.settings_custom_path_unwritable, Toast.LENGTH_LONG).show();
+                                            }
+                                        }
+                                    });
+                            return;
+                        }
+                        DownloadPathUtil.setChoice(SettingsActivity.this,
+                                which == 1 ? DownloadPathUtil.PATH_EXTERNAL : DownloadPathUtil.PATH_INTERNAL);
+                        updateDownloadLocationDisplay();
+                        dialog.dismiss();
                     }
                 })
                 .setNegativeButton("取消", null)
@@ -2106,7 +2215,7 @@ public class SettingsActivity extends BaseActivity {
 
     private boolean checkLogin() {
         if (!isLoggedIn()) {
-            Toast.makeText(this, this.getString(R.string.please_login_first_7), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.please_login_first), Toast.LENGTH_SHORT).show();
             return false;
         }
         return true;
@@ -2166,7 +2275,7 @@ public class SettingsActivity extends BaseActivity {
             cm.setText(getCookieJson());
             Toast.makeText(this, this.getString(R.string.settingsactivity_toast_5df2_3), Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Toast.makeText(this, this.getString(R.string.copy_failed_2), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.copy_failed), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -2250,10 +2359,6 @@ public class SettingsActivity extends BaseActivity {
         }
     }
 
-    private boolean isLowMemoryDevice() {
-        int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        return maxMemory < 24576;
-    }
 
     private File getCrashLogDir() {
         return new File(getFilesDir().getParentFile(), "crashlog");
@@ -2285,7 +2390,7 @@ public class SettingsActivity extends BaseActivity {
         int count = getCrashLogFileCount();
         long size = getCrashLogTotalSize();
         if (count == 0) {
-            crashLogSizeText.setText(getString(R.string.settingsactivity_settext_65e0_1));
+            crashLogSizeText.setText(getString(R.string.no_log));
         } else {
             crashLogSizeText.setText(count + "个, " + formatFileSize(size));
         }
@@ -2300,7 +2405,7 @@ public class SettingsActivity extends BaseActivity {
 
         String sizeText = formatFileSize(getCrashLogTotalSize());
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.delete_crash_logs_2))
+                .setTitle(getString(R.string.delete_crash_logs))
                 .setMessage("确定要删除所有崩溃日志吗？\n共 " + count + " 个文件，总计 " + sizeText)
                 .setPositiveButton("删除", new DialogInterface.OnClickListener() {
                     @Override
@@ -2337,28 +2442,15 @@ public class SettingsActivity extends BaseActivity {
 
     // 回声洞
     private void loadEchoHole() {
-        echoHoleText.setText(getString(R.string.login_working_hard_9));
+        echoHoleText.setText(getString(R.string.login_working_hard));
         echoHoleItem.setEnabled(false);
         new Thread(new Runnable() {
             public void run() {
                 try {
-                    URL url = new URL("http://www.biliclassic.cn/api/echo.json");
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                    conn.setConnectTimeout(10000);
-                    conn.setReadTimeout(10000);
-                    conn.setRequestMethod("GET");
-                    java.io.BufferedReader reader = new java.io.BufferedReader(
-                            new java.io.InputStreamReader(conn.getInputStream(), "UTF-8"));
-                    StringBuilder sb = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        sb.append(line);
-                    }
-                    reader.close();
-                    final String jsonStr = sb.toString();
+                    final String jsonStr = NetWorkUtil.get("http://www.biliclassic.cn/api/echo.json");
                     runOnUiThread(new Runnable() {
                         public void run() {
-                            echoHoleText.setText(getString(R.string.random_one_2));
+                            echoHoleText.setText(getString(R.string.random_one));
                             echoHoleItem.setEnabled(true);
                             if (isFinishing()) return;
                             try {
@@ -2382,7 +2474,7 @@ public class SettingsActivity extends BaseActivity {
                                     }
                                     msg += "\n" + time;
                                     new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(SettingsActivity.this)))
-                                            .setTitle(getString(R.string.echo_cave_2))
+                                            .setTitle(getString(R.string.echo_cave))
                                             .setMessage(msg)
                                             .setPositiveButton("关闭", null)
                                             .show();
@@ -2398,7 +2490,7 @@ public class SettingsActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         public void run() {
                             if (isFinishing()) return;
-                            echoHoleText.setText(getString(R.string.random_one_2));
+                            echoHoleText.setText(getString(R.string.random_one));
                             echoHoleItem.setEnabled(true);
                             Toast.makeText(SettingsActivity.this, "网络错误: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }

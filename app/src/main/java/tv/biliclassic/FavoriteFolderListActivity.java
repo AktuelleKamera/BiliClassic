@@ -144,8 +144,8 @@ public class FavoriteFolderListActivity extends BaseActivity {
         if (action != tv.biliclassic.util.KeyBindingUtil.ACTION_UP
                 && action != tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
                 && action != tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM
-                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2
-                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
             return super.dispatchKeyEvent(event);
         }
         if (selectedPosition < 0) {
@@ -162,9 +162,9 @@ public class FavoriteFolderListActivity extends BaseActivity {
                 selectedPosition = Math.max(0, selectedPosition - 1);
             } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
                 selectedPosition = Math.min(count - 1, selectedPosition + 1);
-            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2) {
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP) {
                 selectedPosition = pageMove(-1);
-            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
                 selectedPosition = pageMove(1);
             } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
                 FavoriteFolder folder = folderList.get(selectedPosition);
@@ -210,18 +210,6 @@ public class FavoriteFolderListActivity extends BaseActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_VIDEO_LIST && resultCode == RESULT_OK) {
             loadFolders(true);
-        }
-    }
-
-    private boolean isNetworkAvailable() {
-        try {
-            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
-                    getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
-            if (cm == null) return false;
-            android.net.NetworkInfo info = cm.getActiveNetworkInfo();
-            return info != null && info.isConnected();
-        } catch (Exception e) {
-            return true;
         }
     }
 
@@ -295,11 +283,11 @@ public class FavoriteFolderListActivity extends BaseActivity {
             emptyView.setText(getString(R.string.please_login_first));
             emptyView.setVisibility(View.VISIBLE);
             listView.setVisibility(View.GONE);
-            Toast.makeText(this, this.getString(R.string.please_login_first_2), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.please_login_first), Toast.LENGTH_SHORT).show();
             return;
         }
 
-        if (!isNetworkAvailable()) {
+        if (!NetWorkUtil.isNetworkAvailable(FavoriteFolderListActivity.this)) {
             showNoNetwork();
             return;
         }
@@ -337,7 +325,7 @@ public class FavoriteFolderListActivity extends BaseActivity {
                                     Toast.makeText(FavoriteFolderListActivity.this, FavoriteFolderListActivity.this.getString(R.string.refresh_ok), Toast.LENGTH_SHORT).show();
                                 }
                             } else {
-                                emptyView.setText(getString(R.string.no_favorite_folders_2));
+                                emptyView.setText(getString(R.string.no_favorite_folders));
                                 emptyView.setVisibility(View.VISIBLE);
                                 listView.setVisibility(View.GONE);
                                 folderList.clear();
@@ -355,7 +343,7 @@ public class FavoriteFolderListActivity extends BaseActivity {
                         public void run() {
                             isLoading = false;
                             hideAllLoading();
-                            if (retryCount < MAX_RETRY && isNetworkAvailable()) {
+                            if (retryCount < MAX_RETRY && NetWorkUtil.isNetworkAvailable(FavoriteFolderListActivity.this)) {
                                 retryCount++;
                                 doLoadFolders(forceRefresh);
                             } else {

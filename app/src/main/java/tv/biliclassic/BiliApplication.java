@@ -63,5 +63,16 @@ public class BiliApplication extends Application {
                 }
             }, 5000);
         }
+
+        // 预热 Cookie，免得首次搜索才去取 buvid3/bili_ticket
+        new Handler().postDelayed(new Runnable() {
+            public void run() {
+                new Thread(new Runnable() {
+                    public void run() {
+                        tv.biliclassic.util.CookieGenerator.ensureCookies();
+                    }
+                }).start();
+            }
+        }, 3000);
     }
 }

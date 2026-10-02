@@ -257,7 +257,7 @@ public class PlayerAnimActivity extends Activity {
     private void playWithBuiltinPlayer(String url) {
         android.util.Log.e("PlayerAnim", "playWithBuiltinPlayer, url: " + url);
         if (url == null || url.length() == 0) {
-            Toast.makeText(this, this.getString(R.string.playeranimactivity_toast_89c6_1), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.video_file_missing), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -298,7 +298,7 @@ public class PlayerAnimActivity extends Activity {
      */
     private void playOnlineWithExternal(int pref) {
         if (videoUrl == null || videoUrl.length() == 0) {
-            Toast.makeText(this, this.getString(R.string.playeranimactivity_toast_89c6_1), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.video_file_missing), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -508,7 +508,7 @@ public class PlayerAnimActivity extends Activity {
 
     private void playWithPlayer() {
         if (!cacheFile.exists() || cacheFile.length() == 0) {
-            Toast.makeText(this, this.getString(R.string.playeranimactivity_toast_89c6_1), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.video_file_missing), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -666,7 +666,7 @@ public class PlayerAnimActivity extends Activity {
      */
     private void playWithOstwind() {
         if (cacheFile == null || !cacheFile.exists() || cacheFile.length() == 0) {
-            Toast.makeText(this, this.getString(R.string.playeranimactivity_toast_89c6_1), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.video_file_missing), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }

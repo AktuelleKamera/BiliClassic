@@ -152,6 +152,12 @@ public class GeetestDialog {
                         + " (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36");
             } catch (Throwable t) {
             }
+            // 禁用内置缩放按钮，避免 ZoomButtonsController 反注册崩溃
+            try {
+                java.lang.reflect.Method m = ws.getClass().getMethod("setBuiltInZoomControls", boolean.class);
+                m.invoke(ws, false);
+            } catch (Throwable t) {
+            }
             mWeb.addJavascriptInterface(new Bridge(), "Bridge");
             mWeb.setWebViewClient(new WebViewClient() {
                 @Override

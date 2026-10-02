@@ -52,8 +52,33 @@ public class DynamicApi {
         if (offset != null && offset.length() > 0) {
             url.append("&offset=").append(offset);
         }
+        return requestFeedList(url.toString(), out);
+    }
+
+    /**
+     * 获取指定用户的动态列表（feed/space，个人空间"动态"页）。
+     *
+     * @param hostMid 目标用户 mid
+     * @param out     输出解析后的动态列表（追加）
+     * @param offset  上一次返回的翻页偏移；首次传 null 或空串
+     * @return 下一次请求的 offset；空串表示没有更多了
+     */
+    public static String getSpaceDynamics(long hostMid, List<Dynamic> out, String offset)
+            throws IOException, JSONException {
+        StringBuffer url = new StringBuffer(
+                "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space?host_mid=");
+        url.append(hostMid).append("&features=").append(FEATURES);
+        if (offset != null && offset.length() > 0) {
+            url.append("&offset=").append(offset);
+        }
+        return requestFeedList(url.toString(), out);
+    }
+
+    /** feed/all 与 feed/space 共用的请求与解析逻辑 */
+    private static String requestFeedList(String url, List<Dynamic> out)
+            throws IOException, JSONException {
         try {
-            String signed = ConfInfoApi.signWBI(DmImgParamUtil.getDmImgParamsUrl(url.toString()));
+            String signed = ConfInfoApi.signWBI(DmImgParamUtil.getDmImgParamsUrl(url));
             JSONObject resp = NetWorkUtil.getJson(signed);
             if (resp.optInt("code", -1) != 0) {
                 throw new JSONException(

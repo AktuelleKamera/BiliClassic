@@ -13,27 +13,60 @@
         <RelativeLayout
             android:id="@+id/title_bar"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:background="#FFFFFF">
+            android:layout_height="48dp">
 
+            <!-- 小返回箭头（在图标左边，紧贴图标） -->
             <ImageView
                 android:id="@+id/btn_back"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_centerVertical="true"
-                android:padding="1dp"
+                android:layout_width="16dp"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/common_back"
                 android:scaleType="centerInside"
-                android:src="@drawable/ic_action_back"
-                android:contentDescription="@string/common_back_4" />
+                android:src="@drawable/abs__ic_ab_back_holo_light"
+                android:focusable="true"
+                android:clickable="true" />
 
+            <!-- bilibili 图标（容器带粉色点击特效） -->
+            <FrameLayout
+                android:id="@+id/logo_container"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_toRightOf="@+id/btn_back"
+                android:background="@drawable/titlebar_pink_item_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingLeft="0dp"
+                android:paddingRight="0dp">
+
+                <ImageView
+                    android:id="@+id/logo"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@null"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_launcher" />
+            </FrameLayout>
+
+            <!-- 标题：左对齐，带粉色点击特效 -->
             <TextView
                 android:id="@+id/title_text"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
+                android:layout_height="36dp"
+                android:layout_centerVertical="true"
+                android:layout_toRightOf="@+id/logo_container"
+                android:layout_marginLeft="8dp"
+                android:layout_marginRight="8dp"
+                android:background="@drawable/titlebar_pink_item_bg"
+                android:gravity="center_vertical"
+                android:paddingLeft="0dp"
+                android:paddingRight="8dp"
+                android:maxWidth="240dp"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:text="@string/partition"
-                android:textColor="#333333"
-                android:textSize="18sp" />
+                android:textColor="#616161"
+                android:textSize="18dp" />
 
         </RelativeLayout>
 

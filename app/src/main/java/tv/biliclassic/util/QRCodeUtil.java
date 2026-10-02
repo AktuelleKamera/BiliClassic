@@ -85,7 +85,7 @@ public class QRCodeUtil {
             if (offsetX < 0) offsetX = 0;
             if (offsetY < 0) offsetY = 0;
 
-            int sdkInt = getSDKInt();
+            int sdkInt = SdkHelper.getSdkInt();
 
             Bitmap result = null;
             long startTime = System.currentTimeMillis();
@@ -270,17 +270,5 @@ public class QRCodeUtil {
             Log.d(TAG, "复用 Bitmap: " + width + "x" + height);
         }
         return sCachedBitmap;
-    }
-
-    // 获取 SDK_INT，兼容所有版本
-    private static int getSDKInt() {
-        try {
-            Class<?> versionClass = Class.forName("android.os.Build$VERSION");
-            java.lang.reflect.Field sdkField = versionClass.getField("SDK_INT");
-            return sdkField.getInt(null);
-        } catch (Throwable t) {
-            Log.d(TAG, "无法获取 SDK_INT，默认 API 1");
-            return 1;
-        }
     }
 }

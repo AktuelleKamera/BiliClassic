@@ -8,7 +8,7 @@
     <TextView
         android:id="@+id/options_menu_item_player"
         android:focusable="true"
-        android:text="@string/Player_option_menu_title_player"
+        android:text="@string/playback_settings"
         style="@style/PlayerOptionsMenuItem"/>
     <View style="@style/CommonUnderline"/>
     <TextView
@@ -35,6 +35,6 @@
     <TextView
         android:id="@+id/options_menu_item_info"
         android:focusable="true"
-        android:text="@string/Player_option_menu_title_info"
+        android:text="@string/video_info"
         style="@style/PlayerOptionsMenuItem"/>
 </LinearLayout>

@@ -67,7 +67,7 @@
                 android:visibility="gone"
                 android:layout_width="@dimen/player_status_bar_options_menu_items_layout_width"
                 android:layout_height="match_parent"
-                android:text="@string/VideoView_page_list_selector"
+                android:text="@string/select_episode"
                 android:singleLine="true"
                 style="@style/PlayerControlBarSpinner"/>
             <TextView

@@ -45,6 +45,7 @@ import java.util.regex.Matcher;
 import tv.biliclassic.download.VideoDownloadEntry;
 import tv.biliclassic.download.VideoDownloadEnvironment;
 import tv.biliclassic.download.VideoDownloadService;
+import tv.biliclassic.download.DownloadPathUtil;
 import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.FileProviderCompat;
 import tv.biliclassic.util.PermissionUtil;
@@ -57,6 +58,12 @@ public class OfflineActivity extends BaseActivity {
 
     private ListView listView;
     private ProgressBar progressBar;
+
+    @Override
+    protected boolean hasTitleActions() {
+        return false;
+    }
+
     private ProgressBar storageProgress;
     private TextView emptyView;
     private TextView storageText;
@@ -75,10 +82,6 @@ public class OfflineActivity extends BaseActivity {
     private boolean mInteracting = false;
     private static final int REFRESH_INTERVAL = 2000;
 
-    private boolean isLowMemoryDevice() {
-        int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        return maxMemory < 24576;
-    }
 
     private int getConfiguredThreadCount() {
         // 统一走 SdkHelper：优先用户设置，未设置再按设备内存给默认值，不写死
@@ -798,20 +801,7 @@ public class OfflineActivity extends BaseActivity {
     }
 
     private File getDownloadDir() {
-        if (isSDCardAvailable() && PermissionUtil.hasWriteStorage(this)) {
-            File sdDownload = new File(Environment.getExternalStorageDirectory(), "BiliClassic/Download");
-            if (sdDownload.exists()) {
-                return sdDownload;
-            }
-            if (sdDownload.mkdirs()) {
-                return sdDownload;
-            }
-        }
-        File internalDownload = new File(getFilesDir(), "Download");
-        if (!internalDownload.exists()) {
-            internalDownload.mkdirs();
-        }
-        return internalDownload;
+        return DownloadPathUtil.getDownloadDir(this);
     }
 
     private boolean isVideoFile(File file) {
@@ -826,11 +816,6 @@ public class OfflineActivity extends BaseActivity {
             return fileName.substring(0, lastDot);
         }
         return fileName;
-    }
-
-    private boolean isSDCardAvailable() {
-        String state = Environment.getExternalStorageState();
-        return Environment.MEDIA_MOUNTED.equals(state);
     }
 
     private String formatFileSize(long size) {

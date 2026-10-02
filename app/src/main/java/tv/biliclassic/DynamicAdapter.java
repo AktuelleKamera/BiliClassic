@@ -1,17 +1,18 @@
 package tv.biliclassic;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.content.Context;
 import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.List;
 
+import tv.biliclassic.adapter.BaseObservableAdapter;
 import tv.biliclassic.model.Dynamic;
 import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
@@ -20,7 +21,7 @@ import tv.biliclassic.util.SharedPreferencesUtil;
  * 动态列表适配器：头像/图片/封面异步加载（GlobalImageCache），
  * 支持点赞、删除、查看大图、跳转视频/专栏/直播/用户主页。
  */
-public class DynamicAdapter extends BaseAdapter {
+public class DynamicAdapter extends BaseObservableAdapter<Dynamic> {
 
     public interface Listener {
         void onLike(Dynamic d);
@@ -30,31 +31,13 @@ public class DynamicAdapter extends BaseAdapter {
 
     private static final int MAX_PICS_SHOWN = 3;
 
-    private final Context context;
-    private final List<Dynamic> list;
     private final Listener listener;
 
     private int picHeight = 0;
 
     public DynamicAdapter(Context context, List<Dynamic> list, Listener listener) {
-        this.context = context;
-        this.list = list;
+        super(context, list);
         this.listener = listener;
-    }
-
-    @Override
-    public int getCount() {
-        return list == null ? 0 : list.size();
-    }
-
-    @Override
-    public Object getItem(int position) {
-        return list != null && position >= 0 && position < list.size() ? list.get(position) : null;
-    }
-
-    @Override
-    public long getItemId(int position) {
-        return position;
     }
 
     @Override
@@ -94,7 +77,7 @@ public class DynamicAdapter extends BaseAdapter {
 
         h.name.setText(d.uname == null || d.uname.length() == 0 ? "哔哩哔哩用户" : d.uname);
         h.time.setText(d.pubTime == null ? "" : d.pubTime);
-        loadBitmap(h.avatar, d.avatar, dpToPx(42), dpToPx(42), R.drawable.bili_default_avatar);
+        loadBitmap(h.avatar, d.avatar, DeviceUtil.dpToPx(42), DeviceUtil.dpToPx(42), R.drawable.bili_default_avatar);
 
         setTextAndVisibility(h.content, d.content);
 
@@ -154,7 +137,7 @@ public class DynamicAdapter extends BaseAdapter {
                 info += " · " + d.videoCard.view + "播放";
             }
             h.cardInfo.setText(info);
-            loadBitmap(h.cardCover, d.videoCard.cover, dpToPx(96), dpToPx(60),
+            loadBitmap(h.cardCover, d.videoCard.cover, DeviceUtil.dpToPx(96), DeviceUtil.dpToPx(60),
                     R.drawable.bili_default_image_tv_with_bg);
         } else {
             h.cardBox.setVisibility(View.GONE);
@@ -315,8 +298,8 @@ public class DynamicAdapter extends BaseAdapter {
     private void ensurePicHeight() {
         if (picHeight <= 0) {
             int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
-            int rowWidth = screenWidth - dpToPx(52) - dpToPx(20);
-            picHeight = Math.max(dpToPx(70), rowWidth / MAX_PICS_SHOWN);
+            int rowWidth = screenWidth - DeviceUtil.dpToPx(52) - DeviceUtil.dpToPx(20);
+            picHeight = Math.max(DeviceUtil.dpToPx(70), rowWidth / MAX_PICS_SHOWN);
         }
     }
 
@@ -331,10 +314,6 @@ public class DynamicAdapter extends BaseAdapter {
     public void clearCache() {
     }
 
-    private int dpToPx(int dp) {
-        float density = context.getResources().getDisplayMetrics().density;
-        return (int) (dp * density + 0.5f);
-    }
 
     static class Holder {
         ImageView avatar;

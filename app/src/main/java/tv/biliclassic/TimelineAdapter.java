@@ -4,17 +4,15 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.List;
 
-public class TimelineAdapter extends BaseAdapter {
+import tv.biliclassic.adapter.BaseObservableAdapter;
 
-    private Context context;
-    private List<TimelineFragment.timelineDay> list;
+public class TimelineAdapter extends BaseObservableAdapter<TimelineFragment.timelineDay> {
 
     // B站 day_index -> 图标资源
     // 6=周四, 7=周五, 1=周六, 2=周日, 3=周一, 4=周二, 5=周三
@@ -32,23 +30,7 @@ public class TimelineAdapter extends BaseAdapter {
     }
 
     public TimelineAdapter(Context context, List<TimelineFragment.timelineDay> list) {
-        this.context = context;
-        this.list = list;
-    }
-
-    @Override
-    public int getCount() {
-        return list == null ? 0 : list.size();
-    }
-
-    @Override
-    public Object getItem(int position) {
-        return list == null ? null : list.get(position);
-    }
-
-    @Override
-    public long getItemId(int position) {
-        return position;
+        super(context, list);
     }
 
     @Override
@@ -93,11 +75,6 @@ public class TimelineAdapter extends BaseAdapter {
         }
 
         return convertView;
-    }
-
-    public void updateData(List<TimelineFragment.timelineDay> newList) {
-        this.list = newList;
-        notifyDataSetChanged();
     }
 
     static class ViewHolder {

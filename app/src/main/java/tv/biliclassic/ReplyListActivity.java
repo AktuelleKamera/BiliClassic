@@ -1,5 +1,6 @@
 package tv.biliclassic;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -253,7 +254,7 @@ public class ReplyListActivity extends BaseActivity {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    tvTitle.setText(getString(R.string.all_replies_2));
+                                    tvTitle.setText(getString(R.string.all_replies));
                                     initViews();
                                     loadReplies();
                                 }
@@ -262,7 +263,7 @@ public class ReplyListActivity extends BaseActivity {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.load_video_info_failed_3), Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.load_video_info_failed), Toast.LENGTH_SHORT).show();
                                     finish();
                                 }
                             });
@@ -282,7 +283,7 @@ public class ReplyListActivity extends BaseActivity {
             return;
         }
 
-        tvTitle.setText(getString(R.string.all_replies_2));
+        tvTitle.setText(getString(R.string.all_replies));
         initViews();
         loadReplies();
     }
@@ -321,7 +322,7 @@ public class ReplyListActivity extends BaseActivity {
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA);
                 rootTimeView.setText(sdf.format(new Date(rootTime * 1000)));
             } else {
-                rootTimeView.setText(getString(R.string.just_now_2));
+                rootTimeView.setText(getString(R.string.just_now));
             }
 
             // 根评论展开/收起（隐藏再显示，不闪烁）
@@ -363,11 +364,11 @@ public class ReplyListActivity extends BaseActivity {
                         if (isExpanded) {
                             rootMsgView.setMaxLines(Integer.MAX_VALUE);
                             rootMsgView.setEllipsize(null);
-                            rootExpandBtn.setText(getString(R.string.common_collapse_2));
+                            rootExpandBtn.setText(getString(R.string.common_collapse));
                         } else {
                             rootMsgView.setMaxLines(3);
                             rootMsgView.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                            rootExpandBtn.setText(getString(R.string.common_expand_4));
+                            rootExpandBtn.setText(getString(R.string.common_expand));
                         }
                     }
                 });
@@ -509,7 +510,7 @@ public class ReplyListActivity extends BaseActivity {
                                                 rootLikeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                             }
                                             rootLikeCount.setText(String.valueOf(mRootLikeCount));
-                                            Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.operation_failed_2), Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.dynamicfragment_toast_op_fail), Toast.LENGTH_SHORT).show();
                                         }
                                     });
                                 } else {
@@ -536,7 +537,7 @@ public class ReplyListActivity extends BaseActivity {
                                             rootLikeIcon.setColorFilter((android.graphics.ColorFilter) null);
                                         }
                                         rootLikeCount.setText(String.valueOf(mRootLikeCount));
-                                        Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.network_error_2), Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.network_error), Toast.LENGTH_SHORT).show();
                                     }
                                 });
                             }
@@ -670,8 +671,8 @@ public class ReplyListActivity extends BaseActivity {
         mRootPictureContainer.setVisibility(View.VISIBLE);
 
         int showCount = rootPictureExpanded ? Math.min(rootPictureList.size(), 9) : Math.min(rootPictureList.size(), 3);
-        int imgSize = dpToPx(80);
-        int margin = dpToPx(4);
+        int imgSize = DeviceUtil.dpToPx(80);
+        int margin = DeviceUtil.dpToPx(4);
 
         mRootPictureContainer.setOrientation(LinearLayout.VERTICAL);
         for (int i = 0; i < showCount; i++) {
@@ -720,11 +721,11 @@ public class ReplyListActivity extends BaseActivity {
                 toggleView = moreTv;
             } else {
                 TextView collapseTv = new TextView(this);
-                collapseTv.setText(getString(R.string.common_collapse_2));
+                collapseTv.setText(getString(R.string.common_collapse));
                 collapseTv.setTextSize(12);
                 collapseTv.setTextColor(0xFFD86DA5);
                 collapseTv.setGravity(Gravity.CENTER);
-                collapseTv.setPadding(0, dpToPx(4), 0, 0);
+                collapseTv.setPadding(0, DeviceUtil.dpToPx(4), 0, 0);
                 toggleView = collapseTv;
             }
             final View fToggle = toggleView;
@@ -745,7 +746,7 @@ public class ReplyListActivity extends BaseActivity {
 
         final String cookies = SharedPreferencesUtil.getString("cookies", "");
         if (cookies == null || cookies.length() == 0) {
-            Toast.makeText(this, this.getString(R.string.please_login_first_6), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.please_login_first), Toast.LENGTH_SHORT).show();
             isLoading = false;
             return;
         }
@@ -756,7 +757,7 @@ public class ReplyListActivity extends BaseActivity {
             footerProgress.setVisibility(View.VISIBLE);
         }
         if (footerText != null) {
-            footerText.setText(getString(R.string.login_working_hard_8));
+            footerText.setText(getString(R.string.login_working_hard));
             footerText.setVisibility(View.VISIBLE);
         }
 
@@ -854,7 +855,7 @@ public class ReplyListActivity extends BaseActivity {
                                     footerProgress.setVisibility(View.GONE);
                                 }
                                 if (footerText != null) {
-                                    footerText.setText(getString(R.string.login_working_hard_8));
+                                    footerText.setText(getString(R.string.login_working_hard));
                                     footerText.setVisibility(View.VISIBLE);
                                 }
                             }
@@ -938,15 +939,11 @@ public class ReplyListActivity extends BaseActivity {
         try {
             Drawable borderDrawable = getResources().getDrawable(R.drawable.image_border_overlay);
             imageView.setBackgroundDrawable(borderDrawable);
-            int paddingPx = dpToPx(2);
+            int paddingPx = DeviceUtil.dpToPx(2);
             imageView.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
         } catch (Exception e) {}
     }
 
-    private int dpToPx(int dp) {
-        float density = getResources().getDisplayMetrics().density;
-        return (int) (dp * density + 0.5f);
-    }
 
     private static final String[] EMOJIS = {
         "( ゜- ゜)つロ", "_(:з」∠)_", "（⌒▽⌒）", "（￣▽￣）", "⌓‿⌓",
@@ -972,7 +969,7 @@ public class ReplyListActivity extends BaseActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.deleted_2), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.deleted), Toast.LENGTH_SHORT).show();
                                 finish();
                             }
                         });
@@ -980,7 +977,7 @@ public class ReplyListActivity extends BaseActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.delete_failed_2), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.delete_failed), Toast.LENGTH_SHORT).show();
                             }
                         });
                     }
@@ -1011,7 +1008,7 @@ public class ReplyListActivity extends BaseActivity {
         if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 14) {
             android.graphics.drawable.GradientDrawable inputBg = new android.graphics.drawable.GradientDrawable();
             inputBg.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-            inputBg.setStroke(dpToPx(2), 0xFFD0D0D0);
+            inputBg.setStroke(DeviceUtil.dpToPx(2), 0xFFD0D0D0);
             inputBg.setColor(0xFFFFFFFF);
             input.setBackgroundDrawable(inputBg);
         }
@@ -1019,10 +1016,10 @@ public class ReplyListActivity extends BaseActivity {
         // 表情按钮
         final LinearLayout btnRow = new LinearLayout(this);
         btnRow.setOrientation(LinearLayout.HORIZONTAL);
-        btnRow.setPadding(0, 0, 0, dpToPx(6));
+        btnRow.setPadding(0, 0, 0, DeviceUtil.dpToPx(6));
 
         final TextView emojiBtn = new TextView(this);
-        emojiBtn.setText(getString(R.string.emoji_2));
+        emojiBtn.setText(getString(R.string.emoji));
         emojiBtn.setTextSize(13);
         emojiBtn.setTextColor(0xFFD86DA5);
         emojiBtn.setBackgroundDrawable(getResources().getDrawable(R.drawable.item_click_effect));
@@ -1041,7 +1038,7 @@ public class ReplyListActivity extends BaseActivity {
         layout.addView(input, lp);
 
         final TextView clearText = new TextView(this);
-        clearText.setText(getString(R.string.common_clear_3));
+        clearText.setText(getString(R.string.common_clear));
         clearText.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
         clearText.setPadding(0, 8, 0, 0);
         clearText.setTextSize(14);
@@ -1085,12 +1082,12 @@ public class ReplyListActivity extends BaseActivity {
 
     private void showEmojiPicker(final EditText input) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)));
-        builder.setTitle(getString(R.string.select_emoji_2));
+        builder.setTitle(getString(R.string.select_emoji));
 
         final android.widget.ScrollView scroll = new android.widget.ScrollView(this);
         final LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(0, dpToPx(8), 0, dpToPx(8));
+        list.setPadding(0, DeviceUtil.dpToPx(8), 0, DeviceUtil.dpToPx(8));
 
         for (int i = 0; i < EMOJIS.length; i++) {
             final String emoji = EMOJIS[i];
@@ -1098,7 +1095,7 @@ public class ReplyListActivity extends BaseActivity {
             tv.setText(emoji);
             tv.setTextSize(16);
             tv.setTextColor(0xFF333333);
-            tv.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(8));
+            tv.setPadding(DeviceUtil.dpToPx(16), DeviceUtil.dpToPx(8), DeviceUtil.dpToPx(16), DeviceUtil.dpToPx(8));
             tv.setClickable(true);
             android.graphics.drawable.GradientDrawable emojiNormal = new android.graphics.drawable.GradientDrawable();
             emojiNormal.setColor(0xFFF0F0F0);

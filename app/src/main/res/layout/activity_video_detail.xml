@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -7,30 +7,37 @@
     <!-- 顶栏（返回+av号） -->
     <include layout="@layout/title_bar_video" />
 
-    <!-- 顶栏下方分割线 -->
+    <!-- 顶栏下方分割线（与 1.8.4 一致：细的浅粉线 #FCA3C5） -->
     <View
         android:layout_width="match_parent"
-        android:layout_height="2px"
-        android:background="#D86DA5" />
+        android:layout_height="1.5dp"
+        android:background="#FCA3C5" />
 
-    <!-- ViewPager 区域（包含 PagerTabStrip） -->
+    <!-- ViewPager 区域（包含 PagerTabStrip）+ 顶部阴影叠加（仿 1.8.4，
+         阴影覆盖在内容顶部，不在分割线与 Tab 之间留白） -->
     <!-- 使用 SafeViewPager 避免 notifyDataSetChanged 时触摸导致 IndexOutOfBoundsException -->
-    <tv.biliclassic.widget.SafeViewPager
-        android:id="@+id/viewpager"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <android.support.v4.view.PagerTabStrip
-            android:id="@+id/pager_tab_strip"
+        <tv.biliclassic.widget.SafeViewPager
+            android:id="@+id/viewpager"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/tab_background"
-            android:textColor="#FFFFFF"
-            android:paddingTop="0dp"
-            android:paddingBottom="0dp" />
+            android:layout_height="match_parent">
 
-    </tv.biliclassic.widget.SafeViewPager>
+            <android.support.v4.view.PagerTabStrip
+                android:id="@+id/pager_tab_strip"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/tab_background"
+                android:textColor="#FFFFFF"
+                android:paddingTop="0dp"
+                android:paddingBottom="0dp" />
+
+        </tv.biliclassic.widget.SafeViewPager>
+
+    </FrameLayout>
 
     <!-- 底部按钮区域的顶部分割线 -->
     <View

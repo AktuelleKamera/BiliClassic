@@ -26,11 +26,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import tv.biliclassic.api.BilibiliIDConverter;
+import tv.biliclassic.api.ConfInfoApi;
 import tv.biliclassic.api.LiveApi;
 import tv.biliclassic.api.SearchApi;
 import tv.biliclassic.model.LiveRoom;
 import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.MsgUtil;
+import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.StringUtil;
 
@@ -110,6 +112,7 @@ public class SearchActivity extends BaseActivity {
             setContentView(new TextView(this));
             return;
         }
+        initRoundTitleBar();
 
         searchEdit = (EditText) findViewById(R.id.search_edit);
         backBtn = (ImageView) findViewById(R.id.back);
@@ -201,7 +204,7 @@ public class SearchActivity extends BaseActivity {
                 } else if (item.bvid != null && item.bvid.length() > 0) {
                     intent.putExtra("bvid", item.bvid);
                 } else {
-                    Toast.makeText(SearchActivity.this, SearchActivity.this.getString(R.string.load_video_info_failed_4), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SearchActivity.this, SearchActivity.this.getString(R.string.load_video_info_failed), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 startActivity(intent);
@@ -879,7 +882,9 @@ public class SearchActivity extends BaseActivity {
                         @Override
                         public void run() {
                             if (searchSeq != curSeq) return;
-                            if (code == 0) {
+                            if (code == 0 && isRiskVoucher(json)) {
+                                handleSearchRisk(keyword, page, retryLeft);
+                            } else if (code == 0) {
                                 handleSearchPage(json, keyword, page);
                             } else {
                                 handleSearchError(code, message, keyword, page, retryLeft);
@@ -1064,6 +1069,15 @@ public class SearchActivity extends BaseActivity {
             if (sp.items.size() == 0) {
                 if (loadMore) {
                     showNoMore();
+                } else if (isRiskVoucher(json)) {
+                    // 风控响应，data 无 result，不能当成无结果
+                    isLoading = false;
+                    showBusyResult();
+                } else if (json.optJSONObject("data") != null
+                        && json.optJSONObject("data").optInt("numResults", -1) > 0) {
+                    // 明明有结果数却解析出 0 条，属异常
+                    isLoading = false;
+                    showBusyResult();
                 } else {
                     showEmptyResult();
                     emptyView.setText(emptyTextForMode(searchMode));
@@ -1097,11 +1111,65 @@ public class SearchActivity extends BaseActivity {
         }
     }
 
+    /** 风控下发的凭证，data 里只有 v_voucher，没有 result */
+    private boolean isRiskVoucher(JSONObject json) {
+        JSONObject data = json != null ? json.optJSONObject("data") : null;
+        return data != null && data.has("v_voucher");
+    }
+
+    /** 重试耗尽又不是无结果，别谎报成"没有找到相关视频" */
+    private void showBusyResult() {
+        showEmptyResult();
+        emptyView.setText("搜索繁忙，请稍后再试");
+        MsgUtil.showMsg(this, "搜索繁忙，请稍后再试");
+    }
+
+    /** 命中风控：补 buvid3 后退避重试，耗尽才提示 */
+    private void handleSearchRisk(final String keyword, final int page, final int retryLeft) {
+        final boolean loadMore = page > 1;
+        android.util.Log.w("NetDiag", "搜索命中风控 v_voucher retryLeft=" + retryLeft);
+        isLoading = false;
+
+        // 缺 buvid3 的请求容易继续被拦
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                NetWorkUtil.fetchBuvid3();
+            }
+        }).start();
+
+        if (retryLeft > 0) {
+            MsgUtil.showMsg(this, "网络繁忙，正在重试...(" + retryLeft + ")");
+            retryHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    doSearchRequest(keyword, page, retryLeft - 1);
+                }
+            }, 1500);
+        } else {
+            if (loadMore) {
+                footerView.setVisibility(View.GONE);
+                MsgUtil.showMsg(this, "搜索繁忙，请稍后再试");
+            } else {
+                showBusyResult();
+            }
+        }
+    }
+
     private void handleSearchError(int code, String message, final String keyword, final int page, final int retryLeft) {
         final boolean loadMore = page > 1;
         isLoading = false;
 
-        if (retryLeft > 0 && (code == -400 || message.contains("sign") || message.contains("wbi"))) {
+        // -412/-352 等是风控拦截，与 v_voucher 走同一条补 buvid3 的重试路径
+        boolean riskCode = code == -412 || code == -352 || code == -403
+                || code == -504 || code == -509;
+        boolean signError = message.contains("sign") || message.contains("wbi");
+
+        if (retryLeft > 0 && riskCode) {
+            handleSearchRisk(keyword, page, retryLeft);
+        } else if (retryLeft > 0 && (code == -400 || signError)) {
+            // 密钥可能过期，强制下次重拉 nav
+            ConfInfoApi.invalidateWbiKey();
             MsgUtil.showMsg(this, "签名验证失败，正在重试...");
             retryHandler.postDelayed(new Runnable() {
                 @Override
@@ -1129,9 +1197,8 @@ public class SearchActivity extends BaseActivity {
         final boolean loadMore = page > 1;
         isLoading = false;
 
-        boolean isNetworkError = errMsg != null && (errMsg.contains("Transport endpoint") || errMsg.contains("No route") || errMsg.contains("timeout"));
-
-        if (retryLeft > 0 && isNetworkError) {
+        // 安卓的超时/拒绝文案与桌面端不同，字符串匹配命中不了，一律退避重试
+        if (retryLeft > 0) {
             MsgUtil.showMsg(this, "网络异常，正在重试...(" + retryLeft + ")");
             retryHandler.postDelayed(new Runnable() {
                 @Override
@@ -1158,7 +1225,7 @@ public class SearchActivity extends BaseActivity {
             footerProgressBar.setVisibility(View.VISIBLE);
         }
         if (footerText != null) {
-            footerText.setText(getString(R.string.login_working_hard_6));
+            footerText.setText(getString(R.string.login_working_hard));
             footerText.setVisibility(View.VISIBLE);
         }
 
@@ -1233,8 +1300,8 @@ public class SearchActivity extends BaseActivity {
         if (action != KeyBindingUtil.ACTION_UP
                 && action != KeyBindingUtil.ACTION_DOWN
                 && action != KeyBindingUtil.ACTION_CONFIRM
-                && action != KeyBindingUtil.ACTION_NUM_2
-                && action != KeyBindingUtil.ACTION_NUM_8) {
+                && action != KeyBindingUtil.ACTION_PAGE_UP
+                && action != KeyBindingUtil.ACTION_PAGE_DOWN) {
             return false;
         }
         if (selectedPosition < 0) {
@@ -1252,9 +1319,9 @@ public class SearchActivity extends BaseActivity {
                 selectedPosition = Math.max(0, selectedPosition - 1);
             } else if (action == KeyBindingUtil.ACTION_DOWN) {
                 selectedPosition = Math.min(count - 1, selectedPosition + 1);
-            } else if (action == KeyBindingUtil.ACTION_NUM_2) {
+            } else if (action == KeyBindingUtil.ACTION_PAGE_UP) {
                 selectedPosition = pageMove(-1);
-            } else if (action == KeyBindingUtil.ACTION_NUM_8) {
+            } else if (action == KeyBindingUtil.ACTION_PAGE_DOWN) {
                 selectedPosition = pageMove(1);
                 if (selectedPosition >= count - 1) {
                     loadMoreResults();
@@ -1312,7 +1379,7 @@ public class SearchActivity extends BaseActivity {
             intent.putExtra("bvid", item.bvid);
         } else {
             Toast.makeText(SearchActivity.this,
-                    getString(R.string.load_video_info_failed_4), Toast.LENGTH_SHORT).show();
+                    getString(R.string.load_video_info_failed), Toast.LENGTH_SHORT).show();
             return;
         }
         startActivity(intent);

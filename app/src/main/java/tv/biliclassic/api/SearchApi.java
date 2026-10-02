@@ -98,7 +98,7 @@ public class SearchApi {
         }
 
         url = ConfInfoApi.signWBI(url);
-        String response = NetWorkUtil.get(url);
+        String response = NetWorkUtil.get(url, searchHeaders());
         if (response == null || response.length() == 0) {
             throw new IOException("empty search response");
         }
@@ -141,11 +141,37 @@ public class SearchApi {
         url += "&pagesize=20";
 
         url = ConfInfoApi.signWBI(url);
-        String response = NetWorkUtil.get(url);
+        String response = NetWorkUtil.get(url, searchHeaders());
         if (response == null || response.length() == 0) {
             throw new IOException("empty search response");
         }
         return new JSONObject(response);
+    }
+
+    /**
+     * 搜索专用请求头：补齐浏览器指纹，自带 Cookie 可跳过网络层的 Cookie 生成。
+     * 每次新建，Cookie 随登录/无痕状态变化不可缓存
+     */
+    private static ArrayList<String> searchHeaders() {
+        ArrayList<String> h = new ArrayList<String>();
+        h.add("User-Agent");
+        h.add(NetWorkUtil.USER_AGENT_WEB);
+        h.add("Accept");
+        h.add("application/json, text/plain, */*");
+        h.add("Accept-Language");
+        h.add(NetWorkUtil.getAcceptLanguage());
+        h.add("Accept-Encoding");
+        h.add("identity");
+        h.add("Referer");
+        h.add("https://www.bilibili.com/");
+        h.add("Origin");
+        h.add("https://www.bilibili.com");
+        String cookie = NetWorkUtil.buildCookieHeader();
+        if (cookie != null && cookie.length() > 0) {
+            h.add("Cookie");
+            h.add(cookie);
+        }
+        return h;
     }
 
     /**

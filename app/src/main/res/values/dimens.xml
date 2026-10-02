@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <dimen name="player_seekbar_inset_value">5dp</dimen>
     <dimen name="player_controller_bar_button_layout_long_width">80dp</dimen>

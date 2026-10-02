@@ -4,12 +4,12 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.List;
 
+import tv.biliclassic.adapter.BaseObservableAdapter;
 import tv.biliclassic.model.LiveRoom;
 import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.StringUtil;
@@ -18,59 +18,10 @@ import tv.biliclassic.util.StringUtil;
  * 生放送列表适配器（古早风格：封面 + 标题 + 主播 + 人气/分区）。
  * 支持遥控器方向键光标高亮，与 SearchResultAdapter 一致。
  */
-public class LiveRoomAdapter extends BaseAdapter {
-
-    private Context context;
-    private List<LiveRoom> list;
-    private volatile boolean mScrolling = false;
-
-    // 键盘光标选中的项，-1 表示无选中
-    private int selectedPosition = -1;
-
-    // 触摸滑动中是否隐藏光标高亮
-    private boolean mHideHighlight = false;
+public class LiveRoomAdapter extends BaseObservableAdapter<LiveRoom> {
 
     public LiveRoomAdapter(Context context, List<LiveRoom> list) {
-        this.context = context;
-        this.list = list;
-    }
-
-    public void setSelectedPosition(int position) {
-        this.selectedPosition = position;
-        notifyDataSetChanged();
-    }
-
-    public int getSelectedPosition() {
-        return selectedPosition;
-    }
-
-    public void setHideHighlight(boolean hide) {
-        if (this.mHideHighlight == hide) {
-            return;
-        }
-        this.mHideHighlight = hide;
-        notifyDataSetChanged();
-    }
-
-    /** 滚动状态变化时由 ListView 的 OnScrollListener 调用 */
-    public void setScrolling(boolean scrolling) {
-        this.mScrolling = scrolling;
-        ImageLoader.setScrolling(scrolling);
-    }
-
-    @Override
-    public int getCount() {
-        return list == null ? 0 : list.size();
-    }
-
-    @Override
-    public Object getItem(int position) {
-        return list.get(position);
-    }
-
-    @Override
-    public long getItemId(int position) {
-        return position;
+        super(context, list);
     }
 
     @Override

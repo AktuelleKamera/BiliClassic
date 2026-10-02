@@ -14,34 +14,45 @@
         <RelativeLayout
             android:id="@+id/title_bar"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:background="#FFFFFF">
+            android:layout_height="48dp">
 
+            <!-- 小返回箭头 -->
             <ImageView
                 android:id="@+id/btn_back"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_centerVertical="true"
-                android:contentDescription="@string/common_back_10"
-                android:padding="8dp"
+                android:layout_width="16dp"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/common_back"
                 android:scaleType="centerInside"
-                android:src="@drawable/ic_action_back" />
+                android:src="@drawable/abs__ic_ab_back_holo_light"
+                android:focusable="true"
+                android:clickable="true" />
 
+            <!-- 标题：左对齐，带粉色点击特效 -->
             <TextView
                 android:id="@+id/tv_title"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
+                android:layout_height="36dp"
+                android:layout_centerVertical="true"
+                android:layout_toRightOf="@+id/btn_back"
+                android:layout_marginLeft="0dp"
+                android:layout_marginRight="8dp"
+                android:background="@drawable/titlebar_pink_item_bg"
+                android:gravity="center_vertical"
+                android:paddingLeft="0dp"
+                android:paddingRight="8dp"
+                android:maxWidth="240dp"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:text="@string/webpage"
-                android:textSize="18sp"
-                android:textColor="#333333"/>
+                android:textSize="18dp"
+                android:textColor="#616161" />
 
         </RelativeLayout>
 
         <!-- 粉色分割线 -->
         <View
             android:layout_width="match_parent"
-            android:layout_height="2px"
+            android:layout_height="1.5dp"
             android:background="#FCA3C5" />
 
         <!-- ActionBar下方阴影 -->
@@ -72,7 +83,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="@string/login_working_hard_3"
+            android:text="@string/login_working_hard"
             android:textSize="12sp"
             android:textColor="#999999" />
 

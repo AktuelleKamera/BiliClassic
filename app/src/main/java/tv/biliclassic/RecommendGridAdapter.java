@@ -1,5 +1,6 @@
 package tv.biliclassic;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -13,7 +14,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import java.util.List;
-import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -24,6 +24,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+import tv.biliclassic.adapter.BaseObservableAdapter;
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
@@ -33,47 +34,18 @@ import tv.biliclassic.util.NetWorkUtil;
  * 推荐/分区列表的行式适配器（配合 ListView 使用，实现虚拟化）。
  * 每行 = numColumns 个视频卡片；ListView 只构建可见行，滚动回收。
  */
-public class RecommendGridAdapter extends BaseAdapter {
+public class RecommendGridAdapter extends BaseObservableAdapter<VideoCard> {
 
     private static final String TAG = "RecommendAdapter";
-    private Context context;
-    private List<VideoCard> list;
     private int numColumns = 2;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
-
-    // 方向键选中的视频卡索引（-1 = 未选中），用于整卡高亮
-    private int selectedPosition = -1;
-
-    // 触摸滑动中是否隐藏光标高亮（滑动时隐藏，再次按键时恢复）
-    private boolean mHideHighlight = false;
-
-    public void setHideHighlight(boolean hide) {
-        if (this.mHideHighlight == hide) {
-            return;
-        }
-        this.mHideHighlight = hide;
-        notifyDataSetChanged();
-    }
 
     // 滚动中暂缓应用新图，避免每张图到达都触发整屏软件重绘；
     // 仅在主线程访问（mainHandler.post 与 setScrolling 都在主线程）
 
-
     public RecommendGridAdapter(Context context, List<VideoCard> list) {
-        this.context = context;
-        this.list = list;
+        super(context, list);
     }
-
-    private boolean isLowMemoryDevice() {
-        int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        return maxMemory < 24576;
-    }
-
-    private int getConfiguredThreadCount() {
-        return tv.biliclassic.util.SdkHelper.getImageLoadThreads();
-    }
-
-
 
     public void setNumColumns(int numColumns) {
         this.numColumns = numColumns;
@@ -122,7 +94,7 @@ public class RecommendGridAdapter extends BaseAdapter {
         } else {
             row = new LinearLayout(context);
             row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setPadding(dpToPx(4), 0, dpToPx(4), 0);
+            row.setPadding(DeviceUtil.dpToPx(4), 0, DeviceUtil.dpToPx(4), 0);
         }
 
         // 列数变化时重建行内 cell
@@ -133,7 +105,7 @@ public class RecommendGridAdapter extends BaseAdapter {
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                         0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
                 if (i < numColumns - 1) {
-                    lp.rightMargin = dpToPx(8);
+                    lp.rightMargin = DeviceUtil.dpToPx(8);
                 }
                 cell.setLayoutParams(lp);
                 row.addView(cell);
@@ -166,8 +138,8 @@ public class RecommendGridAdapter extends BaseAdapter {
 
     private int computeCellWidth() {
         int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
-        int padding = dpToPx(4) * 2;
-        int spacing = dpToPx(8);
+        int padding = DeviceUtil.dpToPx(4) * 2;
+        int spacing = DeviceUtil.dpToPx(8);
         return (screenWidth - padding - (numColumns - 1) * spacing) / numColumns;
     }
 
@@ -249,27 +221,6 @@ public class RecommendGridAdapter extends BaseAdapter {
         }
     }
 
-
-
-    /** 滚动状态变化时由 ListView 的 OnScrollListener 调用 */
-    public void setScrolling(boolean scrolling) {
-        ImageLoader.setScrolling(scrolling);
-    }
-
-
-
-
-
-    private int dpToPx(int dp) {
-        float density = context.getResources().getDisplayMetrics().density;
-        return (int) (dp * density + 0.5f);
-    }
-
-    public void updateData(List<VideoCard> newList) {
-        this.list = newList;
-        notifyDataSetChanged();
-    }
-
     /**
      * 设置方向键选中的视频卡索引，触发高亮更新（不触发时直接返回）。
      */
@@ -279,10 +230,6 @@ public class RecommendGridAdapter extends BaseAdapter {
         }
         selectedPosition = position;
         notifyDataSetChanged();
-    }
-
-    public int getSelectedPosition() {
-        return selectedPosition;
     }
 
     public void clearCache() {

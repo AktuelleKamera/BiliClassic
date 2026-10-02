@@ -1,5 +1,6 @@
 package tv.biliclassic;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -360,7 +361,7 @@ public class BangumiDetailFragment extends Fragment {
                 tv.setText(episode.title);
                 tv.setTextSize(14);
                 tv.setTextColor(0xFFD86DA5);
-                tv.setPadding(dpToPx(16), dpToPx(8), dpToPx(16), dpToPx(4));
+                tv.setPadding(DeviceUtil.dpToPx(16), DeviceUtil.dpToPx(8), DeviceUtil.dpToPx(16), DeviceUtil.dpToPx(4));
                 tv.setBackgroundColor(0xFFF0F0F0);
                 tv.setClickable(false);
                 tv.setFocusable(false);
@@ -399,10 +400,6 @@ public class BangumiDetailFragment extends Fragment {
             return convertView;
         }
 
-        private int dpToPx(int dp) {
-            float density = context.getResources().getDisplayMetrics().density;
-            return (int) (dp * density + 0.5f);
-        }
 
         private static class ViewHolder {
             TextView tvIndex;

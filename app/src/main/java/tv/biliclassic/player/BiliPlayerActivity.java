@@ -1,5 +1,6 @@
 package tv.biliclassic.player;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -1636,7 +1637,7 @@ public class BiliPlayerActivity extends Activity implements
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
         containerParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-        containerParams.bottomMargin = dpToPx(80);
+        containerParams.bottomMargin = DeviceUtil.dpToPx(80);
         container.setLayoutParams(containerParams);
         container.setVisibility(View.GONE);
 
@@ -1646,7 +1647,7 @@ public class BiliPlayerActivity extends Activity implements
         btnResetScale.setTextColor(0xFFD86DA5);
         btnResetScale.setGravity(Gravity.CENTER);
         btnResetScale.setBackgroundColor(0x88000000);
-        btnResetScale.setPadding(dpToPx(24), dpToPx(12), dpToPx(24), dpToPx(12));
+        btnResetScale.setPadding(DeviceUtil.dpToPx(24), DeviceUtil.dpToPx(12), DeviceUtil.dpToPx(24), DeviceUtil.dpToPx(12));
         btnResetScale.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1672,10 +1673,6 @@ public class BiliPlayerActivity extends Activity implements
         }
     }
 
-    private int dpToPx(int dp) {
-        float density = getResources().getDisplayMetrics().density;
-        return (int) (dp * density + 0.5f);
-    }
 
     //评论加载
     private void loadCommentsForOverlay() {
@@ -1692,7 +1689,7 @@ public class BiliPlayerActivity extends Activity implements
 
         if (commentEmpty != null) {
             commentEmpty.setVisibility(View.VISIBLE);
-            commentEmpty.setText(getString(R.string.login_working_hard_5));
+            commentEmpty.setText(getString(R.string.login_working_hard));
         }
 
         commentFooterView.setVisibility(View.GONE);
@@ -4148,7 +4145,7 @@ public class BiliPlayerActivity extends Activity implements
                 return true;
             } else {
                 mLastBackPressTime = currentTime;
-                Toast.makeText(this, this.getString(R.string.press_back_again_exit), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString(R.string.PreloadingView_press_back_to_exit), Toast.LENGTH_SHORT).show();
                 return true;
             }
         }

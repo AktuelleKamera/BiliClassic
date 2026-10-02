@@ -61,7 +61,7 @@ public class NetWorkUtil {
     private static final int MAX_RETRY_COUNT = 2;
 
     // 根据当前语言设置返回 Accept-Language 值
-    private static String getAcceptLanguage() {
+    public static String getAcceptLanguage() {
         String locale = LocaleHelper.getCurrentLocale();
         if ("zh_TW".equals(locale)) {
             return "zh-TW,zh;q=0.9,en;q=0.8";
@@ -384,6 +384,18 @@ public class NetWorkUtil {
         return getJsonStream(url, headers);
     }
 
+    public static boolean isNetworkAvailable(android.content.Context context) {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
+                    context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return false;
+            android.net.NetworkInfo info = cm.getActiveNetworkInfo();
+            return info != null && info.isConnected();
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
     // GET 请求
 
     public static String get(String url) throws IOException {
@@ -436,8 +448,8 @@ public class NetWorkUtil {
             int responseCode = conn.getResponseCode();
             Log.d("NetDiag", "GET 响应码=" + responseCode + " " + hostOf(url) + " 总耗时=" + (System.currentTimeMillis() - t0) + "ms");
 
-            if (responseCode == 301 || responseCode == 302 || responseCode == 307) {
-                return handleRedirect(conn, url, headers, "GET", null, retryCount + 1);
+            if (isRedirectCode(responseCode)) {
+                return handleRedirect(conn, url, headers, "GET", null, null, responseCode, retryCount + 1);
             }
 
             return readResponse(conn, responseCode);
@@ -521,8 +533,8 @@ public class NetWorkUtil {
             int responseCode = conn.getResponseCode();
             Log.d("NetDiag", "POST 响应码=" + responseCode + " " + hostOf(url) + " 总耗时=" + (System.currentTimeMillis() - t0) + "ms");
 
-            if (responseCode == 301 || responseCode == 302 || responseCode == 307) {
-                return handleRedirect(conn, url, headers, "POST", data, retryCount + 1);
+            if (isRedirectCode(responseCode)) {
+                return handleRedirect(conn, url, headers, "POST", data, contentType, responseCode, retryCount + 1);
             }
 
             return readResponse(conn, responseCode);
@@ -591,32 +603,45 @@ public class NetWorkUtil {
 
         // Cookie 处理 - 如果调用方没有自带 Cookie，再自动合并
         if (!hasCookieInHeaders) {
-            CookieGenerator.ensureCookies();
-            boolean incognitoMode = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.INCOGNITO_MODE, false);
-            boolean forceLogin = sForceLogin;
-            sForceLogin = false;
-            if (forceLogin) {
-                incognitoMode = false;
-            }
-            String cookie = CookieGenerator.getCookieString(!incognitoMode);
-            if (!incognitoMode) {
-                String loggedCookie = getCookieString();
-                if (loggedCookie == null || loggedCookie.length() == 0) {
-                    loggedCookie = SharedPreferencesUtil.getString("cookies", "");
-                    if (loggedCookie != null && loggedCookie.length() > 0) {
-                        setCookieString(loggedCookie);
-                    }
-                }
-                if (loggedCookie != null && loggedCookie.length() > 0) {
-                    cookie = mergeCookies(cookie, loggedCookie);
-                }
-            }
+            String cookie = buildCookieHeader();
             if (cookie != null && cookie.length() > 0) {
                 conn.setRequestProperty("Cookie", cookie);
             }
         }
 
         return conn;
+    }
+
+    /**
+     * 组装本次请求的 Cookie 头（无痕/强制登录/登录态合并）。
+     * 调用方自带 Cookie 时可跳过，供需显式请求头的接口复用。
+     */
+    public static String buildCookieHeader() {
+        CookieGenerator.ensureCookies();
+        boolean incognitoMode = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.INCOGNITO_MODE, false);
+        // 只对一次性标志加锁，避免长耗时的 Cookie 生成占住类锁
+        boolean forceLogin;
+        synchronized (NetWorkUtil.class) {
+            forceLogin = sForceLogin;
+            sForceLogin = false;
+        }
+        if (forceLogin) {
+            incognitoMode = false;
+        }
+        String cookie = CookieGenerator.getCookieString(!incognitoMode);
+        if (!incognitoMode) {
+            String loggedCookie = getCookieString();
+            if (loggedCookie == null || loggedCookie.length() == 0) {
+                loggedCookie = SharedPreferencesUtil.getString("cookies", "");
+                if (loggedCookie != null && loggedCookie.length() > 0) {
+                    setCookieString(loggedCookie);
+                }
+            }
+            if (loggedCookie != null && loggedCookie.length() > 0) {
+                cookie = mergeCookies(cookie, loggedCookie);
+            }
+        }
+        return cookie;
     }
 
     /**
@@ -654,14 +679,9 @@ public class NetWorkUtil {
     }
 
     /**
-     * 处理重定向，支持最大重试次数限制，防止无限递归
+     * 读取 Location 并断开当前连接，返回解析后的绝对地址（GET/POST/JSON 三条路径共用）。
      */
-    private static String handleRedirect(HttpURLConnection conn, String originalUrl, List headers, String method, String postData, int retryCount) throws IOException {
-        // 检查重试次数是否超过上限
-        if (retryCount > MAX_REDIRECT_COUNT) {
-            throw new IOException("重定向次数超过上限 (" + MAX_REDIRECT_COUNT + " 次)，可能陷入循环重定向。URL: " + originalUrl);
-        }
-
+    private static String resolveRedirect(HttpURLConnection conn, String originalUrl) throws IOException {
         String location = conn.getHeaderField("Location");
         String setCookie = collectSetCookies(conn);
         if (setCookie != null && setCookie.length() > 0) {
@@ -674,23 +694,76 @@ public class NetWorkUtil {
             throw new IOException("重定向响应缺少 Location 头");
         }
 
-        // 处理相对路径
-        if (!location.startsWith("http")) {
-            int slashIndex = originalUrl.indexOf("/", 8);
-            if (slashIndex > 0) {
-                location = originalUrl.substring(0, slashIndex) + "/" + location;
-            } else {
-                location = originalUrl + "/" + location;
+        location = location.trim();
+        if (!location.startsWith("http://") && !location.startsWith("https://")) {
+            try {
+                // 用 URL 构造器做相对解析，不再手拼前缀（原写法会得到 //path 双斜杠）
+                location = new URL(new URL(originalUrl), location).toString();
+            } catch (Exception e) {
+                throw new IOException("重定向 Location 无法解析: " + location);
             }
         }
+        return location;
+    }
 
+    private static String handleRedirect(HttpURLConnection conn, String originalUrl, List headers, String method, String postData, String contentType, int responseCode, int retryCount) throws IOException {
+        // 检查重试次数是否超过上限
+        if (retryCount > MAX_REDIRECT_COUNT) {
+            throw new IOException("重定向次数超过上限 (" + MAX_REDIRECT_COUNT + " 次)，可能陷入循环重定向。URL: " + originalUrl);
+        }
+
+        String location = resolveRedirect(conn, originalUrl);
         Log.d("NetWorkUtil", "重定向到: " + location + " (第 " + retryCount + " 次)");
 
-        if ("POST".equals(method) && postData != null) {
-            return postInternal(location, postData, headers, "application/x-www-form-urlencoded", retryCount + 1);
-        } else {
-            return getInternal(location, (ArrayList) headers, retryCount + 1);
+        // 303 一律转 GET；其余保留原方法，Content-Type 必须跟着走（JSON 接口不能被改写）
+        if ("POST".equals(method) && postData != null && responseCode != 303) {
+            if (contentType == null || contentType.length() == 0) {
+                contentType = "application/x-www-form-urlencoded";
+            }
+            return postInternal(location, postData, headers, contentType, retryCount + 1);
         }
+        return getInternal(location, (ArrayList) headers, retryCount + 1);
+    }
+
+    /**
+     * 需要跟随的 3xx 状态码。304 无 Location 不跟随，305/306 已废弃。
+     */
+    private static boolean isRedirectCode(int code) {
+        return code == 301 || code == 302 || code == 303 || code == 307 || code == 308;
+    }
+
+    /**
+     * 跟随 3xx 返回最终地址，供短链解析使用。不回写 Cookie，避免跨域污染。
+     */
+    public static String resolveFinalUrl(String url) throws IOException {
+        String current = url;
+        for (int i = 0; i <= MAX_REDIRECT_COUNT; i++) {
+            HttpURLConnection conn = null;
+            try {
+                conn = createConnection(current, "GET", null);
+                conn.setConnectTimeout(8000);
+                conn.setReadTimeout(8000);
+                int code = conn.getResponseCode();
+                if (!isRedirectCode(code)) {
+                    break;
+                }
+                String location = conn.getHeaderField("Location");
+                if (location == null || location.length() == 0) {
+                    break;
+                }
+                location = location.trim();
+                if (!location.startsWith("http://") && !location.startsWith("https://")) {
+                    location = new URL(new URL(current), location).toString();
+                }
+                Log.d("NetWorkUtil", "短链跳转 " + hostOf(current) + " -> " + hostOf(location));
+                current = location;
+            } finally {
+                if (conn != null) {
+                    conn.disconnect();
+                }
+            }
+        }
+        return current;
     }
 
     private static String readResponse(HttpURLConnection conn, int responseCode) throws IOException {
@@ -710,7 +783,7 @@ public class NetWorkUtil {
         java.util.ArrayList chunks = new java.util.ArrayList();
         byte[] buffer = new byte[4096];
         int total = 0;
-        int maxBytes = 3 * 1024 * 1024;
+            int maxBytes = 8 * 1024 * 1024;
         int len;
         try {
             while ((len = is.read(buffer, 0, buffer.length)) != -1) {
@@ -770,12 +843,25 @@ public class NetWorkUtil {
             String low = msg.toLowerCase();
             if (low.contains("timed out") || low.contains("timeout")
                     || low.contains("refused") || low.contains("reset")
-                    || low.contains("broken pipe") || low.contains("unreachable")) {
+                    || low.contains("broken pipe") || low.contains("unreachable")
+                    // keep-alive 复用被服务端掐断的 socket，弱网/后台唤醒最常见
+                    || low.contains("unexpected end of stream")
+                    || low.contains("unexpected end of file")
+                    || low.contains("premature end")
+                    || low.contains("connection closed")
+                    || low.contains("closed by peer")
+                    || low.contains("stream was reset")
+                    || low.contains("connection reset")
+                    || low.contains("handshake")
+                    || low.contains("ssl")
+                    || low.contains("malformed response")) {
                 return true;
             }
         }
         if (cls.contains("SocketTimeout") || cls.contains("ConnectException")
-                || cls.contains("UnknownHost") || cls.contains("ConnectException")) {
+                || cls.contains("UnknownHost") || cls.contains("SSL")
+                || cls.contains("EOF") || cls.contains("ProtocolException")
+                || cls.contains("CorruptedException")) {
             return true;
         }
         return false;
@@ -814,6 +900,10 @@ public class NetWorkUtil {
     }
 
     private static JSONObject doGetJsonStreamOnce(String url, ArrayList headers) throws IOException, JSONException {
+        return doGetJsonStreamOnce(url, headers, 0);
+    }
+
+    private static JSONObject doGetJsonStreamOnce(String url, ArrayList headers, int redirectCount) throws IOException, JSONException {
         HttpURLConnection conn = null;
         InputStream is = null;
         try {
@@ -822,6 +912,16 @@ public class NetWorkUtil {
             conn.connect();
             int responseCode = conn.getResponseCode();
             Log.d("NetDiag", "getJsonStream 响应码=" + responseCode + " " + hostOf(url));
+            if (isRedirectCode(responseCode)) {
+                // 原实现忽略 3xx，读到空 body 必然 JSONException；这里跟随重定向
+                if (redirectCount >= MAX_REDIRECT_COUNT) {
+                    throw new IOException("重定向次数超过上限 (" + MAX_REDIRECT_COUNT + " 次)，可能陷入循环重定向。URL: " + url);
+                }
+                String next = resolveRedirect(conn, url);
+                Log.d("NetWorkUtil", "JSON 重定向到: " + next + " (第 " + (redirectCount + 1) + " 次)");
+                conn = null;
+                return doGetJsonStreamOnce(next, headers, redirectCount + 1);
+            }
             is = responseCode >= 400 ? conn.getErrorStream() : conn.getInputStream();
             if (is == null) {
                 throw new JSONException("在访问 " + url + " 时返回数据为空");
@@ -857,7 +957,7 @@ public class NetWorkUtil {
         java.util.ArrayList chunks = new java.util.ArrayList();
         byte[] buffer = new byte[4096];
         int total = 0;
-        int maxBytes = 3 * 1024 * 1024;
+            int maxBytes = 8 * 1024 * 1024;
         int len;
         while ((len = is.read(buffer, 0, buffer.length)) != -1) {
             total += len;
@@ -987,15 +1087,6 @@ public class NetWorkUtil {
      * 获取 buvid3（设备标识）
      * 需要先请求 B站 首页，从 Set-Cookie 中提取
      */
-    private static String randomHex(int len) {
-        java.util.Random rnd = new java.util.Random();
-        String hex = "0123456789abcdef";
-        StringBuffer sb = new StringBuffer();
-        for (int i = 0; i < len; i++) {
-            sb.append(hex.charAt(rnd.nextInt(hex.length())));
-        }
-        return sb.toString();
-    }
 
     public static synchronized String fetchBuvid3() {
         try {

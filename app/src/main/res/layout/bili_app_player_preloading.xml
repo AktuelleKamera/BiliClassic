@@ -59,7 +59,7 @@
         android:focusable="true"
         android:layout_marginLeft="8dp"
         android:layout_marginTop="8dp"
-        android:src="@drawable/ica_light_ic_action_previous_item"
+        android:src="@drawable/ic_action_back"
         android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
         android:contentDescription="@null"

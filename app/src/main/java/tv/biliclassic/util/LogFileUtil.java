@@ -171,7 +171,7 @@ public class LogFileUtil {
             send.putExtra(Intent.EXTRA_SUBJECT, ctx.getString(R.string.activity_settings_run_log_subject));
             send.putExtra(Intent.EXTRA_TEXT, readAllLogs());
             send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            ctx.startActivity(Intent.createChooser(send, ctx.getString(R.string.activity_settings_run_log_share_title)));
+            ctx.startActivity(Intent.createChooser(send, ctx.getString(R.string.share_log)));
         } catch (Exception e) {
             android.widget.Toast.makeText(ctx,
                     ctx.getString(R.string.activity_settings_run_log_share_fail, e.getMessage()),

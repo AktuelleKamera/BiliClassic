@@ -12,11 +12,6 @@ import android.widget.Toast;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import tv.biliclassic.R;
 import java.util.Collections;
@@ -31,6 +26,11 @@ import java.util.List;
  * 兼容 Android 1.5 (API 3) 及以上
  */
 public class UpdateUtil {
+
+    // version.json 仅进程内缓存：同一次启动里更新检查拉过一次后复用，
+    // 让 MetroSetupActivity 的"更新日志"正文赶在转场前渲染好。
+    // 不做持久化——该页面一辈子只看一次，落盘会让下个版本升级时读到旧日志。
+    private static String sCachedVersionJson = null;
 
     public interface UpdateCallback {
         void onCheckStart();
@@ -72,7 +72,7 @@ public class UpdateUtil {
                             if (callback != null) {
                                 callback.onCheckFailed(context.getString(R.string.update_toast_fail));
                             } else {
-                                Toast.makeText(context, context.getString(R.string.check_update_failed), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(context, context.getString(R.string.update_toast_fail), Toast.LENGTH_SHORT).show();
                             }
                             return;
                         }
@@ -84,30 +84,46 @@ public class UpdateUtil {
         }).start();
     }
 
-    private static String fetchVersionJson(String urlString) throws Exception {
-        HttpURLConnection conn = null;
-        try {
-            URL url = new URL(urlString);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(12000);
-            conn.setReadTimeout(12000);
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("User-Agent", "BiliClassic");
-
-            if (conn.getResponseCode() != 200) return null;
-
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(conn.getInputStream(), "UTF-8"));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
-            }
-            reader.close();
-            return sb.toString();
-        } finally {
-            if (conn != null) conn.disconnect();
+    public static String fetchVersionJson(String urlString) throws Exception {
+        ArrayList headers = new ArrayList();
+        headers.add("User-Agent");
+        headers.add("BiliClassic");
+        // 非 200/非 JSON 会抛异常，调用方按失败处理
+        String json = NetWorkUtil.getJson(urlString, headers).toString();
+        if (json != null && json.length() > 0) {
+            sCachedVersionJson = json;
         }
+        return json;
+    }
+
+    /** 取本次进程内上次成功拉到的 version.json，没有则返回 null */
+    public static String getCachedVersionJson() {
+        return sCachedVersionJson;
+    }
+
+    /** 从缓存里取 0.4 分支的更新日志，取不到返回 null */
+    public static JSONArray getCachedChangelog() {
+        String json = getCachedVersionJson();
+        if (json == null || json.length() == 0) {
+            return null;
+        }
+        try {
+            JSONObject root = new JSONObject(json);
+            JSONObject versions = root.optJSONObject("versions");
+            if (versions == null) {
+                return null;
+            }
+            JSONObject branch = versions.optJSONObject("0.4");
+            if (branch == null) {
+                return null;
+            }
+            JSONArray arr = branch.optJSONArray("changelog");
+            if (arr != null && arr.length() > 0) {
+                return arr;
+            }
+        } catch (Exception e) {
+        }
+        return null;
     }
 
     private static void handleResult(Context context,
@@ -432,7 +448,7 @@ public class UpdateUtil {
         if (url != null && url.length() > 0) {
             context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         } else {
-            Toast.makeText(context, context.getString(R.string.invalid_download_url_2), Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, context.getString(R.string.invalid_download_url), Toast.LENGTH_SHORT).show();
         }
     }
 

@@ -149,8 +149,8 @@ public class FavoriteVideoListActivity extends BaseActivity {
         if (action != tv.biliclassic.util.KeyBindingUtil.ACTION_UP
                 && action != tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
                 && action != tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM
-                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2
-                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
             return super.dispatchKeyEvent(event);
         }
         if (selectedPosition < 0) {
@@ -167,9 +167,9 @@ public class FavoriteVideoListActivity extends BaseActivity {
                 selectedPosition = Math.max(0, selectedPosition - 1);
             } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
                 selectedPosition = Math.min(count - 1, selectedPosition + 1);
-            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2) {
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP) {
                 selectedPosition = pageMove(-1);
-            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
                 selectedPosition = pageMove(1);
             } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
                 VideoCard item = videoList.get(selectedPosition);
@@ -246,18 +246,6 @@ public class FavoriteVideoListActivity extends BaseActivity {
         }
     }
 
-    private boolean isNetworkAvailable() {
-        try {
-            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
-                    getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
-            if (cm == null) return false;
-            android.net.NetworkInfo info = cm.getActiveNetworkInfo();
-            return info != null && info.isConnected();
-        } catch (Exception e) {
-            return true;
-        }
-    }
-
     private void showNoNetwork() {
         hideAllLoading();
         emptyView.setText(getString(R.string.emoticon__no_network));
@@ -310,7 +298,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
                                 sendBroadcast(broadcastIntent);
 
                                 if (videoList.size() == 0) {
-                                    emptyView.setText(getString(R.string.no_favorite_videos_2));
+                                    emptyView.setText(getString(R.string.no_favorite_videos));
                                     emptyView.setVisibility(View.VISIBLE);
                                     footerView.setVisibility(View.GONE);
                                     setResult(RESULT_OK);
@@ -346,7 +334,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
         final long mid = SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0L);
 
         if (mid == 0L) {
-            emptyView.setText(getString(R.string.please_login_first_3));
+            emptyView.setText(getString(R.string.please_login_first));
             emptyView.setVisibility(View.VISIBLE);
             footerView.setVisibility(View.GONE);
             listView.setVisibility(View.GONE);
@@ -355,7 +343,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
 
         NetWorkUtil.refreshHeaders();
 
-        if (!isNetworkAvailable()) {
+        if (!NetWorkUtil.isNetworkAvailable(FavoriteVideoListActivity.this)) {
             showNoNetwork();
             return;
         }
@@ -381,7 +369,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
                             footerProgressBar.setVisibility(View.GONE);
 
                             if (videoList.size() == 0) {
-                                emptyView.setText(getString(R.string.no_favorite_videos_2));
+                                emptyView.setText(getString(R.string.no_favorite_videos));
                                 emptyView.setVisibility(View.VISIBLE);
                                 footerView.setVisibility(View.GONE);
                                 isEnd = true;
@@ -416,7 +404,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
                             isLoading = false;
                             hideAllLoading();
                             footerView.setVisibility(View.GONE);
-                            if (retryCount < MAX_RETRY && isNetworkAvailable()) {
+                            if (retryCount < MAX_RETRY && NetWorkUtil.isNetworkAvailable(FavoriteVideoListActivity.this)) {
                                 retryCount++;
                                 doLoadVideos();
                             } else {
@@ -433,7 +421,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
         if (isLoading || isEnd) return;
         if (videoList.size() == 0) return;
 
-        if (!isNetworkAvailable()) {
+        if (!NetWorkUtil.isNetworkAvailable(FavoriteVideoListActivity.this)) {
             Toast.makeText(this, getString(R.string.emoticon__no_network), Toast.LENGTH_SHORT).show();
             return;
         }

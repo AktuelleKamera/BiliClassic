@@ -288,7 +288,7 @@ public class MetroFolderVideoFragment extends Fragment implements MetroTurnPage 
                         }
 
                         if (mVideos.size() == 0) {
-                            mTvLoading.setText(getString(R.string.no_favorite_folders_2));
+                            mTvLoading.setText(getString(R.string.no_favorite_folders));
                             mTvLoading.setVisibility(View.VISIBLE);
                             mVideoList.setVisibility(View.GONE);
                         } else {
@@ -296,6 +296,12 @@ public class MetroFolderVideoFragment extends Fragment implements MetroTurnPage 
                             mVideoList.setVisibility(View.VISIBLE);
                             if (page == 1) {
                                 mVideoList.setSelection(0);
+                                mVideoList.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        animateAllRows();
+                                    }
+                                });
                             }
                         }
                         stopRefreshing();
@@ -347,14 +353,76 @@ public class MetroFolderVideoFragment extends Fragment implements MetroTurnPage 
     }
 
     // ===== 动画 =====
-    // 收藏两级页面不做任何条目动画（翻入/翻出均无），只有整页转门
+    // 与历史记录页一致：首次加载完成可见行错峰滑入，翻入/翻出时条目错峰滑入/滑出
 
-    /** MetroTurnPage：翻入（无条目动画） */
-    public void animateTurnIn() {
+    /** 清除可见行上残留的动画 */
+    private void clearRowAnimations() {
+        if (mVideoList == null) return;
+        int count = mVideoList.getChildCount();
+        for (int i = 0; i < count; i++) {
+            View row = mVideoList.getChildAt(i);
+            if (row == null) continue;
+            row.clearAnimation();
+            row.setVisibility(View.VISIBLE);
+        }
     }
 
-    /** MetroTurnPage：翻出（无条目动画） */
+    /** 首次加载完成：可见行错峰滑入 */
+    private void animateAllRows() {
+        if (mVideoList == null) return;
+        clearRowAnimations();
+        int count = mVideoList.getChildCount();
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        int travel = Math.max(screenWidth / 3, 80);
+        for (int i = 0; i < count; i++) {
+            final View row = mVideoList.getChildAt(i);
+            if (row == null) continue;
+            row.setVisibility(View.VISIBLE);
+            Animation a = new TranslateAnimation(travel, 0, 0, 0);
+            a.setDuration(350);
+            a.setStartOffset(i * 120);
+            a.setInterpolator(new DecelerateInterpolator());
+            row.startAnimation(a);
+        }
+    }
+
+    /** MetroTurnPage：翻入时条目错峰滑入 */
+    public void animateTurnIn() {
+        if (mVideoList == null || mVideos.size() == 0) return;
+        clearRowAnimations();
+        int count = mVideoList.getChildCount();
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        int travel = Math.max(screenWidth / 3, 80);
+        for (int i = 0; i < count; i++) {
+            final View row = mVideoList.getChildAt(i);
+            if (row == null) continue;
+            row.setVisibility(View.VISIBLE);
+            Animation a = new TranslateAnimation(travel, 0, 0, 0);
+            a.setDuration(280);
+            a.setStartOffset(i * 70);
+            a.setInterpolator(new DecelerateInterpolator());
+            row.startAnimation(a);
+        }
+    }
+
+    /** MetroTurnPage：翻出时条目错峰滑出 */
     public void animateTurnOut() {
+        if (mVideoList == null || mVideos.size() == 0) return;
+        clearRowAnimations();
+        int count = mVideoList.getChildCount();
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        int travel = Math.max(screenWidth / 3, 80);
+        for (int i = 0; i < count; i++) {
+            final View row = mVideoList.getChildAt(i);
+            if (row == null) continue;
+            row.setVisibility(View.VISIBLE);
+            Animation a = new TranslateAnimation(0, travel, 0, 0);
+            a.setDuration(240);
+            a.setStartOffset(i * 50);
+            a.setInterpolator(new DecelerateInterpolator());
+            a.setFillAfter(true);
+            row.startAnimation(a);
+        }
     }
 
     @Override

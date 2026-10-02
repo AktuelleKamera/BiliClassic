@@ -25,6 +25,12 @@ public class LoginActivity extends BaseActivity {
     private int selectedTab = 0;
     private boolean fromSetup = false;
 
+    /** 登录页标题栏只要返回键，不要右上角的搜索/更多按钮 */
+    @Override
+    protected boolean hasTitleActions() {
+        return false;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

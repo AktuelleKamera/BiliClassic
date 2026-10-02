@@ -4,17 +4,17 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.List;
 
+import tv.biliclassic.adapter.BaseObservableAdapter;
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.ImageLoader;
 
-public class RelatedVideosAdapter extends BaseAdapter {
+public class RelatedVideosAdapter extends BaseObservableAdapter<VideoCard> {
 
     public interface OnVideoClickListener {
         void onVideoClick(VideoCard video, int position);
@@ -24,36 +24,11 @@ public class RelatedVideosAdapter extends BaseAdapter {
         void onVideoLongClick(VideoCard video, int position);
     }
 
-    private Context context;
-    private List<VideoCard> list;
     private OnVideoClickListener mClickListener;
     private OnVideoLongClickListener mLongClickListener;
 
-    // 键盘光标选中的项，-1 表示无选中
-    private int selectedPosition = -1;
-
-    // 触摸滑动中是否隐藏光标高亮（滑动时隐藏，再次按键时恢复）
-    private boolean mHideHighlight = false;
-
-    public void setSelectedPosition(int position) {
-        this.selectedPosition = position;
-        notifyDataSetChanged();
-    }
-
-    /**
-     * 触摸滑动时隐藏/显示光标高亮（值不变时跳过重绘）。
-     */
-    public void setHideHighlight(boolean hide) {
-        if (this.mHideHighlight == hide) {
-            return;
-        }
-        this.mHideHighlight = hide;
-        notifyDataSetChanged();
-    }
-
     public RelatedVideosAdapter(Context context, List<VideoCard> list) {
-        this.context = context;
-        this.list = list;
+        super(context, list);
     }
 
     public void setOnVideoClickListener(OnVideoClickListener listener) {
@@ -62,26 +37,6 @@ public class RelatedVideosAdapter extends BaseAdapter {
 
     public void setOnVideoLongClickListener(OnVideoLongClickListener listener) {
         this.mLongClickListener = listener;
-    }
-
-    /** 滚动状态变化时由 ListView 的 OnScrollListener 调用 */
-    public void setScrolling(boolean scrolling) {
-        ImageLoader.setScrolling(scrolling);
-    }
-
-    @Override
-    public int getCount() {
-        return list == null ? 0 : list.size();
-    }
-
-    @Override
-    public Object getItem(int position) {
-        return list.get(position);
-    }
-
-    @Override
-    public long getItemId(int position) {
-        return position;
     }
 
     @Override
@@ -115,7 +70,6 @@ public class RelatedVideosAdapter extends BaseAdapter {
         }
 
         final VideoCard item = list.get(position);
-        final int currentPos = position;
 
         holder.title.setText(item.title);
         holder.upName.setText(item.upName);
@@ -149,11 +103,6 @@ public class RelatedVideosAdapter extends BaseAdapter {
         });
 
         return convertView;
-    }
-
-    public void updateData(List<VideoCard> newList) {
-        this.list = newList;
-        notifyDataSetChanged();
     }
 
     public void clearCache() {

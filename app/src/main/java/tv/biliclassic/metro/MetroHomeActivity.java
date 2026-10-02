@@ -1,5 +1,6 @@
 package tv.biliclassic.metro;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
@@ -101,7 +102,7 @@ public class MetroHomeActivity extends BaseActivity {
         // 通用重力/陀螺仪微动：作用于主页/推荐/个人中心共用的内容层（page_holder）
         View tiltTarget = findViewById(R.id.page_holder);
         if (tiltTarget != null) {
-            mTiltEffect = new MetroTiltEffect(this, tiltTarget, dpToPx(4));
+            mTiltEffect = new MetroTiltEffect(this, tiltTarget, DeviceUtil.dpToPx(4));
             mTiltEffect.start();
         }
 
@@ -264,11 +265,11 @@ public class MetroHomeActivity extends BaseActivity {
 
             TextView row = new TextView(this);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(52));
-            lp.setMargins(0, dpToPx(2), 0, dpToPx(2));
+                    LinearLayout.LayoutParams.MATCH_PARENT, DeviceUtil.dpToPx(52));
+            lp.setMargins(0, DeviceUtil.dpToPx(2), 0, DeviceUtil.dpToPx(2));
             row.setLayoutParams(lp);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dpToPx(20), 0, dpToPx(12), 0);
+            row.setPadding(DeviceUtil.dpToPx(20), 0, DeviceUtil.dpToPx(12), 0);
             row.setText(label);
             row.setTextSize(28);
             row.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
@@ -367,12 +368,6 @@ public class MetroHomeActivity extends BaseActivity {
     }
 
     /** 单个淡入动画（无用的shit；现在是整页转门）。 */
-    private Animation buildSlideUpAnimation() {
-        AlphaAnimation alpha = new AlphaAnimation(0f, 1f);
-        alpha.setDuration(600);
-        alpha.setInterpolator(new AccelerateDecelerateInterpolator());
-        return alpha;
-    }
 
     private void navigate(int index) {
         if (index == 0) { // 个人中心 → 转门翻入详情页（个人中心 Fragment）
@@ -616,27 +611,16 @@ public class MetroHomeActivity extends BaseActivity {
     }
 
     /** 打断并回到主页：正在动画则从当前进度反向回放；否则复位到主页。 */
-    private void cancelToMenu() {
-        if (mTurnAnim) {
-            startTurn(0);
-            return;
-        }
-        if (mHomePage != null) { mHomePage.setVisibility(View.VISIBLE); mHomePage.clearTurn(); }
-        if (mRecommendPage != null) { mRecommendPage.setVisibility(View.INVISIBLE); mRecommendPage.clearTurn(); }
-        mShowingMenu = true;
-        mTurn = 0f;
-        mDetailBackTarget = null;
-    }
 
     private void applyHighlight(View row, boolean on) {
         if (on) {
             row.setBackgroundDrawable(mHighlightBg);
             ((TextView) row).setTextColor(Color.WHITE);
-            row.setPadding(dpToPx(24), 0, dpToPx(12), 0);
+            row.setPadding(DeviceUtil.dpToPx(24), 0, DeviceUtil.dpToPx(12), 0);
         } else {
             row.setBackgroundColor(Color.TRANSPARENT);
             ((TextView) row).setTextColor(PINK);
-            row.setPadding(dpToPx(20), 0, dpToPx(12), 0);
+            row.setPadding(DeviceUtil.dpToPx(20), 0, DeviceUtil.dpToPx(12), 0);
         }
     }
 
@@ -708,9 +692,6 @@ public class MetroHomeActivity extends BaseActivity {
         return super.onKeyDown(keyCode, event);
     }
 
-    private int dpToPx(int dp) {
-        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
-    }
 
     private boolean isNightMode() {
         // 依据 App 自身的"夜间模式"开关（设置里那个），而非系统的 uiMode

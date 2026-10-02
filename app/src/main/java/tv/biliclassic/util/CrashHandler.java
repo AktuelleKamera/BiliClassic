@@ -122,7 +122,7 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
             sb.append("设备: ").append(getBuildField("MODEL")).append("\n");
             sb.append("厂商: ").append(getManufacturer()).append("\n");
             sb.append("Android: ").append(getBuildField("RELEASE")).append("\n");
-            sb.append("API: ").append(getSdkInt()).append("\n\n");
+            sb.append("API: ").append(SdkHelper.getSdkInt()).append("\n\n");
 
             StringWriter sw = new StringWriter();
             PrintWriter pw = new PrintWriter(sw);
@@ -148,18 +148,6 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
             return String.valueOf(android.os.Build.class.getField(name).get(null));
         } catch (Exception e) {
             return "";
-        }
-    }
-
-    private static int getSdkInt() {
-        try {
-            return android.os.Build.VERSION.class.getField("SDK_INT").getInt(null);
-        } catch (Exception e) {
-            try {
-                return Integer.parseInt(String.valueOf(android.os.Build.VERSION.class.getField("SDK").get(null)));
-            } catch (Exception e2) {
-                return 0;
-            }
         }
     }
 }

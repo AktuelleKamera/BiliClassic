@@ -36,7 +36,7 @@
             android:layout_gravity="center"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/VideoView_buffering"
+            android:text="@string/buffering"
             android:singleLine="true"
             android:marqueeRepeatLimit="0"
             style="@style/PlayerControlBarButton"/>

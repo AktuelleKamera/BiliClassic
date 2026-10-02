@@ -2,4 +2,8 @@
 <resources>
     <!-- 圆屏顶栏居中锚点（MainActivity 圆屏适配用，不可见） -->
     <item name="round_bar_anchor" type="id" />
+
+    <!-- 二级页右上角搜索与溢出按钮（运行时创建） -->
+    <item name="btn_title_search" type="id" />
+    <item name="btn_title_more" type="id" />
 </resources>

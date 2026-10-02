@@ -46,19 +46,6 @@ public class HistoryActivity extends BaseActivity {
     // 用户是否已主动滚动过（首次加载后不自动触发加载更多，避免不足一屏时立即翻页导致风控）
     private boolean mUserScrolled = false;
 
-    // 网络检查
-    private boolean isNetworkAvailable() {
-        try {
-            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
-                    getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
-            if (cm == null) return false;
-            android.net.NetworkInfo info = cm.getActiveNetworkInfo();
-            return info != null && info.isConnected();
-        } catch (Exception e) {
-            return true;
-        }
-    }
-
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_history);
@@ -174,8 +161,8 @@ public class HistoryActivity extends BaseActivity {
         if (action != tv.biliclassic.util.KeyBindingUtil.ACTION_UP
                 && action != tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
                 && action != tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM
-                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2
-                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
             return super.dispatchKeyEvent(event);
         }
         if (selectedPosition < 0) {
@@ -192,9 +179,9 @@ public class HistoryActivity extends BaseActivity {
                 selectedPosition = Math.max(0, selectedPosition - 1);
             } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
                 selectedPosition = Math.min(count - 1, selectedPosition + 1);
-            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2) {
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP) {
                 selectedPosition = pageMove(-1);
-            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+            } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
                 selectedPosition = pageMove(1);
             } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
                 VideoCard item = videoList.get(selectedPosition);
@@ -249,7 +236,7 @@ public class HistoryActivity extends BaseActivity {
 
     private void loadHistory() {
         // 检查网络
-        if (!isNetworkAvailable()) {
+        if (!NetWorkUtil.isNetworkAvailable(HistoryActivity.this)) {
             mainHandler.post(new Runnable() {
                 public void run() {
                     progressBar.setVisibility(View.GONE);
@@ -347,7 +334,7 @@ public class HistoryActivity extends BaseActivity {
                                 }
 
                                 if (videoList.size() == 0) {
-                                    emptyView.setText(getString(R.string.no_history_2));
+                                    emptyView.setText(getString(R.string.no_history));
                                     emptyView.setVisibility(View.VISIBLE);
                                     historyList.setVisibility(View.GONE);
                                 } else {
@@ -409,7 +396,7 @@ public class HistoryActivity extends BaseActivity {
     private void loadMoreHistory() {
         if (mHasError || isLoading || isEnd) return;
 
-        if (!isNetworkAvailable()) {
+        if (!NetWorkUtil.isNetworkAvailable(HistoryActivity.this)) {
             return;
         }
 

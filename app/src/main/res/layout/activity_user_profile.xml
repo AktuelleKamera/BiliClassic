@@ -8,39 +8,48 @@
     <RelativeLayout
         android:id="@+id/title_bar"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:background="#FFFFFF">
+        android:layout_height="48dp">
 
+        <!-- 小返回箭头 -->
         <ImageView
             android:id="@+id/btn_back"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_centerVertical="true"
-            android:padding="1dp"
+            android:layout_width="16dp"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/common_back"
             android:scaleType="centerInside"
-            android:src="@drawable/ic_action_back" />
+            android:src="@drawable/abs__ic_ab_back_holo_light"
+            android:focusable="true"
+            android:clickable="true" />
 
+        <!-- 用户名标题：点击弹出 视频/动态 下拉（粉色高亮，标题文字不变） -->
         <TextView
             android:id="@+id/tv_user_name_title"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="36dp"
             android:layout_centerVertical="true"
             android:layout_toRightOf="@+id/btn_back"
-            android:layout_marginLeft="8dp"
+            android:layout_marginLeft="0dp"
+            android:layout_marginRight="8dp"
+            android:background="@drawable/titlebar_pink_item_bg"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:paddingLeft="0dp"
+            android:paddingRight="8dp"
             android:text="@string/user_space_title_fmt"
-            android:textSize="18sp"
-            android:textColor="#333333"
-            android:maxWidth="200dp"
+            android:textSize="18dp"
+            android:textColor="#616161"
+            android:maxWidth="240dp"
             android:ellipsize="end"
             android:maxLines="1" />
 
     </RelativeLayout>
 
-    <!-- 粉色分割线 -->
+    <!-- 粉色分割线（细的浅粉线，与主页/1.8.4 一致：#FCA3C5） -->
     <View
         android:layout_width="match_parent"
-        android:layout_height="2px"
-        android:background="#D86DA5" />
+        android:layout_height="1.5dp"
+        android:background="#FCA3C5" />
 
     <!-- ActionBar下方阴影 -->
     <ImageView

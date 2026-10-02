@@ -215,7 +215,7 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
                                 }
 
                                 if (mVideoList.size() == 0) {
-                                    mTvLoading.setText(getString(R.string.no_history_2));
+                                    mTvLoading.setText(getString(R.string.no_history));
                                     mTvLoading.setVisibility(View.VISIBLE);
                                     mHistoryList.setVisibility(View.GONE);
                                 } else {

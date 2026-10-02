@@ -2,19 +2,18 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/title_bar"
     android:layout_width="match_parent"
-    android:layout_height="@dimen/video_title_bar_height"
-    android:background="#F5F5F5">
+    android:layout_height="@dimen/video_title_bar_height">
 
+    <!-- 小返回箭头 -->
     <ImageView
         android:id="@+id/btn_back"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_centerVertical="true"
-        android:layout_marginLeft="5dp"
-        android:src="@drawable/ic_action_back"
+        android:layout_width="16dp"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/common_back"
         android:scaleType="centerInside"
-        android:padding="8dp"
-        android:contentDescription="@string/common_back_11" />
+        android:src="@drawable/abs__ic_ab_back_holo_light"
+        android:focusable="true"
+        android:clickable="true" />
 
     <TextView
         android:id="@+id/tv_avid"
@@ -22,10 +21,10 @@
         android:layout_height="wrap_content"
         android:layout_centerVertical="true"
         android:layout_toRightOf="@id/btn_back"
-        android:layout_marginLeft="8dp"
+        android:layout_marginLeft="0dp"
         android:text="@string/av_number"
-        android:textSize="16sp"
-        android:textColor="#333333"
+        android:textSize="18dp"
+        android:textColor="#616161"
         android:maxLines="1"
         android:ellipsize="end" />
 

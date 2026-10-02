@@ -20,11 +20,11 @@
         <!-- 小返回箭头（在图标左边，紧贴图标） -->
         <ImageView
             android:id="@+id/back"
-            android:layout_width="24dp"
+            android:layout_width="48dp"
             android:layout_height="match_parent"
-            android:contentDescription="@string/common_back_7"
+            android:contentDescription="@string/common_back"
             android:scaleType="centerInside"
-            android:src="@drawable/abs__ic_ab_back_holo_light"
+            android:src="@drawable/ic_action_back"
             android:focusable="true"
             android:clickable="true" />
 
@@ -36,8 +36,8 @@
             android:background="@drawable/titlebar_pink_item_bg"
             android:clickable="true"
             android:focusable="true"
-            android:paddingLeft="4dp"
-            android:paddingRight="4dp">
+            android:paddingLeft="0dp"
+            android:paddingRight="0dp">
 
             <ImageView
                 android:id="@+id/logo"
@@ -170,11 +170,11 @@
     </LinearLayout>
 
 
-    <!-- 搜索栏与内容之间的粗粉线（模仿 1.8.4 的粉色 PagerTabStrip 分隔） -->
+    <!-- 搜索栏与内容之间的细粉线（与主页/1.8.4 顶栏底部一致：#FCA3C5） -->
     <View
         android:layout_width="match_parent"
-        android:layout_height="4dp"
-        android:background="#D86DA5" />
+        android:layout_height="1.5dp"
+        android:background="#FCA3C5" />
 
     <!-- 下方阴影 -->
     <ImageView
@@ -204,7 +204,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginLeft="8dp"
-            android:text="@string/login_working_hard_2"
+            android:text="@string/login_working_hard"
             android:textSize="12sp"
             android:textColor="#999999" />
 

@@ -8,26 +8,44 @@
     <RelativeLayout
         android:id="@+id/title_bar"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/main_title_bar_height"
-        android:background="#FFFFFF">
+        android:layout_height="@dimen/main_title_bar_height">
 
         <ImageView
             android:id="@+id/logo"
-            android:layout_width="80dp"
-            android:layout_height="match_parent"
-            android:layout_alignParentLeft="true"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
             android:layout_centerVertical="true"
-            android:layout_marginLeft="5dp"
+            android:layout_marginLeft="0dp"
+            android:layout_marginRight="8dp"
+            android:layout_toRightOf="@+id/btn_home_back"
+            android:adjustViewBounds="true"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_home" />
 
+        <!-- 展开搜索时顶替 logo 的返回键 -->
+        <ImageView
+            android:id="@+id/btn_home_back"
+            android:layout_width="40dp"
+            android:layout_height="48dp"
+            android:layout_alignParentLeft="true"
+            android:layout_centerVertical="true"
+            android:background="@drawable/titlebar_pink_item_bg"
+            android:clickable="true"
+            android:focusable="true"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_action_back"
+            android:visibility="gone" />
+
         <ImageView
             android:id="@+id/btn_search"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:layout_alignParentRight="true"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
             android:layout_centerVertical="true"
-            android:layout_marginRight="12dp"
+            android:layout_toLeftOf="@id/btn_title_more"
+            android:background="@drawable/titlebar_pink_item_bg"
+            android:clickable="true"
+            android:focusable="true"
+            android:scaleType="centerInside"
             android:src="@drawable/ic_action_search" />
 
         <!-- 内联 Holo 搜索框（点搜索图标才显示，模仿 1.8.4 的 iconified SearchView） -->
@@ -35,7 +53,8 @@
             android:id="@+id/title_search_container"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_toRightOf="@id/logo"
+            android:layout_toLeftOf="@id/btn_title_more"
+            android:layout_toRightOf="@+id/logo"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:paddingLeft="4dp"
@@ -85,16 +104,28 @@
             </LinearLayout>
         </LinearLayout>
 
+        <ImageView
+            android:id="@id/btn_title_more"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:background="@drawable/titlebar_pink_item_bg"
+            android:clickable="true"
+            android:focusable="true"
+            android:scaleType="centerInside"
+            android:src="@drawable/abs__ic_menu_moreoverflow_holo_light" />
+
     </RelativeLayout>
 
-    <!-- 搜索历史（内联搜索框展开时显示在下方） -->
+    <!-- 搜索历史 -->
     <LinearLayout
         android:id="@+id/main_search_history"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#FFFFFF"
+        android:background="@drawable/bili_texture_background"
         android:orientation="vertical"
-        android:padding="12dp"
+        android:paddingBottom="6dp"
         android:visibility="gone">
 
         <LinearLayout
@@ -102,25 +133,34 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:layout_marginBottom="4dp">
+            android:paddingLeft="12dp"
+            android:paddingTop="10dp"
+            android:paddingRight="12dp"
+            android:paddingBottom="4dp">
 
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="搜索历史"
-                android:textColor="#666666"
-                android:textSize="14sp" />
+                android:textColor="#D665A0"
+                android:textSize="15sp" />
 
             <TextView
                 android:id="@+id/main_search_history_clear"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:padding="8dp"
+                android:padding="4dp"
                 android:text="清空"
-                android:textColor="#D86DA5"
-                android:textSize="12sp" />
+                android:textColor="#D665A0"
+                android:textSize="13sp" />
         </LinearLayout>
+
+        <!-- 小节下划线（同 1.8.4 SectionUnderline） -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1.5dp"
+            android:background="#D665A0" />
 
         <LinearLayout
             android:id="@+id/main_search_history_list"
@@ -129,28 +169,36 @@
             android:orientation="vertical" />
     </LinearLayout>
 
-    <!-- 上方分割线 -->
+    <!-- 粉色分割线（与 1.8.4 顶栏底部一致：细的浅粉线 #FCA3C5） -->
     <View
         android:layout_width="match_parent"
-        android:layout_height="1px"
+        android:layout_height="1.5dp"
         android:background="#FCA3C5" />
 
-    <!-- ViewPager（PagerTabStrip 我使用带底部线的背景= = 为什么下面这条破线还是没法显示） -->
-    <android.support.v4.view.ViewPager
-        android:id="@+id/pager"
+    <!-- ViewPager + 顶部阴影叠加（仿 1.8.4 的 bili_fragment_activity：阴影覆盖在内容顶部，
+         不会在分割线与 Tab 之间留出空白） -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
 
-        <android.support.v4.view.PagerTabStrip
-            android:id="@+id/pager_tab_strip"
+        <android.support.v4.view.ViewPager
+            android:id="@+id/pager"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/tab_background"
-            android:textColor="#FFFFFF"
-            android:paddingTop="0dp"
-            android:paddingBottom="0dp" />
+            android:layout_height="match_parent">
 
-    </android.support.v4.view.ViewPager>
+            <android.support.v4.view.PagerTabStrip
+                android:id="@+id/pager_tab_strip"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top"
+                android:background="@drawable/tab_background"
+                android:textColor="#FFFFFF"
+                android:paddingTop="0dp"
+                android:paddingBottom="0dp" />
+
+        </android.support.v4.view.ViewPager>
+
+    </FrameLayout>
 
 </LinearLayout>

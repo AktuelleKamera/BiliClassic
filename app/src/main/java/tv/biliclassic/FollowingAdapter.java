@@ -1,5 +1,6 @@
 package tv.biliclassic;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Handler;
@@ -7,7 +8,6 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import tv.biliclassic.adapter.BaseObservableAdapter;
 import tv.biliclassic.api.UserInfoApi;
 import tv.biliclassic.model.UserInfo;
 import tv.biliclassic.util.ImageLoader;
@@ -23,71 +24,24 @@ import tv.biliclassic.util.ImageLoader;
 /**
  * 关注的人列表适配器（古早风格：分割线 + 左边头像 + 名字/签名 + 右边取消关注垃圾桶）。
  */
-public class FollowingAdapter extends BaseAdapter {
+public class FollowingAdapter extends BaseObservableAdapter<UserInfo> {
 
     public interface OnUnfollowListener {
         void onUnfollowed(UserInfo user, int position);
     }
 
-    private final Context context;
-    private final List<UserInfo> list;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private OnUnfollowListener unfollowListener;
-    private volatile boolean mScrolling = false;
     // 滚动中下载完成的图片 set 操作排队，停止后分批应用（避免滚动时频繁 setImageBitmap 卡顿）
     private final java.util.ArrayList<Runnable> pendingBitmapSets = new java.util.ArrayList<Runnable>();
 
     public FollowingAdapter(Context context, List<UserInfo> list) {
-        this.context = context;
-        this.list = list;
+        super(context, list);
     }
 
     public void setOnUnfollowListener(OnUnfollowListener listener) {
         this.unfollowListener = listener;
-    }
-
-    // ===== 遥控器方向键选中的条目（-1 = 未选中），用于整行高亮 =====
-    private int selectedPosition = -1;
-    private boolean mHideHighlight = false;
-
-    public void setSelectedPosition(int position) {
-        this.selectedPosition = position;
-        notifyDataSetChanged();
-    }
-
-    public int getSelectedPosition() {
-        return selectedPosition;
-    }
-
-    public void setHideHighlight(boolean hide) {
-        if (this.mHideHighlight == hide) {
-            return;
-        }
-        this.mHideHighlight = hide;
-        notifyDataSetChanged();
-    }
-
-    /** 滚动状态：滚动中下载完成的图片暂不 set，停止后分批应用，避免列表滚动卡顿 */
-    public void setScrolling(boolean scrolling) {
-        ImageLoader.setScrolling(scrolling);
-    }
-
-
-    @Override
-    public int getCount() {
-        return list == null ? 0 : list.size();
-    }
-
-    @Override
-    public Object getItem(int position) {
-        if (list == null || position < 0 || position >= list.size()) return null;
-        return list.get(position);
-    }
-
-    @Override
-    public long getItemId(int position) {
-        return position;
     }
 
     @Override
@@ -216,16 +170,12 @@ public class FollowingAdapter extends BaseAdapter {
             android.graphics.drawable.Drawable borderDrawable =
                     context.getResources().getDrawable(R.drawable.image_border_overlay);
             imageView.setBackgroundDrawable(borderDrawable);
-            int paddingPx = dpToPx(2);
+            int paddingPx = DeviceUtil.dpToPx(2);
             imageView.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
         } catch (Exception e) {
         }
     }
 
-    private int dpToPx(int dp) {
-        float density = context.getResources().getDisplayMetrics().density;
-        return (int) (dp * density + 0.5f);
-    }
 
 
     static class ViewHolder {

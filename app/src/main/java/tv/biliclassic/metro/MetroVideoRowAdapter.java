@@ -4,13 +4,13 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.List;
 
 import tv.biliclassic.R;
+import tv.biliclassic.adapter.BaseObservableAdapter;
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.ImageLoader;
 
@@ -21,63 +21,20 @@ import tv.biliclassic.util.ImageLoader;
  * 不走 ListView 的 OnItemClickListener 管道）。
  * 数据源为 VideoCard（历史记录：view 字段为观看进度文案）。
  */
-public class MetroVideoRowAdapter extends BaseAdapter {
+public class MetroVideoRowAdapter extends BaseObservableAdapter<VideoCard> {
 
     public interface OnVideoClickListener {
         void onVideoClick(VideoCard card, int position);
     }
 
-    private final Context context;
-    private final List<VideoCard> list;
     private OnVideoClickListener clickListener;
 
-    // 遥控器方向键选中的条目（-1 = 未选中），用于整行高亮
-    private int selectedPosition = -1;
-    private boolean mHideHighlight = false;
-
     public MetroVideoRowAdapter(Context context, List<VideoCard> list) {
-        this.context = context;
-        this.list = list;
+        super(context, list);
     }
 
     public void setOnVideoClickListener(OnVideoClickListener listener) {
         this.clickListener = listener;
-    }
-
-    public void setSelectedPosition(int position) {
-        this.selectedPosition = position;
-        notifyDataSetChanged();
-    }
-
-    public int getSelectedPosition() {
-        return selectedPosition;
-    }
-
-    public void setHideHighlight(boolean hide) {
-        if (this.mHideHighlight == hide) {
-            return;
-        }
-        this.mHideHighlight = hide;
-        notifyDataSetChanged();
-    }
-
-    public void setScrolling(boolean scrolling) {
-        ImageLoader.setScrolling(scrolling);
-    }
-
-    @Override
-    public int getCount() {
-        return list == null ? 0 : list.size();
-    }
-
-    @Override
-    public Object getItem(int position) {
-        return list.get(position);
-    }
-
-    @Override
-    public long getItemId(int position) {
-        return position;
     }
 
     @Override

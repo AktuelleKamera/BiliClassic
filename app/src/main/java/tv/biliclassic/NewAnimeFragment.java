@@ -1,5 +1,6 @@
 package tv.biliclassic;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
@@ -101,11 +102,6 @@ public class NewAnimeFragment extends Fragment {
     private int buildIndex = 0;
     private int buildLargeCardIndex = 0;
 
-    private boolean isLowMemoryDevice() {
-        int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
-        return maxMemory < 24576;
-    }
-
     private void initExecutor() {
         if (executor != null && !executor.isShutdown()) {
             executor.shutdownNow();
@@ -145,7 +141,7 @@ public class NewAnimeFragment extends Fragment {
             animeList = (ListView) view.findViewById(R.id.anime_list);
             if (animeList != null) {
                 animeList.setDivider(new android.graphics.drawable.ColorDrawable(0x00000000));
-                animeList.setDividerHeight(dpToPx(4));
+                animeList.setDividerHeight(DeviceUtil.dpToPx(4));
                 animeList.setVerticalFadingEdgeEnabled(false);
                 animeList.setHorizontalFadingEdgeEnabled(false);
                 if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
@@ -246,22 +242,6 @@ public class NewAnimeFragment extends Fragment {
 
     private boolean isTablet() {
         return tv.biliclassic.util.SdkHelper.getBooleanResource(getResources(), R.bool.is_tablet);
-    }
-
-    private boolean isOrientationLandscape() {
-        return getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
-    }
-
-    private boolean isNetworkAvailable() {
-        try {
-            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
-                    getActivity().getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
-            if (cm == null) return false;
-            android.net.NetworkInfo info = cm.getActiveNetworkInfo();
-            return info != null && info.isConnected();
-        } catch (Exception e) {
-            return true;
-        }
     }
 
     @Override
@@ -410,7 +390,7 @@ public class NewAnimeFragment extends Fragment {
                 tv.setTextSize(16);
                 tv.setTextColor(0xFF999999);
                 tv.setGravity(android.view.Gravity.CENTER);
-                tv.setPadding(0, dpToPx(100), 0, 0);
+                tv.setPadding(0, DeviceUtil.dpToPx(100), 0, 0);
                 gridContainer.addView(tv);
             }
             return;
@@ -608,7 +588,7 @@ public class NewAnimeFragment extends Fragment {
                             hideAllLoading();
                             displayAnimeList(cachedItems);
 
-                            if (isNetworkAvailable()) {
+                            if (NetWorkUtil.isNetworkAvailable(getActivity())) {
                                 new Thread(new Runnable() {
                                     @Override
                                     public void run() {
@@ -621,7 +601,7 @@ public class NewAnimeFragment extends Fragment {
                         }
 
                         // 无缓存，检查网络
-                        if (!isNetworkAvailable()) {
+                        if (!NetWorkUtil.isNetworkAvailable(getActivity())) {
                             showNoNetwork();
                             return;
                         }
@@ -688,7 +668,7 @@ public class NewAnimeFragment extends Fragment {
         } catch (final Exception e) {
             e.printStackTrace();
             if (getActivity() == null || isDestroyed) return;
-            if (!isNetworkAvailable()) {
+            if (!NetWorkUtil.isNetworkAvailable(getActivity())) {
                 runUi(new Runnable() {
                     @Override
                     public void run() {
@@ -843,9 +823,9 @@ public class NewAnimeFragment extends Fragment {
                 boolean isLandscape = displayWidth > dm.heightPixels;
                 // 横屏大卡占 2/3，竖屏大卡占 3/5
                 int largeWidth = isLandscape ? displayWidth * 2 / 3 : displayWidth * 3 / 5;
-                int smallWidth = displayWidth - largeWidth - dpToPx(4);
+                int smallWidth = displayWidth - largeWidth - DeviceUtil.dpToPx(4);
                 int smallHeight = smallWidth / 3;
-                int rowHeight = smallHeight * 2 + dpToPx(4);
+                int rowHeight = smallHeight * 2 + DeviceUtil.dpToPx(4);
 
                 // 偶数行：大卡左、小卡右竖排；奇数行：小卡左竖排、大卡右
                 boolean isEven = (buildLargeCardIndex % 2 == 0);
@@ -860,7 +840,7 @@ public class NewAnimeFragment extends Fragment {
                 smallColumn.addView(sm1);
 
                 View gap = new View(getActivity());
-                gap.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, dpToPx(4)));
+                gap.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, DeviceUtil.dpToPx(4)));
                 smallColumn.addView(gap);
 
                 View sm2 = createSmallCard(items.get(index + 2), smallWidth, false);
@@ -877,9 +857,9 @@ public class NewAnimeFragment extends Fragment {
                 LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, rowHeight);
                 if (buildLargeCardIndex == 0) {
-                    rowLp.setMargins(0, 0, 0, dpToPx(2));
+                    rowLp.setMargins(0, 0, 0, DeviceUtil.dpToPx(2));
                 } else {
-                    rowLp.setMargins(0, dpToPx(2), 0, dpToPx(2));
+                    rowLp.setMargins(0, DeviceUtil.dpToPx(2), 0, DeviceUtil.dpToPx(2));
                 }
                 row.setLayoutParams(rowLp);
 
@@ -913,7 +893,7 @@ public class NewAnimeFragment extends Fragment {
             int next = index + 1;
 
             View divider = new View(getActivity());
-            divider.setLayoutParams(new LinearLayout.LayoutParams(dpToPx(4), LinearLayout.LayoutParams.MATCH_PARENT));
+            divider.setLayoutParams(new LinearLayout.LayoutParams(DeviceUtil.dpToPx(4), LinearLayout.LayoutParams.MATCH_PARENT));
             row.addView(divider);
 
             if (next < items.size()) {
@@ -974,9 +954,9 @@ public class NewAnimeFragment extends Fragment {
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(width, cardHeight);
         if (addMargins) {
             if (isFirst) {
-                params.setMargins(0, 0, 0, dpToPx(2));
+                params.setMargins(0, 0, 0, DeviceUtil.dpToPx(2));
             } else {
-                params.setMargins(0, dpToPx(2), 0, dpToPx(2));
+                params.setMargins(0, DeviceUtil.dpToPx(2), 0, DeviceUtil.dpToPx(2));
             }
         }
         card.setLayoutParams(params);
@@ -1017,12 +997,12 @@ public class NewAnimeFragment extends Fragment {
 
     private void addRowDivider(LinearLayout row) {
         View divider = new View(getActivity());
-        divider.setLayoutParams(new LinearLayout.LayoutParams(dpToPx(4), LinearLayout.LayoutParams.MATCH_PARENT));
+        divider.setLayoutParams(new LinearLayout.LayoutParams(DeviceUtil.dpToPx(4), LinearLayout.LayoutParams.MATCH_PARENT));
         row.addView(divider);
     }
 
     private View createSmallCard(final AnimeItem item) {
-        int dividerWidth = dpToPx(4);
+        int dividerWidth = DeviceUtil.dpToPx(4);
         int itemWidth = (screenWidth - dividerWidth) / 2;
         return createSmallCard(item, itemWidth, true);
     }
@@ -1063,7 +1043,7 @@ public class NewAnimeFragment extends Fragment {
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(width, cardHeight);
         if (addMargins) {
-            params.setMargins(0, dpToPx(2), 0, dpToPx(2));
+            params.setMargins(0, DeviceUtil.dpToPx(2), 0, DeviceUtil.dpToPx(2));
         }
         card.setLayoutParams(params);
 
@@ -1131,8 +1111,8 @@ public class NewAnimeFragment extends Fragment {
                 && action != tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT
                 && action != tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT
                 && action != tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM
-                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2
-                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
             return false;
         }
         // 首次按键启用高亮
@@ -1143,10 +1123,10 @@ public class NewAnimeFragment extends Fragment {
             mNavRow = 0;
         }
         // 翻页键
-        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2
-                || action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_8) {
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                || action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
             if (event.getRepeatCount() == 0) {
-                pageMoveAnime(action == tv.biliclassic.util.KeyBindingUtil.ACTION_NUM_2 ? -1 : 1);
+                pageMoveAnime(action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP ? -1 : 1);
             }
             return true;
         }
@@ -1369,11 +1349,6 @@ public class NewAnimeFragment extends Fragment {
         return ImageLoader.fetchBitmap(ctx, urlStr, isLarge ? 320 : 160, isLarge ? 160 : 80);
     }
 
-    private int dpToPx(int dp) {
-        float density = getResources().getDisplayMetrics().density;
-        return (int) (dp * density + 0.5f);
-    }
-
     private static class AnimeItem {
         String title;
         String coverUrl;
@@ -1585,7 +1560,7 @@ public class NewAnimeFragment extends Fragment {
                 container.addView(left);
 
                 View divider = new View(context);
-                divider.setLayoutParams(new LinearLayout.LayoutParams(dpToPx(4),
+                divider.setLayoutParams(new LinearLayout.LayoutParams(DeviceUtil.dpToPx(4),
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT));
                 container.addView(divider);
 
@@ -1608,7 +1583,7 @@ public class NewAnimeFragment extends Fragment {
         }
 
         private int computeSmallHeight() {
-            int smallWidth = (screenWidth - dpToPx(4)) / 2;
+            int smallWidth = (screenWidth - DeviceUtil.dpToPx(4)) / 2;
             int smallHeight = smallWidth / 2;
             int maxHeight = (int) (screenHeight * 0.4f);
             if (smallHeight > maxHeight) smallHeight = maxHeight;
@@ -1625,9 +1600,9 @@ public class NewAnimeFragment extends Fragment {
                 int displayWidth = screenWidth;
                 boolean isLandscape = screenWidth > screenHeight;
                 int largeWidth = isLandscape ? displayWidth * 2 / 3 : displayWidth * 3 / 5;
-                int smallWidth = displayWidth - largeWidth - dpToPx(4);
+                int smallWidth = displayWidth - largeWidth - DeviceUtil.dpToPx(4);
                 int smallHeight = smallWidth / 3;
-                int rowHeight = smallHeight * 2 + dpToPx(4);
+                int rowHeight = smallHeight * 2 + DeviceUtil.dpToPx(4);
 
                 LinearLayout smallColumn = new LinearLayout(context);
                 smallColumn.setOrientation(LinearLayout.VERTICAL);
@@ -1638,7 +1613,7 @@ public class NewAnimeFragment extends Fragment {
                 smallColumn.addView(sm1);
 
                 View gap = new View(context);
-                gap.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, dpToPx(4)));
+                gap.setLayoutParams(new LinearLayout.LayoutParams(smallWidth, DeviceUtil.dpToPx(4)));
                 smallColumn.addView(gap);
 
                 View sm2 = LayoutInflater.from(context).inflate(R.layout.item_anime_small, null);
@@ -1673,7 +1648,7 @@ public class NewAnimeFragment extends Fragment {
 
         private View makeDivider(int height) {
             View d = new View(context);
-            d.setLayoutParams(new LinearLayout.LayoutParams(dpToPx(4), height));
+            d.setLayoutParams(new LinearLayout.LayoutParams(DeviceUtil.dpToPx(4), height));
             return d;
         }
 
@@ -1699,11 +1674,6 @@ public class NewAnimeFragment extends Fragment {
                     }
                 }
             });
-        }
-
-        private int dpToPx(int dp) {
-            float density = context.getResources().getDisplayMetrics().density;
-            return (int) (dp * density + 0.5f);
         }
 
         // ===== 按键导航辅助 =====

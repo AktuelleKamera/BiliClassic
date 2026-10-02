@@ -42,7 +42,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="30dp"
                     android:background="#D86DA5"
-                    android:text="@string/common_login_2"
+                    android:text="@string/common_login"
                     android:textColor="#FFFFFF"
                     android:textSize="14sp"
                     android:paddingLeft="24dp"
@@ -175,7 +175,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="30dp"
                         android:background="#DDDDDD"
-                        android:text="@string/common_exit"
+                        android:text="@string/keybinding_exit"
                         android:textColor="#666666"
                         android:textSize="12sp"
                         android:paddingLeft="12dp"
@@ -249,14 +249,14 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:contentDescription="@string/common_favorite" />
+                        android:contentDescription="@string/videodetail_favorite" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
                         android:layout_marginLeft="16dp"
-                        android:text="@string/my_favorites_2"
+                        android:text="@string/my_favorites"
                         android:textSize="15sp"
                         android:textColor="#333333" />
 
@@ -317,14 +317,14 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:contentDescription="@string/offline_manager_2" />
+                        android:contentDescription="@string/offline_manager" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
                         android:layout_marginLeft="16dp"
-                        android:text="@string/offline_manager_2"
+                        android:text="@string/offline_manager"
                         android:textSize="15sp"
                         android:textColor="#333333" />
 
@@ -351,7 +351,7 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:contentDescription="@string/common_settings_2" />
+                        android:contentDescription="@string/common_settings" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -392,7 +392,7 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
                         android:layout_marginLeft="16dp"
-                        android:text="@string/check_update_2"
+                        android:text="@string/update_notify_checking_title"
                         android:textSize="15sp"
                         android:textColor="#333333" />
 

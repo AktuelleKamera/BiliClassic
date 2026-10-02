@@ -95,6 +95,12 @@ public class SdkHelper {
         if (res == null) {
             return false;
         }
+        if (resId == tv.biliclassic.R.bool.is_tablet) {
+            Boolean forced = DeviceUtil.getTabletModeOverride();
+            if (forced != null) {
+                return forced.booleanValue();
+            }
+        }
         try {
             java.lang.reflect.Method m = android.content.res.Resources.class.getMethod("getBoolean", int.class);
             return ((Boolean) m.invoke(res, resId)).booleanValue();

@@ -5,7 +5,6 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -13,37 +12,19 @@ import org.json.JSONObject;
 
 import java.util.List;
 
+import tv.biliclassic.adapter.BaseObservableAdapter;
 import tv.biliclassic.model.PrivateMessage;
 
 /**
  * 私信聊天适配器
  */
-public class PrivateMsgAdapter extends BaseAdapter {
+public class PrivateMsgAdapter extends BaseObservableAdapter<PrivateMessage> {
 
-    private final Context context;
-    private final List<PrivateMessage> list;
     private final long myUid;
 
     public PrivateMsgAdapter(Context context, List<PrivateMessage> list, long myUid) {
-        this.context = context;
-        this.list = list;
+        super(context, list);
         this.myUid = myUid;
-    }
-
-    @Override
-    public int getCount() {
-        return list == null ? 0 : list.size();
-    }
-
-    @Override
-    public Object getItem(int position) {
-        if (list == null || position < 0 || position >= list.size()) return null;
-        return list.get(position);
-    }
-
-    @Override
-    public long getItemId(int position) {
-        return position;
     }
 
     @Override

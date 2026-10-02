@@ -1,5 +1,6 @@
 package tv.biliclassic;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
@@ -24,6 +25,7 @@ import java.util.List;
 import tv.biliclassic.api.RecommendApi;
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.KeyBindingUtil;
+import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 public class RecommendFragment extends Fragment {
@@ -105,7 +107,7 @@ public class RecommendFragment extends Fragment {
         hideFooter();
 
         int numColumns = isTablet() ? (isLandscape() ? 4 : 3) : 2;
-        gridView.setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4));
+        gridView.setPadding(DeviceUtil.dpToPx(4), DeviceUtil.dpToPx(4), DeviceUtil.dpToPx(4), DeviceUtil.dpToPx(4));
         gridView.setClipToPadding(false);
         gridView.setVerticalFadingEdgeEnabled(false);
         gridView.setHorizontalFadingEdgeEnabled(false);
@@ -235,11 +237,6 @@ public class RecommendFragment extends Fragment {
         }
     }
 
-    private int dpToPx(int dp) {
-        float density = getResources().getDisplayMetrics().density;
-        return (int) (dp * density + 0.5f);
-    }
-
     private boolean isTablet() {
         return tv.biliclassic.util.SdkHelper.getBooleanResource(getResources(), R.bool.is_tablet);
     }
@@ -307,10 +304,10 @@ public class RecommendFragment extends Fragment {
         isLoading = true;
 
         android.util.Log.d("RecommendDiag", "loadRecommend 开始, sdk=" + tv.biliclassic.util.SdkHelper.getSdkInt()
-                + ", networkAvailable=" + isNetworkAvailable()
+                + ", networkAvailable=" + NetWorkUtil.isNetworkAvailable(getActivity())
                 + ", cookieLen=" + (SharedPreferencesUtil.getString(SharedPreferencesUtil.cookies, "") == null ? -1 : SharedPreferencesUtil.getString(SharedPreferencesUtil.cookies, "").length()));
 
-        if (!isNetworkAvailable()) {
+        if (!NetWorkUtil.isNetworkAvailable(getActivity())) {
             android.util.Log.e("RecommendDiag", "loadRecommend: isNetworkAvailable()==false, 显示无网络");
             isLoading = false;
             hideAllLoading();
@@ -418,7 +415,7 @@ public class RecommendFragment extends Fragment {
                     android.util.Log.e("RecommendDiag", "推荐加载异常, 类型=" + e.getClass().getName()
                             + ", msg=" + e.getMessage()
                             + ", sdk=" + tv.biliclassic.util.SdkHelper.getSdkInt()
-                            + ", networkAvailable=" + isNetworkAvailable(), e);
+                            + ", networkAvailable=" + NetWorkUtil.isNetworkAvailable(getActivity()), e);
                     if (getActivity() == null) {
                         isLoading = false;
                         return;
@@ -456,18 +453,6 @@ public class RecommendFragment extends Fragment {
                 }
             }
         }).start();
-    }
-
-    private boolean isNetworkAvailable() {
-        try {
-            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
-                    getActivity().getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
-            if (cm == null) return true;
-            android.net.NetworkInfo info = cm.getActiveNetworkInfo();
-            return info != null && info.isAvailable() && info.isConnected();
-        } catch (Exception e) {
-            return true;
-        }
     }
 
     public void loadMoreRecommend() {
@@ -574,7 +559,7 @@ public class RecommendFragment extends Fragment {
     public boolean handleRemoteKey(android.view.KeyEvent event) {
         // 数字键 5：刷新并回到顶部（列表为空/加载失败时也可用）
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0
-                && KeyBindingUtil.classify(event.getKeyCode()) == KeyBindingUtil.ACTION_NUM_5) {
+                && KeyBindingUtil.classify(event.getKeyCode()) == KeyBindingUtil.ACTION_REFRESH) {
             mKeyNavActive = true;
             if (adapter != null) {
                 adapter.setHideHighlight(false);
@@ -616,8 +601,8 @@ public class RecommendFragment extends Fragment {
                 && action != KeyBindingUtil.ACTION_LEFT
                 && action != KeyBindingUtil.ACTION_RIGHT
                 && action != KeyBindingUtil.ACTION_CONFIRM
-                && action != KeyBindingUtil.ACTION_NUM_2
-                && action != KeyBindingUtil.ACTION_NUM_8) {
+                && action != KeyBindingUtil.ACTION_PAGE_UP
+                && action != KeyBindingUtil.ACTION_PAGE_DOWN) {
             return false;
         }
         // 真实遥控器按键：启用光标高亮（首次按键立即显示当前位置）
@@ -636,9 +621,9 @@ public class RecommendFragment extends Fragment {
         int newPos = selectedPosition;
         // 数字键 2/8：按一屏快速翻页；连按两下 2 回到顶部
         // （首次按下翻页；长按 repeat 消费但不连续翻页）
-        if (action == KeyBindingUtil.ACTION_NUM_2 || action == KeyBindingUtil.ACTION_NUM_8) {
+        if (action == KeyBindingUtil.ACTION_PAGE_UP || action == KeyBindingUtil.ACTION_PAGE_DOWN) {
             if (event.getRepeatCount() == 0) {
-                if (action == KeyBindingUtil.ACTION_NUM_2) {
+                if (action == KeyBindingUtil.ACTION_PAGE_UP) {
                     // 单击 2 延迟翻页，双击（350ms 内再按一次）则回到顶部
                     long now = System.currentTimeMillis();
                     if (now - lastNum2PressTime <= NUM2_DOUBLE_TAP_MS) {
@@ -850,11 +835,11 @@ public class RecommendFragment extends Fragment {
         float density = getResources().getDisplayMetrics().density;
         int parentWidth = gridView.getWidth();
         int containerWidth = parentWidth > 0
-                ? parentWidth / cols - dpToPx(6)
-                : getResources().getDisplayMetrics().widthPixels / cols - dpToPx(6);
+                ? parentWidth / cols - DeviceUtil.dpToPx(6)
+                : getResources().getDisplayMetrics().widthPixels / cols - DeviceUtil.dpToPx(6);
         int coverH = containerWidth > 0 ? containerWidth * 9 / 16 : (int) (100 * density);
         int titleH = (int) (46 * density);
-        int rowH = coverH + titleH + dpToPx(12) + dpToPx(12);
+        int rowH = coverH + titleH + DeviceUtil.dpToPx(12) + DeviceUtil.dpToPx(12);
         if (rowH <= 0) {
             return 3;
         }

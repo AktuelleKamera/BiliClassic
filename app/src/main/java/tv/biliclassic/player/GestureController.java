@@ -1,5 +1,6 @@
 package tv.biliclassic.player;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.app.Activity;
 import android.content.pm.ActivityInfo;
 import android.os.Build;
@@ -293,7 +294,7 @@ public class GestureController {
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
         containerParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        containerParams.topMargin = dpToPx(80);
+        containerParams.topMargin = DeviceUtil.dpToPx(80);
         mSpeedTipContainer.setLayoutParams(containerParams);
         mSpeedTipContainer.setVisibility(View.GONE);
 
@@ -302,18 +303,14 @@ public class GestureController {
         mSpeedTipText.setTextSize(24);
         mSpeedTipText.setGravity(Gravity.CENTER);
         mSpeedTipText.setBackgroundColor(0x88000000);
-        int paddingH = dpToPx(24);
-        int paddingV = dpToPx(8);
+        int paddingH = DeviceUtil.dpToPx(24);
+        int paddingV = DeviceUtil.dpToPx(8);
         mSpeedTipText.setPadding(paddingH, paddingV, paddingH, paddingV);
         mSpeedTipContainer.addView(mSpeedTipText);
 
         parent.addView(mSpeedTipContainer);
     }
 
-    private int dpToPx(int dp) {
-        float density = mActivity.getResources().getDisplayMetrics().density;
-        return (int) (dp * density + 0.5f);
-    }
 
     // 显示速度提示
     private void showSpeedTip(float speed) {
@@ -625,52 +622,6 @@ public class GestureController {
     }
 
     // 拖拽平移处理
-    private void handleDrag(MotionEvent event) {
-        if (mCurrentScale <= 1.0f) {
-            mIsDragging = false;
-            return;
-        }
-
-        int action = event.getAction();
-        float x = event.getX();
-        float y = event.getY();
-
-        switch (action) {
-            case MotionEvent.ACTION_DOWN:
-                mLastTouchX = x;
-                mLastTouchY = y;
-                mDragStartX = mTranslateX;
-                mDragStartY = mTranslateY;
-                mIsDragging = false;
-                break;
-
-            case MotionEvent.ACTION_MOVE:
-                if (getPointerCountCompat(event) >= 2) return;
-
-                float dx = (x - mLastTouchX) / mGestureWidth;
-                float dy = (y - mLastTouchY) / mGestureHeight;
-
-                if (Math.abs(dx) > 0.001f || Math.abs(dy) > 0.001f) {
-                    mIsDragging = true;
-                }
-
-                float newTranslateX = mDragStartX + dx;
-                float newTranslateY = mDragStartY + dy;
-
-                mTranslateX = newTranslateX;
-                mTranslateY = newTranslateY;
-
-                if (mScaleChangeListener != null) {
-                    mScaleChangeListener.onScaleChange(mCurrentScale, mTranslateX, mTranslateY);
-                }
-                break;
-
-            case MotionEvent.ACTION_UP:
-            case MotionEvent.ACTION_CANCEL:
-                mIsDragging = false;
-                break;
-        }
-    }
 
     /**
      * 取消长按计时（用于评论滑动时强制取消）

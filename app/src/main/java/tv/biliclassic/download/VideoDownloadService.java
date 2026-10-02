@@ -276,20 +276,6 @@ public class VideoDownloadService extends Service {
     }
 
     private File resolveDownloadDir() {
-        String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state) && PermissionUtil.hasWriteStorage(this)) {
-            File extDir = new File(Environment.getExternalStorageDirectory(), "BiliClassic/Download");
-            if (!extDir.exists()) {
-                extDir.mkdirs();
-            }
-            if (extDir.isDirectory()) {
-                return extDir;
-            }
-        }
-        File internalDir = new File(getFilesDir(), "Download");
-        if (!internalDir.exists()) {
-            internalDir.mkdirs();
-        }
-        return internalDir;
+        return DownloadPathUtil.getDownloadDir(this);
     }
 }

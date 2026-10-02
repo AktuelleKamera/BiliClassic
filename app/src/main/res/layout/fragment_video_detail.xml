@@ -84,7 +84,7 @@
                         android:id="@+id/tv_up_name"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/uploader_label"
+                        android:text="@string/search_field_author"
                         android:textColor="#666666" />
 
                     <TextView

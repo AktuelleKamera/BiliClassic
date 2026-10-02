@@ -1,5 +1,6 @@
 package tv.biliclassic;
 
+import tv.biliclassic.util.DeviceUtil;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
@@ -80,7 +81,7 @@ public class PartitionPageFragment extends Fragment {
         hideFooter();
 
         int numColumns = isTablet() ? (isLandscape() ? 4 : 3) : 2;
-        gridView.setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4));
+        gridView.setPadding(DeviceUtil.dpToPx(4), DeviceUtil.dpToPx(4), DeviceUtil.dpToPx(4), DeviceUtil.dpToPx(4));
         gridView.setClipToPadding(false);
         gridView.setVerticalFadingEdgeEnabled(false);
         gridView.setHorizontalFadingEdgeEnabled(false);
@@ -152,9 +153,6 @@ public class PartitionPageFragment extends Fragment {
         return getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
     }
 
-    private int dpToPx(int dp) {
-        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
-    }
 
     private void showFooter() {
         if (footerContainer != null) {
