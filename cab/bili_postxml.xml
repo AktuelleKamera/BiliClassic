@@ -1,0 +1,9 @@
+<characteristic type="Registry">
+<characteristic type="HKLM\SOFTWARE\Meizu\MiniOneShell\Main\BiliClassic">
+<parm name="DisplayName" value="哔哩经典" datatype="string" />
+<parm name="DisplayName0804" value="哔哩经典" datatype="string" />
+<parm name="ExecFileName" value="\Disk\Programs\BiliClassic\BiliClassic-M8.exe" datatype="string" />
+<parm name="ProgramID" value="{B1A0C1A5-1234-4D8E-9A00-B1A0C1A50001}" datatype="string" />
+<parm name="DefaultIcon" value="\Disk\Programs\BiliClassic\BiliClassic.png" datatype="string" />
+</characteristic>
+</characteristic>

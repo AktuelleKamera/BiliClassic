@@ -1,0 +1,3620 @@
+/* poly1305_asm.S */
+/*
+ * Copyright (C) 2006-2026 wolfSSL Inc.
+ *
+ * This file is part of wolfSSL.
+ *
+ * wolfSSL is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * wolfSSL is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
+ */
+
+#define _WC_BUILDING_POLY1305_ASM_S
+
+#include <wolfssl/wolfcrypt/libwolfssl_sources_asm.h>
+
+#ifndef HAVE_INTEL_AVX1
+#define HAVE_INTEL_AVX1
+#endif /* HAVE_INTEL_AVX1 */
+#ifndef NO_AVX2_SUPPORT
+#ifndef HAVE_INTEL_AVX2
+#define HAVE_INTEL_AVX2
+#endif /* HAVE_INTEL_AVX2 */
+#endif /* NO_AVX2_SUPPORT */
+#ifndef NO_VAES_SUPPORT
+#ifndef HAVE_INTEL_VAES
+#define HAVE_INTEL_VAES
+#endif /* HAVE_INTEL_VAES */
+#endif /* NO_VAES_SUPPORT */
+#ifndef NO_AVX512_SUPPORT
+#ifndef HAVE_INTEL_AVX512
+#define HAVE_INTEL_AVX512
+#endif /* HAVE_INTEL_AVX512 */
+#endif /* NO_AVX512_SUPPORT */
+
+#ifdef WOLFSSL_X86_64_BUILD
+#ifdef HAVE_INTEL_AVX1
+#ifndef __APPLE__
+.text
+.globl	poly1305_setkey_avx
+WC_ASM_ATT_HIDDEN(poly1305_setkey_avx)
+.type	poly1305_setkey_avx,@function
+.align	16
+poly1305_setkey_avx:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_setkey_avx
+WC_ASM_ATT_HIDDEN(_poly1305_setkey_avx)
+.p2align	4
+_poly1305_setkey_avx:
+#endif /* __APPLE__ */
+        movabsq	$0xffffffc0fffffff, %r10
+        movabsq	$0xffffffc0ffffffc, %r11
+        movq	(%rsi), %rdx
+        movq	8(%rsi), %rax
+        movq	16(%rsi), %rcx
+        movq	24(%rsi), %r8
+        andq	%r10, %rdx
+        andq	%r11, %rax
+        movq	%rdx, %r10
+        movq	%rax, %r11
+        xorq	%r9, %r9
+        movq	%rdx, (%rdi)
+        movq	%rax, 8(%rdi)
+        movq	%r9, 24(%rdi)
+        movq	%r9, 32(%rdi)
+        movq	%r9, 40(%rdi)
+        movq	%rcx, 48(%rdi)
+        movq	%r8, 56(%rdi)
+        movq	%r9, 352(%rdi)
+        movq	%r9, 408(%rdi)
+        movq	%rdx, 360(%rdi)
+        movq	%rax, 416(%rdi)
+        addq	%rdx, %r10
+        addq	%rax, %r11
+        movq	%r10, 368(%rdi)
+        movq	%r11, 424(%rdi)
+        addq	%rdx, %r10
+        addq	%rax, %r11
+        movq	%r10, 376(%rdi)
+        movq	%r11, 432(%rdi)
+        addq	%rdx, %r10
+        addq	%rax, %r11
+        movq	%r10, 384(%rdi)
+        movq	%r11, 440(%rdi)
+        addq	%rdx, %r10
+        addq	%rax, %r11
+        movq	%r10, 392(%rdi)
+        movq	%r11, 448(%rdi)
+        addq	%rdx, %r10
+        addq	%rax, %r11
+        movq	%r10, 400(%rdi)
+        movq	%r11, 456(%rdi)
+        movq	%r9, 608(%rdi)
+        movb	$0x01, 616(%rdi)
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_setkey_avx,.-poly1305_setkey_avx
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.text
+.globl	poly1305_block_avx
+WC_ASM_ATT_HIDDEN(poly1305_block_avx)
+.type	poly1305_block_avx,@function
+.align	16
+poly1305_block_avx:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_block_avx
+WC_ASM_ATT_HIDDEN(_poly1305_block_avx)
+.p2align	4
+_poly1305_block_avx:
+#endif /* __APPLE__ */
+        pushq	%r15
+        pushq	%rbx
+        pushq	%r12
+        pushq	%r13
+        pushq	%r14
+        movq	(%rdi), %r15
+        movq	8(%rdi), %rbx
+        movq	24(%rdi), %r8
+        movq	32(%rdi), %r9
+        movq	40(%rdi), %r10
+        xorq	%r14, %r14
+        movb	616(%rdi), %r14b
+        # h += m
+        movq	(%rsi), %r11
+        movq	8(%rsi), %r12
+        addq	%r11, %r8
+        adcq	%r12, %r9
+        movq	%rbx, %rax
+        adcq	%r14, %r10
+        # r[1] * h[0] => rdx, rax ==> t2, t1
+        mulq	%r8
+        movq	%rax, %r12
+        movq	%rdx, %r13
+        # r[0] * h[1] => rdx, rax ++> t2, t1
+        movq	%r15, %rax
+        mulq	%r9
+        addq	%rax, %r12
+        movq	%r15, %rax
+        adcq	%rdx, %r13
+        # r[0] * h[0] => rdx, rax ==> t4, t0
+        mulq	%r8
+        movq	%rax, %r11
+        movq	%rdx, %r8
+        # r[1] * h[1] => rdx, rax =+> t3, t2
+        movq	%rbx, %rax
+        mulq	%r9
+        #   r[0] * h[2] +> t2
+        addq	352(%rdi,%r10,8), %r13
+        movq	%rdx, %r14
+        addq	%r8, %r12
+        adcq	%rax, %r13
+        #   r[1] * h[2] +> t3
+        adcq	408(%rdi,%r10,8), %r14
+        # r * h in r14, r13, r12, r11
+        # h = (r * h) mod 2^130 - 5
+        movq	%r13, %r10
+        andq	$-4, %r13
+        andq	$3, %r10
+        addq	%r13, %r11
+        movq	%r13, %r8
+        adcq	%r14, %r12
+        adcq	$0x00, %r10
+        shrdq	$2, %r14, %r8
+        shrq	$2, %r14
+        addq	%r11, %r8
+        adcq	%r14, %r12
+        movq	%r12, %r9
+        adcq	$0x00, %r10
+        # h in r10, r9, r8
+        # Store h to ctx
+        movq	%r8, 24(%rdi)
+        movq	%r9, 32(%rdi)
+        movq	%r10, 40(%rdi)
+        popq	%r14
+        popq	%r13
+        popq	%r12
+        popq	%rbx
+        popq	%r15
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_block_avx,.-poly1305_block_avx
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.text
+.globl	poly1305_blocks_avx
+WC_ASM_ATT_HIDDEN(poly1305_blocks_avx)
+.type	poly1305_blocks_avx,@function
+.align	16
+poly1305_blocks_avx:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_blocks_avx
+WC_ASM_ATT_HIDDEN(_poly1305_blocks_avx)
+.p2align	4
+_poly1305_blocks_avx:
+#endif /* __APPLE__ */
+        pushq	%r15
+        pushq	%rbx
+        pushq	%r12
+        pushq	%r13
+        pushq	%r14
+        movq	%rdx, %rcx
+        movq	(%rdi), %r15
+        movq	8(%rdi), %rbx
+        movq	24(%rdi), %r8
+        movq	32(%rdi), %r9
+        movq	40(%rdi), %r10
+L_poly1305_avx_blocks_start:
+        # h += m
+        movq	(%rsi), %r11
+        movq	8(%rsi), %r12
+        addq	%r11, %r8
+        adcq	%r12, %r9
+        movq	%rbx, %rax
+        adcq	$0x00, %r10
+        # r[1] * h[0] => rdx, rax ==> t2, t1
+        mulq	%r8
+        movq	%rax, %r12
+        movq	%rdx, %r13
+        # r[0] * h[1] => rdx, rax ++> t2, t1
+        movq	%r15, %rax
+        mulq	%r9
+        addq	%rax, %r12
+        movq	%r15, %rax
+        adcq	%rdx, %r13
+        # r[0] * h[0] => rdx, rax ==> t4, t0
+        mulq	%r8
+        movq	%rax, %r11
+        movq	%rdx, %r8
+        # r[1] * h[1] => rdx, rax =+> t3, t2
+        movq	%rbx, %rax
+        mulq	%r9
+        #   r[0] * h[2] +> t2
+        addq	360(%rdi,%r10,8), %r13
+        movq	%rdx, %r14
+        addq	%r8, %r12
+        adcq	%rax, %r13
+        #   r[1] * h[2] +> t3
+        adcq	416(%rdi,%r10,8), %r14
+        # r * h in r14, r13, r12, r11
+        # h = (r * h) mod 2^130 - 5
+        movq	%r13, %r10
+        andq	$-4, %r13
+        andq	$3, %r10
+        addq	%r13, %r11
+        movq	%r13, %r8
+        adcq	%r14, %r12
+        adcq	$0x00, %r10
+        shrdq	$2, %r14, %r8
+        shrq	$2, %r14
+        addq	%r11, %r8
+        adcq	%r14, %r12
+        movq	%r12, %r9
+        adcq	$0x00, %r10
+        # h in r10, r9, r8
+        # Next block from message
+        addq	$16, %rsi
+        subq	$16, %rcx
+        jg	L_poly1305_avx_blocks_start
+        # Store h to ctx
+        movq	%r8, 24(%rdi)
+        movq	%r9, 32(%rdi)
+        movq	%r10, 40(%rdi)
+        popq	%r14
+        popq	%r13
+        popq	%r12
+        popq	%rbx
+        popq	%r15
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_blocks_avx,.-poly1305_blocks_avx
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.text
+.globl	poly1305_final_avx
+WC_ASM_ATT_HIDDEN(poly1305_final_avx)
+.type	poly1305_final_avx,@function
+.align	16
+poly1305_final_avx:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_final_avx
+WC_ASM_ATT_HIDDEN(_poly1305_final_avx)
+.p2align	4
+_poly1305_final_avx:
+#endif /* __APPLE__ */
+        pushq	%rbx
+        pushq	%r12
+        movq	%rsi, %rbx
+        movq	608(%rdi), %rax
+        testq	%rax, %rax
+        je	L_poly1305_avx_final_no_more
+        movb	$0x01, 480(%rdi,%rax,1)
+        jmp	L_poly1305_avx_final_cmp_rem
+L_poly1305_avx_final_zero_rem:
+        movb	$0x00, 480(%rdi,%rax,1)
+L_poly1305_avx_final_cmp_rem:
+        incb	%al
+        cmpq	$16, %rax
+        jl	L_poly1305_avx_final_zero_rem
+        movb	$0x00, 616(%rdi)
+        leaq	480(%rdi), %rsi
+        subq	$8, %rsp
+#ifndef __APPLE__
+        callq	poly1305_block_avx@plt
+#else
+        callq	_poly1305_block_avx
+#endif /* __APPLE__ */
+        addq	$8, %rsp
+L_poly1305_avx_final_no_more:
+        movq	24(%rdi), %rax
+        movq	32(%rdi), %rdx
+        movq	40(%rdi), %rcx
+        movq	48(%rdi), %r11
+        movq	56(%rdi), %r12
+        # h %= p
+        # h = (h + pad)
+        # mod 2^130 - 5
+        movq	%rcx, %r8
+        andq	$3, %rcx
+        shrq	$2, %r8
+        #   Multiply by 5
+        leaq	0(%r8,%r8,4), %r8
+        addq	%r8, %rax
+        adcq	$0x00, %rdx
+        adcq	$0x00, %rcx
+        # Fixup when between (1 << 130) - 1 and (1 << 130) - 5
+        movq	%rax, %r8
+        movq	%rdx, %r9
+        movq	%rcx, %r10
+        addq	$5, %r8
+        adcq	$0x00, %r9
+        adcq	$0x00, %r10
+        cmpq	$4, %r10
+        cmoveq	%r8, %rax
+        cmoveq	%r9, %rdx
+        # h += pad
+        addq	%r11, %rax
+        adcq	%r12, %rdx
+        movq	%rax, (%rbx)
+        movq	%rdx, 8(%rbx)
+        # Zero out r
+        movq	$0x00, (%rdi)
+        movq	$0x00, 8(%rdi)
+        # Zero out h
+        movq	$0x00, 24(%rdi)
+        movq	$0x00, 32(%rdi)
+        movq	$0x00, 40(%rdi)
+        # Zero out pad
+        movq	$0x00, 48(%rdi)
+        movq	$0x00, 56(%rdi)
+        popq	%r12
+        popq	%rbx
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_final_avx,.-poly1305_final_avx
+#endif /* __APPLE__ */
+#endif /* HAVE_INTEL_AVX1 */
+#ifdef HAVE_INTEL_AVX2
+#ifndef __APPLE__
+.text
+.globl	poly1305_calc_powers_avx2
+WC_ASM_ATT_HIDDEN(poly1305_calc_powers_avx2)
+.type	poly1305_calc_powers_avx2,@function
+.align	16
+poly1305_calc_powers_avx2:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_calc_powers_avx2
+WC_ASM_ATT_HIDDEN(_poly1305_calc_powers_avx2)
+.p2align	4
+_poly1305_calc_powers_avx2:
+#endif /* __APPLE__ */
+        pushq	%r12
+        pushq	%r13
+        pushq	%r14
+        pushq	%r15
+        pushq	%rbx
+        pushq	%rbp
+        movq	(%rdi), %rcx
+        movq	8(%rdi), %r8
+        xorq	%r9, %r9
+        # Convert to 26 bits in 32
+        movq	%rcx, %rax
+        movq	%rcx, %rdx
+        movq	%rcx, %rsi
+        movq	%r8, %rbx
+        movq	%r8, %rbp
+        shrq	$26, %rdx
+        shrdq	$52, %r8, %rsi
+        shrq	$14, %rbx
+        shrdq	$40, %r9, %rbp
+        andq	$0x3ffffff, %rax
+        andq	$0x3ffffff, %rdx
+        andq	$0x3ffffff, %rsi
+        andq	$0x3ffffff, %rbx
+        andq	$0x3ffffff, %rbp
+        movl	%eax, 224(%rdi)
+        movl	%edx, 228(%rdi)
+        movl	%esi, 232(%rdi)
+        movl	%ebx, 236(%rdi)
+        movl	%ebp, 240(%rdi)
+        movl	$0x00, 244(%rdi)
+        # Square 128-bit
+        movq	%r8, %rax
+        mulq	%rcx
+        xorq	%r13, %r13
+        movq	%rax, %r11
+        movq	%rdx, %r12
+        addq	%rax, %r11
+        adcq	%rdx, %r12
+        adcq	$0x00, %r13
+        movq	%rcx, %rax
+        mulq	%rax
+        movq	%rax, %r10
+        movq	%rdx, %r15
+        movq	%r8, %rax
+        mulq	%rax
+        addq	%r15, %r11
+        adcq	%rax, %r12
+        adcq	%rdx, %r13
+        # Reduce 256-bit to 130-bit
+        movq	%r12, %rax
+        movq	%r13, %rdx
+        andq	$-4, %rax
+        andq	$3, %r12
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	$0x00, %r12
+        shrdq	$2, %rdx, %rax
+        shrq	$2, %rdx
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	$0x00, %r12
+        movq	%r12, %rax
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        andq	$3, %r12
+        addq	%rax, %r10
+        adcq	$0x00, %r11
+        adcq	$0x00, %r12
+        # Convert to 26 bits in 32
+        movq	%r10, %rax
+        movq	%r10, %rdx
+        movq	%r10, %rsi
+        movq	%r11, %rbx
+        movq	%r11, %rbp
+        shrq	$26, %rdx
+        shrdq	$52, %r11, %rsi
+        shrq	$14, %rbx
+        shrdq	$40, %r12, %rbp
+        andq	$0x3ffffff, %rax
+        andq	$0x3ffffff, %rdx
+        andq	$0x3ffffff, %rsi
+        andq	$0x3ffffff, %rbx
+        andq	$0x3ffffff, %rbp
+        movl	%eax, 256(%rdi)
+        movl	%edx, 260(%rdi)
+        movl	%esi, 264(%rdi)
+        movl	%ebx, 268(%rdi)
+        movl	%ebp, 272(%rdi)
+        movl	$0x00, 276(%rdi)
+        # Multiply 128-bit by 130-bit
+        #   r1[0] * r2[0]
+        movq	%rcx, %rax
+        mulq	%r10
+        movq	%rax, %r13
+        movq	%rdx, %r14
+        #   r1[0] * r2[1]
+        movq	%rcx, %rax
+        mulq	%r11
+        movq	$0x00, %r15
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        #   r1[1] * r2[0]
+        movq	%r8, %rax
+        mulq	%r10
+        movq	$0x00, %rsi
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        adcq	$0x00, %rsi
+        #   r1[0] * r2[2]
+        movq	%rcx, %rax
+        mulq	%r12
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        #   r1[1] * r2[1]
+        movq	%r8, %rax
+        mulq	%r11
+        movq	$0x00, %rbx
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        adcq	$0x00, %rbx
+        #   r1[1] * r2[2]
+        movq	%r8, %rax
+        mulq	%r12
+        addq	%rax, %rsi
+        adcq	%rdx, %rbx
+        # Reduce 260-bit to 130-bit
+        movq	%r15, %rax
+        movq	%rsi, %rdx
+        andq	$-4, %rax
+        andq	$3, %r15
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %rbx, %rdx
+        shrq	$2, %rbx
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        movq	%r15, %rax
+        andq	$3, %r15
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %r13
+        adcq	$0x00, %r14
+        adcq	$0x00, %r15
+        # Convert to 26 bits in 32
+        movq	%r13, %rax
+        movq	%r13, %rdx
+        movq	%r13, %rsi
+        movq	%r14, %rbx
+        movq	%r14, %rbp
+        shrq	$26, %rdx
+        shrdq	$52, %r14, %rsi
+        shrq	$14, %rbx
+        shrdq	$40, %r15, %rbp
+        andq	$0x3ffffff, %rax
+        andq	$0x3ffffff, %rdx
+        andq	$0x3ffffff, %rsi
+        andq	$0x3ffffff, %rbx
+        andq	$0x3ffffff, %rbp
+        movl	%eax, 288(%rdi)
+        movl	%edx, 292(%rdi)
+        movl	%esi, 296(%rdi)
+        movl	%ebx, 300(%rdi)
+        movl	%ebp, 304(%rdi)
+        movl	$0x00, 308(%rdi)
+        # Square 130-bit
+        movq	%r11, %rax
+        mulq	%r10
+        xorq	%r13, %r13
+        movq	%rax, %r8
+        movq	%rdx, %r9
+        addq	%rax, %r8
+        adcq	%rdx, %r9
+        adcq	$0x00, %r13
+        movq	%r10, %rax
+        mulq	%rax
+        movq	%rax, %rcx
+        movq	%rdx, %r15
+        movq	%r11, %rax
+        mulq	%rax
+        addq	%r15, %r8
+        adcq	%rax, %r9
+        adcq	%rdx, %r13
+        movq	%r12, %rax
+        mulq	%rax
+        movq	%rax, %r14
+        movq	%r12, %rax
+        mulq	%r10
+        addq	%rax, %r9
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        addq	%rax, %r9
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        movq	%r12, %rax
+        mulq	%r11
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        # Reduce 260-bit to 130-bit
+        movq	%r9, %rax
+        movq	%r13, %rdx
+        movq	%r14, %r15
+        andq	$-4, %rax
+        andq	$3, %r9
+        addq	%rax, %rcx
+        adcq	%rdx, %r8
+        adcq	%r15, %r9
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %r15, %rdx
+        shrq	$2, %r15
+        addq	%rax, %rcx
+        adcq	%rdx, %r8
+        adcq	%r15, %r9
+        movq	%r9, %rax
+        andq	$3, %r9
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %rcx
+        adcq	$0x00, %r8
+        adcq	$0x00, %r9
+        # Convert to 26 bits in 32
+        movq	%rcx, %rax
+        movq	%rcx, %rdx
+        movq	%rcx, %rsi
+        movq	%r8, %rbx
+        movq	%r8, %rbp
+        shrq	$26, %rdx
+        shrdq	$52, %r8, %rsi
+        shrq	$14, %rbx
+        shrdq	$40, %r9, %rbp
+        andq	$0x3ffffff, %rax
+        andq	$0x3ffffff, %rdx
+        andq	$0x3ffffff, %rsi
+        andq	$0x3ffffff, %rbx
+        andq	$0x3ffffff, %rbp
+        movl	%eax, 320(%rdi)
+        movl	%edx, 324(%rdi)
+        movl	%esi, 328(%rdi)
+        movl	%ebx, 332(%rdi)
+        movl	%ebp, 336(%rdi)
+        movl	$0x00, 340(%rdi)
+        popq	%rbp
+        popq	%rbx
+        popq	%r15
+        popq	%r14
+        popq	%r13
+        popq	%r12
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_calc_powers_avx2,.-poly1305_calc_powers_avx2
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.text
+.globl	poly1305_setkey_avx2
+WC_ASM_ATT_HIDDEN(poly1305_setkey_avx2)
+.type	poly1305_setkey_avx2,@function
+.align	16
+poly1305_setkey_avx2:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_setkey_avx2
+WC_ASM_ATT_HIDDEN(_poly1305_setkey_avx2)
+.p2align	4
+_poly1305_setkey_avx2:
+#endif /* __APPLE__ */
+        subq	$8, %rsp
+#ifndef __APPLE__
+        callq	poly1305_setkey_avx@plt
+#else
+        callq	_poly1305_setkey_avx
+#endif /* __APPLE__ */
+        addq	$8, %rsp
+        vpxor	%ymm0, %ymm0, %ymm0
+        vmovdqu	%ymm0, 64(%rdi)
+        vmovdqu	%ymm0, 96(%rdi)
+        vmovdqu	%ymm0, 128(%rdi)
+        vmovdqu	%ymm0, 160(%rdi)
+        vmovdqu	%ymm0, 192(%rdi)
+        movq	$0x00, 608(%rdi)
+        movw	$0x00, 616(%rdi)
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_setkey_avx2,.-poly1305_setkey_avx2
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.data
+#else
+.section	__DATA,__data
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.align	32
+#else
+.p2align	5
+#endif /* __APPLE__ */
+L_poly1305_avx2_blocks_mask:
+.quad	0x0000000003ffffff,0x0000000003ffffff
+.quad	0x0000000003ffffff,0x0000000003ffffff
+#ifndef __APPLE__
+.data
+#else
+.section	__DATA,__data
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.align	32
+#else
+.p2align	5
+#endif /* __APPLE__ */
+L_poly1305_avx2_blocks_hibit:
+.quad	0x0000000001000000,0x0000000001000000
+.quad	0x0000000001000000,0x0000000001000000
+#ifndef __APPLE__
+.text
+.globl	poly1305_blocks_avx2
+WC_ASM_ATT_HIDDEN(poly1305_blocks_avx2)
+.type	poly1305_blocks_avx2,@function
+.align	16
+poly1305_blocks_avx2:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_blocks_avx2
+WC_ASM_ATT_HIDDEN(_poly1305_blocks_avx2)
+.p2align	4
+_poly1305_blocks_avx2:
+#endif /* __APPLE__ */
+        pushq	%r12
+        pushq	%rbx
+        pushq	%r13
+        pushq	%r14
+        subq	$0x148, %rsp
+        leaq	L_poly1305_avx2_blocks_mask(%rip), %r13
+        leaq	L_poly1305_avx2_blocks_hibit(%rip), %r14
+        movq	%rsp, %rcx
+        andq	$-32, %rcx
+        addq	$32, %rcx
+        vpxor	%ymm15, %ymm15, %ymm15
+        movq	%rcx, %rbx
+        leaq	64(%rdi), %rax
+        addq	$0xa0, %rbx
+        cmpw	$0x00, 616(%rdi)
+        jne	L_poly1305_avx2_blocks_begin_h
+        # Load the message data
+        vmovdqu	(%rsi), %ymm0
+        vmovdqu	32(%rsi), %ymm1
+        vperm2i128	$32, %ymm1, %ymm0, %ymm2
+        vperm2i128	$49, %ymm1, %ymm0, %ymm0
+        vpunpckldq	%ymm0, %ymm2, %ymm1
+        vpunpckhdq	%ymm0, %ymm2, %ymm3
+        vpunpckldq	%ymm15, %ymm1, %ymm0
+        vpunpckhdq	%ymm15, %ymm1, %ymm1
+        vpunpckldq	%ymm15, %ymm3, %ymm2
+        vpunpckhdq	%ymm15, %ymm3, %ymm3
+        vmovdqu	(%r14), %ymm4
+        vpsllq	$6, %ymm1, %ymm1
+        vpsllq	$12, %ymm2, %ymm2
+        vpsllq	$18, %ymm3, %ymm3
+        vmovdqu	(%r13), %ymm14
+        # Reduce, in place, the message data
+        vpsrlq	$26, %ymm0, %ymm10
+        vpsrlq	$26, %ymm3, %ymm11
+        vpand	%ymm14, %ymm0, %ymm0
+        vpand	%ymm14, %ymm3, %ymm3
+        vpaddq	%ymm1, %ymm10, %ymm1
+        vpaddq	%ymm4, %ymm11, %ymm4
+        vpsrlq	$26, %ymm1, %ymm10
+        vpsrlq	$26, %ymm4, %ymm11
+        vpand	%ymm14, %ymm1, %ymm1
+        vpand	%ymm14, %ymm4, %ymm4
+        vpaddq	%ymm2, %ymm10, %ymm2
+        vpslld	$2, %ymm11, %ymm12
+        vpaddd	%ymm12, %ymm11, %ymm12
+        vpsrlq	$26, %ymm2, %ymm10
+        vpaddq	%ymm0, %ymm12, %ymm0
+        vpsrlq	$26, %ymm0, %ymm11
+        vpand	%ymm14, %ymm2, %ymm2
+        vpand	%ymm14, %ymm0, %ymm0
+        vpaddq	%ymm3, %ymm10, %ymm3
+        vpaddq	%ymm1, %ymm11, %ymm1
+        vpsrlq	$26, %ymm3, %ymm10
+        vpand	%ymm14, %ymm3, %ymm3
+        vpaddq	%ymm4, %ymm10, %ymm4
+        addq	$0x40, %rsi
+        subq	$0x40, %rdx
+        jz	L_poly1305_avx2_blocks_store
+        jmp	L_poly1305_avx2_blocks_load_r4
+L_poly1305_avx2_blocks_begin_h:
+        # Load the H values.
+        vmovdqu	(%rax), %ymm0
+        vmovdqu	32(%rax), %ymm1
+        vmovdqu	64(%rax), %ymm2
+        vmovdqu	96(%rax), %ymm3
+        vmovdqu	128(%rax), %ymm4
+        # Check if there is a power of r to load - otherwise use r^4.
+        cmpb	$0x00, 616(%rdi)
+        je	L_poly1305_avx2_blocks_load_r4
+        # Load the 4 powers of r - r^4, r^3, r^2, r^1.
+        vmovdqu	224(%rdi), %ymm8
+        vmovdqu	256(%rdi), %ymm7
+        vmovdqu	288(%rdi), %ymm6
+        vmovdqu	320(%rdi), %ymm5
+        vpermq	$0xd8, %ymm5, %ymm5
+        vpermq	$0xd8, %ymm6, %ymm6
+        vpermq	$0xd8, %ymm7, %ymm7
+        vpermq	$0xd8, %ymm8, %ymm8
+        vpunpcklqdq	%ymm6, %ymm5, %ymm10
+        vpunpckhqdq	%ymm6, %ymm5, %ymm11
+        vpunpcklqdq	%ymm8, %ymm7, %ymm12
+        vpunpckhqdq	%ymm8, %ymm7, %ymm13
+        vperm2i128	$32, %ymm12, %ymm10, %ymm5
+        vperm2i128	$49, %ymm12, %ymm10, %ymm7
+        vperm2i128	$32, %ymm13, %ymm11, %ymm9
+        vpsrlq	$32, %ymm5, %ymm6
+        vpsrlq	$32, %ymm7, %ymm8
+        jmp	L_poly1305_avx2_blocks_mul_5
+L_poly1305_avx2_blocks_load_r4:
+        # Load r^4 into all four positions.
+        vmovdqu	320(%rdi), %ymm13
+        vpermq	$0x00, %ymm13, %ymm5
+        vpsrlq	$32, %ymm13, %ymm14
+        vpermq	$0x55, %ymm13, %ymm7
+        vpermq	$0xaa, %ymm13, %ymm9
+        vpermq	$0x00, %ymm14, %ymm6
+        vpermq	$0x55, %ymm14, %ymm8
+L_poly1305_avx2_blocks_mul_5:
+        # Multiply top 4 26-bit values of all four H by 5
+        vpslld	$2, %ymm6, %ymm10
+        vpslld	$2, %ymm7, %ymm11
+        vpslld	$2, %ymm8, %ymm12
+        vpslld	$2, %ymm9, %ymm13
+        vpaddq	%ymm10, %ymm6, %ymm10
+        vpaddq	%ymm11, %ymm7, %ymm11
+        vpaddq	%ymm12, %ymm8, %ymm12
+        vpaddq	%ymm13, %ymm9, %ymm13
+        # Store powers of r and multiple of 5 for use in multiply.
+        vmovdqa	%ymm10, (%rbx)
+        vmovdqa	%ymm11, 32(%rbx)
+        vmovdqa	%ymm12, 64(%rbx)
+        vmovdqa	%ymm13, 96(%rbx)
+        vmovdqa	%ymm5, (%rcx)
+        vmovdqa	%ymm6, 32(%rcx)
+        vmovdqa	%ymm7, 64(%rcx)
+        vmovdqa	%ymm8, 96(%rcx)
+        vmovdqa	%ymm9, 128(%rcx)
+        vmovdqu	(%r13), %ymm14
+        # If not finished then loop over data
+        cmpb	$0x01, 616(%rdi)
+        jne	L_poly1305_avx2_blocks_start
+        # Do last multiply, reduce, add the four H together and move to
+        # 32-bit registers
+        vpmuludq	(%rbx), %ymm4, %ymm5
+        vpmuludq	32(%rbx), %ymm3, %ymm10
+        vpmuludq	32(%rbx), %ymm4, %ymm6
+        vpmuludq	64(%rbx), %ymm3, %ymm11
+        vpmuludq	64(%rbx), %ymm4, %ymm7
+        vpaddq	%ymm5, %ymm10, %ymm5
+        vpmuludq	64(%rbx), %ymm2, %ymm12
+        vpmuludq	96(%rbx), %ymm4, %ymm8
+        vpaddq	%ymm6, %ymm11, %ymm6
+        vpmuludq	96(%rbx), %ymm1, %ymm13
+        vpmuludq	96(%rbx), %ymm2, %ymm10
+        vpaddq	%ymm5, %ymm12, %ymm5
+        vpmuludq	96(%rbx), %ymm3, %ymm11
+        vpmuludq	(%rcx), %ymm3, %ymm12
+        vpaddq	%ymm5, %ymm13, %ymm5
+        vpmuludq	(%rcx), %ymm4, %ymm9
+        vpaddq	%ymm6, %ymm10, %ymm6
+        vpmuludq	(%rcx), %ymm0, %ymm13
+        vpaddq	%ymm7, %ymm11, %ymm7
+        vpmuludq	(%rcx), %ymm1, %ymm10
+        vpaddq	%ymm8, %ymm12, %ymm8
+        vpmuludq	(%rcx), %ymm2, %ymm11
+        vpmuludq	32(%rcx), %ymm2, %ymm12
+        vpaddq	%ymm5, %ymm13, %ymm5
+        vpmuludq	32(%rcx), %ymm3, %ymm13
+        vpaddq	%ymm6, %ymm10, %ymm6
+        vpmuludq	32(%rcx), %ymm0, %ymm10
+        vpaddq	%ymm7, %ymm11, %ymm7
+        vpmuludq	32(%rcx), %ymm1, %ymm11
+        vpaddq	%ymm8, %ymm12, %ymm8
+        vpmuludq	64(%rcx), %ymm1, %ymm12
+        vpaddq	%ymm9, %ymm13, %ymm9
+        vpmuludq	64(%rcx), %ymm2, %ymm13
+        vpaddq	%ymm6, %ymm10, %ymm6
+        vpmuludq	64(%rcx), %ymm0, %ymm10
+        vpaddq	%ymm7, %ymm11, %ymm7
+        vpmuludq	96(%rcx), %ymm0, %ymm11
+        vpaddq	%ymm8, %ymm12, %ymm8
+        vpmuludq	96(%rcx), %ymm1, %ymm12
+        vpaddq	%ymm9, %ymm13, %ymm9
+        vpaddq	%ymm7, %ymm10, %ymm7
+        vpmuludq	128(%rcx), %ymm0, %ymm13
+        vpaddq	%ymm8, %ymm11, %ymm8
+        vpaddq	%ymm9, %ymm12, %ymm9
+        vpaddq	%ymm9, %ymm13, %ymm9
+        vpsrlq	$26, %ymm5, %ymm10
+        vpsrlq	$26, %ymm8, %ymm11
+        vpand	%ymm14, %ymm5, %ymm5
+        vpand	%ymm14, %ymm8, %ymm8
+        vpaddq	%ymm6, %ymm10, %ymm6
+        vpaddq	%ymm9, %ymm11, %ymm9
+        vpsrlq	$26, %ymm6, %ymm10
+        vpsrlq	$26, %ymm9, %ymm11
+        vpand	%ymm14, %ymm6, %ymm1
+        vpand	%ymm14, %ymm9, %ymm4
+        vpaddq	%ymm7, %ymm10, %ymm7
+        vpslld	$2, %ymm11, %ymm12
+        vpaddd	%ymm12, %ymm11, %ymm12
+        vpsrlq	$26, %ymm7, %ymm10
+        vpaddq	%ymm5, %ymm12, %ymm5
+        vpsrlq	$26, %ymm5, %ymm11
+        vpand	%ymm14, %ymm7, %ymm2
+        vpand	%ymm14, %ymm5, %ymm0
+        vpaddq	%ymm8, %ymm10, %ymm8
+        vpaddq	%ymm1, %ymm11, %ymm1
+        vpsrlq	$26, %ymm8, %ymm10
+        vpand	%ymm14, %ymm8, %ymm3
+        vpaddq	%ymm4, %ymm10, %ymm4
+        vpsrldq	$8, %ymm0, %ymm5
+        vpsrldq	$8, %ymm1, %ymm6
+        vpsrldq	$8, %ymm2, %ymm7
+        vpsrldq	$8, %ymm3, %ymm8
+        vpsrldq	$8, %ymm4, %ymm9
+        vpaddq	%ymm0, %ymm5, %ymm0
+        vpaddq	%ymm1, %ymm6, %ymm1
+        vpaddq	%ymm2, %ymm7, %ymm2
+        vpaddq	%ymm3, %ymm8, %ymm3
+        vpaddq	%ymm4, %ymm9, %ymm4
+        vpermq	$2, %ymm0, %ymm5
+        vpermq	$2, %ymm1, %ymm6
+        vpermq	$2, %ymm2, %ymm7
+        vpermq	$2, %ymm3, %ymm8
+        vpermq	$2, %ymm4, %ymm9
+        vpaddq	%ymm0, %ymm5, %ymm0
+        vpaddq	%ymm1, %ymm6, %ymm1
+        vpaddq	%ymm2, %ymm7, %ymm2
+        vpaddq	%ymm3, %ymm8, %ymm3
+        vpaddq	%ymm4, %ymm9, %ymm4
+        vmovd	%xmm0, %r8d
+        vmovd	%xmm1, %r9d
+        vmovd	%xmm2, %r10d
+        vmovd	%xmm3, %r11d
+        vmovd	%xmm4, %r12d
+        jmp	L_poly1305_avx2_blocks_end_calc
+L_poly1305_avx2_blocks_start:
+        vmovdqu	(%rsi), %ymm5
+        vmovdqu	32(%rsi), %ymm6
+        vperm2i128	$32, %ymm6, %ymm5, %ymm7
+        vperm2i128	$49, %ymm6, %ymm5, %ymm5
+        vpunpckldq	%ymm5, %ymm7, %ymm6
+        vpunpckhdq	%ymm5, %ymm7, %ymm8
+        vpunpckldq	%ymm15, %ymm6, %ymm5
+        vpunpckhdq	%ymm15, %ymm6, %ymm6
+        vpunpckldq	%ymm15, %ymm8, %ymm7
+        vpunpckhdq	%ymm15, %ymm8, %ymm8
+        vmovdqu	(%r14), %ymm9
+        vpsllq	$6, %ymm6, %ymm6
+        vpsllq	$12, %ymm7, %ymm7
+        vpsllq	$18, %ymm8, %ymm8
+        vpmuludq	(%rbx), %ymm4, %ymm10
+        vpaddq	%ymm5, %ymm10, %ymm5
+        vpmuludq	32(%rbx), %ymm3, %ymm10
+        vpmuludq	32(%rbx), %ymm4, %ymm11
+        vpaddq	%ymm6, %ymm11, %ymm6
+        vpmuludq	64(%rbx), %ymm3, %ymm11
+        vpmuludq	64(%rbx), %ymm4, %ymm12
+        vpaddq	%ymm7, %ymm12, %ymm7
+        vpaddq	%ymm5, %ymm10, %ymm5
+        vpmuludq	64(%rbx), %ymm2, %ymm12
+        vpmuludq	96(%rbx), %ymm4, %ymm13
+        vpaddq	%ymm8, %ymm13, %ymm8
+        vpaddq	%ymm6, %ymm11, %ymm6
+        vpmuludq	96(%rbx), %ymm1, %ymm13
+        vpmuludq	96(%rbx), %ymm2, %ymm10
+        vpaddq	%ymm5, %ymm12, %ymm5
+        vpmuludq	96(%rbx), %ymm3, %ymm11
+        vpmuludq	(%rcx), %ymm3, %ymm12
+        vpaddq	%ymm5, %ymm13, %ymm5
+        vpmuludq	(%rcx), %ymm4, %ymm13
+        vpaddq	%ymm9, %ymm13, %ymm9
+        vpaddq	%ymm6, %ymm10, %ymm6
+        vpmuludq	(%rcx), %ymm0, %ymm13
+        vpaddq	%ymm7, %ymm11, %ymm7
+        vpmuludq	(%rcx), %ymm1, %ymm10
+        vpaddq	%ymm8, %ymm12, %ymm8
+        vpmuludq	(%rcx), %ymm2, %ymm11
+        vpmuludq	32(%rcx), %ymm2, %ymm12
+        vpaddq	%ymm5, %ymm13, %ymm5
+        vpmuludq	32(%rcx), %ymm3, %ymm13
+        vpaddq	%ymm6, %ymm10, %ymm6
+        vpmuludq	32(%rcx), %ymm0, %ymm10
+        vpaddq	%ymm7, %ymm11, %ymm7
+        vpmuludq	32(%rcx), %ymm1, %ymm11
+        vpaddq	%ymm8, %ymm12, %ymm8
+        vpmuludq	64(%rcx), %ymm1, %ymm12
+        vpaddq	%ymm9, %ymm13, %ymm9
+        vpmuludq	64(%rcx), %ymm2, %ymm13
+        vpaddq	%ymm6, %ymm10, %ymm6
+        vpmuludq	64(%rcx), %ymm0, %ymm10
+        vpaddq	%ymm7, %ymm11, %ymm7
+        vpmuludq	96(%rcx), %ymm0, %ymm11
+        vpaddq	%ymm8, %ymm12, %ymm8
+        vpmuludq	96(%rcx), %ymm1, %ymm12
+        vpaddq	%ymm9, %ymm13, %ymm9
+        vpaddq	%ymm7, %ymm10, %ymm7
+        vpmuludq	128(%rcx), %ymm0, %ymm13
+        vpaddq	%ymm8, %ymm11, %ymm8
+        vpaddq	%ymm9, %ymm12, %ymm9
+        vpaddq	%ymm9, %ymm13, %ymm9
+        vpsrlq	$26, %ymm5, %ymm10
+        vpsrlq	$26, %ymm8, %ymm11
+        vpand	%ymm14, %ymm5, %ymm5
+        vpand	%ymm14, %ymm8, %ymm8
+        vpaddq	%ymm6, %ymm10, %ymm6
+        vpaddq	%ymm9, %ymm11, %ymm9
+        vpsrlq	$26, %ymm6, %ymm10
+        vpsrlq	$26, %ymm9, %ymm11
+        vpand	%ymm14, %ymm6, %ymm1
+        vpand	%ymm14, %ymm9, %ymm4
+        vpaddq	%ymm7, %ymm10, %ymm7
+        vpslld	$2, %ymm11, %ymm12
+        vpaddd	%ymm12, %ymm11, %ymm12
+        vpsrlq	$26, %ymm7, %ymm10
+        vpaddq	%ymm5, %ymm12, %ymm5
+        vpsrlq	$26, %ymm5, %ymm11
+        vpand	%ymm14, %ymm7, %ymm2
+        vpand	%ymm14, %ymm5, %ymm0
+        vpaddq	%ymm8, %ymm10, %ymm8
+        vpaddq	%ymm1, %ymm11, %ymm1
+        vpsrlq	$26, %ymm8, %ymm10
+        vpand	%ymm14, %ymm8, %ymm3
+        vpaddq	%ymm4, %ymm10, %ymm4
+        addq	$0x40, %rsi
+        subq	$0x40, %rdx
+        jnz	L_poly1305_avx2_blocks_start
+L_poly1305_avx2_blocks_store:
+        # Store four H values - state
+        vmovdqu	%ymm0, (%rax)
+        vmovdqu	%ymm1, 32(%rax)
+        vmovdqu	%ymm2, 64(%rax)
+        vmovdqu	%ymm3, 96(%rax)
+        vmovdqu	%ymm4, 128(%rax)
+L_poly1305_avx2_blocks_end_calc:
+        cmpb	$0x00, 616(%rdi)
+        je	L_poly1305_avx2_blocks_complete
+        movq	%r8, %rax
+        movq	%r10, %rdx
+        movq	%r12, %rcx
+        shrq	$12, %rdx
+        shrq	$24, %rcx
+        shlq	$26, %r9
+        shlq	$52, %r10
+        shlq	$14, %r11
+        shlq	$40, %r12
+        addq	%r9, %rax
+        adcq	%r10, %rax
+        adcq	%r11, %rdx
+        adcq	%r12, %rdx
+        adcq	$0x00, %rcx
+        movq	%rcx, %r8
+        andq	$3, %rcx
+        shrq	$2, %r8
+        leaq	0(%r8,%r8,4), %r8
+        addq	%r8, %rax
+        adcq	$0x00, %rdx
+        adcq	$0x00, %rcx
+        movq	%rax, 24(%rdi)
+        movq	%rdx, 32(%rdi)
+        movq	%rcx, 40(%rdi)
+L_poly1305_avx2_blocks_complete:
+        movb	$0x01, 617(%rdi)
+        vzeroupper
+        addq	$0x148, %rsp
+        popq	%r14
+        popq	%r13
+        popq	%rbx
+        popq	%r12
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_blocks_avx2,.-poly1305_blocks_avx2
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.text
+.globl	poly1305_final_avx2
+WC_ASM_ATT_HIDDEN(poly1305_final_avx2)
+.type	poly1305_final_avx2,@function
+.align	16
+poly1305_final_avx2:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_final_avx2
+WC_ASM_ATT_HIDDEN(_poly1305_final_avx2)
+.p2align	4
+_poly1305_final_avx2:
+#endif /* __APPLE__ */
+        movb	$0x01, 616(%rdi)
+        movb	617(%rdi), %cl
+        cmpb	$0x00, %cl
+        je	L_poly1305_avx2_final_done_blocks_X4
+        pushq	%rsi
+        movq	$0x40, %rdx
+        xorq	%rsi, %rsi
+#ifndef __APPLE__
+        callq	poly1305_blocks_avx2@plt
+#else
+        callq	_poly1305_blocks_avx2
+#endif /* __APPLE__ */
+        popq	%rsi
+L_poly1305_avx2_final_done_blocks_X4:
+        movq	608(%rdi), %rax
+        movq	%rax, %rcx
+        andq	$-16, %rcx
+        cmpb	$0x00, %cl
+        je	L_poly1305_avx2_final_done_blocks
+        pushq	%rcx
+        pushq	%rax
+        pushq	%rsi
+        movq	%rcx, %rdx
+        leaq	480(%rdi), %rsi
+#ifndef __APPLE__
+        callq	poly1305_blocks_avx@plt
+#else
+        callq	_poly1305_blocks_avx
+#endif /* __APPLE__ */
+        popq	%rsi
+        popq	%rax
+        popq	%rcx
+L_poly1305_avx2_final_done_blocks:
+        subq	%rcx, 608(%rdi)
+        xorq	%rdx, %rdx
+        jmp	L_poly1305_avx2_final_cmp_copy
+L_poly1305_avx2_final_start_copy:
+        movb	480(%rdi,%rcx,1), %r8b
+        movb	%r8b, 480(%rdi,%rdx,1)
+        incb	%cl
+        incb	%dl
+L_poly1305_avx2_final_cmp_copy:
+        cmpb	%cl, %al
+        jne	L_poly1305_avx2_final_start_copy
+        subq	$8, %rsp
+#ifndef __APPLE__
+        callq	poly1305_final_avx@plt
+#else
+        callq	_poly1305_final_avx
+#endif /* __APPLE__ */
+        addq	$8, %rsp
+        vpxor	%ymm0, %ymm0, %ymm0
+        vmovdqu	%ymm0, 64(%rdi)
+        vmovdqu	%ymm0, 96(%rdi)
+        vmovdqu	%ymm0, 128(%rdi)
+        vmovdqu	%ymm0, 160(%rdi)
+        vmovdqu	%ymm0, 192(%rdi)
+        vmovdqu	%ymm0, 224(%rdi)
+        vmovdqu	%ymm0, 256(%rdi)
+        vmovdqu	%ymm0, 288(%rdi)
+        vmovdqu	%ymm0, 320(%rdi)
+        movq	$0x00, 608(%rdi)
+        movw	$0x00, 616(%rdi)
+        vzeroupper
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_final_avx2,.-poly1305_final_avx2
+#endif /* __APPLE__ */
+#endif /* HAVE_INTEL_AVX2 */
+#ifdef HAVE_INTEL_AVX512
+#ifndef __APPLE__
+.text
+.globl	poly1305_calc_powers_avx512
+WC_ASM_ATT_HIDDEN(poly1305_calc_powers_avx512)
+.type	poly1305_calc_powers_avx512,@function
+.align	16
+poly1305_calc_powers_avx512:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_calc_powers_avx512
+WC_ASM_ATT_HIDDEN(_poly1305_calc_powers_avx512)
+.p2align	4
+_poly1305_calc_powers_avx512:
+#endif /* __APPLE__ */
+        pushq	%r12
+        pushq	%r13
+        pushq	%r14
+        pushq	%r15
+        pushq	%rbx
+        pushq	%rbp
+        subq	$0x68, %rsp
+        movq	(%rdi), %rcx
+        movq	8(%rdi), %r8
+        xorq	%r9, %r9
+        # Convert to 26 bits in 32
+        movq	%rcx, %rax
+        movq	%rcx, %rdx
+        movq	%rcx, %rsi
+        movq	%r8, %rbx
+        movq	%r8, %rbp
+        shrq	$26, %rdx
+        shrdq	$52, %r8, %rsi
+        shrq	$14, %rbx
+        shrdq	$40, %r9, %rbp
+        andq	$0x3ffffff, %rax
+        andq	$0x3ffffff, %rdx
+        andq	$0x3ffffff, %rsi
+        andq	$0x3ffffff, %rbx
+        andq	$0x3ffffff, %rbp
+        movl	%eax, 224(%rdi)
+        movl	%edx, 228(%rdi)
+        movl	%esi, 232(%rdi)
+        movl	%ebx, 236(%rdi)
+        movl	%ebp, 240(%rdi)
+        movl	$0x00, 244(%rdi)
+        movq	%rcx, (%rsp)
+        movq	%r8, 8(%rsp)
+        movq	%r9, 16(%rsp)
+        # Square 128-bit
+        movq	%r8, %rax
+        mulq	%rcx
+        xorq	%r13, %r13
+        movq	%rax, %r11
+        movq	%rdx, %r12
+        addq	%rax, %r11
+        adcq	%rdx, %r12
+        adcq	$0x00, %r13
+        movq	%rcx, %rax
+        mulq	%rax
+        movq	%rax, %r10
+        movq	%rdx, %r15
+        movq	%r8, %rax
+        mulq	%rax
+        addq	%r15, %r11
+        adcq	%rax, %r12
+        adcq	%rdx, %r13
+        # Reduce 256-bit to 130-bit
+        movq	%r12, %rax
+        movq	%r13, %rdx
+        andq	$-4, %rax
+        andq	$3, %r12
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	$0x00, %r12
+        shrdq	$2, %rdx, %rax
+        shrq	$2, %rdx
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	$0x00, %r12
+        movq	%r12, %rax
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        andq	$3, %r12
+        addq	%rax, %r10
+        adcq	$0x00, %r11
+        adcq	$0x00, %r12
+        # Convert to 26 bits in 32
+        movq	%r10, %rax
+        movq	%r10, %rdx
+        movq	%r10, %rsi
+        movq	%r11, %rbx
+        movq	%r11, %rbp
+        shrq	$26, %rdx
+        shrdq	$52, %r11, %rsi
+        shrq	$14, %rbx
+        shrdq	$40, %r12, %rbp
+        andq	$0x3ffffff, %rax
+        andq	$0x3ffffff, %rdx
+        andq	$0x3ffffff, %rsi
+        andq	$0x3ffffff, %rbx
+        andq	$0x3ffffff, %rbp
+        movl	%eax, 256(%rdi)
+        movl	%edx, 260(%rdi)
+        movl	%esi, 264(%rdi)
+        movl	%ebx, 268(%rdi)
+        movl	%ebp, 272(%rdi)
+        movl	$0x00, 276(%rdi)
+        movq	%r10, 24(%rsp)
+        movq	%r11, 32(%rsp)
+        movq	%r12, 40(%rsp)
+        # Multiply 128-bit by 130-bit
+        #   r1[0] * r2[0]
+        movq	%rcx, %rax
+        mulq	%r10
+        movq	%rax, %r13
+        movq	%rdx, %r14
+        #   r1[0] * r2[1]
+        movq	%rcx, %rax
+        mulq	%r11
+        movq	$0x00, %r15
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        #   r1[1] * r2[0]
+        movq	%r8, %rax
+        mulq	%r10
+        movq	$0x00, %rsi
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        adcq	$0x00, %rsi
+        #   r1[0] * r2[2]
+        movq	%rcx, %rax
+        mulq	%r12
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        #   r1[1] * r2[1]
+        movq	%r8, %rax
+        mulq	%r11
+        movq	$0x00, %rbx
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        adcq	$0x00, %rbx
+        #   r1[1] * r2[2]
+        movq	%r8, %rax
+        mulq	%r12
+        addq	%rax, %rsi
+        adcq	%rdx, %rbx
+        # Reduce 260-bit to 130-bit
+        movq	%r15, %rax
+        movq	%rsi, %rdx
+        andq	$-4, %rax
+        andq	$3, %r15
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %rbx, %rdx
+        shrq	$2, %rbx
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        movq	%r15, %rax
+        andq	$3, %r15
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %r13
+        adcq	$0x00, %r14
+        adcq	$0x00, %r15
+        # Convert to 26 bits in 32
+        movq	%r13, %rax
+        movq	%r13, %rdx
+        movq	%r13, %rsi
+        movq	%r14, %rbx
+        movq	%r14, %rbp
+        shrq	$26, %rdx
+        shrdq	$52, %r14, %rsi
+        shrq	$14, %rbx
+        shrdq	$40, %r15, %rbp
+        andq	$0x3ffffff, %rax
+        andq	$0x3ffffff, %rdx
+        andq	$0x3ffffff, %rsi
+        andq	$0x3ffffff, %rbx
+        andq	$0x3ffffff, %rbp
+        movl	%eax, 288(%rdi)
+        movl	%edx, 292(%rdi)
+        movl	%esi, 296(%rdi)
+        movl	%ebx, 300(%rdi)
+        movl	%ebp, 304(%rdi)
+        movl	$0x00, 308(%rdi)
+        movq	%r13, 48(%rsp)
+        movq	%r14, 56(%rsp)
+        movq	%r15, 64(%rsp)
+        # Square 130-bit
+        movq	%r11, %rax
+        mulq	%r10
+        xorq	%r13, %r13
+        movq	%rax, %r8
+        movq	%rdx, %r9
+        addq	%rax, %r8
+        adcq	%rdx, %r9
+        adcq	$0x00, %r13
+        movq	%r10, %rax
+        mulq	%rax
+        movq	%rax, %rcx
+        movq	%rdx, %r15
+        movq	%r11, %rax
+        mulq	%rax
+        addq	%r15, %r8
+        adcq	%rax, %r9
+        adcq	%rdx, %r13
+        movq	%r12, %rax
+        mulq	%rax
+        movq	%rax, %r14
+        movq	%r12, %rax
+        mulq	%r10
+        addq	%rax, %r9
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        addq	%rax, %r9
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        movq	%r12, %rax
+        mulq	%r11
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        # Reduce 260-bit to 130-bit
+        movq	%r9, %rax
+        movq	%r13, %rdx
+        movq	%r14, %r15
+        andq	$-4, %rax
+        andq	$3, %r9
+        addq	%rax, %rcx
+        adcq	%rdx, %r8
+        adcq	%r15, %r9
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %r15, %rdx
+        shrq	$2, %r15
+        addq	%rax, %rcx
+        adcq	%rdx, %r8
+        adcq	%r15, %r9
+        movq	%r9, %rax
+        andq	$3, %r9
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %rcx
+        adcq	$0x00, %r8
+        adcq	$0x00, %r9
+        # Convert to 26 bits in 32
+        movq	%rcx, %rax
+        movq	%rcx, %rdx
+        movq	%rcx, %rsi
+        movq	%r8, %rbx
+        movq	%r8, %rbp
+        shrq	$26, %rdx
+        shrdq	$52, %r8, %rsi
+        shrq	$14, %rbx
+        shrdq	$40, %r9, %rbp
+        andq	$0x3ffffff, %rax
+        andq	$0x3ffffff, %rdx
+        andq	$0x3ffffff, %rsi
+        andq	$0x3ffffff, %rbx
+        andq	$0x3ffffff, %rbp
+        movl	%eax, 320(%rdi)
+        movl	%edx, 324(%rdi)
+        movl	%esi, 328(%rdi)
+        movl	%ebx, 332(%rdi)
+        movl	%ebp, 336(%rdi)
+        movl	$0x00, 340(%rdi)
+        movq	%rcx, 72(%rsp)
+        movq	%r8, 80(%rsp)
+        movq	%r9, 88(%rsp)
+        movq	(%rsp), %r10
+        movq	8(%rsp), %r11
+        movq	16(%rsp), %r12
+        # Multiply 128-bit by 130-bit
+        #   r1[0] * r2[0]
+        movq	%r10, %rax
+        mulq	%rcx
+        movq	%rax, %r13
+        movq	%rdx, %r14
+        #   r1[0] * r2[1]
+        movq	%r10, %rax
+        mulq	%r8
+        movq	$0x00, %r15
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        #   r1[1] * r2[0]
+        movq	%r11, %rax
+        mulq	%rcx
+        movq	$0x00, %rsi
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        adcq	$0x00, %rsi
+        #   r1[0] * r2[2]
+        movq	%r10, %rax
+        mulq	%r9
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        #   r1[1] * r2[1]
+        movq	%r11, %rax
+        mulq	%r8
+        movq	$0x00, %rbx
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        adcq	$0x00, %rbx
+        #   r1[1] * r2[2]
+        movq	%r11, %rax
+        mulq	%r9
+        addq	%rax, %rsi
+        adcq	%rdx, %rbx
+        # Reduce 260-bit to 130-bit
+        movq	%r15, %rax
+        movq	%rsi, %rdx
+        andq	$-4, %rax
+        andq	$3, %r15
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %rbx, %rdx
+        shrq	$2, %rbx
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        movq	%r15, %rax
+        andq	$3, %r15
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %r13
+        adcq	$0x00, %r14
+        adcq	$0x00, %r15
+        # Convert to 26 bits in 32
+        movq	%r13, %rax
+        movq	%r13, %rdx
+        movq	%r13, %rsi
+        movq	%r14, %rbx
+        movq	%r14, %rbp
+        shrq	$26, %rdx
+        shrdq	$52, %r14, %rsi
+        shrq	$14, %rbx
+        shrdq	$40, %r15, %rbp
+        andq	$0x3ffffff, %rax
+        andq	$0x3ffffff, %rdx
+        andq	$0x3ffffff, %rsi
+        andq	$0x3ffffff, %rbx
+        andq	$0x3ffffff, %rbp
+        movl	%eax, 624(%rdi)
+        movl	%edx, 628(%rdi)
+        movl	%esi, 632(%rdi)
+        movl	%ebx, 636(%rdi)
+        movl	%ebp, 640(%rdi)
+        movl	$0x00, 644(%rdi)
+        # Square 130-bit
+        movq	%r8, %rax
+        mulq	%rcx
+        xorq	%r13, %r13
+        movq	%rax, %r11
+        movq	%rdx, %r12
+        addq	%rax, %r11
+        adcq	%rdx, %r12
+        adcq	$0x00, %r13
+        movq	%rcx, %rax
+        mulq	%rax
+        movq	%rax, %r10
+        movq	%rdx, %r15
+        movq	%r8, %rax
+        mulq	%rax
+        addq	%r15, %r11
+        adcq	%rax, %r12
+        adcq	%rdx, %r13
+        movq	%r9, %rax
+        mulq	%rax
+        movq	%rax, %r14
+        movq	%r9, %rax
+        mulq	%rcx
+        addq	%rax, %r12
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        addq	%rax, %r12
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        movq	%r9, %rax
+        mulq	%r8
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        # Reduce 260-bit to 130-bit
+        movq	%r12, %rax
+        movq	%r13, %rdx
+        movq	%r14, %r15
+        andq	$-4, %rax
+        andq	$3, %r12
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	%r15, %r12
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %r15, %rdx
+        shrq	$2, %r15
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	%r15, %r12
+        movq	%r12, %rax
+        andq	$3, %r12
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %r10
+        adcq	$0x00, %r11
+        adcq	$0x00, %r12
+        # Convert to 26 bits in 32
+        movq	%r10, %rax
+        movq	%r10, %rdx
+        movq	%r10, %rsi
+        movq	%r11, %rbx
+        movq	%r11, %rbp
+        shrq	$26, %rdx
+        shrdq	$52, %r11, %rsi
+        shrq	$14, %rbx
+        shrdq	$40, %r12, %rbp
+        andq	$0x3ffffff, %rax
+        andq	$0x3ffffff, %rdx
+        andq	$0x3ffffff, %rsi
+        andq	$0x3ffffff, %rbx
+        andq	$0x3ffffff, %rbp
+        movl	%eax, 720(%rdi)
+        movl	%edx, 724(%rdi)
+        movl	%esi, 728(%rdi)
+        movl	%ebx, 732(%rdi)
+        movl	%ebp, 736(%rdi)
+        movl	$0x00, 740(%rdi)
+        movq	48(%rsp), %rcx
+        movq	56(%rsp), %r8
+        movq	64(%rsp), %r9
+        # Square 130-bit
+        movq	%r8, %rax
+        mulq	%rcx
+        xorq	%r13, %r13
+        movq	%rax, %r11
+        movq	%rdx, %r12
+        addq	%rax, %r11
+        adcq	%rdx, %r12
+        adcq	$0x00, %r13
+        movq	%rcx, %rax
+        mulq	%rax
+        movq	%rax, %r10
+        movq	%rdx, %r15
+        movq	%r8, %rax
+        mulq	%rax
+        addq	%r15, %r11
+        adcq	%rax, %r12
+        adcq	%rdx, %r13
+        movq	%r9, %rax
+        mulq	%rax
+        movq	%rax, %r14
+        movq	%r9, %rax
+        mulq	%rcx
+        addq	%rax, %r12
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        addq	%rax, %r12
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        movq	%r9, %rax
+        mulq	%r8
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        # Reduce 260-bit to 130-bit
+        movq	%r12, %rax
+        movq	%r13, %rdx
+        movq	%r14, %r15
+        andq	$-4, %rax
+        andq	$3, %r12
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	%r15, %r12
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %r15, %rdx
+        shrq	$2, %r15
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	%r15, %r12
+        movq	%r12, %rax
+        andq	$3, %r12
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %r10
+        adcq	$0x00, %r11
+        adcq	$0x00, %r12
+        # Convert to 26 bits in 32
+        movq	%r10, %rax
+        movq	%r10, %rdx
+        movq	%r10, %rsi
+        movq	%r11, %rbx
+        movq	%r11, %rbp
+        shrq	$26, %rdx
+        shrdq	$52, %r11, %rsi
+        shrq	$14, %rbx
+        shrdq	$40, %r12, %rbp
+        andq	$0x3ffffff, %rax
+        andq	$0x3ffffff, %rdx
+        andq	$0x3ffffff, %rsi
+        andq	$0x3ffffff, %rbx
+        andq	$0x3ffffff, %rbp
+        movl	%eax, 656(%rdi)
+        movl	%edx, 660(%rdi)
+        movl	%esi, 664(%rdi)
+        movl	%ebx, 668(%rdi)
+        movl	%ebp, 672(%rdi)
+        movl	$0x00, 676(%rdi)
+        movq	(%rsp), %rcx
+        movq	8(%rsp), %r8
+        movq	16(%rsp), %r9
+        # Multiply 128-bit by 130-bit
+        #   r1[0] * r2[0]
+        movq	%rcx, %rax
+        mulq	%r10
+        movq	%rax, %r13
+        movq	%rdx, %r14
+        #   r1[0] * r2[1]
+        movq	%rcx, %rax
+        mulq	%r11
+        movq	$0x00, %r15
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        #   r1[1] * r2[0]
+        movq	%r8, %rax
+        mulq	%r10
+        movq	$0x00, %rsi
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        adcq	$0x00, %rsi
+        #   r1[0] * r2[2]
+        movq	%rcx, %rax
+        mulq	%r12
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        #   r1[1] * r2[1]
+        movq	%r8, %rax
+        mulq	%r11
+        movq	$0x00, %rbx
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        adcq	$0x00, %rbx
+        #   r1[1] * r2[2]
+        movq	%r8, %rax
+        mulq	%r12
+        addq	%rax, %rsi
+        adcq	%rdx, %rbx
+        # Reduce 260-bit to 130-bit
+        movq	%r15, %rax
+        movq	%rsi, %rdx
+        andq	$-4, %rax
+        andq	$3, %r15
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %rbx, %rdx
+        shrq	$2, %rbx
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        movq	%r15, %rax
+        andq	$3, %r15
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %r13
+        adcq	$0x00, %r14
+        adcq	$0x00, %r15
+        # Convert to 26 bits in 32
+        movq	%r13, %rax
+        movq	%r13, %rdx
+        movq	%r13, %rsi
+        movq	%r14, %rbx
+        movq	%r14, %rbp
+        shrq	$26, %rdx
+        shrdq	$52, %r14, %rsi
+        shrq	$14, %rbx
+        shrdq	$40, %r15, %rbp
+        andq	$0x3ffffff, %rax
+        andq	$0x3ffffff, %rdx
+        andq	$0x3ffffff, %rsi
+        andq	$0x3ffffff, %rbx
+        andq	$0x3ffffff, %rbp
+        movl	%eax, 688(%rdi)
+        movl	%edx, 692(%rdi)
+        movl	%esi, 696(%rdi)
+        movl	%ebx, 700(%rdi)
+        movl	%ebp, 704(%rdi)
+        movl	$0x00, 708(%rdi)
+        addq	$0x68, %rsp
+        popq	%rbp
+        popq	%rbx
+        popq	%r15
+        popq	%r14
+        popq	%r13
+        popq	%r12
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_calc_powers_avx512,.-poly1305_calc_powers_avx512
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.data
+#else
+.section	__DATA,__data
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.align	32
+#else
+.p2align	5
+#endif /* __APPLE__ */
+L_poly1305_avx512_blocks_mask:
+.quad	0x0000000003ffffff,0x0000000003ffffff
+.quad	0x0000000003ffffff,0x0000000003ffffff
+.quad	0x0000000003ffffff,0x0000000003ffffff
+.quad	0x0000000003ffffff,0x0000000003ffffff
+#ifndef __APPLE__
+.data
+#else
+.section	__DATA,__data
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.align	32
+#else
+.p2align	5
+#endif /* __APPLE__ */
+L_poly1305_avx512_blocks_hibit:
+.quad	0x0000000001000000,0x0000000001000000
+.quad	0x0000000001000000,0x0000000001000000
+.quad	0x0000000001000000,0x0000000001000000
+.quad	0x0000000001000000,0x0000000001000000
+#ifndef __APPLE__
+.data
+#else
+.section	__DATA,__data
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.align	32
+#else
+.p2align	5
+#endif /* __APPLE__ */
+L_poly1305_avx512_blocks_permidx:
+.quad	0x0000000400000000,0x0000000c00000008
+.quad	0x0000001400000010,0x0000001c00000018
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000500000001,0x0000000d00000009
+.quad	0x0000001500000011,0x0000001d00000019
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000600000002,0x0000000e0000000a
+.quad	0x0000001600000012,0x0000001e0000001a
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000700000003,0x0000000f0000000b
+.quad	0x0000001700000013,0x0000001f0000001b
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+#ifndef __APPLE__
+.data
+#else
+.section	__DATA,__data
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.align	32
+#else
+.p2align	5
+#endif /* __APPLE__ */
+L_poly1305_avx512_blocks_rxidx:
+.quad	0x0000001000000018,0x0000000000000008
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000001100000019,0x0000000100000009
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x000000120000001a,0x000000020000000a
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x000000130000001b,0x000000030000000b
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x000000140000001c,0x000000040000000c
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+#ifndef __APPLE__
+.text
+.globl	poly1305_blocks_avx512
+WC_ASM_ATT_HIDDEN(poly1305_blocks_avx512)
+.type	poly1305_blocks_avx512,@function
+.align	16
+poly1305_blocks_avx512:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_blocks_avx512
+WC_ASM_ATT_HIDDEN(_poly1305_blocks_avx512)
+.p2align	4
+_poly1305_blocks_avx512:
+#endif /* __APPLE__ */
+        pushq	%r12
+        pushq	%r13
+        pushq	%r14
+        pushq	%r15
+        leaq	L_poly1305_avx512_blocks_mask(%rip), %rcx
+        leaq	L_poly1305_avx512_blocks_hibit(%rip), %r13
+        leaq	L_poly1305_avx512_blocks_permidx(%rip), %r14
+        leaq	L_poly1305_avx512_blocks_rxidx(%rip), %r15
+        vpxorq	%zmm24, %zmm24, %zmm24
+        leaq	64(%rdi), %rax
+        cmpw	$0x00, 616(%rdi)
+        jne	L_poly1305_avx512_blocks_begin_h
+        # Load the message data
+        vmovdqu64	(%rsi), %zmm25
+        vmovdqu64	64(%rsi), %zmm26
+        vmovdqu64	(%r14), %zmm27
+        vpermi2d	%zmm26, %zmm25, %zmm27
+        vpmovzxdq	%ymm27, %zmm0
+        vmovdqu64	64(%r14), %zmm27
+        vpermi2d	%zmm26, %zmm25, %zmm27
+        vpmovzxdq	%ymm27, %zmm1
+        vmovdqu64	128(%r14), %zmm27
+        vpermi2d	%zmm26, %zmm25, %zmm27
+        vpmovzxdq	%ymm27, %zmm2
+        vmovdqu64	192(%r14), %zmm27
+        vpermi2d	%zmm26, %zmm25, %zmm27
+        vpmovzxdq	%ymm27, %zmm3
+        vmovdqu64	(%r13), %zmm4
+        vpsllq	$6, %zmm1, %zmm1
+        vpsllq	$12, %zmm2, %zmm2
+        vpsllq	$18, %zmm3, %zmm3
+        vmovdqu64	(%rcx), %zmm23
+        # Reduce, in place, the message data
+        vpsrlq	$26, %zmm0, %zmm19
+        vpsrlq	$26, %zmm3, %zmm20
+        vpandq	%zmm23, %zmm0, %zmm0
+        vpandq	%zmm23, %zmm3, %zmm3
+        vpaddq	%zmm1, %zmm19, %zmm1
+        vpaddq	%zmm4, %zmm20, %zmm4
+        vpsrlq	$26, %zmm1, %zmm19
+        vpsrlq	$26, %zmm4, %zmm20
+        vpandq	%zmm23, %zmm1, %zmm1
+        vpandq	%zmm23, %zmm4, %zmm4
+        vpaddq	%zmm2, %zmm19, %zmm2
+        vpslld	$2, %zmm20, %zmm21
+        vpaddd	%zmm21, %zmm20, %zmm21
+        vpsrlq	$26, %zmm2, %zmm19
+        vpaddq	%zmm0, %zmm21, %zmm0
+        vpsrlq	$26, %zmm0, %zmm20
+        vpandq	%zmm23, %zmm2, %zmm2
+        vpandq	%zmm23, %zmm0, %zmm0
+        vpaddq	%zmm3, %zmm19, %zmm3
+        vpaddq	%zmm1, %zmm20, %zmm1
+        vpsrlq	$26, %zmm3, %zmm19
+        vpandq	%zmm23, %zmm3, %zmm3
+        vpaddq	%zmm4, %zmm19, %zmm4
+        addq	$0x80, %rsi
+        subq	$0x80, %rdx
+        jz	L_poly1305_avx512_blocks_store
+        jmp	L_poly1305_avx512_blocks_load_r8
+L_poly1305_avx512_blocks_begin_h:
+        # Load the H values.
+        vpmovzxdq	(%rax), %zmm0
+        vpmovzxdq	32(%rax), %zmm1
+        vpmovzxdq	64(%rax), %zmm2
+        vpmovzxdq	96(%rax), %zmm3
+        vpmovzxdq	128(%rax), %zmm4
+        # Check if there is a power of r to load - otherwise use r^8.
+        cmpb	$0x00, 616(%rdi)
+        je	L_poly1305_avx512_blocks_load_r8
+        # Load the 8 powers of r - r^8 .. r^1.
+        vmovdqu64	224(%rdi), %zmm14
+        vmovdqu64	288(%rdi), %zmm15
+        vmovdqu64	624(%rdi), %zmm16
+        vmovdqu64	688(%rdi), %zmm17
+        vmovdqu64	(%r15), %zmm18
+        vpermi2d	%zmm17, %zmm16, %zmm18
+        vpmovzxdq	%xmm18, %ymm20
+        vmovdqu64	(%r15), %zmm19
+        vpermi2d	%zmm15, %zmm14, %zmm19
+        vpmovzxdq	%xmm19, %ymm21
+        vinserti64x4	$0x01, %ymm21, %zmm20, %zmm5
+        vmovdqu64	64(%r15), %zmm18
+        vpermi2d	%zmm17, %zmm16, %zmm18
+        vpmovzxdq	%xmm18, %ymm20
+        vmovdqu64	64(%r15), %zmm19
+        vpermi2d	%zmm15, %zmm14, %zmm19
+        vpmovzxdq	%xmm19, %ymm21
+        vinserti64x4	$0x01, %ymm21, %zmm20, %zmm6
+        vmovdqu64	128(%r15), %zmm18
+        vpermi2d	%zmm17, %zmm16, %zmm18
+        vpmovzxdq	%xmm18, %ymm20
+        vmovdqu64	128(%r15), %zmm19
+        vpermi2d	%zmm15, %zmm14, %zmm19
+        vpmovzxdq	%xmm19, %ymm21
+        vinserti64x4	$0x01, %ymm21, %zmm20, %zmm7
+        vmovdqu64	192(%r15), %zmm18
+        vpermi2d	%zmm17, %zmm16, %zmm18
+        vpmovzxdq	%xmm18, %ymm20
+        vmovdqu64	192(%r15), %zmm19
+        vpermi2d	%zmm15, %zmm14, %zmm19
+        vpmovzxdq	%xmm19, %ymm21
+        vinserti64x4	$0x01, %ymm21, %zmm20, %zmm8
+        vmovdqu64	256(%r15), %zmm18
+        vpermi2d	%zmm17, %zmm16, %zmm18
+        vpmovzxdq	%xmm18, %ymm20
+        vmovdqu64	256(%r15), %zmm19
+        vpermi2d	%zmm15, %zmm14, %zmm19
+        vpmovzxdq	%xmm19, %ymm21
+        vinserti64x4	$0x01, %ymm21, %zmm20, %zmm9
+        jmp	L_poly1305_avx512_blocks_mul_5
+L_poly1305_avx512_blocks_load_r8:
+        # Load r^8 into all eight lanes.
+        vpbroadcastd	720(%rdi), %zmm5
+        vpbroadcastd	724(%rdi), %zmm6
+        vpbroadcastd	728(%rdi), %zmm7
+        vpbroadcastd	732(%rdi), %zmm8
+        vpbroadcastd	736(%rdi), %zmm9
+L_poly1305_avx512_blocks_mul_5:
+        # Multiply top 4 26-bit values of all eight powers by 5
+        vpslld	$2, %zmm6, %zmm10
+        vpslld	$2, %zmm7, %zmm11
+        vpslld	$2, %zmm8, %zmm12
+        vpslld	$2, %zmm9, %zmm13
+        vpaddq	%zmm10, %zmm6, %zmm10
+        vpaddq	%zmm11, %zmm7, %zmm11
+        vpaddq	%zmm12, %zmm8, %zmm12
+        vpaddq	%zmm13, %zmm9, %zmm13
+        vmovdqu64	(%rcx), %zmm23
+        # If not finished then loop over data
+        cmpb	$0x01, 616(%rdi)
+        jne	L_poly1305_avx512_blocks_start
+        # Do last multiply, reduce, add the eight H together and move to
+        # 32-bit registers
+        vpmuludq	%zmm10, %zmm4, %zmm14
+        vpmuludq	%zmm11, %zmm3, %zmm19
+        vpmuludq	%zmm11, %zmm4, %zmm15
+        vpmuludq	%zmm12, %zmm3, %zmm20
+        vpmuludq	%zmm12, %zmm4, %zmm16
+        vpaddq	%zmm14, %zmm19, %zmm14
+        vpmuludq	%zmm12, %zmm2, %zmm21
+        vpmuludq	%zmm13, %zmm4, %zmm17
+        vpaddq	%zmm15, %zmm20, %zmm15
+        vpmuludq	%zmm13, %zmm1, %zmm22
+        vpmuludq	%zmm13, %zmm2, %zmm19
+        vpaddq	%zmm14, %zmm21, %zmm14
+        vpmuludq	%zmm13, %zmm3, %zmm20
+        vpmuludq	%zmm5, %zmm3, %zmm21
+        vpaddq	%zmm14, %zmm22, %zmm14
+        vpmuludq	%zmm5, %zmm4, %zmm18
+        vpaddq	%zmm15, %zmm19, %zmm15
+        vpmuludq	%zmm5, %zmm0, %zmm22
+        vpaddq	%zmm16, %zmm20, %zmm16
+        vpmuludq	%zmm5, %zmm1, %zmm19
+        vpaddq	%zmm17, %zmm21, %zmm17
+        vpmuludq	%zmm5, %zmm2, %zmm20
+        vpmuludq	%zmm6, %zmm2, %zmm21
+        vpaddq	%zmm14, %zmm22, %zmm14
+        vpmuludq	%zmm6, %zmm3, %zmm22
+        vpaddq	%zmm15, %zmm19, %zmm15
+        vpmuludq	%zmm6, %zmm0, %zmm19
+        vpaddq	%zmm16, %zmm20, %zmm16
+        vpmuludq	%zmm6, %zmm1, %zmm20
+        vpaddq	%zmm17, %zmm21, %zmm17
+        vpmuludq	%zmm7, %zmm1, %zmm21
+        vpaddq	%zmm18, %zmm22, %zmm18
+        vpmuludq	%zmm7, %zmm2, %zmm22
+        vpaddq	%zmm15, %zmm19, %zmm15
+        vpmuludq	%zmm7, %zmm0, %zmm19
+        vpaddq	%zmm16, %zmm20, %zmm16
+        vpmuludq	%zmm8, %zmm0, %zmm20
+        vpaddq	%zmm17, %zmm21, %zmm17
+        vpmuludq	%zmm8, %zmm1, %zmm21
+        vpaddq	%zmm18, %zmm22, %zmm18
+        vpaddq	%zmm16, %zmm19, %zmm16
+        vpmuludq	%zmm9, %zmm0, %zmm22
+        vpaddq	%zmm17, %zmm20, %zmm17
+        vpaddq	%zmm18, %zmm21, %zmm18
+        vpaddq	%zmm18, %zmm22, %zmm18
+        vpsrlq	$26, %zmm14, %zmm19
+        vpsrlq	$26, %zmm17, %zmm20
+        vpandq	%zmm23, %zmm14, %zmm14
+        vpandq	%zmm23, %zmm17, %zmm17
+        vpaddq	%zmm15, %zmm19, %zmm15
+        vpaddq	%zmm18, %zmm20, %zmm18
+        vpsrlq	$26, %zmm15, %zmm19
+        vpsrlq	$26, %zmm18, %zmm20
+        vpandq	%zmm23, %zmm15, %zmm1
+        vpandq	%zmm23, %zmm18, %zmm4
+        vpaddq	%zmm16, %zmm19, %zmm16
+        vpslld	$2, %zmm20, %zmm21
+        vpaddd	%zmm21, %zmm20, %zmm21
+        vpsrlq	$26, %zmm16, %zmm19
+        vpaddq	%zmm14, %zmm21, %zmm14
+        vpsrlq	$26, %zmm14, %zmm20
+        vpandq	%zmm23, %zmm16, %zmm2
+        vpandq	%zmm23, %zmm14, %zmm0
+        vpaddq	%zmm17, %zmm19, %zmm17
+        vpaddq	%zmm1, %zmm20, %zmm1
+        vpsrlq	$26, %zmm17, %zmm19
+        vpandq	%zmm23, %zmm17, %zmm3
+        vpaddq	%zmm4, %zmm19, %zmm4
+        vshufi64x2	$0x4e, %zmm0, %zmm0, %zmm14
+        vshufi64x2	$0x4e, %zmm1, %zmm1, %zmm15
+        vshufi64x2	$0x4e, %zmm2, %zmm2, %zmm16
+        vshufi64x2	$0x4e, %zmm3, %zmm3, %zmm17
+        vshufi64x2	$0x4e, %zmm4, %zmm4, %zmm18
+        vpaddq	%zmm0, %zmm14, %zmm0
+        vpaddq	%zmm1, %zmm15, %zmm1
+        vpaddq	%zmm2, %zmm16, %zmm2
+        vpaddq	%zmm3, %zmm17, %zmm3
+        vpaddq	%zmm4, %zmm18, %zmm4
+        vpsrldq	$8, %zmm0, %zmm14
+        vpsrldq	$8, %zmm1, %zmm15
+        vpsrldq	$8, %zmm2, %zmm16
+        vpsrldq	$8, %zmm3, %zmm17
+        vpsrldq	$8, %zmm4, %zmm18
+        vpaddq	%zmm0, %zmm14, %zmm0
+        vpaddq	%zmm1, %zmm15, %zmm1
+        vpaddq	%zmm2, %zmm16, %zmm2
+        vpaddq	%zmm3, %zmm17, %zmm3
+        vpaddq	%zmm4, %zmm18, %zmm4
+        vpermq	$2, %zmm0, %zmm14
+        vpermq	$2, %zmm1, %zmm15
+        vpermq	$2, %zmm2, %zmm16
+        vpermq	$2, %zmm3, %zmm17
+        vpermq	$2, %zmm4, %zmm18
+        vpaddq	%zmm0, %zmm14, %zmm0
+        vpaddq	%zmm1, %zmm15, %zmm1
+        vpaddq	%zmm2, %zmm16, %zmm2
+        vpaddq	%zmm3, %zmm17, %zmm3
+        vpaddq	%zmm4, %zmm18, %zmm4
+        vmovd	%xmm0, %r8d
+        vmovd	%xmm1, %r9d
+        vmovd	%xmm2, %r10d
+        vmovd	%xmm3, %r11d
+        vmovd	%xmm4, %r12d
+        jmp	L_poly1305_avx512_blocks_end_calc
+L_poly1305_avx512_blocks_start:
+        vmovdqu64	(%rsi), %zmm25
+        vmovdqu64	64(%rsi), %zmm26
+        vmovdqu64	(%r14), %zmm27
+        vpermi2d	%zmm26, %zmm25, %zmm27
+        vpmovzxdq	%ymm27, %zmm14
+        vmovdqu64	64(%r14), %zmm27
+        vpermi2d	%zmm26, %zmm25, %zmm27
+        vpmovzxdq	%ymm27, %zmm15
+        vmovdqu64	128(%r14), %zmm27
+        vpermi2d	%zmm26, %zmm25, %zmm27
+        vpmovzxdq	%ymm27, %zmm16
+        vmovdqu64	192(%r14), %zmm27
+        vpermi2d	%zmm26, %zmm25, %zmm27
+        vpmovzxdq	%ymm27, %zmm17
+        vmovdqu64	(%r13), %zmm18
+        vpsllq	$6, %zmm15, %zmm15
+        vpsllq	$12, %zmm16, %zmm16
+        vpsllq	$18, %zmm17, %zmm17
+        vpmuludq	%zmm10, %zmm4, %zmm19
+        vpaddq	%zmm14, %zmm19, %zmm14
+        vpmuludq	%zmm11, %zmm3, %zmm19
+        vpmuludq	%zmm11, %zmm4, %zmm20
+        vpaddq	%zmm15, %zmm20, %zmm15
+        vpmuludq	%zmm12, %zmm3, %zmm20
+        vpmuludq	%zmm12, %zmm4, %zmm21
+        vpaddq	%zmm16, %zmm21, %zmm16
+        vpaddq	%zmm14, %zmm19, %zmm14
+        vpmuludq	%zmm12, %zmm2, %zmm21
+        vpmuludq	%zmm13, %zmm4, %zmm22
+        vpaddq	%zmm17, %zmm22, %zmm17
+        vpaddq	%zmm15, %zmm20, %zmm15
+        vpmuludq	%zmm13, %zmm1, %zmm22
+        vpmuludq	%zmm13, %zmm2, %zmm19
+        vpaddq	%zmm14, %zmm21, %zmm14
+        vpmuludq	%zmm13, %zmm3, %zmm20
+        vpmuludq	%zmm5, %zmm3, %zmm21
+        vpaddq	%zmm14, %zmm22, %zmm14
+        vpmuludq	%zmm5, %zmm4, %zmm22
+        vpaddq	%zmm18, %zmm22, %zmm18
+        vpaddq	%zmm15, %zmm19, %zmm15
+        vpmuludq	%zmm5, %zmm0, %zmm22
+        vpaddq	%zmm16, %zmm20, %zmm16
+        vpmuludq	%zmm5, %zmm1, %zmm19
+        vpaddq	%zmm17, %zmm21, %zmm17
+        vpmuludq	%zmm5, %zmm2, %zmm20
+        vpmuludq	%zmm6, %zmm2, %zmm21
+        vpaddq	%zmm14, %zmm22, %zmm14
+        vpmuludq	%zmm6, %zmm3, %zmm22
+        vpaddq	%zmm15, %zmm19, %zmm15
+        vpmuludq	%zmm6, %zmm0, %zmm19
+        vpaddq	%zmm16, %zmm20, %zmm16
+        vpmuludq	%zmm6, %zmm1, %zmm20
+        vpaddq	%zmm17, %zmm21, %zmm17
+        vpmuludq	%zmm7, %zmm1, %zmm21
+        vpaddq	%zmm18, %zmm22, %zmm18
+        vpmuludq	%zmm7, %zmm2, %zmm22
+        vpaddq	%zmm15, %zmm19, %zmm15
+        vpmuludq	%zmm7, %zmm0, %zmm19
+        vpaddq	%zmm16, %zmm20, %zmm16
+        vpmuludq	%zmm8, %zmm0, %zmm20
+        vpaddq	%zmm17, %zmm21, %zmm17
+        vpmuludq	%zmm8, %zmm1, %zmm21
+        vpaddq	%zmm18, %zmm22, %zmm18
+        vpaddq	%zmm16, %zmm19, %zmm16
+        vpmuludq	%zmm9, %zmm0, %zmm22
+        vpaddq	%zmm17, %zmm20, %zmm17
+        vpaddq	%zmm18, %zmm21, %zmm18
+        vpaddq	%zmm18, %zmm22, %zmm18
+        vpsrlq	$26, %zmm14, %zmm19
+        vpsrlq	$26, %zmm17, %zmm20
+        vpandq	%zmm23, %zmm14, %zmm14
+        vpandq	%zmm23, %zmm17, %zmm17
+        vpaddq	%zmm15, %zmm19, %zmm15
+        vpaddq	%zmm18, %zmm20, %zmm18
+        vpsrlq	$26, %zmm15, %zmm19
+        vpsrlq	$26, %zmm18, %zmm20
+        vpandq	%zmm23, %zmm15, %zmm1
+        vpandq	%zmm23, %zmm18, %zmm4
+        vpaddq	%zmm16, %zmm19, %zmm16
+        vpslld	$2, %zmm20, %zmm21
+        vpaddd	%zmm21, %zmm20, %zmm21
+        vpsrlq	$26, %zmm16, %zmm19
+        vpaddq	%zmm14, %zmm21, %zmm14
+        vpsrlq	$26, %zmm14, %zmm20
+        vpandq	%zmm23, %zmm16, %zmm2
+        vpandq	%zmm23, %zmm14, %zmm0
+        vpaddq	%zmm17, %zmm19, %zmm17
+        vpaddq	%zmm1, %zmm20, %zmm1
+        vpsrlq	$26, %zmm17, %zmm19
+        vpandq	%zmm23, %zmm17, %zmm3
+        vpaddq	%zmm4, %zmm19, %zmm4
+        addq	$0x80, %rsi
+        subq	$0x80, %rdx
+        jnz	L_poly1305_avx512_blocks_start
+L_poly1305_avx512_blocks_store:
+        # Store eight H values - state
+        vpmovqd	%zmm0, (%rax)
+        vpmovqd	%zmm1, 32(%rax)
+        vpmovqd	%zmm2, 64(%rax)
+        vpmovqd	%zmm3, 96(%rax)
+        vpmovqd	%zmm4, 128(%rax)
+L_poly1305_avx512_blocks_end_calc:
+        cmpb	$0x00, 616(%rdi)
+        je	L_poly1305_avx512_blocks_complete
+        movq	%r8, %rax
+        movq	%r10, %rdx
+        movq	%r12, %rcx
+        shrq	$12, %rdx
+        shrq	$24, %rcx
+        shlq	$26, %r9
+        shlq	$52, %r10
+        shlq	$14, %r11
+        shlq	$40, %r12
+        addq	%r9, %rax
+        adcq	%r10, %rax
+        adcq	%r11, %rdx
+        adcq	%r12, %rdx
+        adcq	$0x00, %rcx
+        movq	%rcx, %r8
+        andq	$3, %rcx
+        shrq	$2, %r8
+        leaq	0(%r8,%r8,4), %r8
+        addq	%r8, %rax
+        adcq	$0x00, %rdx
+        adcq	$0x00, %rcx
+        movq	%rax, 24(%rdi)
+        movq	%rdx, 32(%rdi)
+        movq	%rcx, 40(%rdi)
+L_poly1305_avx512_blocks_complete:
+        movb	$0x01, 617(%rdi)
+        vzeroupper
+        popq	%r15
+        popq	%r14
+        popq	%r13
+        popq	%r12
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_blocks_avx512,.-poly1305_blocks_avx512
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.text
+.globl	poly1305_final_avx512
+WC_ASM_ATT_HIDDEN(poly1305_final_avx512)
+.type	poly1305_final_avx512,@function
+.align	16
+poly1305_final_avx512:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_final_avx512
+WC_ASM_ATT_HIDDEN(_poly1305_final_avx512)
+.p2align	4
+_poly1305_final_avx512:
+#endif /* __APPLE__ */
+        movb	$0x01, 616(%rdi)
+        movb	617(%rdi), %cl
+        cmpb	$0x00, %cl
+        je	L_poly1305_avx512_final_done_blocks_X8
+        pushq	%rsi
+        movq	$0x80, %rdx
+        xorq	%rsi, %rsi
+#ifndef __APPLE__
+        callq	poly1305_blocks_avx512@plt
+#else
+        callq	_poly1305_blocks_avx512
+#endif /* __APPLE__ */
+        popq	%rsi
+L_poly1305_avx512_final_done_blocks_X8:
+        movq	608(%rdi), %rax
+        movq	%rax, %rcx
+        andq	$-16, %rcx
+        cmpb	$0x00, %cl
+        je	L_poly1305_avx512_final_done_blocks
+        pushq	%rcx
+        pushq	%rax
+        pushq	%rsi
+        movq	%rcx, %rdx
+        leaq	480(%rdi), %rsi
+#ifndef __APPLE__
+        callq	poly1305_blocks_avx@plt
+#else
+        callq	_poly1305_blocks_avx
+#endif /* __APPLE__ */
+        popq	%rsi
+        popq	%rax
+        popq	%rcx
+L_poly1305_avx512_final_done_blocks:
+        subq	%rcx, 608(%rdi)
+        xorq	%rdx, %rdx
+        jmp	L_poly1305_avx512_final_cmp_copy
+L_poly1305_avx512_final_start_copy:
+        movb	480(%rdi,%rcx,1), %r8b
+        movb	%r8b, 480(%rdi,%rdx,1)
+        incb	%cl
+        incb	%dl
+L_poly1305_avx512_final_cmp_copy:
+        cmpb	%cl, %al
+        jne	L_poly1305_avx512_final_start_copy
+        subq	$8, %rsp
+#ifndef __APPLE__
+        callq	poly1305_final_avx@plt
+#else
+        callq	_poly1305_final_avx
+#endif /* __APPLE__ */
+        addq	$8, %rsp
+        vpxor	%xmm0, %xmm0, %xmm0
+        vmovdqu	%ymm0, 64(%rdi)
+        vmovdqu	%ymm0, 96(%rdi)
+        vmovdqu	%ymm0, 128(%rdi)
+        vmovdqu	%ymm0, 160(%rdi)
+        vmovdqu	%ymm0, 192(%rdi)
+        vmovdqu	%ymm0, 224(%rdi)
+        vmovdqu	%ymm0, 256(%rdi)
+        vmovdqu	%ymm0, 288(%rdi)
+        vmovdqu	%ymm0, 320(%rdi)
+        vmovdqu	%ymm0, 624(%rdi)
+        vmovdqu	%ymm0, 656(%rdi)
+        vmovdqu	%ymm0, 688(%rdi)
+        vmovdqu	%ymm0, 720(%rdi)
+        movq	$0x00, 608(%rdi)
+        movw	$0x00, 616(%rdi)
+        vzeroupper
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_final_avx512,.-poly1305_final_avx512
+#endif /* __APPLE__ */
+#endif /* HAVE_INTEL_AVX512 */
+#ifdef HAVE_INTEL_AVX512
+#ifndef __APPLE__
+.text
+.globl	poly1305_calc_powers_avx512ifma
+WC_ASM_ATT_HIDDEN(poly1305_calc_powers_avx512ifma)
+.type	poly1305_calc_powers_avx512ifma,@function
+.align	16
+poly1305_calc_powers_avx512ifma:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_calc_powers_avx512ifma
+WC_ASM_ATT_HIDDEN(_poly1305_calc_powers_avx512ifma)
+.p2align	4
+_poly1305_calc_powers_avx512ifma:
+#endif /* __APPLE__ */
+        pushq	%r12
+        pushq	%r13
+        pushq	%r14
+        pushq	%r15
+        pushq	%rbx
+        pushq	%rbp
+        subq	$0x68, %rsp
+        movq	(%rdi), %rcx
+        movq	8(%rdi), %r8
+        xorq	%r9, %r9
+        # Convert to 44 bits in 64
+        movq	%rcx, %rax
+        shlq	$20, %rax
+        shrq	$20, %rax
+        movq	%rcx, %rdx
+        shrdq	$44, %r8, %rdx
+        shlq	$20, %rdx
+        shrq	$20, %rdx
+        movq	%r8, %rsi
+        shrdq	$24, %r9, %rsi
+        movq	%rax, 224(%rdi)
+        movq	%rdx, 232(%rdi)
+        movq	%rsi, 240(%rdi)
+        movq	%rcx, (%rsp)
+        movq	%r8, 8(%rsp)
+        movq	%r9, 16(%rsp)
+        # Square 128-bit
+        movq	%r8, %rax
+        mulq	%rcx
+        xorq	%r13, %r13
+        movq	%rax, %r11
+        movq	%rdx, %r12
+        addq	%rax, %r11
+        adcq	%rdx, %r12
+        adcq	$0x00, %r13
+        movq	%rcx, %rax
+        mulq	%rax
+        movq	%rax, %r10
+        movq	%rdx, %r15
+        movq	%r8, %rax
+        mulq	%rax
+        addq	%r15, %r11
+        adcq	%rax, %r12
+        adcq	%rdx, %r13
+        # Reduce 256-bit to 130-bit
+        movq	%r12, %rax
+        movq	%r13, %rdx
+        andq	$-4, %rax
+        andq	$3, %r12
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	$0x00, %r12
+        shrdq	$2, %rdx, %rax
+        shrq	$2, %rdx
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	$0x00, %r12
+        movq	%r12, %rax
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        andq	$3, %r12
+        addq	%rax, %r10
+        adcq	$0x00, %r11
+        adcq	$0x00, %r12
+        # Convert to 44 bits in 64
+        movq	%r10, %rax
+        shlq	$20, %rax
+        shrq	$20, %rax
+        movq	%r10, %rdx
+        shrdq	$44, %r11, %rdx
+        shlq	$20, %rdx
+        shrq	$20, %rdx
+        movq	%r11, %rsi
+        shrdq	$24, %r12, %rsi
+        movq	%rax, 256(%rdi)
+        movq	%rdx, 264(%rdi)
+        movq	%rsi, 272(%rdi)
+        movq	%r10, 24(%rsp)
+        movq	%r11, 32(%rsp)
+        movq	%r12, 40(%rsp)
+        # Multiply 128-bit by 130-bit
+        #   r1[0] * r2[0]
+        movq	%rcx, %rax
+        mulq	%r10
+        movq	%rax, %r13
+        movq	%rdx, %r14
+        #   r1[0] * r2[1]
+        movq	%rcx, %rax
+        mulq	%r11
+        movq	$0x00, %r15
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        #   r1[1] * r2[0]
+        movq	%r8, %rax
+        mulq	%r10
+        movq	$0x00, %rsi
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        adcq	$0x00, %rsi
+        #   r1[0] * r2[2]
+        movq	%rcx, %rax
+        mulq	%r12
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        #   r1[1] * r2[1]
+        movq	%r8, %rax
+        mulq	%r11
+        movq	$0x00, %rbx
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        adcq	$0x00, %rbx
+        #   r1[1] * r2[2]
+        movq	%r8, %rax
+        mulq	%r12
+        addq	%rax, %rsi
+        adcq	%rdx, %rbx
+        # Reduce 260-bit to 130-bit
+        movq	%r15, %rax
+        movq	%rsi, %rdx
+        andq	$-4, %rax
+        andq	$3, %r15
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %rbx, %rdx
+        shrq	$2, %rbx
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        movq	%r15, %rax
+        andq	$3, %r15
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %r13
+        adcq	$0x00, %r14
+        adcq	$0x00, %r15
+        # Convert to 44 bits in 64
+        movq	%r13, %rax
+        shlq	$20, %rax
+        shrq	$20, %rax
+        movq	%r13, %rdx
+        shrdq	$44, %r14, %rdx
+        shlq	$20, %rdx
+        shrq	$20, %rdx
+        movq	%r14, %rsi
+        shrdq	$24, %r15, %rsi
+        movq	%rax, 288(%rdi)
+        movq	%rdx, 296(%rdi)
+        movq	%rsi, 304(%rdi)
+        movq	%r13, 48(%rsp)
+        movq	%r14, 56(%rsp)
+        movq	%r15, 64(%rsp)
+        # Square 130-bit
+        movq	%r11, %rax
+        mulq	%r10
+        xorq	%r13, %r13
+        movq	%rax, %r8
+        movq	%rdx, %r9
+        addq	%rax, %r8
+        adcq	%rdx, %r9
+        adcq	$0x00, %r13
+        movq	%r10, %rax
+        mulq	%rax
+        movq	%rax, %rcx
+        movq	%rdx, %r15
+        movq	%r11, %rax
+        mulq	%rax
+        addq	%r15, %r8
+        adcq	%rax, %r9
+        adcq	%rdx, %r13
+        movq	%r12, %rax
+        mulq	%rax
+        movq	%rax, %r14
+        movq	%r12, %rax
+        mulq	%r10
+        addq	%rax, %r9
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        addq	%rax, %r9
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        movq	%r12, %rax
+        mulq	%r11
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        # Reduce 260-bit to 130-bit
+        movq	%r9, %rax
+        movq	%r13, %rdx
+        movq	%r14, %r15
+        andq	$-4, %rax
+        andq	$3, %r9
+        addq	%rax, %rcx
+        adcq	%rdx, %r8
+        adcq	%r15, %r9
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %r15, %rdx
+        shrq	$2, %r15
+        addq	%rax, %rcx
+        adcq	%rdx, %r8
+        adcq	%r15, %r9
+        movq	%r9, %rax
+        andq	$3, %r9
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %rcx
+        adcq	$0x00, %r8
+        adcq	$0x00, %r9
+        # Convert to 44 bits in 64
+        movq	%rcx, %rax
+        shlq	$20, %rax
+        shrq	$20, %rax
+        movq	%rcx, %rdx
+        shrdq	$44, %r8, %rdx
+        shlq	$20, %rdx
+        shrq	$20, %rdx
+        movq	%r8, %rsi
+        shrdq	$24, %r9, %rsi
+        movq	%rax, 320(%rdi)
+        movq	%rdx, 328(%rdi)
+        movq	%rsi, 336(%rdi)
+        movq	%rcx, 72(%rsp)
+        movq	%r8, 80(%rsp)
+        movq	%r9, 88(%rsp)
+        movq	(%rsp), %r10
+        movq	8(%rsp), %r11
+        movq	16(%rsp), %r12
+        # Multiply 128-bit by 130-bit
+        #   r1[0] * r2[0]
+        movq	%r10, %rax
+        mulq	%rcx
+        movq	%rax, %r13
+        movq	%rdx, %r14
+        #   r1[0] * r2[1]
+        movq	%r10, %rax
+        mulq	%r8
+        movq	$0x00, %r15
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        #   r1[1] * r2[0]
+        movq	%r11, %rax
+        mulq	%rcx
+        movq	$0x00, %rsi
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        adcq	$0x00, %rsi
+        #   r1[0] * r2[2]
+        movq	%r10, %rax
+        mulq	%r9
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        #   r1[1] * r2[1]
+        movq	%r11, %rax
+        mulq	%r8
+        movq	$0x00, %rbx
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        adcq	$0x00, %rbx
+        #   r1[1] * r2[2]
+        movq	%r11, %rax
+        mulq	%r9
+        addq	%rax, %rsi
+        adcq	%rdx, %rbx
+        # Reduce 260-bit to 130-bit
+        movq	%r15, %rax
+        movq	%rsi, %rdx
+        andq	$-4, %rax
+        andq	$3, %r15
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %rbx, %rdx
+        shrq	$2, %rbx
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        movq	%r15, %rax
+        andq	$3, %r15
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %r13
+        adcq	$0x00, %r14
+        adcq	$0x00, %r15
+        # Convert to 44 bits in 64
+        movq	%r13, %rax
+        shlq	$20, %rax
+        shrq	$20, %rax
+        movq	%r13, %rdx
+        shrdq	$44, %r14, %rdx
+        shlq	$20, %rdx
+        shrq	$20, %rdx
+        movq	%r14, %rsi
+        shrdq	$24, %r15, %rsi
+        movq	%rax, 624(%rdi)
+        movq	%rdx, 632(%rdi)
+        movq	%rsi, 640(%rdi)
+        # Square 130-bit
+        movq	%r8, %rax
+        mulq	%rcx
+        xorq	%r13, %r13
+        movq	%rax, %r11
+        movq	%rdx, %r12
+        addq	%rax, %r11
+        adcq	%rdx, %r12
+        adcq	$0x00, %r13
+        movq	%rcx, %rax
+        mulq	%rax
+        movq	%rax, %r10
+        movq	%rdx, %r15
+        movq	%r8, %rax
+        mulq	%rax
+        addq	%r15, %r11
+        adcq	%rax, %r12
+        adcq	%rdx, %r13
+        movq	%r9, %rax
+        mulq	%rax
+        movq	%rax, %r14
+        movq	%r9, %rax
+        mulq	%rcx
+        addq	%rax, %r12
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        addq	%rax, %r12
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        movq	%r9, %rax
+        mulq	%r8
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        # Reduce 260-bit to 130-bit
+        movq	%r12, %rax
+        movq	%r13, %rdx
+        movq	%r14, %r15
+        andq	$-4, %rax
+        andq	$3, %r12
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	%r15, %r12
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %r15, %rdx
+        shrq	$2, %r15
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	%r15, %r12
+        movq	%r12, %rax
+        andq	$3, %r12
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %r10
+        adcq	$0x00, %r11
+        adcq	$0x00, %r12
+        # Convert to 44 bits in 64
+        movq	%r10, %rax
+        shlq	$20, %rax
+        shrq	$20, %rax
+        movq	%r10, %rdx
+        shrdq	$44, %r11, %rdx
+        shlq	$20, %rdx
+        shrq	$20, %rdx
+        movq	%r11, %rsi
+        shrdq	$24, %r12, %rsi
+        movq	%rax, 720(%rdi)
+        movq	%rdx, 728(%rdi)
+        movq	%rsi, 736(%rdi)
+        movq	48(%rsp), %rcx
+        movq	56(%rsp), %r8
+        movq	64(%rsp), %r9
+        # Square 130-bit
+        movq	%r8, %rax
+        mulq	%rcx
+        xorq	%r13, %r13
+        movq	%rax, %r11
+        movq	%rdx, %r12
+        addq	%rax, %r11
+        adcq	%rdx, %r12
+        adcq	$0x00, %r13
+        movq	%rcx, %rax
+        mulq	%rax
+        movq	%rax, %r10
+        movq	%rdx, %r15
+        movq	%r8, %rax
+        mulq	%rax
+        addq	%r15, %r11
+        adcq	%rax, %r12
+        adcq	%rdx, %r13
+        movq	%r9, %rax
+        mulq	%rax
+        movq	%rax, %r14
+        movq	%r9, %rax
+        mulq	%rcx
+        addq	%rax, %r12
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        addq	%rax, %r12
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        movq	%r9, %rax
+        mulq	%r8
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        # Reduce 260-bit to 130-bit
+        movq	%r12, %rax
+        movq	%r13, %rdx
+        movq	%r14, %r15
+        andq	$-4, %rax
+        andq	$3, %r12
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	%r15, %r12
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %r15, %rdx
+        shrq	$2, %r15
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	%r15, %r12
+        movq	%r12, %rax
+        andq	$3, %r12
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %r10
+        adcq	$0x00, %r11
+        adcq	$0x00, %r12
+        # Convert to 44 bits in 64
+        movq	%r10, %rax
+        shlq	$20, %rax
+        shrq	$20, %rax
+        movq	%r10, %rdx
+        shrdq	$44, %r11, %rdx
+        shlq	$20, %rdx
+        shrq	$20, %rdx
+        movq	%r11, %rsi
+        shrdq	$24, %r12, %rsi
+        movq	%rax, 656(%rdi)
+        movq	%rdx, 664(%rdi)
+        movq	%rsi, 672(%rdi)
+        movq	(%rsp), %rcx
+        movq	8(%rsp), %r8
+        movq	16(%rsp), %r9
+        # Multiply 128-bit by 130-bit
+        #   r1[0] * r2[0]
+        movq	%rcx, %rax
+        mulq	%r10
+        movq	%rax, %r13
+        movq	%rdx, %r14
+        #   r1[0] * r2[1]
+        movq	%rcx, %rax
+        mulq	%r11
+        movq	$0x00, %r15
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        #   r1[1] * r2[0]
+        movq	%r8, %rax
+        mulq	%r10
+        movq	$0x00, %rsi
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        adcq	$0x00, %rsi
+        #   r1[0] * r2[2]
+        movq	%rcx, %rax
+        mulq	%r12
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        #   r1[1] * r2[1]
+        movq	%r8, %rax
+        mulq	%r11
+        movq	$0x00, %rbx
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        adcq	$0x00, %rbx
+        #   r1[1] * r2[2]
+        movq	%r8, %rax
+        mulq	%r12
+        addq	%rax, %rsi
+        adcq	%rdx, %rbx
+        # Reduce 260-bit to 130-bit
+        movq	%r15, %rax
+        movq	%rsi, %rdx
+        andq	$-4, %rax
+        andq	$3, %r15
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %rbx, %rdx
+        shrq	$2, %rbx
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        movq	%r15, %rax
+        andq	$3, %r15
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %r13
+        adcq	$0x00, %r14
+        adcq	$0x00, %r15
+        # Convert to 44 bits in 64
+        movq	%r13, %rax
+        shlq	$20, %rax
+        shrq	$20, %rax
+        movq	%r13, %rdx
+        shrdq	$44, %r14, %rdx
+        shlq	$20, %rdx
+        shrq	$20, %rdx
+        movq	%r14, %rsi
+        shrdq	$24, %r15, %rsi
+        movq	%rax, 688(%rdi)
+        movq	%rdx, 696(%rdi)
+        movq	%rsi, 704(%rdi)
+        addq	$0x68, %rsp
+        popq	%rbp
+        popq	%rbx
+        popq	%r15
+        popq	%r14
+        popq	%r13
+        popq	%r12
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_calc_powers_avx512ifma,.-poly1305_calc_powers_avx512ifma
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.text
+.globl	poly1305_setkey_avx512ifma
+WC_ASM_ATT_HIDDEN(poly1305_setkey_avx512ifma)
+.type	poly1305_setkey_avx512ifma,@function
+.align	16
+poly1305_setkey_avx512ifma:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_setkey_avx512ifma
+WC_ASM_ATT_HIDDEN(_poly1305_setkey_avx512ifma)
+.p2align	4
+_poly1305_setkey_avx512ifma:
+#endif /* __APPLE__ */
+        subq	$8, %rsp
+#ifndef __APPLE__
+        callq	poly1305_setkey_avx@plt
+#else
+        callq	_poly1305_setkey_avx
+#endif /* __APPLE__ */
+        addq	$8, %rsp
+        vpxorq	%zmm0, %zmm0, %zmm0
+        vmovdqu64	%zmm0, 752(%rdi)
+        vmovdqu64	%zmm0, 816(%rdi)
+        vmovdqu64	%zmm0, 880(%rdi)
+        movq	$0x00, 608(%rdi)
+        movw	$0x00, 616(%rdi)
+        vzeroupper
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_setkey_avx512ifma,.-poly1305_setkey_avx512ifma
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.data
+#else
+.section	__DATA,__data
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.align	32
+#else
+.p2align	5
+#endif /* __APPLE__ */
+L_poly1305_avx512ifma_blocks_mask44:
+.quad	0x00000fffffffffff,0x00000fffffffffff
+.quad	0x00000fffffffffff,0x00000fffffffffff
+.quad	0x00000fffffffffff,0x00000fffffffffff
+.quad	0x00000fffffffffff,0x00000fffffffffff
+#ifndef __APPLE__
+.data
+#else
+.section	__DATA,__data
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.align	32
+#else
+.p2align	5
+#endif /* __APPLE__ */
+L_poly1305_avx512ifma_blocks_mask24:
+.quad	0x0000000000ffffff,0x0000000000ffffff
+.quad	0x0000000000ffffff,0x0000000000ffffff
+.quad	0x0000000000ffffff,0x0000000000ffffff
+.quad	0x0000000000ffffff,0x0000000000ffffff
+#ifndef __APPLE__
+.data
+#else
+.section	__DATA,__data
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.align	32
+#else
+.p2align	5
+#endif /* __APPLE__ */
+L_poly1305_avx512ifma_blocks_pad:
+.quad	0x0000010000000000,0x0000010000000000
+.quad	0x0000010000000000,0x0000010000000000
+.quad	0x0000010000000000,0x0000010000000000
+.quad	0x0000010000000000,0x0000010000000000
+#ifndef __APPLE__
+.data
+#else
+.section	__DATA,__data
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.align	32
+#else
+.p2align	5
+#endif /* __APPLE__ */
+L_poly1305_avx512ifma_blocks_idxeven:
+.quad	0x0000000000000000,0x0000000000000002
+.quad	0x0000000000000004,0x0000000000000006
+.quad	0x0000000000000008,0x000000000000000a
+.quad	0x000000000000000c,0x000000000000000e
+#ifndef __APPLE__
+.data
+#else
+.section	__DATA,__data
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.align	32
+#else
+.p2align	5
+#endif /* __APPLE__ */
+L_poly1305_avx512ifma_blocks_idxodd:
+.quad	0x0000000000000001,0x0000000000000003
+.quad	0x0000000000000005,0x0000000000000007
+.quad	0x0000000000000009,0x000000000000000b
+.quad	0x000000000000000d,0x000000000000000f
+#ifndef __APPLE__
+.data
+#else
+.section	__DATA,__data
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.align	32
+#else
+.p2align	5
+#endif /* __APPLE__ */
+L_poly1305_avx512ifma_blocks_rxidx:
+.quad	0x000000000000000c,0x0000000000000008
+.quad	0x0000000000000004,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x000000000000000d,0x0000000000000009
+.quad	0x0000000000000005,0x0000000000000001
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x000000000000000e,0x000000000000000a
+.quad	0x0000000000000006,0x0000000000000002
+.quad	0x0000000000000000,0x0000000000000000
+.quad	0x0000000000000000,0x0000000000000000
+#ifndef __APPLE__
+.text
+.globl	poly1305_blocks_avx512ifma
+WC_ASM_ATT_HIDDEN(poly1305_blocks_avx512ifma)
+.type	poly1305_blocks_avx512ifma,@function
+.align	16
+poly1305_blocks_avx512ifma:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_blocks_avx512ifma
+WC_ASM_ATT_HIDDEN(_poly1305_blocks_avx512ifma)
+.p2align	4
+_poly1305_blocks_avx512ifma:
+#endif /* __APPLE__ */
+        pushq	%r12
+        pushq	%r13
+        pushq	%r14
+        leaq	L_poly1305_avx512ifma_blocks_mask44(%rip), %r8
+        leaq	L_poly1305_avx512ifma_blocks_mask24(%rip), %r9
+        leaq	L_poly1305_avx512ifma_blocks_pad(%rip), %r10
+        leaq	L_poly1305_avx512ifma_blocks_idxeven(%rip), %r11
+        leaq	L_poly1305_avx512ifma_blocks_idxodd(%rip), %r12
+        leaq	L_poly1305_avx512ifma_blocks_rxidx(%rip), %r13
+        vmovdqu64	(%r8), %zmm18
+        cmpw	$0x00, 616(%rdi)
+        jne	L_poly1305_avx512ifma_blocks_begin_h
+        # First 8 blocks initialise the lanes directly.
+        vmovdqu64	(%rsi), %zmm14
+        vmovdqu64	64(%rsi), %zmm15
+        vmovdqu64	(%r11), %zmm16
+        vpermi2q	%zmm15, %zmm14, %zmm16
+        vmovdqu64	(%r12), %zmm17
+        vpermi2q	%zmm15, %zmm14, %zmm17
+        vpandq	(%r8), %zmm16, %zmm0
+        vpsrlq	$44, %zmm16, %zmm14
+        vpandq	(%r9), %zmm17, %zmm15
+        vpsllq	$20, %zmm15, %zmm15
+        vporq	%zmm14, %zmm15, %zmm1
+        vpsrlq	$24, %zmm17, %zmm2
+        vporq	(%r10), %zmm2, %zmm2
+        addq	$0x80, %rsi
+        subq	$0x80, %rdx
+        jz	L_poly1305_avx512ifma_blocks_store
+        jmp	L_poly1305_avx512ifma_blocks_load_r8
+L_poly1305_avx512ifma_blocks_begin_h:
+        vmovdqu64	752(%rdi), %zmm0
+        vmovdqu64	816(%rdi), %zmm1
+        vmovdqu64	880(%rdi), %zmm2
+        cmpb	$0x00, 616(%rdi)
+        je	L_poly1305_avx512ifma_blocks_load_r8
+        # Finished: load the 8 distinct powers r^8..r^1.
+        vmovdqu64	224(%rdi), %zmm8
+        vmovdqu64	288(%rdi), %zmm9
+        vmovdqu64	624(%rdi), %zmm10
+        vmovdqu64	688(%rdi), %zmm11
+        vmovdqu64	(%r13), %zmm12
+        vpermi2q	%zmm11, %zmm10, %zmm12
+        vmovdqu64	(%r13), %zmm13
+        vpermi2q	%zmm9, %zmm8, %zmm13
+        vinserti64x4	$0x01, %ymm13, %zmm12, %zmm3
+        vmovdqu64	64(%r13), %zmm12
+        vpermi2q	%zmm11, %zmm10, %zmm12
+        vmovdqu64	64(%r13), %zmm13
+        vpermi2q	%zmm9, %zmm8, %zmm13
+        vinserti64x4	$0x01, %ymm13, %zmm12, %zmm4
+        vmovdqu64	128(%r13), %zmm12
+        vpermi2q	%zmm11, %zmm10, %zmm12
+        vmovdqu64	128(%r13), %zmm13
+        vpermi2q	%zmm9, %zmm8, %zmm13
+        vinserti64x4	$0x01, %ymm13, %zmm12, %zmm5
+        jmp	L_poly1305_avx512ifma_blocks_do_mul
+L_poly1305_avx512ifma_blocks_load_r8:
+        vpbroadcastq	720(%rdi), %zmm3
+        vpbroadcastq	728(%rdi), %zmm4
+        vpbroadcastq	736(%rdi), %zmm5
+L_poly1305_avx512ifma_blocks_do_mul:
+        vpsllq	$2, %zmm4, %zmm14
+        vpsllq	$4, %zmm4, %zmm6
+        vpaddq	%zmm14, %zmm6, %zmm6
+        vpsllq	$2, %zmm5, %zmm14
+        vpsllq	$4, %zmm5, %zmm7
+        vpaddq	%zmm14, %zmm7, %zmm7
+        cmpb	$0x01, 616(%rdi)
+        jne	L_poly1305_avx512ifma_blocks_start
+        # Finished: final multiply, collapse lanes, reduce to ctx->h.
+        vpxorq	%zmm8, %zmm8, %zmm8
+        vpxorq	%zmm9, %zmm9, %zmm9
+        vpxorq	%zmm10, %zmm10, %zmm10
+        vpxorq	%zmm11, %zmm11, %zmm11
+        vpxorq	%zmm12, %zmm12, %zmm12
+        vpxorq	%zmm13, %zmm13, %zmm13
+        vpmadd52luq	%zmm3, %zmm0, %zmm8
+        vpmadd52luq	%zmm7, %zmm1, %zmm8
+        vpmadd52luq	%zmm6, %zmm2, %zmm8
+        vpmadd52huq	%zmm3, %zmm0, %zmm11
+        vpmadd52huq	%zmm7, %zmm1, %zmm11
+        vpmadd52huq	%zmm6, %zmm2, %zmm11
+        vpmadd52luq	%zmm4, %zmm0, %zmm9
+        vpmadd52luq	%zmm3, %zmm1, %zmm9
+        vpmadd52luq	%zmm7, %zmm2, %zmm9
+        vpmadd52huq	%zmm4, %zmm0, %zmm12
+        vpmadd52huq	%zmm3, %zmm1, %zmm12
+        vpmadd52huq	%zmm7, %zmm2, %zmm12
+        vpmadd52luq	%zmm5, %zmm0, %zmm10
+        vpmadd52luq	%zmm4, %zmm1, %zmm10
+        vpmadd52luq	%zmm3, %zmm2, %zmm10
+        vpmadd52huq	%zmm5, %zmm0, %zmm13
+        vpmadd52huq	%zmm4, %zmm1, %zmm13
+        vpmadd52huq	%zmm3, %zmm2, %zmm13
+        vpsllq	$8, %zmm11, %zmm14
+        vpaddq	%zmm9, %zmm14, %zmm9
+        vpsllq	$8, %zmm12, %zmm14
+        vpaddq	%zmm10, %zmm14, %zmm10
+        vpsllq	$8, %zmm13, %zmm15
+        vpsllq	$2, %zmm15, %zmm14
+        vpsllq	$4, %zmm15, %zmm15
+        vpaddq	%zmm14, %zmm15, %zmm15
+        vpaddq	%zmm8, %zmm15, %zmm8
+        vpsrlq	$44, %zmm8, %zmm14
+        vpandq	%zmm18, %zmm8, %zmm0
+        vpaddq	%zmm9, %zmm14, %zmm9
+        vpsrlq	$44, %zmm9, %zmm14
+        vpandq	%zmm18, %zmm9, %zmm1
+        vpaddq	%zmm10, %zmm14, %zmm10
+        vpsrlq	$44, %zmm10, %zmm14
+        vpandq	%zmm18, %zmm10, %zmm2
+        vpsllq	$2, %zmm14, %zmm15
+        vpsllq	$4, %zmm14, %zmm14
+        vpaddq	%zmm15, %zmm14, %zmm14
+        vpaddq	%zmm0, %zmm14, %zmm0
+        vshufi64x2	$0x4e, %zmm0, %zmm0, %zmm14
+        vshufi64x2	$0x4e, %zmm1, %zmm1, %zmm15
+        vshufi64x2	$0x4e, %zmm2, %zmm2, %zmm16
+        vpaddq	%zmm0, %zmm14, %zmm0
+        vpaddq	%zmm1, %zmm15, %zmm1
+        vpaddq	%zmm2, %zmm16, %zmm2
+        vpsrldq	$8, %zmm0, %zmm14
+        vpsrldq	$8, %zmm1, %zmm15
+        vpsrldq	$8, %zmm2, %zmm16
+        vpaddq	%zmm0, %zmm14, %zmm0
+        vpaddq	%zmm1, %zmm15, %zmm1
+        vpaddq	%zmm2, %zmm16, %zmm2
+        vpermq	$2, %zmm0, %zmm14
+        vpermq	$2, %zmm1, %zmm15
+        vpermq	$2, %zmm2, %zmm16
+        vpaddq	%zmm0, %zmm14, %zmm0
+        vpaddq	%zmm1, %zmm15, %zmm1
+        vpaddq	%zmm2, %zmm16, %zmm2
+        vmovq	%xmm0, %rax
+        vmovq	%xmm1, %rcx
+        vmovq	%xmm2, %rdx
+        movq	%rcx, %r9
+        shrq	$20, %r9
+        movq	%rdx, %r10
+        shrq	$40, %r10
+        movq	%rax, %r8
+        movq	%rcx, %rax
+        shlq	$44, %rax
+        addq	%rax, %r8
+        adcq	$0x00, %r9
+        movq	%rdx, %rax
+        shlq	$24, %rax
+        addq	%rax, %r9
+        adcq	$0x00, %r10
+        movq	%r10, %r14
+        andq	$3, %r10
+        shrq	$2, %r14
+        leaq	0(%r14,%r14,4), %r14
+        addq	%r14, %r8
+        adcq	$0x00, %r9
+        adcq	$0x00, %r10
+        movq	%r8, 24(%rdi)
+        movq	%r9, 32(%rdi)
+        movq	%r10, 40(%rdi)
+        jmp	L_poly1305_avx512ifma_blocks_end_calc
+L_poly1305_avx512ifma_blocks_start:
+        vmovdqu64	(%rsi), %zmm14
+        vmovdqu64	64(%rsi), %zmm15
+        vmovdqu64	(%r11), %zmm16
+        vpermi2q	%zmm15, %zmm14, %zmm16
+        vmovdqu64	(%r12), %zmm17
+        vpermi2q	%zmm15, %zmm14, %zmm17
+        vpandq	(%r8), %zmm16, %zmm8
+        vpsrlq	$44, %zmm16, %zmm14
+        vpandq	(%r9), %zmm17, %zmm15
+        vpsllq	$20, %zmm15, %zmm15
+        vporq	%zmm14, %zmm15, %zmm9
+        vpsrlq	$24, %zmm17, %zmm10
+        vporq	(%r10), %zmm10, %zmm10
+        vpxorq	%zmm11, %zmm11, %zmm11
+        vpxorq	%zmm12, %zmm12, %zmm12
+        vpxorq	%zmm13, %zmm13, %zmm13
+        vpmadd52luq	%zmm3, %zmm0, %zmm8
+        vpmadd52luq	%zmm7, %zmm1, %zmm8
+        vpmadd52luq	%zmm6, %zmm2, %zmm8
+        vpmadd52huq	%zmm3, %zmm0, %zmm11
+        vpmadd52huq	%zmm7, %zmm1, %zmm11
+        vpmadd52huq	%zmm6, %zmm2, %zmm11
+        vpmadd52luq	%zmm4, %zmm0, %zmm9
+        vpmadd52luq	%zmm3, %zmm1, %zmm9
+        vpmadd52luq	%zmm7, %zmm2, %zmm9
+        vpmadd52huq	%zmm4, %zmm0, %zmm12
+        vpmadd52huq	%zmm3, %zmm1, %zmm12
+        vpmadd52huq	%zmm7, %zmm2, %zmm12
+        vpmadd52luq	%zmm5, %zmm0, %zmm10
+        vpmadd52luq	%zmm4, %zmm1, %zmm10
+        vpmadd52luq	%zmm3, %zmm2, %zmm10
+        vpmadd52huq	%zmm5, %zmm0, %zmm13
+        vpmadd52huq	%zmm4, %zmm1, %zmm13
+        vpmadd52huq	%zmm3, %zmm2, %zmm13
+        vpsllq	$8, %zmm11, %zmm14
+        vpaddq	%zmm9, %zmm14, %zmm9
+        vpsllq	$8, %zmm12, %zmm14
+        vpaddq	%zmm10, %zmm14, %zmm10
+        vpsllq	$8, %zmm13, %zmm15
+        vpsllq	$2, %zmm15, %zmm14
+        vpsllq	$4, %zmm15, %zmm15
+        vpaddq	%zmm14, %zmm15, %zmm15
+        vpaddq	%zmm8, %zmm15, %zmm8
+        vpsrlq	$44, %zmm8, %zmm14
+        vpandq	%zmm18, %zmm8, %zmm0
+        vpaddq	%zmm9, %zmm14, %zmm9
+        vpsrlq	$44, %zmm9, %zmm14
+        vpandq	%zmm18, %zmm9, %zmm1
+        vpaddq	%zmm10, %zmm14, %zmm10
+        vpsrlq	$44, %zmm10, %zmm14
+        vpandq	%zmm18, %zmm10, %zmm2
+        vpsllq	$2, %zmm14, %zmm15
+        vpsllq	$4, %zmm14, %zmm14
+        vpaddq	%zmm15, %zmm14, %zmm14
+        vpaddq	%zmm0, %zmm14, %zmm0
+        addq	$0x80, %rsi
+        subq	$0x80, %rdx
+        jnz	L_poly1305_avx512ifma_blocks_start
+L_poly1305_avx512ifma_blocks_store:
+        vmovdqu64	%zmm0, 752(%rdi)
+        vmovdqu64	%zmm1, 816(%rdi)
+        vmovdqu64	%zmm2, 880(%rdi)
+L_poly1305_avx512ifma_blocks_end_calc:
+L_poly1305_avx512ifma_blocks_complete:
+        movb	$0x01, 617(%rdi)
+        vzeroupper
+        popq	%r14
+        popq	%r13
+        popq	%r12
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_blocks_avx512ifma,.-poly1305_blocks_avx512ifma
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.text
+.globl	poly1305_final_avx512ifma
+WC_ASM_ATT_HIDDEN(poly1305_final_avx512ifma)
+.type	poly1305_final_avx512ifma,@function
+.align	16
+poly1305_final_avx512ifma:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_final_avx512ifma
+WC_ASM_ATT_HIDDEN(_poly1305_final_avx512ifma)
+.p2align	4
+_poly1305_final_avx512ifma:
+#endif /* __APPLE__ */
+        movb	$0x01, 616(%rdi)
+        movb	617(%rdi), %cl
+        cmpb	$0x00, %cl
+        je	L_poly1305_avx512ifma_final_done_blocks_8
+        pushq	%rsi
+        movq	$0x80, %rdx
+        xorq	%rsi, %rsi
+#ifndef __APPLE__
+        callq	poly1305_blocks_avx512ifma@plt
+#else
+        callq	_poly1305_blocks_avx512ifma
+#endif /* __APPLE__ */
+        popq	%rsi
+L_poly1305_avx512ifma_final_done_blocks_8:
+        movq	608(%rdi), %rax
+        movq	%rax, %rcx
+        andq	$-16, %rcx
+        cmpb	$0x00, %cl
+        je	L_poly1305_avx512ifma_final_done_blocks
+        pushq	%rcx
+        pushq	%rax
+        pushq	%rsi
+        movq	%rcx, %rdx
+        leaq	480(%rdi), %rsi
+#ifndef __APPLE__
+        callq	poly1305_blocks_avx@plt
+#else
+        callq	_poly1305_blocks_avx
+#endif /* __APPLE__ */
+        popq	%rsi
+        popq	%rax
+        popq	%rcx
+L_poly1305_avx512ifma_final_done_blocks:
+        subq	%rcx, 608(%rdi)
+        xorq	%rdx, %rdx
+        jmp	L_poly1305_avx512ifma_final_cmp_copy
+L_poly1305_avx512ifma_final_start_copy:
+        movb	480(%rdi,%rcx,1), %r8b
+        movb	%r8b, 480(%rdi,%rdx,1)
+        incb	%cl
+        incb	%dl
+L_poly1305_avx512ifma_final_cmp_copy:
+        cmpb	%cl, %al
+        jne	L_poly1305_avx512ifma_final_start_copy
+        subq	$8, %rsp
+#ifndef __APPLE__
+        callq	poly1305_final_avx@plt
+#else
+        callq	_poly1305_final_avx
+#endif /* __APPLE__ */
+        addq	$8, %rsp
+        vpxorq	%zmm0, %zmm0, %zmm0
+        vmovdqu	%ymm0, 224(%rdi)
+        vmovdqu	%ymm0, 256(%rdi)
+        vmovdqu	%ymm0, 288(%rdi)
+        vmovdqu	%ymm0, 320(%rdi)
+        vmovdqu	%ymm0, 624(%rdi)
+        vmovdqu	%ymm0, 656(%rdi)
+        vmovdqu	%ymm0, 688(%rdi)
+        vmovdqu	%ymm0, 720(%rdi)
+        vmovdqu64	%zmm0, 752(%rdi)
+        vmovdqu64	%zmm0, 816(%rdi)
+        vmovdqu64	%zmm0, 880(%rdi)
+        movq	$0x00, 608(%rdi)
+        movw	$0x00, 616(%rdi)
+        vzeroupper
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_final_avx512ifma,.-poly1305_final_avx512ifma
+#endif /* __APPLE__ */
+#ifndef __APPLE__
+.text
+.globl	poly1305_fold_avx512ifma
+WC_ASM_ATT_HIDDEN(poly1305_fold_avx512ifma)
+.type	poly1305_fold_avx512ifma,@function
+.align	16
+poly1305_fold_avx512ifma:
+#else
+.section	__TEXT,__text
+.globl	_poly1305_fold_avx512ifma
+WC_ASM_ATT_HIDDEN(_poly1305_fold_avx512ifma)
+.p2align	4
+_poly1305_fold_avx512ifma:
+#endif /* __APPLE__ */
+        pushq	%r12
+        pushq	%r13
+        pushq	%r14
+        pushq	%r15
+        pushq	%rbx
+        pushq	%rbp
+        subq	$0x48, %rsp
+        movl	%esi, 24(%rsp)
+        movq	(%rdi), %rcx
+        movq	8(%rdi), %r8
+        xorq	%r9, %r9
+        movq	%rcx, (%rsp)
+        movq	%r8, 8(%rsp)
+        movq	%r9, 16(%rsp)
+        bsrq	%rsi, %rax
+        movq	%rax, 32(%rsp)
+L_poly1305_fold_loop:
+        movq	32(%rsp), %rax
+        testq	%rax, %rax
+        jz	L_poly1305_fold_done
+        decq	%rax
+        movq	%rax, 32(%rsp)
+        movq	(%rsp), %rcx
+        movq	8(%rsp), %r8
+        movq	16(%rsp), %r9
+        # Square 130-bit
+        movq	%r8, %rax
+        mulq	%rcx
+        xorq	%r13, %r13
+        movq	%rax, %r11
+        movq	%rdx, %r12
+        addq	%rax, %r11
+        adcq	%rdx, %r12
+        adcq	$0x00, %r13
+        movq	%rcx, %rax
+        mulq	%rax
+        movq	%rax, %r10
+        movq	%rdx, %r15
+        movq	%r8, %rax
+        mulq	%rax
+        addq	%r15, %r11
+        adcq	%rax, %r12
+        adcq	%rdx, %r13
+        movq	%r9, %rax
+        mulq	%rax
+        movq	%rax, %r14
+        movq	%r9, %rax
+        mulq	%rcx
+        addq	%rax, %r12
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        addq	%rax, %r12
+        adcq	%rdx, %r13
+        adcq	$0x00, %r14
+        movq	%r9, %rax
+        mulq	%r8
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        # Reduce 260-bit to 130-bit
+        movq	%r12, %rax
+        movq	%r13, %rdx
+        movq	%r14, %r15
+        andq	$-4, %rax
+        andq	$3, %r12
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	%r15, %r12
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %r15, %rdx
+        shrq	$2, %r15
+        addq	%rax, %r10
+        adcq	%rdx, %r11
+        adcq	%r15, %r12
+        movq	%r12, %rax
+        andq	$3, %r12
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %r10
+        adcq	$0x00, %r11
+        adcq	$0x00, %r12
+        movq	%r10, (%rsp)
+        movq	%r11, 8(%rsp)
+        movq	%r12, 16(%rsp)
+        movl	24(%rsp), %eax
+        movq	32(%rsp), %rdx
+        btq	%rdx, %rax
+        jnc	L_poly1305_fold_skip
+        movq	(%rdi), %rcx
+        movq	8(%rdi), %r8
+        xorq	%r9, %r9
+        movq	(%rsp), %r10
+        movq	8(%rsp), %r11
+        movq	16(%rsp), %r12
+        # Multiply 128-bit by 130-bit
+        #   r1[0] * r2[0]
+        movq	%rcx, %rax
+        mulq	%r10
+        movq	%rax, %r13
+        movq	%rdx, %r14
+        #   r1[0] * r2[1]
+        movq	%rcx, %rax
+        mulq	%r11
+        movq	$0x00, %r15
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        #   r1[1] * r2[0]
+        movq	%r8, %rax
+        mulq	%r10
+        movq	$0x00, %rsi
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        adcq	$0x00, %rsi
+        #   r1[0] * r2[2]
+        movq	%rcx, %rax
+        mulq	%r12
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        #   r1[1] * r2[1]
+        movq	%r8, %rax
+        mulq	%r11
+        movq	$0x00, %rbx
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        adcq	$0x00, %rbx
+        #   r1[1] * r2[2]
+        movq	%r8, %rax
+        mulq	%r12
+        addq	%rax, %rsi
+        adcq	%rdx, %rbx
+        # Reduce 260-bit to 130-bit
+        movq	%r15, %rax
+        movq	%rsi, %rdx
+        andq	$-4, %rax
+        andq	$3, %r15
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %rbx, %rdx
+        shrq	$2, %rbx
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbx, %r15
+        movq	%r15, %rax
+        andq	$3, %r15
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %r13
+        adcq	$0x00, %r14
+        adcq	$0x00, %r15
+        movq	%r13, (%rsp)
+        movq	%r14, 8(%rsp)
+        movq	%r15, 16(%rsp)
+L_poly1305_fold_skip:
+        jmp	L_poly1305_fold_loop
+L_poly1305_fold_done:
+        movq	64(%rdi), %rcx
+        movq	72(%rdi), %r8
+        movq	80(%rdi), %r9
+        movq	(%rsp), %r10
+        movq	8(%rsp), %r11
+        movq	16(%rsp), %r12
+        # Multiply 130-bit by 130-bit
+        movq	$0x00, %r13
+        movq	$0x00, %r14
+        movq	$0x00, %r15
+        movq	$0x00, %rsi
+        movq	$0x00, %rbx
+        #   r1[0] * r2[0]
+        movq	%rcx, %rax
+        mulq	%r10
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	$0x00, %r15
+        adcq	$0x00, %rsi
+        adcq	$0x00, %rbx
+        #   r1[0] * r2[1]
+        movq	%rcx, %rax
+        mulq	%r11
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        adcq	$0x00, %rsi
+        adcq	$0x00, %rbx
+        #   r1[0] * r2[2]
+        movq	%rcx, %rax
+        mulq	%r12
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        adcq	$0x00, %rbx
+        #   r1[1] * r2[0]
+        movq	%r8, %rax
+        mulq	%r10
+        addq	%rax, %r14
+        adcq	%rdx, %r15
+        adcq	$0x00, %rsi
+        adcq	$0x00, %rbx
+        #   r1[1] * r2[1]
+        movq	%r8, %rax
+        mulq	%r11
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        adcq	$0x00, %rbx
+        #   r1[1] * r2[2]
+        movq	%r8, %rax
+        mulq	%r12
+        addq	%rax, %rsi
+        adcq	%rdx, %rbx
+        #   r1[2] * r2[0]
+        movq	%r9, %rax
+        mulq	%r10
+        addq	%rax, %r15
+        adcq	%rdx, %rsi
+        adcq	$0x00, %rbx
+        #   r1[2] * r2[1]
+        movq	%r9, %rax
+        mulq	%r11
+        addq	%rax, %rsi
+        adcq	%rdx, %rbx
+        #   r1[2] * r2[2]
+        movq	%r9, %rax
+        mulq	%r12
+        addq	%rax, %rbx
+        # Reduce 260-bit to 130-bit
+        movq	%r15, %rax
+        movq	%rsi, %rdx
+        movq	%rbx, %rbp
+        andq	$-4, %rax
+        andq	$3, %r15
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbp, %r15
+        shrdq	$2, %rdx, %rax
+        shrdq	$2, %rbp, %rdx
+        shrq	$2, %rbp
+        addq	%rax, %r13
+        adcq	%rdx, %r14
+        adcq	%rbp, %r15
+        movq	%r15, %rax
+        andq	$3, %r15
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %r13
+        adcq	$0x00, %r14
+        adcq	$0x00, %r15
+        movq	24(%rdi), %rax
+        addq	%rax, %r13
+        movq	32(%rdi), %rax
+        adcq	%rax, %r14
+        movq	40(%rdi), %rax
+        adcq	%rax, %r15
+        movq	%r15, %rax
+        andq	$3, %r15
+        shrq	$2, %rax
+        leaq	0(%rax,%rax,4), %rax
+        addq	%rax, %r13
+        adcq	$0x00, %r14
+        adcq	$0x00, %r15
+        movq	%r13, 24(%rdi)
+        movq	%r14, 32(%rdi)
+        movq	%r15, 40(%rdi)
+        addq	$0x48, %rsp
+        popq	%rbp
+        popq	%rbx
+        popq	%r15
+        popq	%r14
+        popq	%r13
+        popq	%r12
+        repz retq
+#ifndef __APPLE__
+.size	poly1305_fold_avx512ifma,.-poly1305_fold_avx512ifma
+#endif /* __APPLE__ */
+#endif /* HAVE_INTEL_AVX512 */
+#endif /* WOLFSSL_X86_64_BUILD */
+
+#if defined(__linux__) && defined(__ELF__)
+.section	.note.GNU-stack,"",%progbits
+#endif

@@ -1,0 +1,47 @@
+<wap-provisioningdoc>
+<characteristic type="Install">
+<parm name="InstallPhase" value="install" />
+<parm name="OSVersionMin" value="3.0" />
+<parm name="OSVersionMax" value="6.99" />
+<parm name="AppName" value="BiliClassic M8" />
+<parm name="InstallDir" value="\Disk\Programs\BiliClassic" translation="install" />
+<parm name="NumDirs" value="1" />
+<parm name="NumFiles" value="2" />
+<parm name="NumRegKeys" value="1" />
+<parm name="NumRegVals" value="5" />
+<parm name="NumShortcuts" value="0" />
+</characteristic>
+<characteristic type="FileOperation">
+<characteristic type="\Disk\Programs\BiliClassic" translation="install">
+<characteristic type="MakeDir" />
+<characteristic type="BiliClassic-M8.exe" translation="install">
+<characteristic type="Extract">
+<parm name="Source" value="BILICL~1.001" />
+</characteristic>
+</characteristic>
+<characteristic type="BiliClassic.png" translation="install">
+<characteristic type="Extract">
+<parm name="Source" value="BILICL~1.002" />
+</characteristic>
+</characteristic>
+</characteristic>
+</characteristic>
+<characteristic type="Registry">
+<characteristic type="HKLM\SOFTWARE\Meizu\MiniOneShell\Main\BiliClassic">
+<parm name="DisplayName" value="BiliClassic" datatype="string" />
+<parm name="DisplayName0804" value="BiliClassic" datatype="string" />
+<parm name="ExecFileName" value="\Disk\Programs\BiliClassic\BiliClassic-M8.exe" datatype="string" />
+<parm name="ProgramID" value="{B1A0C1A5-1234-4D8E-9A00-B1A0C1A50001}" datatype="string" />
+<parm name="DefaultIcon" value="\Disk\Programs\BiliClassic\BiliClassic.png" datatype="string" />
+</characteristic>
+</characteristic>
+<characteristic type="Registry">
+<characteristic type="HKLM\SOFTWARE\Meizu\MiniOneShell\Main\BiliClassic">
+<parm name="DisplayName" value="哔哩经典" datatype="string" />
+<parm name="DisplayName0804" value="哔哩经典" datatype="string" />
+<parm name="ExecFileName" value="\Disk\Programs\BiliClassic\BiliClassic-M8.exe" datatype="string" />
+<parm name="ProgramID" value="{B1A0C1A5-1234-4D8E-9A00-B1A0C1A50001}" datatype="string" />
+<parm name="DefaultIcon" value="\Disk\Programs\BiliClassic\BiliClassic.png" datatype="string" />
+</characteristic>
+</characteristic>
+</wap-provisioningdoc>

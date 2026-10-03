@@ -1,0 +1,54 @@
+; =====================================================================
+; BiliClassic-M8.inf  --  Windows CE CAB INF (Meizu M8 / ARMV4I)
+; Build: cabwiz BiliClassic-M8.inf /dest . /compress
+; (no /cpu => ProcessorType = 0 "all processors")
+;
+; M8 home screen (MiniOneShell) desktop icon comes from the registry key
+; below (learned from M8Sprite / PlantsVsCorpse _setup.xml).
+; This file must stay ASCII: cabwiz cannot embed non-ASCII. The Chinese
+; display name is added by bili_postxml.xml (cabwiz /postxml, UTF-8).
+; Icon must be a 90x90 PNG.
+; =====================================================================
+[Version]
+Signature    = "$Windows NT$"
+CESignature  = "$Windows CE$"
+Provider     = "BiliClassic"
+MajorVersion = 1
+MinorVersion = 0
+
+[CEDevice]
+ProcessorType = 0
+VersionMin    = 3.0
+VersionMax    = 6.99
+
+[CEStrings]
+AppName    = "M8"
+; M8 storage root is \Disk (not \Storage Card)
+InstallDir = "\Disk\Programs\BiliClassic"
+
+[DefaultInstall]
+CopyFiles = BiliClassicFiles
+AddReg    = BiliClassicReg
+
+[BiliClassicReg]
+HKLM,SOFTWARE\Meizu\MiniOneShell\Main\BiliClassic,DisplayName,0x00000000,"BiliClassic"
+HKLM,SOFTWARE\Meizu\MiniOneShell\Main\BiliClassic,DisplayName0804,0x00000000,"BiliClassic"
+HKLM,SOFTWARE\Meizu\MiniOneShell\Main\BiliClassic,ExecFileName,0x00000000,"\Disk\Programs\BiliClassic\BiliClassic-M8.exe"
+HKLM,SOFTWARE\Meizu\MiniOneShell\Main\BiliClassic,ProgramID,0x00000000,"{B1A0C1A5-1234-4D8E-9A00-B1A0C1A50001}"
+HKLM,SOFTWARE\Meizu\MiniOneShell\Main\BiliClassic,DefaultIcon,0x00000000,"\Disk\Programs\BiliClassic\BiliClassic.png"
+
+[SourceDisksNames]
+1 = , "BiliClassic", ,
+
+[SourceDisksFiles]
+"BiliClassic-M8.exe" = 1
+"BiliClassic.png" = 1
+"danmaku.ttf" = 1
+
+[DestinationDirs]
+BiliClassicFiles = 0, "\Disk\Programs\BiliClassic"
+
+[BiliClassicFiles]
+"BiliClassic-M8.exe"
+"BiliClassic.png"
+"danmaku.ttf"

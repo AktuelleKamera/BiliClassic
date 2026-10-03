@@ -1,0 +1,170 @@
+//Microsoft Visual C++ 生成的资源脚本。
+//
+#include "resourceppc.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// 从 TEXTINCLUDE 2 资源生成。
+//
+#define APSTUDIO_HIDDEN_SYMBOLS
+#include "windows.h"
+#include "resdefce.h"
+#undef APSTUDIO_HIDDEN_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+LANGUAGE 4, 2
+#pragma code_page(936)
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// 图标
+//
+
+// ID 值最低的图标放在最前面，以确保应用程序图标
+// 在所有系统中保持一致。
+
+IDI_BILICLASSICM8       ICON         "BiliClassic-M8.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// 菜单
+//
+
+IDR_MENU MENU DISCARDABLE 
+BEGIN
+    POPUP "帮助"
+    BEGIN
+        MENUITEM "关于",		IDM_HELP_ABOUT
+    END
+END
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// 快捷键
+//
+
+IDC_BILICLASSICM8 ACCELERATORS
+BEGIN
+    "A",            IDM_HELP_ABOUT,         VIRTKEY, CONTROL, NOINVERT
+    "Q",            IDM_OK,          VIRTKEY, CONTROL, NOINVERT
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// 对话框
+//
+
+IDD_ABOUTBOX DIALOG 0, 0, 156, 129
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_CAPTION
+EXSTYLE WS_EX_CAPTIONOKBTN
+CAPTION "关于 BiliClassic-M8"
+FONT 9, "MS Sans Serif"
+BEGIN
+    ICON         IDI_BILICLASSICM8,IDC_STATIC_1,12,12,21,20,SS_REALSIZEIMAGE
+    LTEXT        "BiliClassic-M8 1.0 版",IDC_STATIC_2,12,36,70,8,SS_NOPREFIX
+    LTEXT        "版权所有 (C) 2026",IDC_STATIC_3,12,48,66,8
+END
+
+IDD_ABOUTBOX_WIDE DIALOG 0, 0, 210, 129
+STYLE WS_POPUP | WS_CAPTION 
+EXSTYLE WS_EX_CAPTIONOKBTN
+CAPTION "关于 BiliClassic-M8"
+FONT 9, "MS Sans Serif"
+BEGIN
+    ICON         IDI_BILICLASSICM8,IDC_STATIC_1,12,12,21,20,SS_REALSIZEIMAGE
+    LTEXT        "BiliClassic-M8 1.0 版",IDC_STATIC_2,48,12,66,8,SS_NOPREFIX
+    LTEXT        "版权所有 (C) 2026",IDC_STATIC_3,48,24,66,8
+END
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 149
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 122
+    END
+
+    IDD_ABOUTBOX_WIDE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 203
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 122
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+1 TEXTINCLUDE  
+BEGIN
+    "resourceppc.h\0"
+END
+
+2 TEXTINCLUDE  
+BEGIN
+    "#define APSTUDIO_HIDDEN_SYMBOLS\r\n"
+    "#include ""windows.h""\r\n"
+    "#include ""resdefce.h""\r\n"
+    "#undef APSTUDIO_HIDDEN_SYMBOLS\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE  
+BEGIN
+    "\r\n"
+    "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)\r\n"
+    "LANGUAGE 4, 2\r\n"
+    "#pragma code_page(936)\r\n"
+    "#include ""BiliClassicM8ppc.rc2""  // 非 Microsoft Visual C++ 编辑的资源\r\n"
+    "#endif\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// 字符串表
+//
+STRINGTABLE  
+BEGIN
+   IDC_BILICLASSICM8   "BILICLASSICM8"
+   IDS_APP_TITLE    "BiliClassic-M8"
+   IDS_OK	"确定"
+   IDS_HELP	"帮助"
+END
+
+#endif
+/////////////////////////////////////////////////////////////////////////////
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// 从 TEXTINCLUDE 3 资源生成。
+//
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+LANGUAGE 4, 2
+#pragma code_page(936)
+#include "BiliClassicM8ppc.rc2"  // 非 Microsoft Visual C++ 编辑的资源
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // 不是 APSTUDIO_INVOKED

@@ -1,0 +1,76 @@
+#pragma code_page(936)
+// M8 resources: app icon + bottom menu bar (CommandBar)
+#include "resource.h"
+
+IDI_BILICLASSICM8       ICON    "BiliClassic-M8.ico"
+
+IDR_MENU MENU
+BEGIN
+    POPUP "菜单"
+    BEGIN
+        MENUITEM "推荐",          1008
+        MENUITEM "重播上次",      1006
+        MENUITEM "当前视频详情",  1007
+    END
+    POPUP "我的"
+    BEGIN
+        MENUITEM "登录账号",      1010
+        MENUITEM "我的收藏",      1011
+        MENUITEM "我的资料",      1012
+    END
+    POPUP "设置"
+    BEGIN
+        POPUP "连接数"
+        BEGIN
+            MENUITEM "1",         1001
+            MENUITEM "2",         1002
+            MENUITEM "4",         1003
+        END
+        MENUITEM "转码开/关",     1005
+        MENUITEM "离线播放开/关", 1004
+    END
+    MENUITEM "退出",              1013
+END
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 0,1,0,0
+ PRODUCTVERSION 0,1,0,0
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "080404b0"
+        BEGIN
+            VALUE "CompanyName", "BiliClassic"
+            VALUE "FileDescription", "BiliClassic for Mymobile"
+            VALUE "FileVersion", "0.1.0.0"
+            VALUE "InternalName", "BiliClassic-M8"
+            VALUE "OriginalFilename", "BiliClassic-M8.exe"
+            VALUE "ProductName", "BiliClassic for Mymobile"
+            VALUE "ProductVersion", "0.1.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x804, 1200
+    END
+END
+/////////////////////////////////////////////////////////////////////////////
+//
+// Image resources (RCDATA) - loaded via ImagingHelper from the exe module
+//
+2001 RCDATA   "assets\bili_default_image_tv_with_bg.png"
+2002 RCDATA   "assets\SplashScreenImage.jpg"

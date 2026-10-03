@@ -1,0 +1,52 @@
+# ---- Visual Studio 2008 / M8 SDK 私有文件 ----
+.vs/
+*.suo
+*.ncb
+*.user
+*.aps
+*.opt
+*.plg
+ipch/
+*.sdf
+*.opensdf
+*.VC.db
+
+# ---- 编译输出 ----
+M8SDK (ARMV4I)/
+Debug/
+Release/
+*.obj
+*.pch
+*.sbr
+*.bsc
+*.ilk
+*.idb
+*.pdb
+*.res
+*.map
+*.tlb
+*.tmp
+BuildLog.htm
+
+# ---- 打包产物（cab\make_cab.ps1 生成）----
+# 第三方依赖 zwdzjs_*.cab 是输入，不能忽略
+cab/*.CAB
+cab/*.cab
+!cab/zwdzjs_*.cab
+cab/BiliClassic-M8.exe
+cab/BiliRes.dll
+cab/cabwiz_err.txt
+
+# ---- 运行期日志 ----
+*.log
+biliclassic_m8_log.txt
+biliclassic_m8_log.txt.old
+biliclassic_m8_err.txt
+biliclassic_m8_cookie.txt
+biliclassic_m8_token.txt
+biliclassic_m8.ini
+
+# ---- 系统 / 编辑器 ----
+Thumbs.db
+Desktop.ini
+.DS_Store
