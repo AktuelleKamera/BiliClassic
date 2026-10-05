@@ -48,8 +48,18 @@ AppContext::AppContext()
     m_danmaku = NULL;
     m_danmaku_count = 0;
     m_last_file[0] = '\0';
+    m_play_bvid[0] = '\0';
+    m_play_cid[0] = '\0';
     memset(m_items, 0, sizeof(m_items));
     memset(&m_cfg, 0, sizeof(m_cfg));
+}
+
+void AppContext::SetPlayingInfo(const char *bvid, const char *cid)
+{
+    str_copy(m_play_bvid, (int)sizeof(m_play_bvid),
+             (bvid != NULL) ? bvid : "");
+    str_copy(m_play_cid, (int)sizeof(m_play_cid),
+             (cid != NULL) ? cid : "");
 }
 
 void AppContext::SetDanmaku(BcDanmaku *items, int count)

@@ -3,6 +3,8 @@
  * ===================================================================== */
 #include "VideoWindow.h"
 #include "../app/AppContext.h"
+#include "../core/bili.h"
+#include "../core/login.h"
 #include "LoadingWnd.h"
 #include "ScreenRot.h"
 
@@ -17,8 +19,15 @@ enum
 #define MZ_WM_CLOSE_SELF (WM_APP + 0x501)
 #define MZ_WM_OPEN_PLAYER (WM_APP + 0x502)
 
-/* 弹幕重绘定时器（约 30fps） */
+/* 弹幕重绘定时器（约 30fps）。位置按绝对时间算（Update(nowMs)），
+ * 改频率只影响流畅度，不影响速度/密度。
+ * 注意：60fps(16ms) 会超出 M8 overlay 的 flip 能力 → 控制条/弹幕闪烁，
+ * 这里用 33ms；想再试可改 DM_TIMER_MS（20=50fps）。 */
 #define DM_TIMER_ID 0xD2
+#define DM_TIMER_MS 33
+
+/* 控制条高度：进度条 + 按钮行（按钮 48px 高，好点） */
+#define VC_BAR_H 92
 
 /* PlatformApi.lib：注册 shell 锁屏通知 + 屏幕常亮控制 */
 BOOL RegisterShellMessage(HWND hWnd, UINT uMsg);
@@ -63,8 +72,10 @@ VideoWindow::VideoWindow()
     m_screenOn = 0;
     m_ctrlShown = 0;
     m_ctrlHideAt = 0;
+    m_ctrlShownAt = 0;
     m_playing = 0;
     m_volume = 60;
+    m_danmakuOn = 1;
     m_ctrlDC = NULL;
     m_ctrlBmp = NULL;
     m_ctrlOldBmp = NULL;
@@ -73,12 +84,71 @@ VideoWindow::VideoWindow()
     m_ctrlBw = 0;
     m_ctrlBh = 0;
     m_ctrlFont = NULL;
+
+    m_prevPos = -1;
+    m_endSeeked = 0;
+    m_prevLive = 0;
+    m_prevCtrl = 0;
+    m_ctrlBmpValid = 0;
+    m_ctrlSec = -1;
+    m_ctrlVolume = -1;
+    m_ctrlPlaying = -1;
+    m_ctrlDirty = 0;
+    m_histThread = NULL;
+    m_histStop = 0;
 }
 
 VideoWindow::~VideoWindow()
 {
     m_player.Close();
     FreeControls();
+}
+
+/* 观看历史上报线程：只在「开场」和「退出」各报一次（进度终值）。
+ * 不中途轮询——wolfSSL 每次 TLS 握手在 M8 上要满载 CPU 1~3 秒，
+ * 播放中途报就会周期性卡顿。 */
+DWORD WINAPI VideoWindow::HistThread(void *arg)
+{
+    VideoWindow *self = (VideoWindow *)arg;
+    char bvid[BC_BVID_LEN + 4];
+    char cid[40];
+    char err[160];
+
+    str_copy(bvid, (int)sizeof(bvid), g_app.PlayingBvid());
+    str_copy(cid, (int)sizeof(cid), g_app.PlayingCid());
+    if (bvid[0] == '\0' || cid[0] == '\0') {
+        return 0;
+    }
+
+    /* 开场先等几秒再报，别和起播抢 CPU */
+    {
+        int t = 0;
+
+        while (!self->m_histStop && t < 6) {
+            Sleep(500);
+            t++;
+        }
+    }
+    if (!self->m_histStop) {
+        err[0] = '\0';
+        if (bc_login_report_history(&g_app.Cfg(), bvid, cid,
+                                    self->m_lastPos / 1000,
+                                    err, (int)sizeof(err)) != 0) {
+            g_app.GetLogger().Log("观看历史上报失败：%s", err);
+        }
+    }
+
+    /* 等到退出，再补报一次终值 */
+    while (!self->m_histStop) {
+        Sleep(500);
+    }
+    err[0] = '\0';
+    if (bc_login_report_history(&g_app.Cfg(), bvid, cid,
+                                self->m_lastPos / 1000,
+                                err, (int)sizeof(err)) != 0) {
+        g_app.GetLogger().Log("观看历史末次上报失败：%s", err);
+    }
+    return 0;
 }
 
 bool VideoWindow::PlayModal(HWND hwndParent, const char *pathGbk)
@@ -121,6 +191,14 @@ bool VideoWindow::PlayModal(HWND hwndParent, const char *pathGbk)
      */
     PostMessage(MZ_WM_OPEN_PLAYER, 0, 0);
     DoModal();
+
+    /* 结束观看历史上报线程（终值在它退出前补报） */
+    if (m_histThread != NULL) {
+        m_histStop = 1;
+        WaitForSingleObject(m_histThread, 8000);
+        CloseHandle(m_histThread);
+        m_histThread = NULL;
+    }
 
     ::KillTimer(m_hWnd, DM_TIMER_ID);
     if (m_smoothSaved) {
@@ -265,7 +343,6 @@ void VideoWindow::OpenPlayer()
         SetScreenAlwaysOn(m_hWnd);
         m_screenOn = 1;
         g_app.GetLogger().Log("VideoWindow: 屏幕常亮（阻止自动息屏，防死机）");
-        ShowControls();      /* 开播先亮出控制层 5 秒，提示如何退出 */
 
         /* 弹幕：取后台拉好的数据，建 DDraw overlay 层（色键透明，硬件叠加） */
         {
@@ -273,7 +350,9 @@ void VideoWindow::OpenPlayer()
             BcDanmaku *dms = g_app.TakeDanmaku(&dn);
             int ok = 0;
 
+            m_danmakuOn = g_app.Cfg().danmaku ? 1 : 0;
             m_danmaku.Load(dms, dn);
+            m_danmaku.SetActive(m_danmakuOn != 0);
             /* 即使没有弹幕也要建 overlay：控制层与弹幕共用这条 overlay */
             ok = InitOverlay() ? 1 : 0;
             g_app.GetLogger().Log("弹幕层：%d 条 overlayInit=%d", dn, ok);
@@ -296,7 +375,23 @@ void VideoWindow::OpenPlayer()
                     m_msgUnlock = GetShellNotifyMsg_LeaveLockPhone();
                     m_lockRegistered = 1;
                 }
-                ::SetTimer(m_hWnd, DM_TIMER_ID, 33, NULL);   /* 30fps */
+                /* 必须放在 InitOverlay 之后：ShowControls 建控制条位图要用已经
+                 * 确定的 m_ovW，否则位图建不出来、控制栏不显示 */
+                ShowControls();      /* 开播先亮出控制层 5 秒，提示如何退出 */
+                ::SetTimer(m_hWnd, DM_TIMER_ID, DM_TIMER_MS, NULL);   /* 30fps */
+
+                /* 观看历史上报：登录且开关打开才起线程 */
+                if (g_app.Cfg().report_history &&
+                    bc_login_is_logged_in(&g_app.Cfg()) &&
+                    g_app.PlayingBvid()[0] != '\0' &&
+                    g_app.PlayingCid()[0] != '\0') {
+                    m_histStop = 0;
+                    m_histThread = CreateThread(NULL, 0, HistThread, this, 0, NULL);
+                    g_app.GetLogger().Log("观看历史上报：%s bvid=%s cid=%s",
+                                          (m_histThread != NULL) ? "已启动"
+                                                                 : "线程创建失败",
+                                          g_app.PlayingBvid(), g_app.PlayingCid());
+                }
             }
         }
     } else {
@@ -342,6 +437,11 @@ bool VideoWindow::InitOverlay()
     m_overlay.SetPosition(0, 0);
     m_overlay.ShowOverlay();
     m_overlayOn = 1;
+    /* 显存刚清成色键：重置「上一帧画面」状态，保证下一帧一定重画 */
+    m_prevPos = -1;
+    m_prevLive = 0;
+    m_prevCtrl = 0;
+    m_ctrlDirty = 1;
     return true;
 }
 
@@ -349,6 +449,8 @@ void VideoWindow::DrawDanmaku()
 {
     DDSURFACEDESC ddsd;
     long pos;
+    int live;
+    int showCtrl;
 
     if (!m_overlayOn) {
         return;
@@ -357,18 +459,55 @@ void VideoWindow::DrawDanmaku()
     if (m_ctrlShown && (long)(::GetTickCount() - m_ctrlHideAt) >= 0) {
         m_ctrlShown = 0;
     }
-    if (!m_ctrlShown && !m_danmaku.Ready()) {
-        return;
-    }
 
     pos = (long)m_player.CurPosMs();
     if (pos <= 0 && m_playStart != 0) {
         pos = (long)(::GetTickCount() - m_playStart);
     }
+    /* 播到结尾：自动 seek 回 0（并复位弹幕），别停在最后一帧 */
+    {
+        long len = m_player.LengthMs();
+
+        if (len > 0 && pos > 0 && pos >= len - 100) {
+            if (!m_endSeeked) {
+                m_endSeeked = 1;
+                g_app.GetLogger().Log("播放到结尾，自动 seek 回 0（长度 %ldms）", len);
+                m_player.SeekTo(0);
+                m_playStart = ::GetTickCount();
+                pos = 0;
+                m_danmaku.Rewind();
+                m_ctrlDirty = 1;
+            }
+        } else if (len > 0 && pos < len / 2) {
+            m_endSeeked = 0;   /* 已回到前半段，允许下次再触发 */
+        }
+    }
     m_lastPos = pos;
     if (m_danmaku.Ready()) {
         /* 先在显存外更新/预渲染（含 CreateDIBSection），避免锁显存期间再碰显示 */
         m_danmaku.Update(pos, m_ovW, m_ovH);
+    }
+    live = m_danmaku.Ready() ? m_danmaku.LiveCount() : 0;
+    showCtrl = m_ctrlShown ? 1 : 0;
+
+    /*
+     * 屏幕完全没内容（弹幕间隙、控制条隐藏）且上一帧也没有 -> 不碰显存。
+     * 只要这一帧或上一帧有内容，就整帧完整重画。
+     * 关键：overlay 是翻转链，每帧锁到的后备缓冲内容不同，必须整帧重画
+     * （先整屏清成色键 + 贴弹幕 + 贴控制条），否则翻到没画过的那块就是
+     * 缺内容 → 控制条/弹幕一闪一闪。
+     */
+    if (live == 0 && !showCtrl && m_prevLive == 0 && m_prevCtrl == 0) {
+        return;
+    }
+    m_prevPos = pos;
+    m_prevLive = live;
+    m_prevCtrl = showCtrl;
+    m_ctrlDirty = 0;
+
+    /* 锁显存前先把控制条 DIB 画好（GDI 不放在锁定窗口里） */
+    if (showCtrl) {
+        UpdateControlBar();
     }
 
     memset(&ddsd, 0, sizeof(ddsd));
@@ -376,7 +515,7 @@ void VideoWindow::DrawDanmaku()
     if (!m_overlay.LockData(&ddsd) || ddsd.lpSurface == NULL) {
         return;
     }
-    /* 双缓冲：每帧整屏清成色键，再贴弹幕/控制层，最后 flip 原子切换（无撕裂） */
+    /* 整屏清成色键（每帧都清，配合翻转链） */
     {
         int rows = (ddsd.dwHeight > 0) ? (int)ddsd.dwHeight : m_ovH;
         if (rows > m_ovH) {
@@ -384,10 +523,10 @@ void VideoWindow::DrawDanmaku()
         }
         memset(ddsd.lpSurface, 0, (size_t)ddsd.lPitch * rows);
     }
-    if (m_danmaku.Ready()) {
+    if (live > 0) {
         m_danmaku.Render(ddsd.lpSurface, (int)ddsd.lPitch, m_ovW, m_ovH);
     }
-    if (m_ctrlShown) {
+    if (showCtrl) {
         DrawControls(ddsd.lpSurface, (int)ddsd.lPitch, m_ovW, m_ovH);
     }
     m_overlay.UnLockData(true);
@@ -395,53 +534,60 @@ void VideoWindow::DrawDanmaku()
 
 /* ---------- 播放器控制层 ---------- */
 
-/* 控制条高度：进度条 + 按钮行 */
-#define VC_BAR_H 68
-
 /* 按钮几何：都在 overlay 坐标（全屏），左边界 >=40 以保证落在视频窗
  * 可点区域内（窗口在屏幕 (40,0)，触摸坐标要 +40 才是 overlay 坐标）。 */
 static void vc_prog_rect(int w, int h, RECT *r)
 {
-    r->left = 48;
+    r->left = 40;
     r->right = w - 16;
-    r->top = h - VC_BAR_H + 8;
-    r->bottom = r->top + 10;
+    r->top = h - VC_BAR_H + 10;
+    r->bottom = r->top + 12;
 }
 
 static void vc_close_rect(int w, int h, RECT *r)
 {
     (void)w;
-    r->left = 48;
-    r->right = 48 + 100;
-    r->top = h - VC_BAR_H + 26;
-    r->bottom = r->top + 34;
+    r->left = 40;
+    r->right = 40 + 76;
+    r->top = h - VC_BAR_H + 30;
+    r->bottom = r->top + 48;
 }
 
 static void vc_play_rect(int w, int h, RECT *r)
 {
     (void)w;
-    r->left = 156;
-    r->right = 156 + 72;
-    r->top = h - VC_BAR_H + 26;
-    r->bottom = r->top + 34;
+    r->left = 124;
+    r->right = 124 + 64;
+    r->top = h - VC_BAR_H + 30;
+    r->bottom = r->top + 48;
 }
 
 static void vc_voldn_rect(int w, int h, RECT *r)
 {
     (void)w;
-    r->left = 236;
-    r->right = 236 + 84;
-    r->top = h - VC_BAR_H + 26;
-    r->bottom = r->top + 34;
+    r->left = 196;
+    r->right = 196 + 76;
+    r->top = h - VC_BAR_H + 30;
+    r->bottom = r->top + 48;
 }
 
 static void vc_voup_rect(int w, int h, RECT *r)
 {
     (void)w;
-    r->left = 328;
-    r->right = 328 + 84;
-    r->top = h - VC_BAR_H + 26;
-    r->bottom = r->top + 34;
+    r->left = 280;
+    r->right = 280 + 76;
+    r->top = h - VC_BAR_H + 30;
+    r->bottom = r->top + 48;
+}
+
+/* 弹幕开关（收窄到 456，480 宽的竖屏也放得下） */
+static void vc_dm_rect(int w, int h, RECT *r)
+{
+    (void)w;
+    r->left = 364;
+    r->right = 456;
+    r->top = h - VC_BAR_H + 30;
+    r->bottom = r->top + 48;
 }
 
 static void vc_fill(HDC dc, const RECT *r, COLORREF c)
@@ -500,23 +646,26 @@ void VideoWindow::ShowControls()
             m_ctrlBw = m_ovW;
             m_ctrlBh = VC_BAR_H;
             m_ctrlPitch = m_ovW * 2;
+            m_ctrlBmpValid = 0;   /* 新 DIB 内容未初始化，下一次必须重画 */
         }
         ::ReleaseDC(m_hWnd, dc);
     }
     m_ctrlShown = 1;
+    m_ctrlDirty = 1;
+    m_ctrlShownAt = ::GetTickCount();
     m_ctrlHideAt = ::GetTickCount() + 5000;
 }
 
-void VideoWindow::DrawControls(void *surface, int pitch, int w, int h)
+/* 把控制条画进内部 DIB（不碰 overlay 显存）。内容没变时调用方可跳过。 */
+void VideoWindow::RenderControlBar()
 {
     HDC dc = m_ctrlDC;
     HGDIOBJ oldFont;
     RECT r;
     long len;
     long pos;
-    int j;
 
-    if (surface == NULL || m_ctrlBmp == NULL || dc == NULL) {
+    if (m_ctrlBmp == NULL || dc == NULL) {
         return;
     }
 
@@ -606,15 +755,22 @@ void VideoWindow::DrawControls(void *surface, int pitch, int w, int h)
     vc_fill(dc, &r, RGB(70, 70, 70));
     DrawTextW(dc, L"音量 +", -1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
+    /* 弹幕开关（关着时用暗红底提示） */
+    vc_dm_rect(m_ctrlBw, m_ctrlBh, &r);
+    vc_fill(dc, &r, m_danmakuOn ? RGB(60, 110, 60) : RGB(120, 60, 60));
+    SetTextColor(dc, RGB(255, 255, 255));
+    DrawTextW(dc, m_danmakuOn ? L"弹幕 开" : L"弹幕 关", -1, &r,
+              DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
     /* 当前音量值 */
     {
         wchar_t vt[16];
         RECT vr;
 
         wsprintfW(vt, L"%d", m_volume);
-        vr.left = 420;
+        vr.left = 464;
         vr.top = r.top;
-        vr.right = 470;
+        vr.right = 508;
         vr.bottom = r.bottom;
         SetTextColor(dc, RGB(250, 200, 90));
         DrawTextW(dc, vt, -1, &vr, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
@@ -634,7 +790,7 @@ void VideoWindow::DrawControls(void *surface, int pitch, int w, int h)
         } else {
             t[0] = L'\0';
         }
-        tr.left = 480;
+        tr.left = 512;
         tr.top = r.top;
         tr.right = m_ctrlBw - 16;
         tr.bottom = r.bottom;
@@ -642,6 +798,39 @@ void VideoWindow::DrawControls(void *surface, int pitch, int w, int h)
         DrawTextW(dc, t, -1, &tr, DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
     }
     SelectObject(dc, oldFont);
+}
+
+/* 控制条内容（进度秒/音量/播放态）没变就不重画 DIB。
+ * 必须在锁 overlay 显存之前调用：把 GDI 重绘（每秒一次）挪出锁定窗口，
+ * 否则锁的时间被拖长，偶尔会闪一下。 */
+void VideoWindow::UpdateControlBar()
+{
+    long len;
+    long sec;
+
+    if (m_ctrlBmp == NULL) {
+        return;
+    }
+    len = m_player.LengthMs();
+    sec = (len > 0 && m_lastPos > 0) ? (m_lastPos / 1000) : -1;
+    if (!m_ctrlBmpValid || m_ctrlSec != sec ||
+        m_ctrlVolume != m_volume || m_ctrlPlaying != m_playing) {
+        RenderControlBar();
+        m_ctrlBmpValid = 1;
+        m_ctrlSec = sec;
+        m_ctrlVolume = m_volume;
+        m_ctrlPlaying = m_playing;
+    }
+}
+
+/* 只把已渲染好的控制条 DIB 贴到 overlay 显存（同 16bpp RGB565，直接 memcpy） */
+void VideoWindow::DrawControls(void *surface, int pitch, int w, int h)
+{
+    int j;
+
+    if (surface == NULL || m_ctrlBmp == NULL) {
+        return;
+    }
 
     /* 逐行贴到 overlay 显存（同 16bpp RGB565，直接 memcpy） */
     {
@@ -735,6 +924,17 @@ int VideoWindow::HandleControlTap(int ox, int oy)
         m_player.SetVolume(m_volume);
         return 1;
     }
+    /* 弹幕开关 */
+    vc_dm_rect(m_ovW, m_ovH, &r);
+    if (ox >= r.left && ox < r.right && oy >= r.top && oy < r.bottom) {
+        m_danmakuOn = m_danmakuOn ? 0 : 1;
+        m_danmaku.SetActive(m_danmakuOn != 0);
+        g_app.Cfg().danmaku = m_danmakuOn;
+        bili_save_config(&g_app.Cfg());
+        m_ctrlBmpValid = 0;   /* 按钮文字/配色变了，强制重画控制条 */
+        g_app.GetLogger().Log("弹幕：%s", m_danmakuOn ? "开" : "关");
+        return 1;
+    }
     /* 进度条：跳转 */
     vc_prog_rect(m_ovW, m_ovH, &r);
     if (oy >= r.top - 10 && oy <= r.bottom + 10 &&
@@ -775,11 +975,18 @@ void VideoWindow::OnLButtonDown(UINT fwKeys, int xPos, int yPos)
         ShowControls();
         return;
     }
+    /* 触摸一次常产生两次 WM_LBUTTONDOWN：第 2 次会被当成"点空白"把刚亮出的
+     * 控制条立刻收回（表现为"点了以后突然消失一下"）。刚亮出后的 400ms 内
+     * 忽略后续点击。 */
+    if ((long)(::GetTickCount() - m_ctrlShownAt) < 400) {
+        return;
+    }
     /* 已显示：命中按钮就执行，否则点空白处收起 */
     ::GetWindowRect(m_hWnd, &wr);
     ox = xPos + wr.left;   /* overlay 在屏幕 (0,0)，把窗口坐标换到屏幕坐标 */
     oy = yPos + wr.top;
     if (HandleControlTap(ox, oy)) {
+        m_ctrlDirty = 1;
         m_ctrlHideAt = ::GetTickCount() + 5000;   /* 操作后再续 5 秒 */
         return;
     }
@@ -883,7 +1090,7 @@ LRESULT VideoWindow::MzDefWndProc(UINT message, WPARAM wParam, LPARAM lParam)
         m_player.Resume();
         if (m_danmaku.Ready() && InitOverlay()) {
             m_playStart = ::GetTickCount() - (DWORD)m_lastPos;
-            ::SetTimer(m_hWnd, DM_TIMER_ID, 33, NULL);
+            ::SetTimer(m_hWnd, DM_TIMER_ID, DM_TIMER_MS, NULL);
         }
         g_app.GetLogger().Log("VideoWindow: 解锁，转回横屏并恢复播放/弹幕层");
         return 0;

@@ -17,6 +17,8 @@ public:
     static void SetTranscode(int on);
     static void SetConns(int n);
     static void SetOffline(int on);
+    static void SetDanmaku(int on);
+    static void SetReportHistory(int on);
 
     /* 转码目标格式的中文说明（固定 H.264 Baseline） */
     static const char *FmtLabel(void);

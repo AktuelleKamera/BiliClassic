@@ -53,7 +53,12 @@ enum
     MZ_MENU_BACK    = 1015,
     MZ_MENU_ABOUT   = 1016,
     MZ_MENU_UPDATE  = 1017,
-    MZ_MENU_CLEARCACHE = 1018
+    MZ_MENU_CLEARCACHE = 1018,
+    MZ_MENU_DANMAKU = 1019,
+    MZ_MENU_ECHO    = 1020,
+    MZ_MENU_REPORTHIST = 1021,
+    MZ_MENU_PLAYCFG = 1022,
+    MZ_MENU_CONNS_CYCLE = 1023
 };
 
 class MainWindow;
@@ -88,6 +93,7 @@ private:
 #define WM_APP_COVER_DONE (WM_APP + 2)
 #define WM_APP_STARTUP (WM_APP + 3)
 #define WM_APP_UPDATE_DONE (WM_APP + 4)
+#define WM_APP_ECHO_DONE (WM_APP + 5)
 
 enum UiEventType
 {
@@ -204,6 +210,8 @@ private:
     void ShowAbout();                      /* 设置 -> 关于 */
     void CheckUpdate();                    /* 设置 -> 检查更新 */
     void ShowUpdateResult();               /* 检查更新结果窗口 */
+    void EchoHole();                       /* 菜单 -> 回声洞（随机一条） */
+    void ShowEchoResult();                 /* 回声洞结果窗口 */
     void ClearCache();                     /* 设置 -> 清除缓存 */
     void ToggleTranscode();
     void DoSearch(int popular);

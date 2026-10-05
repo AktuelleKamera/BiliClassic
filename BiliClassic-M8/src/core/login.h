@@ -68,10 +68,16 @@ int  bc_login_history(BcConfig *cfg, long max, long view_at,
                       char **out_body, int *out_len,
                       char *err, int errcap);
 
+/* 上报播放进度到 B 站观看历史（需登录，POST x/v2/history/report）。
+ * progress_sec 为已看秒数；成功返回 0，失败写 err 返回 -1。 */
+int  bc_login_report_history(BcConfig *cfg, const char *bvid, const char *cid,
+                             long progress_sec, char *err, int errcap);
+
 /* 诊断用：最近一次扫码 crossDomain URL / 短信原始响应 */
 extern char g_login_qr_cross[1400];
 extern char g_login_sms_raw[400];
 extern char g_login_sms_req[900];
+extern char g_login_fav_raw[700];   /* 最近一次收藏夹封面响应 */
 
 #ifdef __cplusplus
 }

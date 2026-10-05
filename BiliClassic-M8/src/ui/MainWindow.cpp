@@ -131,6 +131,136 @@ static void job_update(void *arg)
     }
 }
 
+/* =====================================================================
+ * 回声洞（模仿 WP 版）：拉 echo.json，随机取一条匿名留言显示。
+ *   [{"text":"...","author":"...","device":"...","time":"..."}, ...]
+ * ===================================================================== */
+static const char kEchoUrl[] =
+    "http://www.biliclassic.cn/api/echo.json";
+static const char kEchoUrl2[] =
+    "http://www.biliclassic.cn/mymobile/api/echo.json";
+
+static HWND s_echoWnd = NULL;
+static std::wstring s_echoText;
+static int s_echoLast = -1;
+
+/* 取 JSON 对象里的字段（值为 UTF-8）转成宽串 */
+static void echo_field_w(const char *obj, const char *key, wchar_t *out, int cap)
+{
+    char tmp[512];
+
+    out[0] = L'\0';
+    tmp[0] = '\0';
+    if (json_get_string(obj, key, tmp, (int)sizeof(tmp)) && tmp[0] != '\0') {
+        MultiByteToWideChar(CP_UTF8, 0, tmp, -1, out, cap);
+    }
+}
+
+static void job_echo(void *arg)
+{
+    char *body = NULL;
+    int status = 0;
+    char err[160];
+    int ok = 0;
+    int u;
+
+    (void)arg;
+    err[0] = '\0';
+    /* 先试 WP 版地址，失败再试 M8 命名空间，兼容两种部署 */
+    for (u = 0; u < 2 && !ok; u++) {
+        int len = 0;
+
+        body = NULL;
+        status = 0;
+        err[0] = '\0';
+        if (http_get_url((u == 0) ? kEchoUrl : kEchoUrl2,
+                         "User-Agent: Mozilla/5.0\r\n",
+                         &body, &len, &status, err, (int)sizeof(err)) == HTTP_OK &&
+            status == 200 && body != NULL) {
+            ok = 1;
+        } else if (body != NULL) {
+            free(body);
+            body = NULL;
+        }
+    }
+    if (!ok) {
+        s_echoText = L"回声洞拉取失败：";
+        s_echoText += gbk2w((err[0] != '\0') ? err : "网络错误");
+        if (s_echoWnd != NULL) {
+            PostMessage(s_echoWnd, WM_APP_ECHO_DONE, 0, 0);
+        }
+        return;
+    }
+
+    {
+        int starts[256];
+        int n = 0;
+        const char *p = body;
+
+        while (*p != '\0' && n < 256) {
+            if (*p == '{') {
+                starts[n++] = (int)(p - body);
+            }
+            p++;
+        }
+        if (n <= 0) {
+            s_echoText = L"回声洞暂无内容";
+        } else {
+            int idx;
+            char obj[1400];
+            const char *st;
+            const char *en;
+            int L;
+            wchar_t wt[512];
+            wchar_t wa[256];
+            wchar_t wd[128];
+            wchar_t wm[64];
+            wchar_t buf[1400];
+
+            if (n <= 1) {
+                idx = 0;
+            } else {
+                idx = (int)(GetTickCount() % (DWORD)n);
+                if (idx == s_echoLast) {
+                    idx = (idx + 1) % n;   /* 尽量不连着出同一条 */
+                }
+            }
+            s_echoLast = idx;
+
+            st = body + starts[idx];
+            en = strchr(st, '}');
+            L = (en != NULL) ? (int)(en - st + 1) : 0;
+            if (L > (int)sizeof(obj) - 1) {
+                L = (int)sizeof(obj) - 1;
+            }
+            if (L > 0) {
+                memcpy(obj, st, (size_t)L);
+            }
+            obj[L] = '\0';
+
+            echo_field_w(obj, "text", wt, 512);
+            echo_field_w(obj, "author", wa, 256);
+            echo_field_w(obj, "device", wd, 128);
+            echo_field_w(obj, "time", wm, 64);
+
+            if (wt[0] == L'\0') {
+                s_echoText = L"回声洞暂无内容";
+            } else {
+                wsprintfW(buf, L"%s\r\n\r\n—— %s\r\n来自 %s\r\n%s",
+                          wt,
+                          (wa[0] != L'\0') ? wa : L"匿名",
+                          (wd[0] != L'\0') ? wd : L"未知",
+                          (wm[0] != L'\0') ? wm : L"未知");
+                s_echoText = buf;
+            }
+        }
+    }
+    free(body);
+    if (s_echoWnd != NULL) {
+        PostMessage(s_echoWnd, WM_APP_ECHO_DONE, 0, 0);
+    }
+}
+
 
 /* ===================== UiResultList ===================== */
 
@@ -277,6 +407,35 @@ static HBITMAP cover_placeholder()
     return s_bmp;
 }
 
+/* 单行测量：返回 s 的前几个字符能在 maxW 宽内放下（二分） */
+static int title_split(HDC hdc, const wchar_t *s, int n, int maxW)
+{
+    int lo = 0;
+    int hi = n;
+    wchar_t buf[512];
+
+    while (lo < hi) {
+        int mid = (lo + hi + 1) / 2;
+        int k = (mid < 511) ? mid : 511;
+        RECT r;
+
+        memcpy(buf, s, (size_t)k * sizeof(wchar_t));
+        buf[k] = L'\0';
+        r.left = 0;
+        r.top = 0;
+        r.right = 0;
+        r.bottom = 0;
+        DrawTextW(hdc, buf, -1, &r,
+                  DT_LEFT | DT_SINGLELINE | DT_NOPREFIX | DT_CALCRECT);
+        if ((r.right - r.left) <= maxW) {
+            lo = mid;
+        } else {
+            hi = mid - 1;
+        }
+    }
+    return lo;
+}
+
 void UiResultList::DrawItem(HDC hdc, int nIndex, RECT *prcItem,
                             RECT *prcWin, RECT *prcUpdate)
 {
@@ -379,19 +538,72 @@ void UiResultList::DrawItem(HDC hdc, int nIndex, RECT *prcItem,
         }
     }
 
-    /* 标题（最多两行） */
+    /* 标题：手动断成最多两行，每行用 DT_SINGLELINE 画。
+     * CE 的 DrawText 不按矩形高裁剪，DT_WORDBREAK 会一路画到第三行，
+     * 所以这里完全不依赖它折行。 */
     SetBkMode(hdc, TRANSPARENT);
-    rcText.left = rcCover.right + 12;
-    rcText.top = prcItem->top + 8;
-    rcText.right = prcItem->right - 8;
-    rcText.bottom = prcItem->bottom - 46;
-    if (rcText.right > rcText.left) {
-        std::wstring t = gbk2w(it->title);
+    {
+        TEXTMETRICW tm;
+        int lh;
+        int maxW;
+        std::wstring t;
 
-        ::SetTextColor(hdc, RGB(20, 20, 20));
-        DrawTextW(hdc, t.c_str(), -1, &rcText,
-                  DT_LEFT | DT_TOP | DT_WORDBREAK | DT_END_ELLIPSIS |
-                  DT_NOPREFIX);
+        memset(&tm, 0, sizeof(tm));
+        GetTextMetricsW(hdc, &tm);
+        lh = tm.tmHeight + tm.tmExternalLeading;
+        if (lh <= 0) {
+            lh = 22;
+        }
+
+        rcText.left = rcCover.right + 12;
+        rcText.right = prcItem->right - 8;
+        rcText.top = prcItem->top + 10;
+        rcText.bottom = rcText.top + lh;
+        maxW = rcText.right - rcText.left;
+
+        if (maxW > 0 && prcItem->bottom - rcText.top >= lh) {
+            RECT mr;
+            int fullW;
+            int n;
+            int split;
+
+            t = gbk2w(it->title);
+            n = (int)t.size();
+            mr.left = 0;
+            mr.top = 0;
+            mr.right = 0;
+            mr.bottom = 0;
+            DrawTextW(hdc, t.c_str(), -1, &mr,
+                      DT_LEFT | DT_SINGLELINE | DT_NOPREFIX | DT_CALCRECT);
+            fullW = mr.right - mr.left;
+
+            ::SetTextColor(hdc, RGB(20, 20, 20));
+
+            if (n <= 0) {
+                /* 空标题 */
+            } else if (fullW <= maxW) {
+                DrawTextW(hdc, t.c_str(), -1, &rcText,
+                          DT_LEFT | DT_TOP | DT_SINGLELINE |
+                          DT_END_ELLIPSIS | DT_NOPREFIX);
+            } else {
+                split = title_split(hdc, t.c_str(), n, maxW);
+                if (split < 1) {
+                    split = 1;
+                }
+                DrawTextW(hdc, t.substr(0, (size_t)split).c_str(), -1,
+                          &rcText,
+                          DT_LEFT | DT_TOP | DT_SINGLELINE |
+                          DT_END_ELLIPSIS | DT_NOPREFIX);
+                if (split < n) {
+                    rcText.top += lh;
+                    rcText.bottom = rcText.top + lh;
+                    DrawTextW(hdc, t.substr((size_t)split).c_str(), -1,
+                              &rcText,
+                              DT_LEFT | DT_TOP | DT_SINGLELINE |
+                              DT_END_ELLIPSIS | DT_NOPREFIX);
+                }
+            }
+        }
     }
 
     /* UP主 */
@@ -721,7 +933,7 @@ BOOL MainWindow::OnInitDialog()
     SetBgColor(RGB(236, 236, 236));
 
     m_caption.SetPos(0, 0, GetWidth(), MZM_HEIGHT_CAPTION);
-    m_caption.SetText(L"哔哩经典 for Mymobile  v" L"0.1.0");
+    m_caption.SetText(L"哔哩经典 for Mymobile  v" L"0.2.0");
     AddUiWin(&m_caption);
 
     /* 关键词输入（原生单行 EDIT：GetWindowTextW 读取 100% 可靠；
@@ -815,6 +1027,11 @@ LRESULT MainWindow::MzDefWndProc(UINT message, WPARAM wParam, LPARAM lParam)
         ShowUpdateResult();
         return 0;
     }
+    if (message == WM_APP_ECHO_DONE) {
+        g_app.SetBusy(0);
+        ShowEchoResult();
+        return 0;
+    }
     if (message == WM_APP_STARTUP) {
         g_app.GetLogger().Log("UI: WM_APP_STARTUP -> 拉推荐");
         DoSearch(1);    /* 启动自动拉推荐 */
@@ -828,6 +1045,7 @@ LRESULT MainWindow::MzDefWndProc(UINT message, WPARAM wParam, LPARAM lParam)
         /* 系统底部菜单栏 */
         switch (id) {
         case MZ_MENU_RECOMMEND: DoSearch(1); return 0;
+        case MZ_MENU_ECHO:      EchoHole(); return 0;
         case MZ_MENU_BACK:      DoBack(); return 0;
         case MZ_MENU_REPLAY:    if (!g_app.IsBusy()) PlayService::PlayLast(); return 0;
         case MZ_MENU_LOGIN:
@@ -845,6 +1063,12 @@ LRESULT MainWindow::MzDefWndProc(UINT message, WPARAM wParam, LPARAM lParam)
             return 0;
         case MZ_MENU_OFFLINE:
             PlayService::SetOffline(g_app.Cfg().offline ? 0 : 1);
+            return 0;
+        case MZ_MENU_DANMAKU:
+            PlayService::SetDanmaku(g_app.Cfg().danmaku ? 0 : 1);
+            return 0;
+        case MZ_MENU_REPORTHIST:
+            PlayService::SetReportHistory(g_app.Cfg().report_history ? 0 : 1);
             return 0;
         case MZ_MENU_EXIT: ::PostMessage(m_hWnd, WM_CLOSE, 0, 0); return 0;
         default: break;
@@ -993,8 +1217,9 @@ void MainWindow::PlayMedia(const char *pathGbk)
         LoadingWnd::Hide(true);
         return;
     }
+    /* 加载层文字由 PlayService 设好（正在加载视频… / 装填弹幕中…），
+     * 这里只保证窗口显示，别再重复设置，否则会多出一遍 */
     LoadingWnd::Show();
-    LoadingWnd::SetStatus(L"正在加载视频…");
     if (vw.PlayModal(m_hWnd, pathGbk)) {
         return;
     }
@@ -1189,13 +1414,34 @@ void MainWindow::ShowUpdateResult()
     w.DoModal();
 }
 
+/* 菜单 -> 回声洞：后台拉一条随机留言，回来再弹窗 */
+void MainWindow::EchoHole()
+{
+    if (g_app.IsBusy()) {
+        return;
+    }
+    s_echoWnd = m_hWnd;
+    g_app.GetLogger().Log("回声洞：拉取中");
+    g_app.SetBusy(1);
+    g_app.RunAsync(job_echo, NULL);
+}
+
+void MainWindow::ShowEchoResult()
+{
+    TextWindow w;
+
+    w.SetContent(L"回声洞", s_echoText.c_str());
+    w.DoModal();
+}
+
 void MainWindow::ClearCache()
 {
     CoverCache::ClearAll();
     MzMessageBoxEx(m_hWnd, L"封面缓存已清除。", L"清除缓存", MB_OK, false);
 }
 
-/* 底栏弹出菜单：0=菜单 1=我的 2=设置 */
+/* 底栏弹出菜单：0=菜单 1=我的 2=设置 3=播放设置（设置的二级菜单）
+ * 注意每项高 95px（Mzfc），一项一屏放不下多少，所以设置要分层。 */
 void MainWindow::ShowMenu(int which)
 {
     CPopupMenu ppm;
@@ -1211,6 +1457,7 @@ void MainWindow::ShowMenu(int which)
 
     if (which == 0) {
         s = L"返回";         pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_BACK;      ppm.AddItem(pmip);
+        s = L"回声洞";       pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_ECHO;      ppm.AddItem(pmip);
         s = L"推荐";         pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_RECOMMEND; ppm.AddItem(pmip);
         s = L"重播上次";     pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_REPLAY;    ppm.AddItem(pmip);
     } else if (which == 1) {
@@ -1218,25 +1465,30 @@ void MainWindow::ShowMenu(int which)
         s = L"我的收藏";     pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_FAVS;    ppm.AddItem(pmip);
         s = L"观看历史";     pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_HISTORY; ppm.AddItem(pmip);
         s = L"我的资料";     pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_PROFILE; ppm.AddItem(pmip);
-    } else {
-        int c = g_app.Cfg().conns;
-
-        s = L"连接数 1"; if (c == 1) s += L"（当前）";
-        pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_CONNS_1; ppm.AddItem(pmip);
-        s = L"连接数 2"; if (c == 2) s += L"（当前）";
-        pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_CONNS_2; ppm.AddItem(pmip);
-        s = L"连接数 4"; if (c == 4) s += L"（当前）";
-        pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_CONNS_4; ppm.AddItem(pmip);
-        s = g_app.Cfg().transcode ? L"转码：开" : L"转码：关";
-        pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_TRANS; ppm.AddItem(pmip);
-        s = g_app.Cfg().offline ? L"离线播放：开" : L"离线播放：关";
-        pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_OFFLINE; ppm.AddItem(pmip);
+    } else if (which == 2) {
+        /* 设置（5 项，放得下）：播放相关全收进「播放设置」，连接数一项循环 */
+        s = L"播放设置";     pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_PLAYCFG; ppm.AddItem(pmip);
+        s = g_app.Cfg().danmaku ? L"弹幕：开" : L"弹幕：关";
+        pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_DANMAKU; ppm.AddItem(pmip);
         s = L"清除缓存";
         pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_CLEARCACHE; ppm.AddItem(pmip);
         s = L"检查更新";
         pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_UPDATE; ppm.AddItem(pmip);
         s = L"关于";
         pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_ABOUT; ppm.AddItem(pmip);
+    } else {
+        /* 播放设置（二级）：连接数一项循环 1 -> 2 -> 4 -> 1 */
+        int c = g_app.Cfg().conns;
+
+        s = L"连接数：";
+        s += (c == 1) ? L"1" : ((c == 2) ? L"2" : L"4");
+        pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_CONNS_CYCLE; ppm.AddItem(pmip);
+        s = g_app.Cfg().transcode ? L"转码：开" : L"转码：关";
+        pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_TRANS; ppm.AddItem(pmip);
+        s = g_app.Cfg().offline ? L"离线播放：开" : L"离线播放：关";
+        pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_OFFLINE; ppm.AddItem(pmip);
+        s = g_app.Cfg().report_history ? L"上报历史：开" : L"上报历史：关";
+        pmip.str = s.c_str(); pmip.itemRetID = MZ_MENU_REPORTHIST; ppm.AddItem(pmip);
     }
 
     rc = MzGetWorkArea();
@@ -1247,6 +1499,7 @@ void MainWindow::ShowMenu(int which)
     switch (nID) {
     case MZ_MENU_BACK:      DoBack(); break;
     case MZ_MENU_RECOMMEND: DoSearch(1); break;
+    case MZ_MENU_ECHO:      EchoHole(); break;
     case MZ_MENU_REPLAY:    if (!g_app.IsBusy()) PlayService::PlayLast(); break;
     case MZ_MENU_LOGIN:
     case MZ_MENU_PROFILE: {
@@ -1256,11 +1509,20 @@ void MainWindow::ShowMenu(int which)
     }
     case MZ_MENU_FAVS:      SearchService::FavFolders(); break;
     case MZ_MENU_HISTORY:   SearchService::History(); break;
+    case MZ_MENU_PLAYCFG:   ShowMenu(3); break;
+    case MZ_MENU_CONNS_CYCLE: {
+        int c = g_app.Cfg().conns;
+        int n = (c == 1) ? 2 : ((c == 2) ? 4 : 1);
+        PlayService::SetConns(n);
+        break;
+    }
     case MZ_MENU_CONNS_1:   PlayService::SetConns(1); break;
     case MZ_MENU_CONNS_2:   PlayService::SetConns(2); break;
     case MZ_MENU_CONNS_4:   PlayService::SetConns(4); break;
     case MZ_MENU_TRANS:     PlayService::SetTranscode(g_app.Cfg().transcode ? 0 : 1); break;
     case MZ_MENU_OFFLINE:   PlayService::SetOffline(g_app.Cfg().offline ? 0 : 1); break;
+    case MZ_MENU_DANMAKU:   PlayService::SetDanmaku(g_app.Cfg().danmaku ? 0 : 1); break;
+    case MZ_MENU_REPORTHIST: PlayService::SetReportHistory(g_app.Cfg().report_history ? 0 : 1); break;
     case MZ_MENU_ABOUT:     ShowAbout(); break;
     case MZ_MENU_UPDATE:    CheckUpdate(); break;
     case MZ_MENU_CLEARCACHE: ClearCache(); break;

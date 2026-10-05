@@ -133,7 +133,13 @@ void SearchService::SearchJob(void *arg)
         g_app.GetLogger().Log("搜索失败：%s", err);
         g_app.GetLogger().Status("搜索失败：%s", err);
     } else {
-        g_app.GetLogger().Log("搜索响应 %d 字节", len);
+        /* 搜索诊断：万一再出「搜索繁忙」，直接看日志里的 code / v_voucher */
+        g_app.GetLogger().Log("搜索 diag：页码 %d 模式 %s code=%ld v_voucher=%d 字节 %d",
+                              s_page,
+                              bc_login_is_logged_in(&g_app.Cfg()) ? "登录" : "匿名(不发Cookie)",
+                              bili_pick_int(body, "code", -1),
+                              (body != NULL && strstr(body, "v_voucher") != NULL) ? 1 : 0,
+                              len);
         ShowItems(body, "搜索结果", "pic", append);
         free(body);
     }
@@ -276,8 +282,9 @@ void SearchService::FavFolderJob(void *arg)
                         str_copy(g_app.Items()[i].pic, BC_PIC_LEN, pic);
                         got++;
                     } else {
-                        g_app.GetLogger().Log("收藏夹封面：%s 失败 %s",
-                                              g_app.Items()[i].bvid, ce);
+                        g_app.GetLogger().Log("收藏夹封面：%s 失败 %s | 响应 %.400s",
+                                              g_app.Items()[i].bvid, ce,
+                                              g_login_fav_raw);
                     }
                 }
             }

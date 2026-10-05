@@ -23,14 +23,22 @@ public:
     /* 接管 items 的所有权（会 free）。count<=0 视为未就绪。 */
     void Load(BcDanmaku *items, int count);
     void Clear();
+    /* 回到开头（不清 items，只把游标/在场都复位，供重播用） */
+    void Rewind();
 
     bool Ready() const { return m_items != NULL; }
     int  Count() const { return m_count; }
     int  LiveCount() const { return m_liveCount; }
 
+    /* 弹幕总开关：关时 Update 只推进游标、清空在场，不生成/渲染任何弹幕 */
+    void SetActive(bool on) { m_active = on; }
+    bool IsActive() const { return m_active; }
+
     /* 更新（生成/淘汰，预渲染位图）——不接触 overlay 显存 */
     void Update(long nowMs, int w, int h);
-    /* 只把位图贴到 overlay 显存（调用方已锁住显存并清成色键） */
+    /* 只把位图贴到 overlay 显存（调用方已锁住显存并整屏清成色键）。
+     * 注意：overlay 是翻转链，调用方每帧必须整帧重画，否则翻到另一块
+     * 后备缓冲时会缺内容 → 闪。 */
     void Render(void *surface, int pitch, int w, int h);
 
 private:
@@ -59,6 +67,7 @@ private:
     BcDanmaku *m_items;
     int  m_count;
     int  m_cursor;
+    bool m_active;   /* 弹幕开关（默认开） */
 
     Live m_live[32];
     int  m_liveCount;

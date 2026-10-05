@@ -60,6 +60,11 @@ public:
     void SetVideoOpened(int v) { m_video_opened = v; }
     int  VideoOpened()         { return m_video_opened; }
 
+    /* 当前在播的视频（供观看历史上报用）。UI 线程写，上报线程读。 */
+    void SetPlayingInfo(const char *bvid, const char *cid);
+    const char *PlayingBvid() { return m_play_bvid; }
+    const char *PlayingCid()  { return m_play_cid; }
+
     /* 弹幕：后台线程 Set（接管所有权），UI 线程 Take 走 */
     void SetDanmaku(BcDanmaku *items, int count);
     BcDanmaku *TakeDanmaku(int *count);
@@ -75,6 +80,8 @@ private:
     int      m_busy;
     volatile int m_cancel;
     volatile int m_video_opened;
+    char     m_play_bvid[BC_BVID_LEN + 4];
+    char     m_play_cid[32];
     BcDanmaku *m_danmaku;
     int        m_danmaku_count;
     HANDLE   m_job;         /* 当前后台任务线程（可为 NULL） */

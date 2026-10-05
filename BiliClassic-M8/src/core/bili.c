@@ -90,6 +90,37 @@ const char *bili_req_headers(void)
     return hdr;
 }
 
+/* 搜索用的匿名头：未登录时不发任何 Cookie。
+ * 对照实验（同一 UA/Referer/签名，只换 Cookie）：
+ *   完全不带 Cookie            -> 28/28 全部正常
+ *   带未登录的那套指纹 Cookie    -> 约 32% 被 v_voucher 拦下，重试 3 次
+ *                                 耗尽就是「搜索繁忙」。
+ * M8 的请求头是这里手拼的，没有网络层自动补 Cookie，所以少拼一行
+ * Cookie 即可，不需要 Android 那种 X-Skip-Cookie 内部标记。 */
+const char *bili_req_headers_anon(void)
+{
+    static char hdr[400];
+
+    sprintf(hdr,
+            "Referer: https://www.bilibili.com/\r\n"
+            "Origin: https://www.bilibili.com\r\n"
+            "Accept-Language: zh-CN,zh;q=0.9\r\n");
+    return hdr;
+}
+
+/* Cookie 里有 SESSDATA 才算登录，才算「该发 Cookie」 */
+static int bili_cookie_ok(void)
+{
+    return (s_login_cookie[0] != '\0' &&
+            strstr(s_login_cookie, "SESSDATA=") != NULL) ? 1 : 0;
+}
+
+/* 搜索该用的请求头：已登录带登录 Cookie，未登录彻底不带 Cookie */
+static const char *search_req_headers(void)
+{
+    return bili_cookie_ok() ? bili_req_headers() : bili_req_headers_anon();
+}
+
 static int direct_api_get(const char *path, char **out_body, int *out_len,
                           char *err, int errcap);
 
@@ -147,6 +178,8 @@ void bili_config_init(BcConfig *cfg)
              BC_DEFAULT_TRANSCODE_FMT);
     cfg->conns = 4;         /* 下载并行连接数（CDN 单连接常被限速） */
     cfg->offline = 0;       /* 默认只在线流播，不下载到本地 */
+    cfg->danmaku = 1;       /* 默认开弹幕 */
+    cfg->report_history = 1; /* 默认上报观看历史 */
 
     str_copy(ini_path, (int)sizeof(ini_path), cfg->data_dir);
     str_append(ini_path, (int)sizeof(ini_path), "biliclassic_m8.ini");
@@ -183,6 +216,10 @@ void bili_config_init(BcConfig *cfg)
                 }
             } else if (strncmp(line, "offline=", 8) == 0) {
                 cfg->offline = (atoi(line + 8) != 0);
+            } else if (strncmp(line, "danmaku=", 8) == 0) {
+                cfg->danmaku = (atoi(line + 8) != 0);
+            } else if (strncmp(line, "report_history=", 15) == 0) {
+                cfg->report_history = (atoi(line + 15) != 0);
             }
             if (nl == NULL) {
                 break;
@@ -280,10 +317,11 @@ void bili_save_config(BcConfig *cfg)
 
     sprintf(ini,
             "relay_host=%s\r\nrelay_port=%d\r\ntranscode=%d\r\ntranscode_fmt=%s\r\n"
-            "download_conns=%d\r\noffline=%d\r\n",
+            "download_conns=%d\r\noffline=%d\r\ndanmaku=%d\r\nreport_history=%d\r\n",
             cfg->relay_host, cfg->relay_port,
             cfg->transcode ? 1 : 0, cfg->transcode_fmt, cfg->conns,
-            cfg->offline ? 1 : 0);
+            cfg->offline ? 1 : 0, cfg->danmaku ? 1 : 0,
+            cfg->report_history ? 1 : 0);
     str_copy(ini_path, (int)sizeof(ini_path), cfg->data_dir);
     str_append(ini_path, (int)sizeof(ini_path), "biliclassic_m8.ini");
     file_write_all(ini_path, ini);
@@ -377,8 +415,9 @@ static int bili_ensure_token(BcConfig *cfg, char *err, int errcap)
 
 /* 直连 api.bilibili.com：先试 HTTPS（ws2 SSL），失败退回明文 http。
  * 失败返回 -1，调用方（api_get_with_fallback）会再回退中继。 */
-static int direct_api_get(const char *path,
-                          char **out_body, int *out_len, char *err, int errcap)
+static int direct_api_get_h(const char *path, const char *hdr,
+                            char **out_body, int *out_len,
+                            char *err, int errcap)
 {
     static char url[BC_URL_LEN + 64];
     int status = 0;
@@ -387,7 +426,7 @@ static int direct_api_get(const char *path,
     str_append(url, (int)sizeof(url), BILI_API_HOST);
     str_append(url, (int)sizeof(url), path);
     BLOG("https: enter %.80s", url);
-    if (http_get_https(url, bili_req_headers(),
+    if (http_get_https(url, hdr,
                        out_body, out_len, &status, err, errcap) == HTTP_OK &&
         status == 200) {
         BLOG("https: ok status=%d len=%d", status, (out_len != NULL) ? *out_len : -1);
@@ -403,7 +442,7 @@ static int direct_api_get(const char *path,
     /* HTTPS 走不通时退回明文 http（搜索/热门接口允许） */
     status = 0;
     if (http_request(BILI_API_HOST, BILI_API_PORT, "GET", path,
-                     bili_req_headers(),
+                     hdr,
                      NULL, 0, out_body, out_len, &status) != 0) {
         set_err(err, errcap, "直连 api.bilibili.com 失败");
         return -1;
@@ -421,6 +460,14 @@ static int direct_api_get(const char *path,
     }
     return 0;
 }
+
+static int direct_api_get(const char *path, char **out_body, int *out_len,
+                          char *err, int errcap)
+{
+    return direct_api_get_h(path, bili_req_headers(),
+                            out_body, out_len, err, errcap);
+}
+
 
 /* 把 "https://api.bilibili.com/xxx?y=z" 走 wolfSSL HTTPS 直连，失败返回 -1。 */
 static int direct_url_get(const char *url, char **out_body, int *out_len,
@@ -475,20 +522,27 @@ static int direct_url_get(const char *url, char **out_body, int *out_len,
 int g_bili_no_fallback = 0;
 
 /* 依次尝试：直连(带签名) -> 直连(未签名)。
- * path_signed 可以传 NULL（说明这次没有签名）。body 里的 code 非 0 也算失败。 */
-static int api_get_with_fallback(BcConfig *cfg,
+ * path_signed 可以传 NULL（说明这次没有签名）。body 里的 code 非 0 也算失败。
+ * hdr 由调用方决定（搜索未登录时传匿名头）。 */
+static int api_get_with_fallback(BcConfig *cfg, const char *hdr,
                                  const char *path_signed, const char *path_plain,
                                  char **out_body, int *out_len,
                                  char *err, int errcap)
 {
     long code = 0;
     int rc;
+    int parsed;
+    int has_vv;
 
     (void)cfg;
     if (path_signed != NULL) {
-        rc = direct_api_get(path_signed, out_body, out_len, err, errcap);
-        if (rc == 0 && (!json_get_int(*out_body, "code", &code) || code == 0) &&
-            strstr(*out_body, "v_voucher") == NULL) {
+        rc = direct_api_get_h(path_signed, hdr, out_body, out_len, err, errcap);
+        code = 0;
+        parsed = (rc == 0 && out_body != NULL && *out_body != NULL) ?
+                 json_get_int(*out_body, "code", &code) : 0;
+        has_vv = (*out_body != NULL && strstr(*out_body, "v_voucher") != NULL) ? 1 : 0;
+        BLOG("api: signed rc=%d code=%ld vch=%d", rc, code, has_vv);
+        if (rc == 0 && (!parsed || code == 0) && !has_vv) {
             return 0;
         }
         if (*out_body != NULL) {
@@ -502,8 +556,13 @@ static int api_get_with_fallback(BcConfig *cfg,
         }
     }
 
-    rc = direct_api_get(path_plain, out_body, out_len, err, errcap);
-    if (rc == 0 && (!json_get_int(*out_body, "code", &code) || code == 0)) {
+    rc = direct_api_get_h(path_plain, hdr, out_body, out_len, err, errcap);
+    code = 0;
+    parsed = (rc == 0 && out_body != NULL && *out_body != NULL) ?
+             json_get_int(*out_body, "code", &code) : 0;
+    has_vv = (*out_body != NULL && strstr(*out_body, "v_voucher") != NULL) ? 1 : 0;
+    BLOG("api: plain rc=%d code=%ld vch=%d", rc, code, has_vv);
+    if (rc == 0 && (!parsed || code == 0) && !has_vv) {
         return 0;
     }
     if (*out_body != NULL) {
@@ -513,6 +572,7 @@ static int api_get_with_fallback(BcConfig *cfg,
     }
     return -1;
 }
+
 
 int bili_search(BcConfig *cfg, const char *keyword, int page,
                 char **out_body, int *out_len, char *err, int errcap)
@@ -545,17 +605,20 @@ int bili_search(BcConfig *cfg, const char *keyword, int page,
                "/x/web-interface/search/type?");
     str_append(path_plain, (int)sizeof(path_plain), q);
 
-    /* 正式接口带 WBI 签名（无 w_rid 易被风控 v_voucher/412） */
+    /* 正式接口带 WBI 签名（无 w_rid 易被风控 v_voucher/412）。
+     * 头走 search_req_headers()：未登录时不带任何 Cookie。 */
     path[0] = '\0';
     if (bili_wbi_ensure(cfg, err, errcap) == 0 &&
         bili_wbi_sign(cfg, q, sq, (int)sizeof(sq)) == 0) {
         str_append(path, (int)sizeof(path),
                    "/x/web-interface/wbi/search/type?");
         str_append(path, (int)sizeof(path), sq);
-        return api_get_with_fallback(cfg, path, path_plain,
+        BLOG("search: wbi page=%d cookie=%d", page, bili_cookie_ok());
+        return api_get_with_fallback(cfg, search_req_headers(), path, path_plain,
                                      out_body, out_len, err, errcap);
     }
-    return api_get_with_fallback(cfg, NULL, path_plain,
+    BLOG("search: no-wbi page=%d cookie=%d", page, bili_cookie_ok());
+    return api_get_with_fallback(cfg, search_req_headers(), NULL, path_plain,
                                  out_body, out_len, err, errcap);
 }
 
@@ -570,7 +633,8 @@ int bili_popular(BcConfig *cfg, int page,
     BLOG("popular: buvid ok");
     sprintf(path, "/x/web-interface/popular?ps=20&pn=%d", page);
     BLOG("popular: GET %s", path);
-    r = api_get_with_fallback(cfg, NULL, path, out_body, out_len, err, errcap);
+    r = api_get_with_fallback(cfg, bili_req_headers(), NULL, path,
+                              out_body, out_len, err, errcap);
     BLOG("popular: ret=%d len=%d", r, (out_len != NULL) ? *out_len : -1);
     return r;
 }

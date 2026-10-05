@@ -238,6 +238,163 @@ void bc_login_logout(BcConfig *cfg)
     bili_save_cookie(cfg);
 }
 
+/* 从登录 Cookie 取 bili_jct（CSRF token） */
+static void cookie_csrf(BcConfig *cfg, char *out, int cap)
+{
+    const char *p;
+    int i = 0;
+
+    if (cap > 0) {
+        out[0] = '\0';
+    }
+    if (cfg == NULL) {
+        return;
+    }
+    p = strstr(cfg->cookie, "bili_jct=");
+    if (p == NULL) {
+        return;
+    }
+    p += 9;
+    while (*p != '\0' && *p != ';' && *p != ' ' && i < cap - 1) {
+        out[i++] = *p++;
+    }
+    out[i] = '\0';
+}
+
+/* bvid -> aid（B 站标准算法）。失败返回 0。 */
+static __int64 bvid_to_aid(const char *bvid)
+{
+    static const char tbl[] =
+        "fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF";
+    static const int pos[6] = { 11, 10, 3, 8, 4, 6 };
+    __int64 r = 0;
+    int i;
+
+    if (bvid == NULL || strlen(bvid) < 12) {
+        return 0;
+    }
+    for (i = 0; i < 6; i++) {
+        const char *q = strchr(tbl, bvid[pos[i]]);
+        __int64 v;
+        int k;
+
+        if (q == NULL) {
+            return 0;
+        }
+        v = (__int64)(q - tbl);
+        for (k = 0; k < i; k++) {
+            v *= 58;
+        }
+        r += v;
+    }
+    return (r - 8728348608LL) ^ 177451812LL;
+}
+
+/* 本地算不出 aid 时，走 view 接口兜底（和安卓版一致） */
+static long fetch_aid_by_bvid(const char *bvid)
+{
+    char url[200];
+    char *body = NULL;
+    int len = 0;
+    int status = 0;
+    char err[128];
+    long aid = 0;
+
+    sprintf(url, "https://api.bilibili.com/x/web-interface/view?bvid=%s",
+            bvid);
+    err[0] = '\0';
+    if (http_get_https(url, bili_req_headers(), &body, &len, &status,
+                       err, (int)sizeof(err)) == HTTP_OK && status == 200 &&
+        body != NULL) {
+        if (!json_get_int(body, "aid", &aid)) {
+            aid = 0;
+        }
+        free(body);
+    }
+    return aid;
+}
+
+/* 上报播放进度到 B 站观看历史（需登录）。成功返回 0，失败写 err 并返回 -1。
+ *   POST https://api.bilibili.com/x/v2/history/report
+ *   aid=<aid>&cid=<cid>&progress=<秒>&csrf=<bili_jct> */
+int bc_login_report_history(BcConfig *cfg, const char *bvid, const char *cid,
+                            long progress_sec, char *err, int errcap)
+{
+    char csrf[80];
+    char body[256];
+    static char hdr[1900];
+    char *resp = NULL;
+    int len = 0;
+    int status = 0;
+    __int64 aid;
+    long aid32;
+
+    if (cfg == NULL || !bc_login_is_logged_in(cfg)) {
+        set_err(err, errcap, "未登录");
+        return -1;
+    }
+    cookie_csrf(cfg, csrf, (int)sizeof(csrf));
+    if (csrf[0] == '\0') {
+        set_err(err, errcap, "Cookie 里没有 bili_jct");
+        return -1;
+    }
+    if (cid == NULL || cid[0] == '\0') {
+        set_err(err, errcap, "缺 cid");
+        return -1;
+    }
+    /* 先本地算；算不出再请求 view 接口兜底 */
+    aid = bvid_to_aid(bvid);
+    if (aid <= 0) {
+        aid32 = fetch_aid_by_bvid(bvid);
+        aid = (__int64)aid32;
+    }
+    if (aid <= 0) {
+        char eb[160];
+        sprintf(eb, "解析不出 aid：bvid=[%s] len=%d",
+                (bvid != NULL) ? bvid : "(null)",
+                (bvid != NULL) ? (int)strlen(bvid) : 0);
+        set_err(err, errcap, eb);
+        return -1;
+    }
+    if (progress_sec < 0) {
+        progress_sec = 0;
+    }
+    sprintf(body, "aid=%I64d&cid=%s&progress=%ld&csrf=%s",
+            aid, cid, progress_sec, csrf);
+
+    /* 统一头 + UA（POST 接口带上 UA 更稳） */
+    _snprintf(hdr, sizeof(hdr) - 1, "User-Agent: Mozilla/5.0\r\n%s",
+              bili_req_headers());
+    hdr[sizeof(hdr) - 1] = '\0';
+
+    err[0] = '\0';
+    if (http_post_https("https://api.bilibili.com/x/v2/history/report",
+                        hdr, body, (int)strlen(body),
+                        &resp, &len, &status, err, errcap) != HTTP_OK ||
+        status != 200 || resp == NULL) {
+        if (resp != NULL) {
+            free(resp);
+        }
+        if (err[0] == '\0') {
+            set_err(err, errcap, "上报请求失败");
+        }
+        return -1;
+    }
+    {
+        long code = -1;
+
+        json_get_int(resp, "code", &code);
+        free(resp);
+        if (code != 0) {
+            char eb[64];
+            sprintf(eb, "上报返回 code=%ld", code);
+            set_err(err, errcap, eb);
+            return -1;
+        }
+    }
+    return 0;
+}
+
 static void cookie_append(BcConfig *cfg, const char *name, const char *val)
 {
     if (cfg->cookie[0] != '\0') {
@@ -398,8 +555,10 @@ static void cookie_from_setcookie(BcConfig *cfg, const char *headers)
     }
 }
 
-char g_login_qr_cross[1400];char g_login_sms_raw[400];
+char g_login_qr_cross[1400];
+char g_login_sms_raw[400];
 char g_login_sms_req[900];
+char g_login_fav_raw[700];   /* 最近一次收藏夹封面响应（诊断用） */
 
 /* ---- 资料 ---- */
 
@@ -789,9 +948,10 @@ int bc_login_fav_cover(BcConfig *cfg, const char *fid, char *pic, int cap,
     char *body = NULL;
     int len = 0;
     int status = 0;
-    const char *arch;
+    const char *sec;
     int rc = -1;
 
+    g_login_fav_raw[0] = '\0';
     if (cap > 0) {
         pic[0] = '\0';
     }
@@ -799,46 +959,77 @@ int bc_login_fav_cover(BcConfig *cfg, const char *fid, char *pic, int cap,
         set_err(err, errcap, "未登录");
         return -1;
     }
-    cookie_mid(cfg, mid, (int)sizeof(mid));
-    if (mid[0] == '\0' || fid == NULL || fid[0] == '\0') {
-        set_err(err, errcap, "拿不到 mid 或收藏夹 id");
+    if (fid == NULL || fid[0] == '\0') {
+        set_err(err, errcap, "缺收藏夹 id");
         return -1;
     }
-    sprintf(url,
-            "https://api.bilibili.com/x/space/fav/arc"
-            "?vmid=%s&ps=1&fid=%s&tid=0&keyword=&pn=1&order=fav_time",
-            mid, fid);
+    cookie_mid(cfg, mid, (int)sizeof(mid));
+
+    /* 1) 新接口 /x/v3/fav/resource/list（本 App 拉夹内视频就是用它，稳）；
+     *    ps=1 只要第一个视频，封面在 data.medias[0].cover */
+    sprintf(url, "https://api.bilibili.com/x/v3/fav/resource/list"
+                 "?media_id=%s&pn=1&ps=1&platform=web", fid);
+    err[0] = '\0';
     if (http_get_https(url, bili_req_headers(), &body, &len, &status,
                        err, errcap) == HTTP_OK && status == 200 &&
         body != NULL) {
-        /* data.archives[0].pic；直接从 "archives" 往后找，避免吃到别的 pic */
-        arch = strstr(body, "\"archives\"");
-        if (arch == NULL) {
-            arch = strstr(body, "\"medias\"");
+        str_copy(g_login_fav_raw, (int)sizeof(g_login_fav_raw), body);
+        sec = strstr(body, "\"medias\"");
+        if (sec == NULL) {
+            sec = strstr(body, "\"list\"");
         }
-        if (arch == NULL) {
-            arch = strstr(body, "\"list\"");
+        if (sec == NULL) {
+            sec = body;
         }
-        if (arch == NULL) {
-            arch = body;
-        }
-        if (json_get_string(arch, "pic", pic, cap) ||
-            json_get_string(arch, "cover", pic, cap)) {
+        if (json_get_string(sec, "cover", pic, cap) && pic[0] != '\0') {
             rc = 0;
-        } else {
-            long code = -1;
-            char eb[48];
-
-            json_get_int(body, "code", &code);
-            sprintf(eb, "封面字段缺失 code=%ld", code);
-            set_err(err, errcap, eb);
-        }
-        if (rc != 0 && cap > 0) {
-            pic[0] = '\0';
         }
         free(body);
-    } else if (err != NULL && errcap > 0 && err[0] == '\0') {
-        set_err(err, errcap, "取封面失败");
+        body = NULL;
+    }
+
+    /* 2) 旧接口兜底：/x/space/fav/arc（部分老接口仍可用） */
+    if (rc != 0 && mid[0] != '\0') {
+        sprintf(url,
+                "https://api.bilibili.com/x/space/fav/arc"
+                "?vmid=%s&ps=1&fid=%s&tid=0&keyword=&pn=1&order=fav_time",
+                mid, fid);
+        err[0] = '\0';
+        if (http_get_https(url, bili_req_headers(), &body, &len, &status,
+                           err, errcap) == HTTP_OK && status == 200 &&
+            body != NULL) {
+            str_copy(g_login_fav_raw, (int)sizeof(g_login_fav_raw), body);
+            sec = strstr(body, "\"archives\"");
+            if (sec == NULL) {
+                sec = strstr(body, "\"medias\"");
+            }
+            if (sec == NULL) {
+                sec = strstr(body, "\"list\"");
+            }
+            if (sec == NULL) {
+                sec = body;
+            }
+            if (json_get_string(sec, "pic", pic, cap) ||
+                json_get_string(sec, "cover", pic, cap)) {
+                if (pic[0] != '\0') {
+                    rc = 0;
+                }
+            }
+            free(body);
+            body = NULL;
+        }
+    }
+
+    if (rc != 0) {
+        long code = -1;
+
+        if (err != NULL && err[0] == '\0') {
+            set_err(err, errcap, "没解析出封面");
+        }
+        (void)code;
+        if (cap > 0) {
+            pic[0] = '\0';
+        }
     }
     return rc;
 }

@@ -380,6 +380,8 @@ void PlayService::PlayJob(void *arg)
     free(body);
     body = NULL;
     g_app.GetLogger().Log("cid=%s", cid);
+    /* 记下在播视频（供观看历史上报用：上报线程靠它取 bvid/cid） */
+    g_app.SetPlayingInfo(bvid, cid);
 
     if (play_cancelled()) {
         return;
@@ -482,6 +484,7 @@ void PlayService::PlayJob(void *arg)
     if (!cfg->offline && strncmp(dl_url, "http://", 7) == 0) {
         g_app.GetLogger().Log("在线播放（不下载）：%.120s", dl_url);
         g_app.GetLogger().Status("在线播放中…");
+        /* 加载层文字：正在加载视频… -> 装填弹幕中…（顺序别反） */
         if (g_app.Sink() != NULL) {
             g_app.Sink()->OnLoading("正在加载视频…");
         }
@@ -506,6 +509,7 @@ void PlayService::PlayJob(void *arg)
 
     g_app.GetLogger().Log("开始下载（边下边播）：%s", dst);
     g_app.GetLogger().Status("准备下载…");
+    /* 加载层文字：正在加载视频… -> 装填弹幕中… */
     if (g_app.Sink() != NULL) {
         g_app.Sink()->OnLoading("正在加载视频…");
     }
@@ -564,6 +568,7 @@ void PlayService::PlayLast()
     }
     g_app.GetLogger().Log("播放上次下载的：%s", last);
     if (g_app.Sink() != NULL) {
+        g_app.Sink()->OnLoading("正在加载视频…");
         g_app.Sink()->OnPlayMedia(last);
     } else {
         PlayFile(last);
@@ -609,4 +614,24 @@ void PlayService::SetOffline(int on)
     g_app.GetLogger().Log("离线播放（下载到本地）：%s", cfg->offline ? "开" : "关");
     g_app.GetLogger().Status("离线播放（下载到本地）：%s",
                              cfg->offline ? "开" : "关");
+}
+
+void PlayService::SetDanmaku(int on)
+{
+    BcConfig *cfg = &g_app.Cfg();
+
+    cfg->danmaku = on ? 1 : 0;
+    bili_save_config(cfg);
+    g_app.GetLogger().Log("弹幕：%s", cfg->danmaku ? "开" : "关");
+    g_app.GetLogger().Status("弹幕：%s", cfg->danmaku ? "开" : "关");
+}
+
+void PlayService::SetReportHistory(int on)
+{
+    BcConfig *cfg = &g_app.Cfg();
+
+    cfg->report_history = on ? 1 : 0;
+    bili_save_config(cfg);
+    g_app.GetLogger().Log("上报观看历史：%s", cfg->report_history ? "开" : "关");
+    g_app.GetLogger().Status("上报观看历史：%s", cfg->report_history ? "开" : "关");
 }

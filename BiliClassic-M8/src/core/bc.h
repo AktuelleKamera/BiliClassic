@@ -20,11 +20,11 @@
 
 #define BC_APP_NAME     "哔哩经典"
 #define BC_APP_TITLE    "哔哩经典 for Mymobile"
-/* 界面上显示的短版本（三段）。exe 的 VERSIONINFO 资源用四段 0.1.0.0 */
-#define BC_APP_VER      "0.1.0"
-#define BC_APP_VER_FULL 0,1,0,0
-/* 更新接口 version.json 里的 version_code（0.1.0.0 -> 100） */
-#define BC_APP_VER_CODE 100
+/* 界面上显示的短版本（三段）。exe 的 VERSIONINFO 资源用四段 0.2.0.0 */
+#define BC_APP_VER      "0.2.0"
+#define BC_APP_VER_FULL 0,2,0,0
+/* 更新接口 version.json 里的 version_code（0.2.0.0 -> 200） */
+#define BC_APP_VER_CODE 200
 #define BC_MAX_ITEMS    300
 #define BC_TITLE_LEN    220
 #define BC_AUTHOR_LEN   80
@@ -67,6 +67,8 @@ typedef struct {
     char transcode_fmt[BC_TRANSCODE_FMT_LEN];   /* "wmv" / "h264" */
     int  conns;                     /* 下载并行连接数 1..8（1=单连接） */
     int  offline;                   /* 1 = 下载到本地离线播放；0 = 只在线流播不落盘 */
+    int  danmaku;                   /* 1 = 显示弹幕；0 = 关闭弹幕 */
+    int  report_history;            /* 1 = 播放时上报 B 站观看历史；0 = 不上报 */
     char wbi_mixin[40];             /* WBI 签名用的 mixin key（32 hex） */
     int  wbi_ok;                    /* mixin key 是否已取到 */
     long time_offset;               /* 服务器时间 - 本机时间（秒） */

@@ -30,6 +30,9 @@ void bili_save_cookie(BcConfig *cfg);
 
 /* 统一请求头（含 Referer/Cookie）与设备 buvid cookie（login 模块也用） */
 const char *bili_req_headers(void);
+/* 搜索用的匿名头：无 SESSDATA 时不发任何 Cookie（未登录发指纹 Cookie
+ * 会被判成机器人 → v_voucher → 重试耗尽就是「搜索繁忙」） */
+const char *bili_req_headers_anon(void);
 const char *bili_get_cookie(void);
 
 /* 取转码服务器时间并缓存；转码/token 需要窗口内的时间戳 */

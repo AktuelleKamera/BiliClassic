@@ -22,6 +22,7 @@ DanmakuOverlay::DanmakuOverlay()
     m_items = NULL;
     m_count = 0;
     m_cursor = 0;
+    m_active = true;
     m_liveCount = 0;
     m_lines = 0;
     m_lineHeight = DM_LINE_HEIGHT;
@@ -133,7 +134,9 @@ void DanmakuOverlay::EnsureFont()
             *(p + 1) = L'\0';
             wcscat(path, L"danmaku.ttf");
             if (AddFontResourceW(path)) {
-                wcscpy(lf.lfFaceName, L"SimHei");
+                /* 该 ttf 的 family 名是「黑体」（不是英文 SimHei）。写错名字
+                 * GDI 会替换成别的字体（斜的/缺字形），表现为个别弹幕整条歪。 */
+                wcscpy(lf.lfFaceName, L"黑体");
                 m_fontDm = CreateFontIndirectW(&lf);
                 if (m_fontDm != NULL) {
                     m_fontDmOwned = true;
@@ -151,8 +154,7 @@ void DanmakuOverlay::EnsureFont()
     }
 }
 
-/* 该码位用 danmaku.ttf（补充）还是宋体（正文）。
- * danmaku.ttf 无汉字，只覆盖假名/CJK符号/私用区特殊符/全角等，故只在那些范围用它。 */
+/* 该码位用 danmaku.ttf（补充）还是宋体（正文）。 */
 static int dm_use_dm_font(unsigned int c)
 {
     if (c >= 0x2E80 && c <= 0x33FF) {
@@ -171,6 +173,15 @@ static int dm_use_dm_font(unsigned int c)
         return 1;   /* 全角形式 */
     }
     return 0;
+}
+
+static HFONT dm_pick_font(HDC dc, HFONT main, HFONT supp, wchar_t c)
+{
+    (void)dc;
+    if (supp == NULL) {
+        return main;
+    }
+    return dm_use_dm_font((unsigned int)c) ? supp : main;
 }
 
 HBITMAP DanmakuOverlay::RenderText(const wchar_t *wbuf, COLORREF cr,
@@ -209,8 +220,7 @@ HBITMAP DanmakuOverlay::RenderText(const wchar_t *wbuf, COLORREF cr,
     /* 逐字量宽（按每个字实际用的字体：宋体 / danmaku.ttf 补充） */
     tw = 0;
     for (i = 0; i < len; i++) {
-        HFONT f = (m_fontDm != NULL &&
-                   dm_use_dm_font((unsigned int)wbuf[i])) ? m_fontDm : m_font;
+        HFONT f = dm_pick_font(m_memDC, m_font, m_fontDm, wbuf[i]);
         SIZE sz;
 
         SelectObject(m_memDC, f);
@@ -222,7 +232,9 @@ HBITMAP DanmakuOverlay::RenderText(const wchar_t *wbuf, COLORREF cr,
         return NULL;
     }
     th = m_lineHeight + 4;
-    dw = tw + 4;
+    /* DIB 每行字节数必须 4 字节对齐：宽度取偶，dw*2 才是 4 的倍数。
+     * 之前 dw 可能是奇数，按 dw*2 逐行拷贝会错位，弹幕看着就是斜的。 */
+    dw = (tw + 4 + 1) & ~1;
 
     /* 16bpp RGB565 DIB（顶朝下），和 overlay 面同格式，方便逐行 memcpy */
     memset(&bi, 0, sizeof(bi));
@@ -256,8 +268,7 @@ HBITMAP DanmakuOverlay::RenderText(const wchar_t *wbuf, COLORREF cr,
     for (i = 0; i < len; i++) {
         static const int ox[4] = { -1, 1, 0, 0 };
         static const int oy[4] = { 0, 0, -1, 1 };
-        HFONT f = (m_fontDm != NULL &&
-                   dm_use_dm_font((unsigned int)wbuf[i])) ? m_fontDm : m_font;
+        HFONT f = dm_pick_font(m_memDC, m_font, m_fontDm, wbuf[i]);
         int o;
         SIZE sz;
 
@@ -355,6 +366,25 @@ void DanmakuOverlay::Load(BcDanmaku *items, int count)
     m_cursor = 0;
 }
 
+/* 回到开头：清掉在场的，游标归零（items 保留）。播完 seek 回 0 时用。 */
+void DanmakuOverlay::Rewind()
+{
+    int i;
+
+    for (i = 0; i < m_liveCount; i++) {
+        if (m_live[i].bmp != NULL) {
+            DeleteObject(m_live[i].bmp);
+            m_live[i].bmp = NULL;
+        }
+    }
+    m_liveCount = 0;
+    m_cursor = 0;
+    for (i = 0; i < 16; i++) {
+        m_lineFree[i] = -0x7FFFFFFF;
+    }
+    m_lastNow = -1;
+}
+
 int DanmakuOverlay::Measure(int idx, HDC dc)
 {
     wchar_t wbuf[BC_DM_TEXT_MAX * 2];
@@ -390,6 +420,25 @@ void DanmakuOverlay::Update(long nowMs, int w, int h)
     int i;
 
     if (m_items == NULL || m_count <= 0) {
+        return;
+    }
+    if (!m_active) {
+        /* 弹幕关：只推进游标丢掉过期项、清空在场（顺便释放位图），
+         * 不做任何 CreateDIBSection/文字渲染；控制条不受影响。 */
+        while (m_cursor < m_count && m_items[m_cursor].time_ms <= nowMs) {
+            m_cursor++;
+        }
+        for (i = 0; i < m_liveCount; i++) {
+            if (m_live[i].bmp != NULL) {
+                DeleteObject(m_live[i].bmp);
+                m_live[i].bmp = NULL;
+            }
+        }
+        m_liveCount = 0;
+        for (i = 0; i < 16; i++) {
+            m_lineFree[i] = -0x7FFFFFFF;
+        }
+        m_lastNow = nowMs;
         return;
     }
     EnsureFont();
@@ -508,7 +557,7 @@ void DanmakuOverlay::Update(long nowMs, int w, int h)
     m_lastNow = nowMs;
 }
 
-/* 只贴图到 overlay 显存（调用方已锁住并清成色键） */
+/* 只贴图到 overlay 显存（调用方已锁住并整屏清成色键） */
 void DanmakuOverlay::Render(void *surface, int pitch, int w, int h)
 {
     int i;

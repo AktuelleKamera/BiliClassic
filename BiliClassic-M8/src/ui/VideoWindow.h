@@ -36,9 +36,12 @@ private:
     void DrawDanmaku();
     bool InitOverlay();
     void ShowControls();
+    void UpdateControlBar();
+    void RenderControlBar();
     void DrawControls(void *surface, int pitch, int w, int h);
     void FreeControls();
     int  HandleControlTap(int ox, int oy);
+    static DWORD WINAPI HistThread(void *arg);   /* 观看历史上报线程 */
 
     MzPlayer    m_player;
     UiButton    m_btnBack;
@@ -64,8 +67,10 @@ private:
     /* 播放器控制层（点一下出现，5 秒后自动隐藏） */
     int         m_ctrlShown;
     DWORD       m_ctrlHideAt;  /* 自动隐藏时刻（GetTickCount） */
+    DWORD       m_ctrlShownAt; /* 刚亮出控制条的时刻（防触摸重复 DOWN 立刻收回） */
     int         m_playing;
     int         m_volume;      /* 0..100，控制层音量调节 */
+    int         m_danmakuOn;   /* 弹幕开关（控制层按钮切换，持久化到 ini） */
     HDC         m_ctrlDC;
     HBITMAP     m_ctrlBmp;
     HBITMAP     m_ctrlOldBmp;
@@ -74,6 +79,20 @@ private:
     int         m_ctrlBw;
     int         m_ctrlBh;
     HFONT       m_ctrlFont;
+
+    /* 播放环境效率：画面没变就不碰 overlay 显存（不 Lock/不 memset/不 flip）。
+     * 视频大部分时间屏幕上是空的（弹幕间隙）或暂停中，这时零开销。 */
+    long        m_prevPos;    /* 上一帧用的播放位置 */
+    int         m_endSeeked;  /* 播到结尾已自动 seek 回 0 */
+    int         m_prevLive;   /* 上一帧屏上的弹幕条数 */
+    int         m_prevCtrl;   /* 上一帧控制条是否在屏上 */
+    int         m_ctrlBmpValid;   /* 控制条 DIB 内容是否仍符合缓存键 */
+    long        m_ctrlSec;        /* 控制条缓存键：进度秒 */
+    int         m_ctrlVolume;     /* 控制条缓存键：音量 */
+    int         m_ctrlPlaying;    /* 控制条缓存键：播放/暂停 */
+    int         m_ctrlDirty;      /* 用户操作过控制条：下一帧强制重画 */
+    HANDLE      m_histThread;     /* 观看历史上报线程 */
+    volatile long m_histStop;     /* 置 1 让上报线程退出 */
 };
 
 #endif /* UI_VIDEOWINDOW_H */
