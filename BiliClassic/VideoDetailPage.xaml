@@ -6,7 +6,7 @@
     xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="768"
+    mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="696"
     FontFamily="{StaticResource PhoneFontFamilyNormal}"
     FontSize="{StaticResource PhoneFontSizeNormal}"
     Foreground="{StaticResource PhoneForegroundBrush}"
@@ -157,7 +157,7 @@
 
                     <Grid Grid.Row="0" Margin="12,0,12,0">
                         <ListBox x:Name="RelatedList"
-                                 SelectionChanged="RelatedList_SelectionChanged">
+                                 SelectionChanged="RelatedList_SelectionChanged" toolkit:TiltEffect.IsTiltEnabled="True">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <!-- 卡片与首页推荐同一套模板 -->
@@ -211,7 +211,7 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <ListBox x:Name="CommentList" Grid.Row="0" Margin="12,0,12,0">
+                    <ListBox x:Name="CommentList" Grid.Row="0" Margin="12,0,12,0" toolkit:TiltEffect.IsTiltEnabled="True">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Grid Margin="0,0,0,14">

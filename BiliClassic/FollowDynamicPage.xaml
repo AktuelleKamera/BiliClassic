@@ -53,7 +53,7 @@
 
             <controls:PivotItem Header="关注">
                 <Grid Margin="12,0,12,0">
-                    <ListBox x:Name="UserList" SelectionChanged="UserList_SelectionChanged">
+                    <ListBox x:Name="UserList" SelectionChanged="UserList_SelectionChanged" toolkit:TiltEffect.IsTiltEnabled="True">
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem">
                                 <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -104,7 +104,7 @@
 
             <controls:PivotItem Header="动态">
                 <Grid Margin="12,0,12,0">
-                    <ListBox x:Name="DynamicList" SelectionChanged="DynamicList_SelectionChanged">
+                    <ListBox x:Name="DynamicList" SelectionChanged="DynamicList_SelectionChanged" toolkit:TiltEffect.IsTiltEnabled="True">
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem">
                                 <Setter Property="HorizontalContentAlignment" Value="Stretch"/>

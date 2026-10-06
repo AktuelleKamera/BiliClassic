@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Navigation;
 using BiliClassic.Api;
 using Microsoft.Phone.Controls;
+using System.Windows.Media.Imaging;
 
 namespace BiliClassic
 {
@@ -18,6 +19,8 @@ namespace BiliClassic
         private int _page = 1;
         private bool _hasMore;
         private bool _loading;
+        private bool _loaded = false;//是否已经加载，WVSP注
+        private int _historycount = 0;
 
         private DateTime _lastSearchAt = DateTime.MinValue;
 
@@ -56,11 +59,21 @@ namespace BiliClassic
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-
-            List<string> history = LoadHistory();
-            HistoryList.ItemsSource = history;
-            HistoryPanel.Visibility =
-                history.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            if (!_loaded)
+            {
+                List<string> history = LoadHistory();
+                HistoryList.ItemsSource = history;
+                _historycount = history.Count;
+                HistoryPanel.Visibility =
+                    _historycount > 0 ? Visibility.Visible : Visibility.Collapsed;
+                _loaded = true;
+                ShowHideInfo();
+            }
+            else
+            {
+                HistoryPanel.Visibility = Visibility.Collapsed;
+                ShowHideInfo();
+            }
         }
 
         private void SearchButton_Click(object sender, RoutedEventArgs e)
@@ -106,6 +119,7 @@ namespace BiliClassic
 
             AddHistory(keyword);
             HistoryPanel.Visibility = Visibility.Collapsed;
+            ShowHideInfo();
 
             if ((DateTime.Now - _lastSearchAt).TotalMilliseconds < 800)
             {
@@ -475,8 +489,10 @@ namespace BiliClassic
         {
             List<string> history = LoadHistory();
             HistoryList.ItemsSource = history;
+            _historycount = history.Count;
             HistoryPanel.Visibility =
-                history.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+                _historycount > 0 ? Visibility.Visible : Visibility.Collapsed;
+            ShowHideInfo();
         }
 
         private void HistoryList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -489,6 +505,7 @@ namespace BiliClassic
             HistoryList.SelectedIndex = -1;
             KeywordBox.Text = keyword;
             HistoryPanel.Visibility = Visibility.Collapsed;
+            ShowHideInfo();
             StartNewSearch();
         }
 
@@ -512,6 +529,7 @@ namespace BiliClassic
             else
             {
                 HistoryPanel.Visibility = Visibility.Collapsed;
+                ShowHideInfo();
             }
         }
 
@@ -563,6 +581,41 @@ namespace BiliClassic
         {
             StatusText.Text = message;
             StatusText.Visibility = Visibility.Visible;
+        }
+
+        private void ShowHideInfo()
+        {
+            //System.Diagnostics.Debug.WriteLine(HistoryPanel.Visibility + "" + _historycount);
+            if (HistoryPanel.Visibility == Visibility.Collapsed)// && _historycount > 0)
+            {
+                //HistoryPanel.Visibility = Visibility.Visible;
+                InfoButton.Content = "展开";
+            }
+            else
+            {
+                //HistoryPanel.Visibility = Visibility.Collapsed;
+                InfoButton.Content = "收起";
+            }
+        }
+
+        private void KeywordBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            //HistoryPanel.Visibility = Visibility.Collapsed;
+        }
+
+        private void InfoButton_Click(object sender, RoutedEventArgs e)
+        {
+            //ShowHideInfo();
+            if (HistoryPanel.Visibility == Visibility.Collapsed && _historycount > 0)
+            {
+                HistoryPanel.Visibility = Visibility.Visible;
+                InfoButton.Content = "收起";
+            }
+            else
+            {
+                HistoryPanel.Visibility = Visibility.Collapsed;
+                InfoButton.Content = "展开";
+            }
         }
     }
 }

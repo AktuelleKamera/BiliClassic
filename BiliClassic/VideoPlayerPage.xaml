@@ -15,18 +15,6 @@
     shell:SystemTray.IsVisible="False" Orientation="Landscape">
 	<phone:PhoneApplicationPage.Resources>
 		<Storyboard x:Name="ShowBars">
-			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="TitleText">
-				<EasingDoubleKeyFrame KeyTime="0" Value="-36">
-					<EasingDoubleKeyFrame.EasingFunction>
-						<CubicEase EasingMode="EaseOut"/>
-					</EasingDoubleKeyFrame.EasingFunction>
-				</EasingDoubleKeyFrame>
-				<EasingDoubleKeyFrame KeyTime="0:0:0.5" Value="0">
-					<EasingDoubleKeyFrame.EasingFunction>
-						<CubicEase EasingMode="EaseOut"/>
-					</EasingDoubleKeyFrame.EasingFunction>
-				</EasingDoubleKeyFrame>
-			</DoubleAnimationUsingKeyFrames>
 			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="ControlPanel">
 				<EasingDoubleKeyFrame KeyTime="0" Value="204">
 					<EasingDoubleKeyFrame.EasingFunction>
@@ -39,20 +27,20 @@
 					</EasingDoubleKeyFrame.EasingFunction>
 				</EasingDoubleKeyFrame>
 			</DoubleAnimationUsingKeyFrames>
-		</Storyboard>
-		<Storyboard x:Name="HideBars">
-			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="TitleText">
-				<EasingDoubleKeyFrame KeyTime="0" Value="0">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="grid">
+				<EasingDoubleKeyFrame KeyTime="0" Value="-120">
 					<EasingDoubleKeyFrame.EasingFunction>
-						<CubicEase EasingMode="EaseIn"/>
+						<CubicEase EasingMode="EaseOut"/>
 					</EasingDoubleKeyFrame.EasingFunction>
 				</EasingDoubleKeyFrame>
-				<EasingDoubleKeyFrame KeyTime="0:0:0.5" Value="-40.5">
+				<EasingDoubleKeyFrame KeyTime="0:0:0.5" Value="0">
 					<EasingDoubleKeyFrame.EasingFunction>
-						<CubicEase EasingMode="EaseIn"/>
+						<CubicEase EasingMode="EaseOut"/>
 					</EasingDoubleKeyFrame.EasingFunction>
 				</EasingDoubleKeyFrame>
 			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="HideBars">
 			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="ControlPanel">
 				<EasingDoubleKeyFrame KeyTime="0" Value="0">
 					<EasingDoubleKeyFrame.EasingFunction>
@@ -60,6 +48,18 @@
 					</EasingDoubleKeyFrame.EasingFunction>
 				</EasingDoubleKeyFrame>
 				<EasingDoubleKeyFrame KeyTime="0:0:0.5" Value="202.5">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<CubicEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="grid">
+				<EasingDoubleKeyFrame KeyTime="0" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<CubicEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.5" Value="-120">
 					<EasingDoubleKeyFrame.EasingFunction>
 						<CubicEase EasingMode="EaseIn"/>
 					</EasingDoubleKeyFrame.EasingFunction>
@@ -134,13 +134,20 @@
         <Grid x:Name="TapLayer" Background="Transparent"
               MouseLeftButtonUp="TapLayer_MouseLeftButtonUp"/>
 
-        <TextBlock x:Name="TitleText" VerticalAlignment="Top" Margin="12,12,12,0"
-                   Foreground="White" TextWrapping="Wrap" MaxHeight="60" RenderTransformOrigin="0.5,0.5">
+        <!-- 顶层 -->
+        <Grid x:Name="grid" Height="90" HorizontalAlignment="Left" VerticalAlignment="Top" RenderTransformOrigin="0.5,0.5">
+        	<Grid.RenderTransform>
+        		<CompositeTransform/>
+        	</Grid.RenderTransform>
+            <Rectangle Height="90" HorizontalAlignment="Left" Name="rectangle1" Stroke="{x:Null}" StrokeThickness="1" VerticalAlignment="Top" Width="800" Fill="#CC000000" />
+            <TextBlock x:Name="TitleText" VerticalAlignment="Top" Margin="12,12,12,0"
+                   Foreground="White" TextWrapping="Wrap" MaxHeight="60" RenderTransformOrigin="0.5,0.5" Text="">
         	<TextBlock.RenderTransform>
         		<CompositeTransform/>
         	</TextBlock.RenderTransform>
-        </TextBlock>
-
+            </TextBlock>
+        </Grid>
+        
         <!-- 底部 -->
         <StackPanel x:Name="stackPanel" VerticalAlignment="Bottom" RenderTransformOrigin="0.5,0.5">
         	<StackPanel.RenderTransform>
@@ -210,7 +217,7 @@
                         <!-- 右下角：点开清晰度选单 -->
                         <Button x:Name="QualityButton" Grid.Column="4" Content="720P"
                                 MinWidth="0" Padding="12,2"
-                                Click="QualityButton_Click" BorderBrush="Transparent" FontSize="20" />
+                                Click="QualityButton_Click" BorderBrush="Transparent" FontSize="20" Foreground="White" />
                     </Grid>
                 </StackPanel>
             </Border>

@@ -16,6 +16,8 @@ using Microsoft.Devices;
 using Microsoft.Phone.Controls;
 using Microsoft.Phone.Shell;
 using Microsoft.Phone.Tasks;
+using System.Windows.Shapes;
+using Microsoft.Xna.Framework.GamerServices;
 
 namespace BiliClassic
 {
@@ -48,9 +50,9 @@ namespace BiliClassic
         private const double TapSlop = 16;
 
         private static readonly Brush TileNormal =
-            new SolidColorBrush(Color.FromArgb(0xFF, 0xD2, 0x65, 0x85));
+            new SolidColorBrush(Color.FromArgb(0, 255, 255, 255));
         private static readonly Brush TileSelected =
-            new SolidColorBrush(Color.FromArgb(0xFF, 0xF0, 0x8A, 0xA8));
+            new SolidColorBrush(Color.FromArgb(0, 255, 255, 255));
 
         public MainPage()
         {
@@ -554,32 +556,45 @@ namespace BiliClassic
                     PlayEchoSound();
                     if (!string.IsNullOrEmpty(message))
                     {
-                        MessageBox.Show(message, "回声洞", MessageBoxButton.OK);
+                        //MessageBox.Show(message, "回声洞", MessageBoxButton.OK);
+                        HuiShengDong_MessegeBox(message);
                         return;
                     }
-                    MessageBox.Show(
-                        string.IsNullOrEmpty(error) ? "回声洞暂无内容" : error,
-                        "回声洞", MessageBoxButton.OK);
+                    HuiShengDong_MessegeBox(string.IsNullOrEmpty(error) ? "回声洞暂无内容" : error);
+                    //MessageBox.Show(string.IsNullOrEmpty(error) ? "回声洞暂无内容" : error,"回声洞", MessageBoxButton.OK);
                 }));
             });
         }
 
         private void PlayEchoSound()
         {
-#if WP8
+//#if WP8
             try
             {
+                /*
                 if (EchoSoundPlayer.Source == null)
                 {
-                    EchoSoundPlayer.Source = new Uri("Res/echo.wav", UriKind.Relative);
                 }
+                EchoSoundPlayer.Source = new Uri("/Res/echo.wav", UriKind.Relative);
                 EchoSoundPlayer.Stop();
+                */
                 EchoSoundPlayer.Play();
             }
             catch (Exception)
             {
             }
-#endif
+//#endif
+        }
+
+        private void HuiShengDong_MessegeBox(string mes)
+        {
+            PlayEchoSound();
+            Guide.BeginShowMessageBox("回声洞", mes, new List<string>() { "确定" }, 0, MessageBoxIcon.None, null, null);
+        }
+
+        private void EchoSoundPlayer_MediaEnded(object sender, RoutedEventArgs e)
+        {
+            EchoSoundPlayer.Stop();
         }
 
         private void AboutMenuItem_Click(object sender, EventArgs e)
@@ -637,7 +652,8 @@ namespace BiliClassic
         {
             MineName.Text = "未登录";
             MineStatus.Text = "";
-            AvatarImage.Source = null;
+            //AvatarImage.Source = null;
+            AvatarImage.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/user.png", UriKind.Relative)); ;
         }
 
 
@@ -829,7 +845,8 @@ namespace BiliClassic
             _arrangeMode = false;
             if (_selectedTile != null)
             {
-                _selectedTile.Background = TileNormal;
+                //_selectedTile.Background = TileNormal;
+                ChangeTileSelected(_selectedTile, false);
                 _selectedTile = null;
             }
             MineArrangeHint.Visibility = Visibility.Collapsed;
@@ -841,23 +858,52 @@ namespace BiliClassic
             ExitArrangeMode();
         }
 
+        private void ChangeTileSelected(Border tile, bool HideOrShow)
+        {
+            var grid = tile.Child as Grid;
+            if (grid == null) return;
+
+            foreach (var child in grid.Children)
+            {
+                if (child is Polygon)
+                {
+                    Polygon polygon = (Polygon)child;
+                    if (!HideOrShow)//Hide
+                    {
+                        polygon.Visibility = Visibility.Collapsed;
+                    }
+                    else
+                    {
+                        polygon.Visibility = Visibility.Visible;
+                    }
+                    break;
+                }
+            }
+        }
+
         private void ArrangeTap(Border tile)
         {
             if (_selectedTile == null)
             {
                 _selectedTile = tile;
-                tile.Background = TileSelected;
+                //tile.Background = TileSelected;
+                ChangeTileSelected(tile, true);
+                ChangeTileSelected(_selectedTile, true);
                 return;
             }
             if (_selectedTile == tile)
             {
-                tile.Background = TileNormal;
+                //tile.Background = TileNormal;
+                ChangeTileSelected(tile, false);
+                ChangeTileSelected(_selectedTile, false);
                 _selectedTile = null;
                 return;
             }
 
             SwapTiles(_selectedTile, tile);
-            _selectedTile.Background = TileNormal;
+            //_selectedTile.Background = TileNormal;
+            ChangeTileSelected(tile, false);
+            ChangeTileSelected(_selectedTile, false);
             _selectedTile = null;
             SaveTileOrder();
         }

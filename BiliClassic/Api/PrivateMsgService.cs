@@ -10,14 +10,18 @@ namespace BiliClassic.Api
     public sealed class PrivateMsgItem
     {
         private static readonly Color MineBubbleColor = Color.FromArgb(0xFF, 0xD8, 0x6D, 0xA5);
-        private static readonly Color OtherBubbleColor = Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF);
+        private static readonly Color OtherBubbleColor = Color.FromArgb(0xFF, 0xD3, 0xD3, 0xD3);
+        private static readonly Color TimeMineTextColor = Color.FromArgb(0x80, 0xFF, 0xFF, 0xFF);
+        private static readonly Color TimeOtherTextColor = Color.FromArgb(0x80, 0x00, 0x00, 0x00);
         private static readonly Color MineTextColor = Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF);
-        private static readonly Color OtherTextColor = Color.FromArgb(0xFF, 0xE8, 0xE8, 0xE8);
+        private static readonly Color OtherTextColor = Color.FromArgb(0xFF, 0x00, 0x00, 0x00);
         private static readonly Color NoticeTextColor = Color.FromArgb(0xFF, 0x99, 0x99, 0x99);
         private static readonly Color NoBubbleColor = Color.FromArgb(0x00, 0x00, 0x00, 0x00);
 
         private static Brush _mineBubble;
         private static Brush _otherBubble;
+        private static Brush _timemineText;
+        private static Brush _timeotherText;
         private static Brush _mineText;
         private static Brush _otherText;
         private static Brush _noticeText;
@@ -49,6 +53,16 @@ namespace BiliClassic.Api
             }
         }
 
+        public PointCollection Points
+        {
+            get
+            {
+                return IsMine
+                    ? new PointCollection() { new Point(15, 0), new Point(30, 0), new Point(30, 15) }
+                    : new PointCollection() { new Point(15, 0), new Point(30, 0), new Point(15, 15) };
+            }
+        }
+
         public Brush Bubble
         {
             get
@@ -74,6 +88,16 @@ namespace BiliClassic.Api
                 return IsMine
                     ? Lazy(ref _mineText, MineTextColor)
                     : Lazy(ref _otherText, OtherTextColor);
+            }
+        }
+
+        public Brush TimeTextBrush
+        {
+            get
+            {
+                return IsMine
+                    ? Lazy(ref _timemineText, TimeMineTextColor)
+                    : Lazy(ref _timeotherText, TimeOtherTextColor);
             }
         }
 

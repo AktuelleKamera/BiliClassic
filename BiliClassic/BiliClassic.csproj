@@ -74,6 +74,8 @@
     <Reference Include="Microsoft.Phone.Controls.Toolkit">
       <HintPath>Libs\Microsoft.Phone.Controls.Toolkit.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.Xna.Framework.GamerServices, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=MSIL" />
     <Reference Include="System.Windows" />
     <Reference Include="system" />
     <Reference Include="System.Core" />
@@ -277,6 +279,16 @@
     </Content>
     <Content Include="SplashScreenImage.jpg" />
     <!-- 应用栏用的图标，来自 Res\Icon -->
+    <Resource Include="Res\Tile\bendi.png" />
+    <Resource Include="Res\Tile\dongtai.png" />
+    <Resource Include="Res\Tile\lishi.png" />
+    <Resource Include="Res\Tile\paihang.png" />
+    <Resource Include="Res\Tile\shaohou.png" />
+    <Resource Include="Res\Tile\shoucang.png" />
+    <Resource Include="Res\Tile\user.png" />
+    <Resource Include="Res\Tile\xiaoxi.png" />
+    <Resource Include="Res\Tile\yunqi.png" />
+    <Resource Include="Res\Tile\zhuifan.png" />
     <Content Include="Res\Icon\search.png" />
     <Content Include="Res\Icon\refresh.png" />
     <Content Include="Res\Icon\settings.png" />

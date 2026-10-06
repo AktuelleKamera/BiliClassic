@@ -88,7 +88,7 @@
                        Style="{StaticResource PhoneTextSubtleStyle}"/>
 
             <ListBox x:Name="EpisodeList" Grid.Row="2"
-                     SelectionChanged="EpisodeList_SelectionChanged">
+                     SelectionChanged="EpisodeList_SelectionChanged" toolkit:TiltEffect.IsTiltEnabled="True">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <Grid Margin="0,0,0,10">

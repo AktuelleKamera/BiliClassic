@@ -201,10 +201,12 @@ namespace BiliClassic
 
         private void InputBox_KeyDown(object sender, KeyEventArgs e)
         {
+            /*
             if (e.Key == Key.Enter)
             {
                 Send();
             }
+             */
         }
 
         private void Send()

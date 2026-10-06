@@ -54,19 +54,35 @@
                     <StackPanel Margin="0,0,0,24">
                         <TextBlock Text="手机号" Margin="0,0,0,6"
                                    Style="{StaticResource PhoneTextSubtleStyle}"/>
-                        <TextBox x:Name="TelBox" Height="72"/>
+                        <TextBox x:Name="TelBox" Height="72">
+                            <TextBox.InputScope>
+                                <InputScope>
+                                    <InputScope.Names>
+                                        <InputScopeName NameValue="TelephoneNumber"/>
+                                    </InputScope.Names>
+                                </InputScope>
+                            </TextBox.InputScope>
+                        </TextBox>
 
                         <Grid Margin="0,12,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBox x:Name="CodeBox" Grid.Column="0" Height="72"/>
+                            <TextBox x:Name="CodeBox" Grid.Column="0" Height="72">
+                                <TextBox.InputScope>
+                                    <InputScope>
+                                        <InputScope.Names>
+                                            <InputScopeName NameValue="Digits"/>
+                                        </InputScope.Names>
+                                    </InputScope>
+                                </TextBox.InputScope>
+                            </TextBox>
                             <Button x:Name="SendButton" Grid.Column="1" Content="发送验证码"
-                                    Margin="8,0,0,0" Click="SendButton_Click"/>
+                                    Margin="8,0,0,0" Click="SendButton_Click" Background="#D86DA5" Foreground="White" BorderThickness="0"/>
                         </Grid>
 
-                        <Button x:Name="SmsLoginButton" Content="登录" Click="SmsLoginButton_Click"/>
+                        <Button x:Name="SmsLoginButton" Content="登录" Click="SmsLoginButton_Click" Background="#D86DA5" Foreground="White" BorderThickness="0"/>
 
                         <TextBlock Text="验证码将会以短信发送到上面的号码。若一直收不到，请改用二维码登录，或在信息页手动登录~"
                                    Margin="0,12,0,0" TextWrapping="Wrap"
@@ -86,7 +102,7 @@
                         </Border>
 
                         <Button x:Name="RefreshButton" Content="刷新二维码"
-                                Margin="0,12,0,0" Click="RefreshButton_Click"/>
+                                Margin="0,12,0,0" Click="RefreshButton_Click" Background="#D86DA5" Foreground="White" BorderThickness="0"/>
 
                         <TextBlock Text="用B站官方客户端扫码，然后在手机上确认登录~"
                                    Margin="0,12,0,0" TextWrapping="Wrap"
@@ -110,10 +126,10 @@
                                    Style="{StaticResource PhoneTextSubtleStyle}"/>
                         <TextBox x:Name="CookieBox" Height="72"/>
                         <Button x:Name="CookieButton" Content="使用 Cookie 登录"
-                                Click="CookieButton_Click"/>
+                                Click="CookieButton_Click" Background="#D86DA5" Foreground="White" BorderThickness="0"/>
 
                         <Button x:Name="LogoutButton" Content="退出登录"
-                                Margin="0,12,0,0" Click="LogoutButton_Click"/>
+                                Margin="0,12,0,0" Click="LogoutButton_Click" Background="#D86DA5" Foreground="White" BorderThickness="0"/>
                     </StackPanel>
                 </ScrollViewer>
             </controls:PivotItem>

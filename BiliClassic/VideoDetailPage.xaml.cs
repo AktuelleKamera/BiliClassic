@@ -21,6 +21,7 @@ namespace BiliClassic
 
         private string _bvid = "";
         private bool _loading;
+        private bool _loaded = false;//是否已经加载，WVSP注
 
         private VideoDetail _detail;
 
@@ -96,17 +97,21 @@ namespace BiliClassic
         {
             base.OnNavigatedTo(e);
 
-            string value;
-            if (NavigationContext.QueryString.TryGetValue("bvid", out value))
+            if (!_loaded)
             {
-                _bvid = value;
-            }
+                string value;
+                if (NavigationContext.QueryString.TryGetValue("bvid", out value))
+                {
+                    _bvid = value;
+                }
 
-            BvidText.Text = _bvid;
+                BvidText.Text = _bvid;
 
-            if (!_loading)
-            {
-                Load();
+                if (!_loading)
+                {
+                    Load();
+                }
+                _loaded = true;
             }
         }
 
