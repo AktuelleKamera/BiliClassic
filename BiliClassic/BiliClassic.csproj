@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -74,6 +74,8 @@
     <Reference Include="Microsoft.Phone.Controls.Toolkit">
       <HintPath>Libs\Microsoft.Phone.Controls.Toolkit.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.Xna.Framework.GamerServices, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=MSIL" />
     <Reference Include="System.Windows" />
     <Reference Include="system" />
     <Reference Include="System.Core" />
@@ -275,6 +277,18 @@
     <Content Include="Background.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Resource Include="Res\Tile\bendi.png" />
+    <Resource Include="Res\Tile\dongtai.png" />
+    <Resource Include="Res\Tile\lishi.png" />
+    <Resource Include="Res\Tile\paihang.png" />
+    <Resource Include="Res\Tile\shaohou.png" />
+    <Resource Include="Res\Tile\shoucang.png" />
+    <Resource Include="Res\Tile\user.png" />
+    <Resource Include="Res\Tile\xiaoxi.png" />
+    <Resource Include="Res\Tile\yunqi.png" />
+    <Resource Include="Res\Tile\zhuifan.png" />
+    <Content Include="Res\Icon\down.png" />
+    <Content Include="Res\Icon\up.png" />
     <Content Include="SplashScreenImage.jpg" />
     <!-- 应用栏用的图标，来自 Res\Icon -->
     <Content Include="Res\Icon\search.png" />
