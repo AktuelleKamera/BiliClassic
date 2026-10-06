@@ -119,6 +119,7 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
     @Override
     public View getView(final int position, View convertView, final ViewGroup parent) {
         ViewHolder holder;
+        final boolean night = tv.biliclassic.metro.MetroTheme.isNight();
         if (convertView == null) {
             convertView = LayoutInflater.from(context).inflate(R.layout.item_comment, parent, false);
             holder = new ViewHolder();
@@ -182,7 +183,9 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
                             if (position == selectedPosition) {
                                 v.setBackgroundColor(0x66D86DA5);
                             } else {
-                                v.setBackgroundResource(R.drawable.item_click_effect_white);
+                                v.setBackgroundResource(night
+                                        ? R.drawable.item_click_effect_grey
+                                        : R.drawable.item_click_effect_white);
                             }
                             break;
                     }
@@ -191,7 +194,9 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
             });
         } else {
             holder = (ViewHolder) convertView.getTag();
-            convertView.setBackgroundResource(R.drawable.item_click_effect_white);
+            convertView.setBackgroundResource(night
+                    ? R.drawable.item_click_effect_grey
+                    : R.drawable.item_click_effect_white);
         }
 
         // 键盘光标高亮（选中：半透明粉色；未选中：恢复原点击效果背景）
@@ -200,15 +205,26 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
         } else {
             try {
                 convertView.setBackgroundDrawable(
-                        convertView.getResources().getDrawable(R.drawable.item_click_effect_white));
+                        convertView.getResources().getDrawable(night
+                                ? R.drawable.item_click_effect_grey
+                                : R.drawable.item_click_effect_white));
             } catch (Exception e) {
-                convertView.setBackgroundColor(0xFFFFFFFF);
+                convertView.setBackgroundColor(night ? 0xFF222222 : 0xFFFFFFFF);
             }
         }
 
         final CommentFragment.CommentItem item = list.get(position);
         holder.copyText = item.message;
         holder.userNameView.setText(item.userName);
+        // 夜间：评论项也是滚动时动态创建，UiSkin 覆盖不到，这里显式套色
+        holder.userNameView.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
+        holder.message.setTextColor(night ? 0xFFB0B0B0 : 0xFF555555);
+        if (holder.time != null) holder.time.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
+        if (holder.repliesText != null) holder.repliesText.setTextColor(night ? 0xFFB0B0B0 : 0xFF666666);
+        if (holder.repliesMore != null) holder.repliesMore.setTextColor(night ? 0xFFB0B0B0 : 0xFF666666);
+        if (holder.repliesContainer != null) {
+            holder.repliesContainer.setBackgroundColor(night ? 0xFF2A2A2A : 0xFFE8E8E8);
+        }
         String msgText = item.message != null ? item.message : "";
         if (item.isTop && msgText.startsWith("[置顶]")) {
             msgText = msgText.substring(4);
@@ -238,6 +254,7 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
                         CommentFragment.CommentItem ci = list.get(i);
                         Intent intent = new Intent(v.getContext(), ReplyListActivity.class);
                         intent.putExtra("aid", mAid);
+                        intent.putExtra("replyType", mReplyType);
                         if (mBvid != null) intent.putExtra("bvid", mBvid);
                         intent.putExtra("rpid", ci.rpid);
                         if (ci.userName != null) intent.putExtra("root_user_name", ci.userName);
@@ -341,6 +358,15 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
                             }
                         }
                     }).start();
+                }
+            });
+        }
+
+        if (h2.likeCount != null) {
+            h2.likeCount.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (h2.likeIcon != null) h2.likeIcon.performClick();
                 }
             });
         }
@@ -618,7 +644,9 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
     private void openReplyList(CommentFragment.CommentItem item, int totalCount) {
         Intent intent = new Intent(context, ReplyListActivity.class);
         intent.putExtra("aid", mAid);
+        intent.putExtra("replyType", mReplyType);
         if (mBvid != null) intent.putExtra("bvid", mBvid);
+
         intent.putExtra("rpid", item.rpid);
         if (item.userName != null) intent.putExtra("root_user_name", item.userName);
         if (item.message != null) intent.putExtra("root_comment_message", item.message);

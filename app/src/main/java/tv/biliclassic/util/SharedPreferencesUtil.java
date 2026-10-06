@@ -12,7 +12,7 @@
  * 修改者：一只毛子球 (BiliClassic)
  * 修改时间：2026年6月19日
  *
- * 安卓2也要看B站！
+ * 安卓1也要看B站！
  */
 package tv.biliclassic.util;
 
@@ -80,6 +80,7 @@ public class SharedPreferencesUtil {
     public static final String DOWNLOAD_FORMAT = "download_format"; // "mp4" 或 "original"
     public static final String DIALOG_STYLE = "dialog_style";
     public static final String PLAY_STREAM_FORMAT = "play_stream_format"; // 1=MP4, 16=DASH
+    public static final String CONVERT_FORMAT = "convert_format"; // 转码输出格式 h264/mpeg4/3gp/mpeg1/wmv
     public static final String ROUND_SCREEN_CENTER = "round_screen_center";
 
     // CookieGenerator 需要的 key
@@ -225,7 +226,7 @@ public class SharedPreferencesUtil {
         sharedPreferences.edit().remove(key).commit();
     }
 
-    // ===== SD 卡文件背书的 SharedPreferences（内部存储满时的回退） =====
+    // SD 卡文件背书的 SharedPreferences（内部存储满时的回退）
 
     /**
      * 用 Properties 文件持久化的极简 SharedPreferences。

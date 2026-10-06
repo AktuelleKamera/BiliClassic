@@ -6,8 +6,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.util.Log;
-import android.view.View;
-import android.view.ViewGroup;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -22,14 +20,30 @@ import java.util.Map;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
-import tv.biliclassic.util.SdkHelper;
 
-public class SimpleDanmakuEngine extends View {
+/**
+ * BT-5 简易弹幕引擎，逻辑控制器（不再直接是 View）
+ *
+ * 本类负责：解析、排道、把弹幕画进离屏 Bitmap（{@link #getOffscreen()}）。
+ * 真正的承载方式（SurfaceView / TextureView / View）由 {@link Presenter} 决定，
+ * 每帧渲染完通知宿主把离屏 Bitmap 显示出来
+ */
+public class SimpleDanmakuEngine {
 
     private static final String TAG = "BT-5";
     private static final int ROWS_R2L = 8;
     private static final int RENDER_FPS = 20;
     private static final int FRAME_MS = 1000 / RENDER_FPS;
+
+    /** 弹幕渲染宿主：提供尺寸并在每帧渲染完成后被通知显示 */
+    public interface Presenter {
+        int getPresentWidth();
+        int getPresentHeight();
+        void onFrame();
+    }
+
+    private final Context mContext;
+    private Presenter mPresenter;
 
     private List<DanmakuItem> mItems;
     private int mItemIndex;
@@ -57,6 +71,7 @@ public class SimpleDanmakuEngine extends View {
     private Thread mRenderThread;
     private volatile boolean mRunning;
     private volatile boolean mStopped;
+    private volatile boolean mRedrawOnce;
     private int mFrameCount;
     private long mVideoPosition; // 由外部同步的视频播放位置
 
@@ -90,30 +105,21 @@ public class SimpleDanmakuEngine extends View {
     }
 
     public SimpleDanmakuEngine(Context context) {
-        super(context);
+        mContext = context;
         float density = context.getResources().getDisplayMetrics().density;
         mTextSize = 14f * density;
-        if (SdkHelper.getSdkInt() >= 11) {
-            // setLayerType 是 API 11+，直接引用会在 API<11 上被 verifier 拒绝整类，改反射
-            try {
-                java.lang.reflect.Method m = android.view.View.class.getMethod(
-                        "setLayerType", int.class, android.graphics.Paint.class);
-                m.invoke(this, 1, null); // LAYER_TYPE_SOFTWARE = 1
-            } catch (Throwable t) {
-            }
-        }
         mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mPaint.setStyle(Paint.Style.FILL);
         mBitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mBitmapPaint.setFilterBitmap(true);
     }
 
-    public void init(ViewGroup container) {
-        Log.e(TAG, "init()");
-        container.addView(this,
-                new ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT));
+    public void setPresenter(Presenter presenter) {
+        mPresenter = presenter;
+    }
+
+    public Bitmap getOffscreen() {
+        return mOffscreen;
     }
 
     private boolean mDataReady; // 数据已加载，等待 provider 后启动
@@ -168,8 +174,10 @@ public class SimpleDanmakuEngine extends View {
             public void run() {
                 Log.e(TAG, "render thread started");
                 while (!mStopped) {
-                    if (mRunning && mVisible && !mPaused) {
-                        postInvalidate();
+                    if (mItems != null && mItems.size() > 0
+                            && (mRedrawOnce || (mRunning && mVisible && !mPaused))) {
+                        mRedrawOnce = false;
+                        renderFrame();
                         prepareBitmaps();
                     }
                     try { Thread.sleep(FRAME_MS); } catch (InterruptedException e) { break; }
@@ -224,20 +232,20 @@ public class SimpleDanmakuEngine extends View {
             mItemIndex = 0;
             resetRows();
             clearBitmaps();
-            postInvalidate();
+            mRedrawOnce = true;
         }
     }
 
     public void toggleVisibility() {
         mVisible = !mVisible;
-        postInvalidate();
+        mRedrawOnce = true;
     }
 
     public boolean isEnabled() { return mVisible; }
     public boolean isLoaded() { return mLoaded; }
 
     public void setScaleTextSize(float scale) {
-        float density = getContext().getResources().getDisplayMetrics().density;
+        float density = mContext.getResources().getDisplayMetrics().density;
         mTextSize = 14f * density * scale;
         clearBitmaps();
     }
@@ -328,7 +336,7 @@ public class SimpleDanmakuEngine extends View {
             mDataReady = true;
             tryStartIfReady();
         }
-        postInvalidate();
+        mRedrawOnce = true;
     }
 
     public void setBlockTop(boolean block) { mBlockTop = block; }
@@ -346,16 +354,13 @@ public class SimpleDanmakuEngine extends View {
         }
         clearBitmaps();
         if (mItems != null) mItems.clear();
-        if (mOffscreen != null) { mOffscreen.recycle(); mOffscreen = null; }
+        if (mOffscreen != null) { mOffscreen.recycle(); mOffscreen = null; mOffscreenCanvas = null; }
         mLoaded = false;
     }
 
-    @Override
-    protected void onDraw(Canvas canvas) {
-        if (!mVisible || mItems == null || mItems.size() == 0 || mPaused) return;
-
-        int w = getWidth();
-        int h = getHeight();
+    private void renderFrame() {
+        int w = mPresenter != null ? mPresenter.getPresentWidth() : 0;
+        int h = mPresenter != null ? mPresenter.getPresentHeight() : 0;
         if (w <= 0 || h <= 0) return;
 
         // 离屏缓冲，消除闪烁
@@ -364,6 +369,22 @@ public class SimpleDanmakuEngine extends View {
             mOffscreen = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
             mOffscreenCanvas = new Canvas(mOffscreen);
         }
+
+        drawDanmakus(mOffscreenCanvas, w, h);
+
+        if (mPresenter != null) {
+            mPresenter.onFrame();
+        }
+    }
+
+    private void drawDanmakus(Canvas canvas, int w, int h) {
+        if (!mVisible || mItems == null || mItems.size() == 0 || mPaused) {
+            canvas.drawColor(0, android.graphics.PorterDuff.Mode.CLEAR);
+            return;
+        }
+
+        // surface/离屏会保留上一帧，必须先清屏，否则透明区残留导致弹幕叠影
+        canvas.drawColor(0, android.graphics.PorterDuff.Mode.CLEAR);
 
         if (mLiveMode) {
             mVideoPosition = (long) (getLiveClock() * 1000f);
@@ -377,8 +398,6 @@ public class SimpleDanmakuEngine extends View {
                 && mItems.get(mItemIndex).time < t - screenSeconds - 0.5f) {
             mItemIndex++;
         }
-
-        mOffscreenCanvas.drawColor(0, android.graphics.PorterDuff.Mode.CLEAR);
 
         int rowH = (int) (mTextSize * 1.6f);
         int rowBaseY = h / 12;
@@ -402,22 +421,20 @@ public class SimpleDanmakuEngine extends View {
             if (item.type == 4) {
                 if (!item.placed) { item.placed = true; item.row = findTopRow(ROWS_R2L + 4, 8, t); }
                 if (item.row < 0 || dt > 5f) continue;
-                drawDanmaku(mOffscreenCanvas, item, w / 2f, h - rowBaseY - item.row * rowH);
+                drawDanmaku(canvas, item, w / 2f, h - rowBaseY - item.row * rowH);
             } else if (item.type == 5) {
                 if (!item.placed) { item.placed = true; item.row = findTopRow(ROWS_R2L, 4, t); }
                 if (item.row < 0 || dt > 5f) continue;
-                drawDanmaku(mOffscreenCanvas, item, w / 2f, rowBaseY + item.row * rowH + mTextSize);
+                drawDanmaku(canvas, item, w / 2f, rowBaseY + item.row * rowH + mTextSize);
             } else {
                 if (!item.placed) { item.placed = true; item.row = findScrollRow(t); }
                 if (item.row < 0) continue;
                 float speedPx = (w + 200) / 6f * mSpeed;
                 float x = w - dt * speedPx;
                 if (x < -600) continue;
-                drawDanmaku(mOffscreenCanvas, item, x, rowBaseY + item.row * rowH + mTextSize);
+                drawDanmaku(canvas, item, x, rowBaseY + item.row * rowH + mTextSize);
             }
         }
-
-        canvas.drawBitmap(mOffscreen, 0, 0, null);
 
         mFrameCount++;
         if (mFrameCount % (RENDER_FPS * 5) == 0) {

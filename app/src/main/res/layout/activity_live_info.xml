@@ -69,13 +69,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="#F5F5F5">
+            android:background="@drawable/bili_texture_background">
 
             <!-- 封面 -->
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="#FFFFFF">
+                android:background="@android:color/transparent">
 
                 <ImageView
                     android:id="@+id/img_cover"
@@ -210,27 +210,19 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- 加载遮罩 -->
+    <!-- 加载遮罩：统一加载条（与关注的人页一致） -->
     <LinearLayout
         android:id="@+id/loading"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center"
-        android:background="#F5F5F5"
+        android:background="@drawable/bili_texture_background"
         android:visibility="gone">
 
-        <ProgressBar
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/live_info_loading"
-            android:textSize="13sp"
-            android:textColor="#888888" />
+        <tv.biliclassic.widget.LoadingBarView
+            android:layout_width="match_parent"
+            android:layout_height="48dp" />
 
     </LinearLayout>
 

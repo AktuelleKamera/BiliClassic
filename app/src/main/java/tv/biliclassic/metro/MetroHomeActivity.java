@@ -39,6 +39,8 @@ public class MetroHomeActivity extends BaseActivity {
     private ScrollView mScroll;
     private LinearLayout mMenu;
     private GradientDrawable mHighlightBg;
+    // 已应用的 Metro 背景图路径（用于换图后刷新、清图后还原）
+    private String mAppliedMetroBg;
     private final java.util.List<View> mItems = new java.util.ArrayList<View>();
     private Class<?>[] mTargets;
     private int mFocusIndex = -1;
@@ -60,6 +62,8 @@ public class MetroHomeActivity extends BaseActivity {
     private float mTouchDownY = -1f;
     private int mTouchDownIdx = -1;
     private int mTouchSlop = 16;
+    // 低版本触摸屏抖动大，改用每个条目自身的点击判定（不依赖父容器手势）
+    private boolean mPerRowClick = false;
 
     // 可打断整页转门状态（mTurn: 0=主页铺平, 1=推荐页铺平）
     private boolean mTurnAnim = false;
@@ -164,7 +168,7 @@ public class MetroHomeActivity extends BaseActivity {
         if (crashLog == null || crashLog.length() == 0) {
             return;
         }
-        new android.app.AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(tv.biliclassic.util.DialogUtil.wrap(this)))
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(tv.biliclassic.util.DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.last_abnormal_exit))
                 .setMessage(getString(R.string.last_crash_prompt))
                 .setPositiveButton("查看", new android.content.DialogInterface.OnClickListener() {
@@ -176,8 +180,29 @@ public class MetroHomeActivity extends BaseActivity {
                     }
                 })
                 .setNegativeButton("忽略", null)
-                .show();
+                .create();
+        // 持有引用 + 等窗口挂好后再 show，避免被 GC 回收 / 过早显示导致「闪现一下就没了」
+        mCrashDialog = dialog;
+        dialog.setOnDismissListener(new android.content.DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(android.content.DialogInterface d) {
+                mCrashDialog = null;
+            }
+        });
+        getWindow().getDecorView().post(new Runnable() {
+            @Override
+            public void run() {
+                if (!isFinishing() && mCrashDialog != null && !mCrashDialog.isShowing()) {
+                    try {
+                        mCrashDialog.show();
+                    } catch (Throwable t) {
+                    }
+                }
+            }
+        });
     }
+
+    private android.app.AlertDialog mCrashDialog;
 
     /** 启动入场 */
     private void playHomeEntry() {
@@ -204,10 +229,31 @@ public class MetroHomeActivity extends BaseActivity {
             }
         }
     };
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 设置里换/清背景图后回到首页要同步（原来只在 onCreate 加载一次）
+        loadMetroBackground();
+    }
+
     /** Metro 主题自定义背景 */
     private void loadMetroBackground() {
         final String path = tv.biliclassic.SettingsActivity.getMetroBgPath();
-        if (path == null || path.length() == 0) return;
+        final View root = findViewById(R.id.root_layout);
+        // 没设背景图：从有图切回默认（日间白/夜间黑）
+        if (path == null || path.length() == 0) {
+            if (mAppliedMetroBg != null) {
+                mAppliedMetroBg = null;
+                if (root != null) {
+                    root.setBackgroundColor(isNightMode() ? Color.BLACK : Color.WHITE);
+                }
+            }
+            return;
+        }
+        // 同一张图不重复解码（onCreate/onResume 会各调一次）
+        if (path.equals(mAppliedMetroBg)) return;
+        mAppliedMetroBg = path;
+
         final android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
         final int sw = dm.widthPixels;
         final int sh = dm.heightPixels;
@@ -230,14 +276,13 @@ public class MetroHomeActivity extends BaseActivity {
                     o2.inSampleSize = sample;
                     final android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeFile(path, o2);
                     if (bmp == null) return;
-                    final View root = findViewById(R.id.root_layout);
                     h.post(new Runnable() {
                         @Override
                         public void run() {
                             if (root != null && bmp != null && !bmp.isRecycled()) {
-                                android.graphics.drawable.BitmapDrawable bd =
-                                        new android.graphics.drawable.BitmapDrawable(getResources(), bmp);
-                                root.setBackgroundDrawable(bd);   // BitmapDrawable 默认 FILL，拉伸铺满全屏
+                                // 旧 ROM 缺 BitmapDrawable(Resources,Bitmap)，改用 BgUtil 自绘 Drawable
+                                root.setBackgroundDrawable(
+                                        new tv.biliclassic.util.BgUtil.BgDrawable(bmp));
                             }
                         }
                     });
@@ -258,6 +303,9 @@ public class MetroHomeActivity extends BaseActivity {
                 {"功能设置", SettingsActivity.class},
         };
         mTargets = new Class<?>[entries.length];
+
+        // API<=4（含 Android 1.6）老触摸屏抖动大，ScrollView 的 "dy < touchSlop 才算点击" 判定经常失败
+        mPerRowClick = tv.biliclassic.util.SdkHelper.getSdkInt() <= 4;
 
         for (int i = 0; i < entries.length; i++) {
             final String label = (String) entries[i][0];
@@ -284,10 +332,10 @@ public class MetroHomeActivity extends BaseActivity {
                 }
             });
 
-            // 低版本(API<4)老触摸屏抖动大，ScrollView 的 "dy < touchSlop 才算点击" 判定经常失败，
+            // 低版本老触摸屏抖动大，ScrollView 的 "dy < touchSlop 才算点击" 判定经常失败，
             // 表现出来就是"只有高亮、点了不跳转"。这里给每个条目自身挂点击（点击不受位移抖动影响），
             // 并自行处理按压高亮，低版本上不再依赖父容器的手势判定。
-            if (tv.biliclassic.util.SdkHelper.getSdkInt() < 4) {
+            if (mPerRowClick) {
                 final int index = i;
                 row.setOnTouchListener(new View.OnTouchListener() {
                     @Override
@@ -329,7 +377,7 @@ public class MetroHomeActivity extends BaseActivity {
                     } else if (act == MotionEvent.ACTION_UP) {
                         float dy = Math.abs(ev.getY() - mTouchDownY);
                         int idx = findItemAt((int) ev.getY() + mScroll.getScrollY());
-                        if (dy < mTouchSlop && idx >= 0 && idx == mTouchDownIdx) {
+                        if (!mPerRowClick && dy < mTouchSlop && idx >= 0 && idx == mTouchDownIdx) {
                             navigate(idx);
                         }
                         clearHighlight();
@@ -391,7 +439,7 @@ public class MetroHomeActivity extends BaseActivity {
         }
     }
 
-    // ===== 整页转门 =====
+    // 整页转门
 
     /** 打开详情页：隐藏其余详情 Fragment，只显示目标页（从主菜单进入） */
     private void openDetail(android.support.v4.app.Fragment f) {

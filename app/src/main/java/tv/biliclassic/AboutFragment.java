@@ -13,8 +13,6 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.support.v4.app.Fragment;
 
-import tv.biliclassic.util.SdkHelper;
-
 public class AboutFragment extends Fragment {
 
     // ===== 遥控器按键导航：官网/帮助/Oldpods/GitHub/哔哩哔哩 纵向链接 =====
@@ -29,7 +27,10 @@ public class AboutFragment extends Fragment {
         TextView appBrief = (TextView) view.findViewById(R.id.app_brief);
         if (appBrief != null) {
             String versionName = getVersionName();
-            appBrief.setText("哔哩经典 " + versionName + "\n安卓" + (SdkHelper.getSdkInt() < 5 ? "1" : "2") + "也要看B站！");
+            appBrief.setText("哔哩经典 " + versionName + "\n安卓1也要看B站！");
+            if (tv.biliclassic.util.UiSkin.isNight()) {
+                appBrief.setTextColor(0xFFFFFFFF);
+            }
 
             // 长按版本号：切换性能日志开关
             appBrief.setOnLongClickListener(new View.OnLongClickListener() {
@@ -42,6 +43,9 @@ public class AboutFragment extends Fragment {
                     return true;
                 }
             });
+
+            // 连点版本号：星战字幕彩蛋
+            tv.biliclassic.util.VersionEggUtil.attach(getActivity(), appBrief);
         }
 
         TextView officialWebsite = (TextView) view.findViewById(R.id.official_website);
@@ -135,6 +139,11 @@ public class AboutFragment extends Fragment {
         return view;
     }
 
+    /** 供 MainActivity 判断光标是否已在最顶部（再按上键进入顶栏）。 */
+    public boolean isNavAtTop() {
+        return mNavIndex == 0;
+    }
+
     /** 供 MainActivity.dispatchKeyEvent 调用：方向键在链接间移动，确认键触发。 */
     public boolean handleRemoteKey(android.view.KeyEvent event) {
         if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) {
@@ -207,7 +216,7 @@ public class AboutFragment extends Fragment {
             PackageInfo packageInfo = getActivity().getPackageManager().getPackageInfo(getActivity().getPackageName(), 0);
             return packageInfo.versionName;
         } catch (PackageManager.NameNotFoundException e) {
-            return "0.4.10";
+            return "0.5.0";
         }
     }
 }

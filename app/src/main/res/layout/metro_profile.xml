@@ -69,6 +69,20 @@
                         android:textColor="#D86DA5"
                         android:gravity="center" />
 
+                    <TextView
+                        android:id="@+id/btn_sms_login"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:paddingLeft="12dp"
+                        android:paddingRight="12dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:background="@drawable/titlebar_pink_item_bg"
+                        android:text="使用验证码登录"
+                        android:textSize="16sp"
+                        android:textColor="#D86DA5" />
+
                 </LinearLayout>
 
                 <!-- 用户视图（已登录） -->
@@ -118,7 +132,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="6dp"
-                                android:text="粉丝 0 · 关注 0 · LV0"
+                                android:text="粉丝 0 关注 0 LV0"
                                 android:textSize="16sp"
                                 android:textColor="#999999" />
 

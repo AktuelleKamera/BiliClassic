@@ -170,6 +170,8 @@ public class HomeFragment extends Fragment {
         }
         homeList.addHeaderView(banner);
 
+        loadNetworkBanners(banner, bannerImage);
+
         mainCategories = TidData.getMainCategories();
         String[] names = new String[mainCategories.length];
         for (int i = 0; i < mainCategories.length; i++) {
@@ -204,9 +206,76 @@ public class HomeFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         pendingBitmapSets.clear();
+        stopBannerCarousel();
+        mBannerUrls.clear();
         if (imageExecutor != null) {
             imageExecutor.shutdownNow();
             imageExecutor = null;
+        }
+    }
+
+    // ===== 首页横幅：默认本地，服务端有则用网络图；>=2 张自动轮播 =====
+    private final java.util.ArrayList<String> mBannerUrls = new java.util.ArrayList<String>();
+    private int mBannerIndex = 0;
+    private Runnable mBannerTick;
+
+    private void loadNetworkBanners(final View banner, final ImageView bannerImage) {
+        if (bannerImage == null || imageExecutor == null) return;
+        imageExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                final java.util.List<String> urls = tv.biliclassic.util.HomeBannerUtil.fetchBanners();
+                if (urls == null || urls.isEmpty()) return;
+                mainHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (getActivity() == null || bannerImage == null) return;
+                        mBannerUrls.clear();
+                        mBannerUrls.addAll(urls);
+                        mBannerIndex = 0;
+                        showBannerAt(bannerImage, 0);
+                        if (mBannerUrls.size() >= 2) {
+                            startBannerCarousel(bannerImage);
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    private void showBannerAt(final ImageView bannerImage, int index) {
+        if (bannerImage == null || index < 0 || index >= mBannerUrls.size()) return;
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        float dens = getResources().getDisplayMetrics().density;
+        int wDp = (int) (screenW / dens);
+        int hPx = bannerImage.getHeight();
+        if (hPx <= 0 && bannerImage.getLayoutParams() != null) {
+            hPx = bannerImage.getLayoutParams().height;
+        }
+        int hDp = hPx > 0 ? (int) (hPx / dens) : wDp;
+        bannerImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        tv.biliclassic.util.ImageLoader.bind(bannerImage, mBannerUrls.get(index),
+                R.drawable.bili_main_banner, wDp, hDp);
+    }
+
+    private void startBannerCarousel(final ImageView bannerImage) {
+        stopBannerCarousel();
+        mBannerTick = new Runnable() {
+            @Override
+            public void run() {
+                if (getActivity() == null || mBannerUrls.size() < 2) return;
+                mBannerIndex = (mBannerIndex + 1) % mBannerUrls.size();
+                showBannerAt(bannerImage, mBannerIndex);
+                mainHandler.postDelayed(this, 4000);
+            }
+        };
+        mainHandler.postDelayed(mBannerTick, 4000);
+    }
+
+    private void stopBannerCarousel() {
+        if (mBannerTick != null) {
+            mainHandler.removeCallbacks(mBannerTick);
+            mBannerTick = null;
         }
     }
 
@@ -639,6 +708,22 @@ public class HomeFragment extends Fragment {
             }
 
             fragment.loadThumbnails(section, tid, previews);
+
+            // 夜间模式：四张视频预览衬底原来是白色 bili_thumb_boarder，夜间改深灰
+            boolean night = tv.biliclassic.metro.MetroTheme.isNight();
+            int[] containerIds = {
+                    R.id.video1_container, R.id.video2_container,
+                    R.id.video3_container, R.id.video4_container};
+            for (int cid : containerIds) {
+                View c = section.findViewById(cid);
+                if (c == null) continue;
+                if (night) {
+                    c.setBackgroundColor(0xFF484848);
+                } else {
+                    c.setBackgroundResource(R.drawable.bili_thumb_boarder);
+                }
+            }
+
             fragment.applyTabletLayout(section);
         }
     }

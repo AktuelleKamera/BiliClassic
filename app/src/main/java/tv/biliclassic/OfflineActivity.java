@@ -54,10 +54,12 @@ import tv.biliclassic.player.BiliPlayerActivity;
 
 import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SdkHelper;
+import tv.biliclassic.widget.LoadingBarView;
 public class OfflineActivity extends BaseActivity {
 
     private ListView listView;
-    private ProgressBar progressBar;
+    // 统一加载条（公共组件）
+    private LoadingBarView progressBar;
 
     @Override
     protected boolean hasTitleActions() {
@@ -110,7 +112,8 @@ public class OfflineActivity extends BaseActivity {
         initExecutor();
 
         listView = (ListView) findViewById(R.id.list_view);
-        progressBar = (ProgressBar) findViewById(R.id.progress_bar);
+        progressBar = (LoadingBarView) findViewById(R.id.progress_bar);
+        progressBar.bindBackground(listView);
         emptyView = (TextView) findViewById(R.id.empty_view);
         storageProgress = (ProgressBar) findViewById(R.id.storage_progress);
         storageText = (TextView) findViewById(R.id.storage_text);
@@ -393,7 +396,7 @@ public class OfflineActivity extends BaseActivity {
 
     // 刷新列表
     private void refreshList() {
-        progressBar.setVisibility(View.VISIBLE);
+        progressBar.showLoading();
         emptyView.setVisibility(View.GONE);
         listView.setVisibility(View.GONE);
 
@@ -409,7 +412,7 @@ public class OfflineActivity extends BaseActivity {
                         videoList.clear();
                         videoList.addAll(items);
                         adapter.notifyDataSetChanged();
-                        progressBar.setVisibility(View.GONE);
+                        progressBar.hide();
 
                         if (videoList.size() == 0) {
                             emptyView.setVisibility(View.VISIBLE);
@@ -1004,6 +1007,7 @@ public class OfflineActivity extends BaseActivity {
                 }
             });
 
+            tv.biliclassic.util.UiSkin.recolorItem(convertView);
             return convertView;
         }
     }

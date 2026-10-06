@@ -389,6 +389,7 @@ public class VideoDetailActivity extends BaseActivity {
 
     // 番剧视图（只有两个 Tab：番剧详情 + 评论）
     private void initBangumiView() {
+        if (isDead()) return;
         PagerTabStrip tabStrip = (PagerTabStrip) findViewById(R.id.pager_tab_strip);
         if (tabStrip != null) {
             tabStrip.setTabIndicatorColor(0xFFFF9FC5);
@@ -450,6 +451,7 @@ public class VideoDetailActivity extends BaseActivity {
 
     // 普通视频视图（三个 Tab）
     private void initNormalVideo() {
+        if (isDead()) return;
         viewPager = (ViewPager) findViewById(R.id.viewpager);
         safeSetAdapter(new VideoDetailPagerAdapter(getSupportFragmentManager()));
         viewPager.setOffscreenPageLimit(mOfflineMode ? 1 : 1);
@@ -474,8 +476,23 @@ public class VideoDetailActivity extends BaseActivity {
      * 1. 设置前先释放全局图片缓存，为 inflate fragment 布局腾出外部堆空间（Android 2.x 上 bitmap 常驻外部堆）；
      * 2. inflate 时若 OOM（InflateException/OOM），释放缓存后重试一次。
      */
+    /** 页面是否已结束/销毁（异步回调里避免在已结束的页面上建 fragment/adapter 而崩溃） */
+    private boolean isDead() {
+        if (isFinishing()) return true;
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 17) {
+            try {
+                return isDestroyed();
+            } catch (Throwable t) {
+            }
+        }
+        return false;
+    }
+
     private void safeSetAdapter(final android.support.v4.view.PagerAdapter adapter) {
         if (viewPager == null) return;
+        // 「点开视频后马上退出」时后台线程可能仍在回调里设置 adapter；页面已结束时跳过，
+        // 否则 commit fragment 会抛 IllegalStateException(after onSaveInstanceState) 而崩溃
+        if (isDead()) return;
         try {
             // 仅在内存紧张时才释放全局图片缓存；
             // 平时保留，让从推荐/搜索/相关视频/收藏等页面进入时封面直接命中内存，不再重新下载。

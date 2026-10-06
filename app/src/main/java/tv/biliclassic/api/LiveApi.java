@@ -11,7 +11,7 @@
  *
  * 修改者：一只毛子球 (BiliClassic)
  *
- * 安卓2也要看B站！
+ * 安卓1也要看B站！
  */
 package tv.biliclassic.api;
 
@@ -283,8 +283,8 @@ public class LiveApi {
         room.roomid = json.optLong("roomid", json.optLong("room_id", 0));
         room.short_id = json.optLong("short_id", 0);
         room.uid = json.optLong("uid", 0);
-        room.title = json.optString("title", "");
-        room.uname = json.optString("uname", "");
+        room.title = tv.biliclassic.util.StringUtil.removeHtml(json.optString("title", ""));
+        room.uname = tv.biliclassic.util.StringUtil.removeHtml(json.optString("uname", ""));
         room.face = json.optString("face", "");
         room.cover = json.optString("cover", "");
         room.user_cover = json.optString("user_cover", "");
@@ -306,7 +306,7 @@ public class LiveApi {
         room.live_status = json.optInt("live_status", 0);
         room.liveTime = json.optString("live_time", "");
 
-        if (room.uname.length() == 0) room.uname = json.optString("nickname", "");
+        if (room.uname.length() == 0) room.uname = tv.biliclassic.util.StringUtil.removeHtml(json.optString("nickname", ""));
 
         // 联合观看数（watched_show.text_small，如 "12 人看过"）
         JSONObject watched = json.optJSONObject("watched_show");

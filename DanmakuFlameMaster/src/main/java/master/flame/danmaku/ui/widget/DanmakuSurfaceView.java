@@ -135,6 +135,16 @@ public class DanmakuSurfaceView extends SurfaceView implements IDanmakuView, IDa
         }
     }
 
+    private DrawHandler.Clock mClock;
+
+    @Override
+    public void setClock(DrawHandler.Clock clock) {
+        mClock = clock;
+        if (handler != null) {
+            handler.setClock(clock);
+        }
+    }
+
     @Override
     public void surfaceCreated(SurfaceHolder surfaceHolder) {
         isSurfaceCreated = true;
@@ -221,6 +231,7 @@ public class DanmakuSurfaceView extends SurfaceView implements IDanmakuView, IDa
     private void prepare() {
         if (handler == null)
             handler = new DrawHandler(getLooper(mDrawingThreadType), this, mDanmakuVisible);
+        handler.setClock(mClock);
     }
 
     @Override

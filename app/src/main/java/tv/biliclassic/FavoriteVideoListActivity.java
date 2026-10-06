@@ -23,6 +23,7 @@ import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 public class FavoriteVideoListActivity extends BaseActivity {
 
@@ -224,11 +225,10 @@ public class FavoriteVideoListActivity extends BaseActivity {
     }
 
     private void showLoading() {
-        View headerContainer = findViewById(R.id.header_container);
-        if (headerContainer != null) {
-            headerContainer.setVisibility(View.VISIBLE);
-            headerContainer.requestLayout();
-            headerContainer.invalidate();
+        LoadingBarView bar = (LoadingBarView) findViewById(R.id.progress_bar);
+        if (bar != null) {
+            bar.bindBackground(listView);
+            bar.showLoading();
         }
         if (emptyView != null) {
             emptyView.setVisibility(View.GONE);
@@ -240,9 +240,9 @@ public class FavoriteVideoListActivity extends BaseActivity {
     }
 
     private void hideAllLoading() {
-        View headerContainer = findViewById(R.id.header_container);
-        if (headerContainer != null) {
-            headerContainer.setVisibility(View.GONE);
+        LoadingBarView bar = (LoadingBarView) findViewById(R.id.progress_bar);
+        if (bar != null) {
+            bar.hide();
         }
     }
 

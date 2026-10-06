@@ -406,14 +406,20 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
             holder.userName.setOnClickListener(clickListener);
         }
 
-        // 键盘光标高亮（选中：半透明粉色；未选中/滚动中：恢复原点击效果背景）
+        // 键盘光标高亮（选中：半透明粉色；未选中/滚动中：夜间灰 / 白天白底）
+        boolean night = tv.biliclassic.metro.MetroTheme.isNight();
+        int itemBg = night ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white;
         if (hideHighlight) {
-            convertView.setBackgroundResource(R.drawable.item_click_effect_white);
+            convertView.setBackgroundResource(itemBg);
         } else if (position == selectedPosition) {
             convertView.setBackgroundColor(0x66D86DA5);
         } else {
-            convertView.setBackgroundResource(R.drawable.item_click_effect_white);
+            convertView.setBackgroundResource(itemBg);
         }
+        holder.userName.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
+        holder.message.setTextColor(night ? 0xFFB0B0B0 : 0xFF555555);
+        if (holder.time != null) holder.time.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
+        if (holder.likeCount != null) holder.likeCount.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
 
         return convertView;
     }

@@ -27,15 +27,16 @@ import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 public class RecommendFragment extends Fragment {
 
     private ListView gridView;
-    private ProgressBar progressBar;
+    // 统一加载条（公共组件）
+    private LoadingBarView progressBar;
     private TextView emptyView;
     private LinearLayout footerContainer;
     private ProgressBar footerProgressBar;
-    private View headerContainer;
 
     private RecommendGridAdapter adapter;
     private List<VideoCard> videoList = new ArrayList<VideoCard>();
@@ -97,13 +98,10 @@ public class RecommendFragment extends Fragment {
         }
 
         gridView = (ListView) view.findViewById(R.id.recommend_grid);
-        progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
+        progressBar = (LoadingBarView) view.findViewById(R.id.progress_bar);
+        progressBar.bindBackground(gridView);
         emptyView = (TextView) view.findViewById(R.id.empty_view);
-        headerContainer = view.findViewById(R.id.header_container);
 
-        if (headerContainer != null) {
-            headerContainer.setVisibility(View.GONE);
-        }
         hideFooter();
 
         int numColumns = isTablet() ? (isLandscape() ? 4 : 3) : 2;
@@ -246,14 +244,11 @@ public class RecommendFragment extends Fragment {
     }
 
     private void showLoading() {
-        if (headerContainer != null) {
-            headerContainer.setVisibility(View.VISIBLE);
+        if (progressBar != null) {
+            progressBar.showLoading();
         }
         if (emptyView != null) {
             emptyView.setVisibility(View.GONE);
-        }
-        if (progressBar != null) {
-            progressBar.setVisibility(View.GONE);
         }
         if (gridView != null) {
             gridView.setVisibility(View.GONE);
@@ -262,8 +257,8 @@ public class RecommendFragment extends Fragment {
     }
 
     private void hideAllLoading() {
-        if (headerContainer != null) {
-            headerContainer.setVisibility(View.GONE);
+        if (progressBar != null) {
+            progressBar.hide();
         }
     }
 

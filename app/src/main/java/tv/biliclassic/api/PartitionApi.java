@@ -1,3 +1,19 @@
+/*
+ * 本软件基于以下项目修改，致谢前辈：
+ *   - 哔哩终端 (BiliTerminal) by RobinNotBad
+ *   - 腕上哔哩 (WristBilibili) by luern0313
+ *
+ * 本程序是自由软件，遵循 GNU 通用公共许可证第 3 版（或更高版本）发布。
+ * 你可以重新分发或修改它，希望它能为你带来快乐。
+ *
+ * 详情请参阅 GNU 通用公共许可证：
+ * <https://www.gnu.org/licenses/>
+ *
+ * 修改者：一只毛子球 (BiliClassic)
+ * 修改时间：2026年10月6日
+ *
+ * 安卓1也要看B站！
+ */
 package tv.biliclassic.api;
 
 import org.json.JSONArray;
@@ -181,7 +197,7 @@ public class PartitionApi {
             String cover = item.optString("cover", "").replace("http://", "https://");
             String title = item.optString("title", "无标题");
             String upName = item.optString("name", "");
-            int view = item.optInt("play", 0);
+            long view = item.optLong("play", 0);
             int danmaku = item.optInt("danmaku", 0);
 
             videoCardList.add(new VideoCard(title, upName, StringUtil.toWan(view),

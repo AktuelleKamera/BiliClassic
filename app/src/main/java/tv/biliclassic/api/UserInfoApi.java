@@ -12,7 +12,7 @@
  * 修改者：一只毛子球 (BiliClassic)
  * 修改时间：2026年6月20日
  *
- * 安卓2也要看B站！
+ * 安卓1也要看B站！
  */
 package tv.biliclassic.api;
 
@@ -228,6 +228,75 @@ public class UserInfoApi {
     }
 
     /**
+     * 获取用户发布的专栏文章列表（WBI 签名）。
+     * 接口：x/space/wbi/article，返回 data.articles[]。
+     * @return 0=成功；1=没有更多；-1=失败
+     */
+    public static int getUserArticles(long mid, int page, List<VideoCard> articleList) throws IOException, JSONException {
+        String url = "https://api.bilibili.com/x/space/wbi/article?mid=" + mid
+                + "&order_avoided=true&order=pubdate&pn=" + page + "&ps=30&tid=0";
+        url = ConfInfoApi.signWBI(url);
+        Log.e(TAG, "getUserArticles URL=" + url);
+
+        JSONObject all = NetWorkUtil.getJson(url);
+        if (all == null) {
+            return -1;
+        }
+        int code = all.optInt("code", -1);
+        Log.e(TAG, "getUserArticles code=" + code);
+        if (code != 0 || !all.has("data") || all.isNull("data")) {
+            return -1;
+        }
+        JSONObject data = all.getJSONObject("data");
+        JSONArray articles = data.optJSONArray("articles");
+        if (articles == null || articles.length() == 0) {
+            return 1;
+        }
+        for (int i = 0; i < articles.length(); i++) {
+            JSONObject a = articles.optJSONObject(i);
+            if (a == null) {
+                continue;
+            }
+            long id = a.optLong("id", 0);
+            if (id == 0) {
+                continue;
+            }
+            String title = a.optString("title", "");
+            String cover = a.optString("banner_url", "");
+            if (cover == null || cover.length() == 0) {
+                JSONArray imgs = a.optJSONArray("image_urls");
+                if (imgs != null && imgs.length() > 0) {
+                    cover = imgs.optString(0, "");
+                }
+            }
+            cover = normalizeUrl(cover);
+            JSONObject stats = a.optJSONObject("stats");
+            long view = stats != null ? stats.optLong("view", 0) : 0;
+            VideoCard card = new VideoCard(title, "", StringUtil.toWan(view) + "阅读",
+                    cover, 0, null, "article");
+            card.articleId = id;
+            articleList.add(card);
+        }
+        return 0;
+    }
+
+    private static String normalizeUrl(String url) {
+        if (url == null || url.length() == 0) {
+            return "";
+        }
+        if (url.startsWith("//")) {
+            return "https:" + url;
+        }
+        if (url.startsWith("http://")) {
+            return "https://" + url.substring(7);
+        }
+        if (!url.startsWith("https://")) {
+            return "https://" + url;
+        }
+        return url;
+    }
+
+    /**
      * 获取我关注的人（UP主）列表。
      * 接口：x/relation/followings，返回 data.list[]（mid/uname/face/sign）。
      * @return 0=成功；1=没有更多；-1=失败/未登录
@@ -283,6 +352,31 @@ public class UserInfoApi {
         int code = all.optInt("code", -1);
         Log.e(TAG, "followUser code=" + code);
         return code;
+    }
+
+    /** 拉黑/取消拉黑：act=5 拉黑，act=6 取消拉黑。 */
+    public static int blockUser(long mid, boolean block) throws IOException, JSONException {
+        String url = "https://api.bilibili.com/x/relation/modify";
+        String csrf = NetWorkUtil.getInfoFromCookie("bili_jct", SharedPreferencesUtil.getString("cookies", ""));
+        String arg = "fid=" + mid + "&act=" + (block ? 5 : 6) + "&re_src=11&csrf=" + csrf;
+        JSONObject all = new JSONObject(NetWorkUtil.post(url, arg, NetWorkUtil.webHeaders));
+        return all.optInt("code", -1);
+    }
+
+    /** 关系状态：attribute bit 2=已关注, 128=已拉黑。失败返回 -1。 */
+    public static int getRelationAttribute(long mid) {
+        try {
+            JSONObject all = NetWorkUtil.getJson("https://api.bilibili.com/x/space/acc/relation?mid=" + mid);
+            if (all == null || all.optInt("code", -1) != 0) return -1;
+            JSONObject data = all.optJSONObject("data");
+            if (data == null) return -1;
+            JSONObject relation = data.optJSONObject("relation");
+            if (relation == null) relation = data.optJSONObject("be_relation");
+            if (relation == null) return -1;
+            return relation.optInt("attribute", -1);
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     public static void exitLogin() {

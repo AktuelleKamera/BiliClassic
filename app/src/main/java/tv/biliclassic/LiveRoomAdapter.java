@@ -62,16 +62,17 @@ public class LiveRoomAdapter extends BaseObservableAdapter<LiveRoom> {
             info.append(StringUtil.toWan(room.online)).append("人气");
         }
         if (room.area_name != null && room.area_name.length() > 0) {
-            if (info.length() > 0) info.append(" · ");
+            if (info.length() > 0) info.append(" ");
             info.append(room.area_name);
         }
         if (room.live_status == 1) {
-            if (info.length() > 0) info.append(" · ");
+            if (info.length() > 0) info.append(" ");
             info.append("直播中");
         }
         holder.info.setText(info.toString());
 
         ImageLoader.bind(holder.cover, room.pickCover(), R.drawable.bili_default_image_tv_with_bg, 96, 66);
+        tv.biliclassic.util.UiSkin.recolorItem(convertView);
         return convertView;
     }
 

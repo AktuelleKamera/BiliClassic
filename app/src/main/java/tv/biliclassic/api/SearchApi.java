@@ -27,7 +27,7 @@ import java.util.List;
  * 修改者：一只毛子球 (BiliClassic)
  * 修改时间：2026年9月7日
  *
- * 安卓2也要看B站！
+ * 安卓1也要看B站！
  */
 
 //RobinNotBad: 搜索API 自己写的
@@ -167,9 +167,16 @@ public class SearchApi {
         h.add("Origin");
         h.add("https://www.bilibili.com");
         String cookie = NetWorkUtil.buildCookieHeader();
-        if (cookie != null && cookie.length() > 0) {
+        // 未登录时不发 Cookie：合成的 buvid3/buvid_fp 指纹会被风控判 v_voucher，
+        // 实测裸请求稳定返回结果；已登录带 SESSDATA 可通行
+        boolean hasLogin = cookie != null && cookie.length() > 0
+                && NetWorkUtil.getInfoFromCookie("SESSDATA", cookie).length() > 0;
+        if (hasLogin) {
             h.add("Cookie");
             h.add(cookie);
+        } else {
+            h.add("X-Skip-Cookie");
+            h.add("1");
         }
         return h;
     }

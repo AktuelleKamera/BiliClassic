@@ -86,6 +86,7 @@ public class MetroVideoRowAdapter extends BaseObservableAdapter<VideoCard> {
             }
         });
 
+        tv.biliclassic.util.UiSkin.recolorItem(convertView);
         return convertView;
     }
 

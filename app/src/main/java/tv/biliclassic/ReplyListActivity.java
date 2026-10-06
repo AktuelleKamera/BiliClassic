@@ -71,6 +71,7 @@ public class ReplyListActivity extends BaseActivity {
 
     private long aid;
     private String bvid;
+    private int replyType = ReplyApi.REPLY_TYPE_VIDEO;
     private long rpid;
     private String rootUserName;
     private String rootCommentMessage;
@@ -225,6 +226,7 @@ public class ReplyListActivity extends BaseActivity {
 
         aid = getIntent().getLongExtra("aid", 0);
         bvid = getIntent().getStringExtra("bvid");
+        replyType = getIntent().getIntExtra("replyType", ReplyApi.REPLY_TYPE_VIDEO);
         rpid = getIntent().getLongExtra("rpid", 0);
         rootUserName = getIntent().getStringExtra("root_user_name");
         rootCommentMessage = getIntent().getStringExtra("root_comment_message");
@@ -491,9 +493,9 @@ public class ReplyListActivity extends BaseActivity {
                             try {
                                 int code;
                                 if (rootLiked) {
-                                    code = ReplyApi.likeComment(aid, rpid, 1);
+                                    code = ReplyApi.likeComment(aid, rpid, replyType);
                                 } else {
-                                    code = ReplyApi.unlikeComment(aid, rpid, 1);
+                                    code = ReplyApi.unlikeComment(aid, rpid, replyType);
                                 }
                                 if (code != 0) {
                                     runOnUiThread(new Runnable() {
@@ -588,7 +590,7 @@ public class ReplyListActivity extends BaseActivity {
 
         adapter = new ReplyListAdapter(this, allReplies);
         adapter.setOid(aid);
-        adapter.setReplyType(1);
+        adapter.setReplyType(replyType);
         adapter.setMid(SharedPreferencesUtil.getLong("mid", 0));
         adapter.setOnReplyClickListener(new ReplyListAdapter.OnReplyClickListener() {
             @Override
@@ -767,7 +769,7 @@ public class ReplyListActivity extends BaseActivity {
                 try {
                     List<Reply> replyList = new ArrayList<Reply>();
                     ReplyApi.ReplyListResult result = ReplyApi.getRepliesLazy(
-                            aid, rpid, pagination, ReplyApi.REPLY_TYPE_VIDEO, 2, replyList);
+                            aid, rpid, pagination, replyType, 2, replyList);
 
                     int code = result.code;
                     final String nextPagination = result.nextPagination;
@@ -964,7 +966,7 @@ public class ReplyListActivity extends BaseActivity {
             @Override
             public void run() {
                 try {
-                    int code = ReplyApi.deleteComment(aid, rpid, 1);
+                    int code = ReplyApi.deleteComment(aid, rpid, replyType);
                     if (code == 0) {
                         runOnUiThread(new Runnable() {
                             @Override
@@ -1139,7 +1141,7 @@ public class ReplyListActivity extends BaseActivity {
     }
 
     private void sendReply(final long root, final long parent, final String text) {
-        ReplyHelper.sendReply(this, aid, root, parent, text, new ReplyHelper.ReplyCallback() {
+        ReplyHelper.sendReply(this, aid, root, parent, text, replyType, new ReplyHelper.ReplyCallback() {
             @Override
             public void onSuccess(String responseJson) {
                 allReplies.clear();

@@ -397,6 +397,7 @@ public class BangumiDetailFragment extends Fragment {
                 }
             });
 
+            tv.biliclassic.util.UiSkin.recolorItem(convertView);
             return convertView;
         }
 

@@ -9,7 +9,7 @@
  * 详情请参阅 GNU 通用公共许可证：
  * <https://www.gnu.org/licenses/>
  *
- * 安卓2也要看B站！
+ * 安卓1也要看B站！
  */
 package tv.biliclassic.util;
 
@@ -87,7 +87,10 @@ public class CookieGenerator {
         // 无痕模式下不携带登录 Cookie（视频清晰度除外）
         boolean incognitoMode = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.INCOGNITO_MODE, false);
         if (!incognitoMode || forVideoQuality) {
-            String loggedCookie = SharedPreferencesUtil.getString(SharedPreferencesUtil.cookies, "");
+            // 读侧也裁剪：持久化的 cookies 若被超大值污染，直接拼会让每次请求都构造巨型 Cookie 头，
+            // 老设备上曾因拼串期间 GC 无法挂起（spin on suspend）而卡死整个 VM
+            String loggedCookie = NetWorkUtil.boundCookie(
+                    SharedPreferencesUtil.getString(SharedPreferencesUtil.cookies, ""));
             if (loggedCookie != null && loggedCookie.length() > 0) {
                 sb.append(loggedCookie);
             }
@@ -107,7 +110,7 @@ public class CookieGenerator {
 
     private static void appendCookie(StringBuilder sb, String name, String value) {
         if (value == null || value.length() == 0) return;
-        if (sb.length() > 0 && !sb.toString().endsWith("; ")) {
+        if (sb.length() > 0 && sb.charAt(sb.length() - 1) != ' ') {
             sb.append("; ");
         }
         sb.append(name).append("=").append(value);

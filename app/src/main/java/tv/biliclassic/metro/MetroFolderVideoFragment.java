@@ -22,6 +22,7 @@ import tv.biliclassic.VideoDetailActivity;
 import tv.biliclassic.api.FavoriteApi;
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 /**
  * Metro 风格"收藏夹视频"页（从"我的收藏"点收藏夹转门翻入）。
@@ -31,7 +32,8 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 public class MetroFolderVideoFragment extends Fragment implements MetroTurnPage {
 
     private ListView mVideoList;
-    private TextView mTvLoading;
+    // 统一加载条（公共组件）
+    private LoadingBarView mLoadingBar;
     private SwipeRefreshLayout mSwipeRefresh;
     private List<VideoCard> mVideos = new ArrayList<VideoCard>();
     private final android.os.Handler mHandler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -71,10 +73,9 @@ public class MetroFolderVideoFragment extends Fragment implements MetroTurnPage 
             if (mAdapter != null) {
                 mAdapter.notifyDataSetChanged();
             }
-            if (mVideoList != null && mTvLoading != null && getView() != null) {
+            if (mVideoList != null && mLoadingBar != null && getView() != null) {
                 mVideoList.setVisibility(View.GONE);
-                mTvLoading.setVisibility(View.VISIBLE);
-                mTvLoading.setText("正在加载…");
+                mLoadingBar.showLoading();
                 mVideoList.post(new Runnable() {
                     @Override
                     public void run() {
@@ -90,9 +91,10 @@ public class MetroFolderVideoFragment extends Fragment implements MetroTurnPage 
         View root = inflater.inflate(R.layout.metro_history, container, false);
 
         mVideoList = (ListView) root.findViewById(R.id.history_list);
-        mTvLoading = (TextView) root.findViewById(R.id.tv_loading);
+        mLoadingBar = (LoadingBarView) root.findViewById(R.id.progress_bar);
         // 夜间模式：灰色提示文字换白色
-        mTvLoading.setTextColor(MetroTheme.grey());
+        mLoadingBar.setTextColor(MetroTheme.grey());
+        mLoadingBar.bindBackground(mVideoList);
 
         // 页面标题 = 收藏夹名称；记录当前 fid（后续换夹走 updateFolder）
         TextView pageTitle = (TextView) root.findViewById(R.id.page_title);
@@ -146,7 +148,7 @@ public class MetroFolderVideoFragment extends Fragment implements MetroTurnPage 
         }
 
         // 状态文本点击：失败/为空时重试
-        mTvLoading.setOnClickListener(new View.OnClickListener() {
+        mLoadingBar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (mHasError) {
@@ -206,8 +208,12 @@ public class MetroFolderVideoFragment extends Fragment implements MetroTurnPage 
             mVideoList.setSelection(mSavedPosition);
             mVideoList.invalidateViews();
         }
-        if (mTvLoading != null) {
-            mTvLoading.setVisibility(mVideos.size() > 0 ? View.GONE : View.VISIBLE);
+        if (mLoadingBar != null) {
+            if (mVideos.size() > 0) {
+                mLoadingBar.hide();
+            } else {
+                mLoadingBar.show();
+            }
         }
     }
 
@@ -227,7 +233,7 @@ public class MetroFolderVideoFragment extends Fragment implements MetroTurnPage 
         final long mid = SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0);
         final long fid = folderFid();
         if (mid <= 0 || fid <= 0) {
-            mTvLoading.setText(getString(R.string.not_logged_in_yet));
+            mLoadingBar.showStatus(getString(R.string.not_logged_in_yet));
             stopRefreshing();
             return;
         }
@@ -236,8 +242,7 @@ public class MetroFolderVideoFragment extends Fragment implements MetroTurnPage 
         mHasError = false;
         final int gen = mGen; // 换夹后旧回调按代数丢弃
         if (page == 1) {
-            mTvLoading.setVisibility(View.VISIBLE);
-            mTvLoading.setText("正在加载…");
+            mLoadingBar.showLoading();
         }
 
         new Thread(new Runnable() {
@@ -269,8 +274,7 @@ public class MetroFolderVideoFragment extends Fragment implements MetroTurnPage 
                         if (resultCode == -1) {
                             if (page == 1 && mVideos.size() == 0) {
                                 mHasError = true;
-                                mTvLoading.setText(getString(R.string.load_failed_tap_retry) + "\n点击重试");
-                                mTvLoading.setVisibility(View.VISIBLE);
+                                mLoadingBar.showStatus(getString(R.string.load_failed_tap_retry) + "\n点击重试");
                             }
                             stopRefreshing();
                             return;
@@ -288,11 +292,10 @@ public class MetroFolderVideoFragment extends Fragment implements MetroTurnPage 
                         }
 
                         if (mVideos.size() == 0) {
-                            mTvLoading.setText(getString(R.string.no_favorite_folders));
-                            mTvLoading.setVisibility(View.VISIBLE);
+                            mLoadingBar.showStatus(getString(R.string.no_favorite_folders));
                             mVideoList.setVisibility(View.GONE);
                         } else {
-                            mTvLoading.setVisibility(View.GONE);
+                            mLoadingBar.hide();
                             mVideoList.setVisibility(View.VISIBLE);
                             if (page == 1) {
                                 mVideoList.setSelection(0);
@@ -328,8 +331,7 @@ public class MetroFolderVideoFragment extends Fragment implements MetroTurnPage 
         mVideos.clear();
         mAdapter.notifyDataSetChanged();
         mVideoList.setVisibility(View.GONE);
-        mTvLoading.setVisibility(View.VISIBLE);
-        mTvLoading.setText("正在加载…");
+        mLoadingBar.showLoading();
         loadPage(1);
     }
 

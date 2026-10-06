@@ -56,18 +56,12 @@
         android:background="@drawable/shadow_top_dig"
         android:contentDescription="@null" />
 
-    <!-- 加载头部（放在列表上面） -->
-    <FrameLayout
-        android:id="@+id/header_container"
+    <!-- 加载条（放在列表上方，与关注的人页一致） -->
+    <tv.biliclassic.widget.LoadingBarView
+        android:id="@+id/progress_bar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone">
-
-        <include
-            android:id="@+id/list_header"
-            layout="@layout/list_header" />
-
-    </FrameLayout>
+        android:layout_height="48dp"
+        android:visibility="gone" />
 
     <!-- 列表 -->
     <ListView

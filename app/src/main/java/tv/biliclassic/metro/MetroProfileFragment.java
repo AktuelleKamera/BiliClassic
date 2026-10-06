@@ -50,6 +50,7 @@ public class MetroProfileFragment extends Fragment implements MetroTurnPage {
     private TextView tvUserSign;
 
     private boolean mNeedRefresh = false;
+    private Bitmap mQrBitmap;
     private Timer timer;
     private boolean mIsDestroyed = false;
     private final android.os.Handler mHandler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -100,6 +101,19 @@ public class MetroProfileFragment extends Fragment implements MetroTurnPage {
                 }
             }
         });
+
+        View smsLogin = root.findViewById(R.id.btn_sms_login);
+        if (smsLogin != null) {
+            smsLogin.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (getActivity() == null) return;
+                    Intent it = new Intent(getActivity(), tv.biliclassic.LoginActivity.class);
+                    it.putExtra("tab", 1);
+                    startActivity(it);
+                }
+            });
+        }
 
         mHandler.post(new Runnable() {
             @Override
@@ -159,7 +173,7 @@ public class MetroProfileFragment extends Fragment implements MetroTurnPage {
         loadUser();
     }
 
-    // ===== MetroTurnPage：转门翻入/翻出的内容错峰动画 =====
+    // 转门翻入/翻出的内容错峰动画
 
     @Override
     public void animateTurnIn() {
@@ -217,14 +231,15 @@ public class MetroProfileFragment extends Fragment implements MetroTurnPage {
                         @Override
                         public void run() {
                             if (mIsDestroyed || qrImage == null) return;
-                            // 回收旧的二维码位图（像素在 native 堆，2.x 上不主动释放会堆积撑爆）
-                            android.graphics.drawable.Drawable old = qrImage.getDrawable();
-                            if (old instanceof android.graphics.drawable.BitmapDrawable) {
-                                Bitmap ob = ((android.graphics.drawable.BitmapDrawable) old).getBitmap();
-                                if (ob != null && !ob.isRecycled()) ob.recycle();
-                            }
                             if (bmp != null) {
+                                Bitmap prev = mQrBitmap;
                                 qrImage.setImageBitmap(bmp);
+                                mQrBitmap = bmp;
+                                // 只回收上一次“我们自己生成”的二维码位图；
+                                // 绝不能回收占位图/资源位图（像素共享，回收后别处绘制闪退）
+                                if (prev != null && prev != bmp && !prev.isRecycled()) {
+                                    try { prev.recycle(); } catch (Throwable ignored) {}
+                                }
                                 qrImage.setEnabled(true);
                                 mNeedRefresh = true;
                                 setQrStatus("请使用B站APP扫码登录\n点击二维码可刷新");
@@ -403,9 +418,46 @@ public class MetroProfileFragment extends Fragment implements MetroTurnPage {
     private void bindUser(UserInfo info) {
         if (info == null) return;
         tvUserName.setText(info.name);
-        tvUserStat.setText("粉丝 " + info.fans + " · 关注 " + info.following + " · LV" + info.level);
+        tvUserStat.setText(buildUserStat(info));
         tvUserSign.setText(info.sign != null && info.sign.length() > 0 ? info.sign : "这个人很懒，什么都没写");
         loadAvatar(ivAvatar, info.avatar);
+    }
+
+    /** 粉丝/关注 + 等级图标（用等级图标代替 "LVn" 文字）。 */
+    private CharSequence buildUserStat(UserInfo info) {
+        android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder();
+        sb.append("粉丝 ").append(String.valueOf(info.fans))
+                .append(" 关注 ").append(String.valueOf(info.following)).append(" ");
+        try {
+            android.graphics.drawable.Drawable d = getResources().getDrawable(
+                    getLevelDrawable(info.level, info.isSeniorMember));
+            float dens = getResources().getDisplayMetrics().density;
+            int h = (int) (16 * dens + 0.5f);
+            int w = d.getIntrinsicHeight() > 0 ? h * d.getIntrinsicWidth() / d.getIntrinsicHeight() : h;
+            d.setBounds(0, 0, w, h);
+            int start = sb.length();
+            sb.append(" ");
+            sb.setSpan(new android.text.style.ImageSpan(d, android.text.style.ImageSpan.ALIGN_BOTTOM),
+                    start, start + 1, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        } catch (Throwable t) {
+        }
+        return sb;
+    }
+
+    private int getLevelDrawable(int level, boolean isSeniorMember) {
+        if (isSeniorMember) {
+            return R.drawable.level_h;
+        }
+        switch (level) {
+            case 0: return R.drawable.level_0;
+            case 1: return R.drawable.level_1;
+            case 2: return R.drawable.level_2;
+            case 3: return R.drawable.level_3;
+            case 4: return R.drawable.level_4;
+            case 5: return R.drawable.level_5;
+            case 6: return R.drawable.level_6;
+            default: return R.drawable.level_6;
+        }
     }
 
     /** 头像加载：先查 GlobalImageCache，未命中则抛到图片线程池下载（带 Accept-Encoding: identity）+ 缓存并回主线程设置。 */

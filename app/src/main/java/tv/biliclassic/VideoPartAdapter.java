@@ -43,11 +43,15 @@ public class VideoPartAdapter extends BaseObservableAdapter<VideoPart> {
         tvTitle.setText(item.title);
 
         // 高亮选中的项；未选中用布局标准底色（浅灰 #F5F5F5，避免全透明露出页面背景看起来像纯白）
+        boolean night = tv.biliclassic.metro.MetroTheme.isNight();
         if (position == selectedPosition) {
             convertView.setBackgroundColor(0x33FF6699);
         } else {
-            convertView.setBackgroundResource(R.drawable.item_click_effect_white);
+            convertView.setBackgroundResource(night
+                    ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white);
         }
+        tvIndex.setTextColor(0xFFD86DA5);
+        tvTitle.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
 
         convertView.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -58,6 +62,7 @@ public class VideoPartAdapter extends BaseObservableAdapter<VideoPart> {
             }
         });
 
+        tv.biliclassic.util.UiSkin.recolorItem(convertView);
         return convertView;
     }
 }

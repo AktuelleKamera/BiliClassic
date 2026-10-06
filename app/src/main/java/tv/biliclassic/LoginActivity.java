@@ -79,6 +79,8 @@ public class LoginActivity extends BaseActivity {
 
         if (savedInstanceState != null) {
             selectedTab = savedInstanceState.getInt(STATE_TAB, 0);
+        } else {
+            selectedTab = getIntent().getIntExtra("tab", 0);
         }
         selectTab(selectedTab);
     }

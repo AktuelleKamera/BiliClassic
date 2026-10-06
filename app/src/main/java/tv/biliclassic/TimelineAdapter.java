@@ -42,6 +42,8 @@ public class TimelineAdapter extends BaseObservableAdapter<TimelineFragment.time
             holder.clockIcon = (ImageView) convertView.findViewById(R.id.clock_icon);
             holder.dayTitle = (TextView) convertView.findViewById(R.id.day_title);
             holder.dayDate = (TextView) convertView.findViewById(R.id.day_date);
+            holder.dayBubble = (ImageView) convertView.findViewById(R.id.day_bubble);
+            holder.dayBar = convertView.findViewById(R.id.day_bar);
             holder.itemsContainer = (LinearLayout) convertView.findViewById(R.id.items_container);
             convertView.setTag(holder);
         } else {
@@ -61,6 +63,23 @@ public class TimelineAdapter extends BaseObservableAdapter<TimelineFragment.time
         holder.dayTitle.setText(day.day);
         holder.dayDate.setText(day.date);
 
+        // 夜间模式：日期气泡/横条转深色，文字转浅色
+        boolean night = tv.biliclassic.metro.MetroTheme.isNight();
+        int textColor = night ? 0xFFE6E6E6 : 0xFF333333;
+        holder.dayTitle.setTextColor(textColor);
+        holder.dayDate.setTextColor(textColor);
+        if (holder.dayBar != null) {
+            holder.dayBar.setBackgroundColor(night ? 0xFF484848 : 0xFFCACACA);
+        }
+        if (holder.dayBubble != null) {
+            if (night) {
+                holder.dayBubble.setColorFilter(0xFF484848,
+                        android.graphics.PorterDuff.Mode.SRC_ATOP);
+            } else {
+                holder.dayBubble.clearColorFilter();
+            }
+        }
+
         // 清空并重新填充番剧列表
         holder.itemsContainer.removeAllViews();
         if (day.items != null) {
@@ -68,7 +87,7 @@ public class TimelineAdapter extends BaseObservableAdapter<TimelineFragment.time
                 TextView tv = new TextView(context);
                 tv.setText("• " + item.title);
                 tv.setTextSize(13);
-                tv.setTextColor(0xFF333333);
+                tv.setTextColor(textColor);
                 tv.setPadding(0, 2, 0, 2);
                 holder.itemsContainer.addView(tv);
             }
@@ -81,6 +100,8 @@ public class TimelineAdapter extends BaseObservableAdapter<TimelineFragment.time
         ImageView clockIcon;
         TextView dayTitle;
         TextView dayDate;
+        ImageView dayBubble;
+        View dayBar;
         LinearLayout itemsContainer;
     }
 }

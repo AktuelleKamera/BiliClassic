@@ -119,6 +119,8 @@ public class ConvertPlayUtil {
             body.put("region", tv.biliclassic.SettingsActivity.getConvertPlayRegion());
             body.put("src_url", srcUrl);
             body.put("token", token);
+            // 转码输出格式（设置页可选）：h264/mpeg4/3gp/mpeg1/wmv，服务端不认时按 h264
+            body.put("format", tv.biliclassic.SettingsActivity.getConvertFormat());
             // 不传 name：让服务端按 src_url 文件名(含 cid)生成唯一 out_key，
             // 避免不同视频都叫 video.mp4 互相覆盖
             String[] resp = httpPostJson(api, body);
@@ -156,7 +158,7 @@ public class ConvertPlayUtil {
     /** /register 用全局密钥签名换每设备 token；同一设备返回同一 token。失败返回 null。 */
     private static String registerToken() {
         String installId = getInstallId();
-        // 老设备系统时钟可能严重错误（如 G1 电池断电导致时钟回到 1970/1980），
+        // 老设备系统时钟可能严重错误（如时钟回到 1970/1980），
         // 直接用本机时间签名会被服务端判为“签名过期”。先取服务器时钟算 ts。
         String ts = getServerTs();
         if (ts == null) {

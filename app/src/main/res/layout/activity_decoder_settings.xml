@@ -65,7 +65,7 @@
             android:orientation="vertical"
             android:padding="12dp">
 
-            <!-- ========== 软件解码 ========== -->
+            <!-- 软件解码 -->
             <TextView
                 android:id="@+id/category_sw_decode"
                 android:layout_width="match_parent"
@@ -234,7 +234,7 @@
                 android:layout_marginBottom="12dp"
                 android:background="#E0E0E0" />
 
-            <!-- ========== 播放控制 ========== -->
+            <!-- 播放控制 -->
             <TextView
                 android:id="@+id/category_playctl"
                 android:layout_width="match_parent"
@@ -439,7 +439,7 @@
                 android:layout_marginBottom="12dp"
                 android:background="#E0E0E0" />
 
-            <!-- ========== 音频输出 ========== -->
+            <!-- 音频输出 -->
             <TextView
                 android:id="@+id/category_audio"
                 android:layout_width="match_parent"

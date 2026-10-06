@@ -67,9 +67,9 @@ public class MetroSetupActivity extends BaseActivity {
         }
     };
 
-    // ===== 磁贴按键导航 =====
+    // 磁贴按键导航
     // 按键机（有物理按键设备）在磁贴页可用方向键移动光标、确认键选中；
-    // 触屏机不使用按键导航，文字不高亮。
+    // 触屏机不使用按键导航。
     private final java.util.List<FrameLayout> mTiles = new java.util.ArrayList<FrameLayout>();
     private int mTileFocusIndex = 0;
     private boolean mTileKeyNavActive = false; // 仅按键机按键后才置 true
@@ -98,7 +98,7 @@ public class MetroSetupActivity extends BaseActivity {
     private int mRecordIndex = 0;
     private long mLastRecordTime = 0L;
 
-    // ===== 绑定页询问页按键导航 =====
+    // 绑定页询问页按键导航
     // 按键机在询问页可用方向键选择"是/否"，确认键触发；BACK 回磁贴页
     private int mAskChoiceIndex = 0; // 0 = 是，1 = 否
     private boolean mAskKeyNavActive = false;
@@ -578,7 +578,7 @@ public class MetroSetupActivity extends BaseActivity {
         }
         int rowBase = tileContainer.getChildCount() * 60 + 80;
 
-        // 磁贴页标题、按钮向左滑出（分割线、ScrollView 不动）
+        // 磁贴页标题、按钮向左滑出
         int[] skipIdx = {1};
         int tileIdx = 0;
         for (int i = 0; i < tilesGroup.getChildCount(); i++) {
@@ -595,12 +595,12 @@ public class MetroSetupActivity extends BaseActivity {
 
         int baseDelay = rowBase + tileIdx * 60 + 80;
 
-        // 绑定页标题、消息、按钮从右滑入（分割线不动）
+        // 绑定页标题、消息、按钮从右滑入
         if (askPage != null) {
             int bindIdx = 0;
             for (int i = 0; i < askPage.getChildCount(); i++) {
-                if (i == 1) continue; // 分割线不动
                 View child = askPage.getChildAt(i);
+                if (!(child instanceof ViewGroup)) continue;
                 TranslateAnimation a = new TranslateAnimation(width, 0, 0, 0);
                 a.setDuration(450);
                 a.setStartOffset(baseDelay + bindIdx * 80);
@@ -681,12 +681,12 @@ public class MetroSetupActivity extends BaseActivity {
             tileContainer.getChildAt(k).clearAnimation();
         }
 
-        // 绑定页标题、消息、按钮向右滑出（分割线不动）
+        // 绑定页标题、消息、按钮向右滑出
         int bindIdx = 0;
         if (askPage != null) {
             for (int i = 0; i < askPage.getChildCount(); i++) {
-                if (i == 1) continue; // 分割线不动
                 View child = askPage.getChildAt(i);
+                if (!(child instanceof ViewGroup)) continue;
                 TranslateAnimation a = new TranslateAnimation(0, width, 0, 0);
                 a.setDuration(300);
                 a.setStartOffset(bindIdx * 60);
@@ -698,7 +698,7 @@ public class MetroSetupActivity extends BaseActivity {
         }
         int rowBase = bindIdx * 60 + 80;
 
-        // 磁贴页标题、按钮从左滑入（分割线不动，磁贴容器单独处理）
+        // 磁贴页标题、按钮从左滑入（磁贴容器单独处理）
         int[] skipIdx = {1};
         int tileIdx = 0;
         for (int i = 0; i < tilesGroup.getChildCount(); i++) {
@@ -1193,7 +1193,7 @@ public class MetroSetupActivity extends BaseActivity {
         final ViewGroup welcomeGroup = (ViewGroup) mPageWelcome;
         final ViewGroup tilesGroup = (ViewGroup) mPageTiles;
 
-        // 第1页各元素向左滑出，逐行延迟（分割线不动）
+        // 第1页各元素向左滑出，逐行延迟
         int[] outDurs = {500, 420, 380, 320};
         for (int i = 0; i < welcomeGroup.getChildCount() && i < outDurs.length; i++) {
             if (outDurs[i] == 0) continue;
@@ -1208,7 +1208,7 @@ public class MetroSetupActivity extends BaseActivity {
 
         int baseDelay = welcomeGroup.getChildCount() * 80 + 120;
 
-        // 第2页标题、按钮滑入（分割线不动，磁贴容器单独处理）
+        // 第2页标题、按钮滑入
         int[] skipIdx = {1};
         int tileIdx = 0;
         for (int i = 0; i < tilesGroup.getChildCount(); i++) {
@@ -1283,11 +1283,16 @@ public class MetroSetupActivity extends BaseActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                final JSONArray changelog = fetchChangelog();
+                JSONArray changelog = null;
+                try {
+                    changelog = fetchChangelog();
+                } catch (Throwable t) {
+                }
+                final JSONArray result = changelog;
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
                     @Override
                     public void run() {
-                        mPendingChangelog = changelog;
+                        mPendingChangelog = result;
                         renderChangelogIfReady();
                     }
                 });
@@ -1379,33 +1384,39 @@ public class MetroSetupActivity extends BaseActivity {
     }
 
     private JSONArray fetchChangelog() {
-        // 更新检查通常已经拉过 version.json，直接复用可让正文赶在转场前渲染
-        JSONArray cached = UpdateUtil.getCachedChangelog();
-        if (cached != null) {
-            return cached;
-        }
-        String[] urls = {
-                "http://www.biliclassic.cn/api/version.json",
-                "http://7891vip.top/biliclassic/update.php"
-        };
-        for (String urlStr : urls) {
-            try {
-                ArrayList headers = new ArrayList();
-                headers.add("User-Agent");
-                headers.add("BiliClassic");
-                // 非 200/非 JSON 会抛异常，转下一个源
-                JSONObject json = NetWorkUtil.getJson(urlStr, headers);
-                JSONObject versions = json.optJSONObject("versions");
-                if (versions == null) continue;
-                JSONObject branch = versions.optJSONObject("0.4");
-                if (branch == null) continue;
-                JSONArray changelog = branch.optJSONArray("changelog");
-                if (changelog != null && changelog.length() > 0) {
-                    return changelog;
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+        try {
+            // 更新检查通常已经拉过 version.json，直接复用可让正文赶在转场前渲染
+            JSONArray cached = UpdateUtil.getCachedChangelog();
+            if (cached != null) {
+                return cached;
             }
+            String[] urls = {
+                    "http://www.biliclassic.cn/api/version.json",
+                    "http://7891vip.top/biliclassic/update.php"
+            };
+            for (String urlStr : urls) {
+                try {
+                    ArrayList headers = new ArrayList();
+                    headers.add("User-Agent");
+                    headers.add("BiliClassic");
+                    // 非 200/非 JSON 会抛异常，转下一个源
+                    JSONObject json = NetWorkUtil.getJson(urlStr, headers);
+                    JSONObject versions = json.optJSONObject("versions");
+                    if (versions == null) continue;
+                    JSONObject branch = versions.optJSONObject(UpdateUtil.getCurrentMajor());
+                    JSONArray changelog = branch != null ? branch.optJSONArray("changelog") : null;
+                    if (changelog == null || changelog.length() == 0) {
+                        // 当前大版本服务端可能还没有独立分支，回退顶层 changelog
+                        changelog = json.optJSONArray("changelog");
+                    }
+                    if (changelog != null && changelog.length() > 0) {
+                        return changelog;
+                    }
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (Throwable t) {
         }
         return null;
     }
@@ -1453,7 +1464,7 @@ public class MetroSetupActivity extends BaseActivity {
 
         int rowBase = tileContainer.getChildCount() * 60 + 80;
 
-        // 第2页标题、按钮滑出（分割线不动）
+        // 第2页标题、按钮滑出
         int[] skipIdx = {1};
         int tileIdx = 0;
         for (int i = 0; i < tilesGroup.getChildCount(); i++) {
@@ -1470,7 +1481,7 @@ public class MetroSetupActivity extends BaseActivity {
 
         int baseDelay = rowBase + tileIdx * 60 + 80;
 
-        // 第1页各元素从左滑入（分割线不动）
+        // 第1页各元素从左滑入
         int[] inDurs = {450, 400, 350, 300};
         for (int i = 0; i < welcomeGroup.getChildCount() && i < inDurs.length; i++) {
             if (inDurs[i] == 0) continue;

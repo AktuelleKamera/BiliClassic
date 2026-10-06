@@ -52,6 +52,7 @@ import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 public class NewAnimeFragment extends Fragment {
 
@@ -61,7 +62,8 @@ public class NewAnimeFragment extends Fragment {
 
     private Map<String, Boolean> loadingMap = new HashMap<String, Boolean>();
 
-    private View headerContainer;
+    // 统一加载条（公共组件）
+    private LoadingBarView loadingBar;
     private ScrollView contentContainer;
     private LinearLayout gridContainer;
     private ListView animeList;
@@ -126,13 +128,13 @@ public class NewAnimeFragment extends Fragment {
             }
         }
 
-        headerContainer = view.findViewById(R.id.header_container);
+        loadingBar = (LoadingBarView) view.findViewById(R.id.progress_bar);
         contentContainer = (ScrollView) view.findViewById(R.id.content_container);
         gridContainer = (LinearLayout) view.findViewById(R.id.grid_container);
         emptyView = (TextView) view.findViewById(R.id.empty_view);
 
-        if (headerContainer != null) {
-            headerContainer.setVisibility(View.GONE);
+        if (loadingBar != null) {
+            loadingBar.hide();
         }
         contentContainer.setVisibility(View.GONE);
 
@@ -220,24 +222,19 @@ public class NewAnimeFragment extends Fragment {
     }
 
     private boolean isLandscapeDevice() {
-        boolean landscapeEnabled = SharedPreferencesUtil.getBoolean(
-                BaseActivity.KEY_LANDSCAPE_ENABLED, true);
-        if (!landscapeEnabled) {
-            return false;
-        }
-
+        boolean matched = false;
         String model = android.os.Build.MODEL;
-        if (model == null) {
-            return false;
-        }
-
-        String[] landscapeModels = {"HTC ChaCha", "Galaxy Y Pro", "Galaxy Pro", "A5100"};
-        for (String m : landscapeModels) {
-            if (model.contains(m)) {
-                return true;
+        if (model != null) {
+            String[] landscapeModels = {"HTC ChaCha", "Galaxy Y Pro", "Galaxy Pro", "A5100"};
+            for (String m : landscapeModels) {
+                if (model.contains(m)) {
+                    matched = true;
+                    break;
+                }
             }
         }
-        return false;
+        return SharedPreferencesUtil.getBoolean(
+                BaseActivity.KEY_LANDSCAPE_ENABLED, matched);
     }
 
     private boolean isTablet() {
@@ -293,8 +290,8 @@ public class NewAnimeFragment extends Fragment {
     }
 
     private void showLoading() {
-        if (headerContainer != null) {
-            headerContainer.setVisibility(View.VISIBLE);
+        if (loadingBar != null) {
+            loadingBar.showLoading();
         }
         if (contentContainer != null) {
             contentContainer.setVisibility(View.GONE);
@@ -305,8 +302,8 @@ public class NewAnimeFragment extends Fragment {
     }
 
     private void hideAllLoading() {
-        if (headerContainer != null) {
-            headerContainer.setVisibility(View.GONE);
+        if (loadingBar != null) {
+            loadingBar.hide();
         }
         if (isTablet()) {
             if (contentContainer != null) {
@@ -322,12 +319,8 @@ public class NewAnimeFragment extends Fragment {
     private void showNoNetworkButCache() {
         // 有缓存时，不显示错误，静默使用缓存
         // 但可以显示一个轻提示，在 header 中显示"网络不可用，显示缓存"
-        if (headerContainer != null) {
-            headerContainer.setVisibility(View.VISIBLE);
-            TextView textView = (TextView) headerContainer.findViewById(R.id.header_text);
-            if (textView != null) {
-                textView.setText(getString(R.string.offline_show_cache));
-            }
+        if (loadingBar != null) {
+            loadingBar.showStatus(getString(R.string.offline_show_cache));
         }
         if (isTablet()) {
             if (contentContainer != null) {
@@ -350,12 +343,8 @@ public class NewAnimeFragment extends Fragment {
                     showErrorText(getString(R.string.emoticon__no_network));
                 } else {
                     // 有内容，只显示 header 提示
-                    if (headerContainer != null) {
-                        headerContainer.setVisibility(View.VISIBLE);
-                        TextView textView = (TextView) headerContainer.findViewById(R.id.header_text);
-                        if (textView != null) {
-                            textView.setText(getString(R.string.offline_show_cache));
-                        }
+                    if (loadingBar != null) {
+                        loadingBar.showStatus(getString(R.string.offline_show_cache));
                     }
                 }
             }
@@ -1486,6 +1475,7 @@ public class NewAnimeFragment extends Fragment {
                 result = buildTabletMixedRow(convertView, row);
                 applyTabletRowHighlight(result, position, row);
             }
+            tv.biliclassic.util.UiSkin.recolorItem(result);
             return result;
         }
 

@@ -12,7 +12,7 @@
  * 修改者：一只毛子球 (BiliClassic)
  * 修改时间：2026年6月19日
  *
- * 安卓2也要看B站！
+ * 安卓1也要看B站！
  */
 package tv.biliclassic.api;
 
@@ -78,7 +78,7 @@ public class RecommendApi {
             String cover = card.getString("pic");
             String title = card.getString("title");
             String upName = card.getJSONObject("owner").getString("name");
-            String view = StringUtil.toWan(card.getJSONObject("stat").getInt("view"));
+            String view = StringUtil.toWan(card.getJSONObject("stat").optLong("view"));
             int danmaku = card.getJSONObject("stat").getInt("danmaku");
 
             // 直接使用 API 返回的 aid（不要用 BV 转换）

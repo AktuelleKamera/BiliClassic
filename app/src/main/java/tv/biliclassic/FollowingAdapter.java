@@ -77,17 +77,16 @@ public class FollowingAdapter extends BaseObservableAdapter<UserInfo> {
         holder.sign.setText(user.sign != null && user.sign.length() > 0 ? user.sign : "这个人很懒，什么都没写");
         holder.avatar.setImageResource(R.drawable.bili_default_avatar);
 
-        // 遥控器光标高亮（选中：半透明粉色；未选中：恢复默认浅灰背景）
+        // 遥控器光标高亮（选中：半透明粉色；未选中：夜间灰 / 白天白底）
+        boolean night = tv.biliclassic.metro.MetroTheme.isNight();
         if (position == selectedPosition && !mHideHighlight) {
             convertView.setBackgroundColor(0x66D86DA5);
         } else {
-            try {
-                convertView.setBackgroundDrawable(
-                        convertView.getResources().getDrawable(R.drawable.item_click_effect_white));
-            } catch (Exception e) {
-                convertView.setBackgroundColor(0xFFF5F5F5);
-            }
+            convertView.setBackgroundResource(night
+                    ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white);
         }
+        holder.name.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
+        holder.sign.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
 
         // 点击整行跳转由 ListView 的 OnItemClickListener 处理（滚动不会误触），
         // 这里不放 item 内 onClick，避免 convertView 复用时滚动误触发跳转
@@ -102,6 +101,7 @@ public class FollowingAdapter extends BaseObservableAdapter<UserInfo> {
         });
 
         loadAvatar(holder.avatar, user.avatar, position);
+        tv.biliclassic.util.UiSkin.recolorItem(convertView);
         return convertView;
     }
 

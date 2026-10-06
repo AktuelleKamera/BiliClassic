@@ -46,6 +46,9 @@ public interface IDanmakuView {
     public IDanmakus getCurrentVisibleDanmakus();
     
     public void setCallback(Callback callback);
+
+    /** 注入外部时钟（视频播放位置），让弹幕时间轴跟随倍速 / 暂停 / 拖动 */
+    public void setClock(DrawHandler.Clock clock);
     
     /**
      * for getting the accurate play-time. use this method intead of parser.getTimer().currMillisecond

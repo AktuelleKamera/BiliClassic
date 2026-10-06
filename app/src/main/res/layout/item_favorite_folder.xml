@@ -29,6 +29,22 @@
                 android:scaleType="centerCrop"
                 android:src="@drawable/bili_default_image_tv_with_bg" />
 
+            <!-- 私密标记：封面右上角灰色方块（仅私密收藏夹显示） -->
+            <TextView
+                android:id="@+id/badge_private"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|end"
+                android:background="#B3666666"
+                android:paddingLeft="5dp"
+                android:paddingRight="5dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:text="私密"
+                android:textSize="10sp"
+                android:textColor="#FFFFFF"
+                android:visibility="gone" />
+
         </FrameLayout>
 
         <LinearLayout

@@ -21,7 +21,7 @@
             android:focusable="true"
             android:clickable="true" />
 
-        <!-- 用户名标题：点击弹出 视频/动态 下拉（粉色高亮，标题文字不变） -->
+        <!-- 用户名标题（视频/动态切换在右上角更多菜单） -->
         <TextView
             android:id="@+id/tv_user_name_title"
             android:layout_width="wrap_content"
@@ -30,9 +30,6 @@
             android:layout_toRightOf="@+id/btn_back"
             android:layout_marginLeft="0dp"
             android:layout_marginRight="8dp"
-            android:background="@drawable/titlebar_pink_item_bg"
-            android:clickable="true"
-            android:focusable="true"
             android:gravity="center_vertical"
             android:paddingLeft="0dp"
             android:paddingRight="8dp"
@@ -58,7 +55,7 @@
         android:background="@drawable/shadow_top_dig"
         android:contentDescription="@null" />
 
-    <!-- 加载中 -->
+    <!-- 加载中：统一加载条（与关注的人页一致） -->
     <LinearLayout
         android:id="@+id/loading_layout"
         android:layout_width="match_parent"
@@ -66,17 +63,9 @@
         android:gravity="center"
         android:orientation="horizontal">
 
-        <ProgressBar
-            android:layout_width="16dp"
-            android:layout_height="16dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="5dp"
-            android:text="@string/common_loading"
-            android:textSize="14sp"
-            android:textColor="#999999" />
+        <tv.biliclassic.widget.LoadingBarView
+            android:layout_width="match_parent"
+            android:layout_height="48dp" />
 
     </LinearLayout>
 
@@ -162,6 +151,13 @@
 
         </LinearLayout>
 
+        <!-- 视频加载中：统一加载条（放在列表上方） -->
+        <tv.biliclassic.widget.LoadingBarView
+            android:id="@+id/video_progress"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:visibility="gone" />
+
         <!-- 视频列表 -->
         <ListView
             android:id="@+id/list_view"
@@ -171,15 +167,6 @@
             android:divider="#E0E0E0"
             android:dividerHeight="1dp"
             android:visibility="visible" />
-
-        <!-- 视频加载中 -->
-        <ProgressBar
-            android:id="@+id/video_progress"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="20dp"
-            android:visibility="gone" />
 
         <!-- 视频空视图 -->
         <TextView

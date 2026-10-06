@@ -93,6 +93,28 @@ public class BiliPlayerActivity extends Activity implements
         IMediaPlayer.OnBufferingUpdateListener,
         IMediaPlayer.OnSeekCompleteListener {
 
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        // 播放器不走 BaseActivity，需自己套 Locale，否则跟随系统语言
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 17) {
+            super.attachBaseContext(tv.biliclassic.util.LocaleHelper.wrapContext(newBase));
+        } else {
+            super.attachBaseContext(newBase);
+        }
+    }
+
+    @Override
+    public android.content.res.Resources getResources() {
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 17) {
+            return super.getResources();
+        }
+        android.content.res.Resources res = super.getResources();
+        android.content.res.Configuration config = res.getConfiguration();
+        config.locale = tv.biliclassic.util.LocaleHelper.getLocale();
+        res.updateConfiguration(config, res.getDisplayMetrics());
+        return res;
+    }
+
     private static final int MSG_HIDE_CONTROLS = 1;
     private static final int MSG_UPDATE_PROGRESS = 2;
     private static final int MSG_UPDATE_TIME = 3;
@@ -230,6 +252,7 @@ public class BiliPlayerActivity extends Activity implements
     private View optionsMenuItemBlock;
     private View optionsMenuItemOrientation;
     private View optionsMenuItemInfo;
+    private View optionsMenuItemSpeed;
     private ViewStub lockOverlayStub;
     private View lockOverlay;
     private View lockUnlockLeft;
@@ -259,6 +282,12 @@ public class BiliPlayerActivity extends Activity implements
     private boolean commentIsSwiping = false;
 
     private PopupWindow mPlayerOptionsPannel;
+    private PopupWindow mPlayerSpeedPannel;
+    // 面板自定义倍速（0.25x~3.0x）
+    private float mPanelSpeed = 1.0f;
+    private static final float SPEED_MIN = 0.25f;
+    private static final float SPEED_STEP = 0.05f;
+    private static final int SPEED_MAX_PROGRESS = 55; // 0.25 + 55*0.05 = 3.00
 
     private int mHardwareDecodeRetryCount = 0;
     private static final int MAX_HARDWARE_RETRY = 5;
@@ -592,20 +621,10 @@ public class BiliPlayerActivity extends Activity implements
                 SharedPreferencesUtil.PLAYER_PORTRAIT_ROTATION, false);
         applyAutoRotation();
 
+        // 老 CPU（ARMv5 / 无 VFP 的 ARMv6）不再拦截播放：
+        // 带硬件视频 DSP 的设备默认走转码硬解，没有的软解也可能放得动。
         if (DeviceInfoUtil.isUnsupportedCpu()) {
-            if (!DeviceInfoUtil.isLegacy) {
-        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle(getString(R.string.device_not_supported))
-                .setMessage("ARMv5TE 或无 VFP 的 ARMv6 设备无法使用内置播放器，请关闭\"在线播放\"后下载视频，使用第三方播放器播放。")
-                .setPositiveButton("继续尝试", null)
-                .setNegativeButton("确定", new android.content.DialogInterface.OnClickListener() {
-                    public void onClick(android.content.DialogInterface dialog, int which) {
-                        finish();
-                    }
-                })
-                .show();
-                return;
-            }
+            Toast.makeText(this, getString(R.string.legacy_cpu_play_hint), Toast.LENGTH_LONG).show();
         }
 
         initViews();
@@ -1137,8 +1156,9 @@ public class BiliPlayerActivity extends Activity implements
             mVideoSurface = null;
             surfaceHolder = sv.getHolder();
             if (decoderType == DECODER_SYSTEM) {
-                // setZOrderMediaOverlay 是 API 5+ 方法，经 PlayerCompat 反射调用
-                PlayerCompat.setZOrderMediaOverlay(sv, true);
+                // 视频 surface 留在最底层 media 层，不调用 setZOrderMediaOverlay：
+                // 弹幕 SurfaceView 会把自己设为 media overlay 叠在视频之上；若这里也设 overlay，
+                // 两者抢同一层会导致视频盖住弹幕（Android 2.2 + 系统解码实测）
                 surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
             }
             surfaceHolder.addCallback(this);
@@ -1229,6 +1249,7 @@ public class BiliPlayerActivity extends Activity implements
 
             if (tvTitle instanceof MarqueeTextView) {
                 final MarqueeTextView marqueeTv = (MarqueeTextView) tvTitle;
+                marqueeTv.setFps(DecoderSettingsActivity.getMaxFps());
                 marqueeTv.setAutoStartMarquee(false);
                 marqueeTv.postDelayed(new Runnable() {
                     @Override
@@ -2064,7 +2085,7 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     private void switchQuality(final int newQn) {
-        // 转码播放时强制 360P：不允许切到更高画质，避免白白增加转码耗时与流量
+        // 转码播放时强制360P
         final int effectiveQn = tv.biliclassic.util.ConvertPlayUtil.isConvertEnabled() ? 16 : newQn;
         if (mediaPlayer != null && isPrepared) {
             try {
@@ -2308,7 +2329,7 @@ public class BiliPlayerActivity extends Activity implements
             mVideoSurface = null;
             surfaceHolder = sv.getHolder();
             if (decoderType == DECODER_SYSTEM) {
-                PlayerCompat.setZOrderMediaOverlay(sv, true);
+                // 同 createVideoView：视频保持底层 media 层，弹幕 overlay 才能叠在它之上
                 surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
             }
             surfaceHolder.addCallback(this);
@@ -2320,6 +2341,20 @@ public class BiliPlayerActivity extends Activity implements
 
     private boolean tryLoadIjkLibrary() {
         try {
+            // 无 VFP 的 ARMv5/ARMv6：自带 ijkffmpeg 含 VFP 指令跑不了，改从兼容包读取 legacy 版。
+            // ijksdl/ijkplayer 也从自身 APK 提取后用绝对路径加载。
+            if (DeviceInfoUtil.needsNoVfpIjk()) {
+                if (!IjkLegacyLoader.loadIjkFfmpegLegacy(this)) {
+                    return false;
+                }
+                if (!IjkLegacyLoader.loadAppLib(this, "libijksdl.so")) {
+                    return false;
+                }
+                if (!IjkLegacyLoader.loadAppLib(this, "libijkplayer.so")) {
+                    return false;
+                }
+                return true;
+            }
             System.loadLibrary("ijkffmpeg");
             System.loadLibrary("ijksdl");
             return true;
@@ -2327,6 +2362,14 @@ public class BiliPlayerActivity extends Activity implements
             return false;
         }
     }
+
+    // no-VFP 路径下三个 native 库都已用绝对路径 System.load，loader 无需再 loadLibrary
+    private static final tv.danmaku.ijk.media.player.IjkLibLoader LEGACY_LIB_LOADER =
+            new tv.danmaku.ijk.media.player.IjkLibLoader() {
+                public void loadLibrary(String libName)
+                        throws UnsatisfiedLinkError, SecurityException {
+                }
+            };
 
     private void cleanupAndRestartWithQuality() {
         if (localProxy != null) {
@@ -2491,6 +2534,12 @@ public class BiliPlayerActivity extends Activity implements
             } else {
                 localProxy = new LocalStreamProxy(videoUrl, proxyHeaders);
             }
+            // IJK 自带 TLS 栈：让代理直接走远端原协议，跳过「先试明文 HTTP」的探测——该探测在
+            // 只支持 HTTPS 的直播 CDN 上会挂到超时，导致起播长时间停在「正在加载视频」。
+            // 系统解码器（老设备 TLS 只到 1.0）仍需明文优先，保持不变。
+            if (decoderType != DECODER_SYSTEM) {
+                localProxy.setPreferHttpsDirect();
+            }
             try {
                 actualUrl = localProxy.start();
             } catch (IOException e) {
@@ -2510,9 +2559,13 @@ public class BiliPlayerActivity extends Activity implements
                 }
             }
             if (!ijkLoaded) {
-                android.util.Log.w("BiliPlayer", "IJK native 库加载失败，回退到系统播放器");
+                android.util.Log.w("BiliPlayer", "IJK native 加载失败，回退到系统解码器");
                 decoderType = DECODER_SYSTEM;
-                Toast.makeText(this, "内置播放器加载失败，使用系统播放器", Toast.LENGTH_LONG).show();
+                if (DeviceInfoUtil.needsNoVfpIjk()) {
+                    Toast.makeText(this, getString(R.string.ijk_legacy_need_pack), Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(this, "内置播放器加载失败，使用系统解码器", Toast.LENGTH_LONG).show();
+                }
             }
         }
 
@@ -2596,7 +2649,11 @@ public class BiliPlayerActivity extends Activity implements
 
         IjkMediaPlayer ijkPlayer;
         try {
-            ijkPlayer = new IjkMediaPlayer();
+            if (DeviceInfoUtil.needsNoVfpIjk()) {
+                ijkPlayer = new IjkMediaPlayer(LEGACY_LIB_LOADER);
+            } else {
+                ijkPlayer = new IjkMediaPlayer();
+            }
             IjkMediaPlayer.native_setLogLevel(IjkMediaPlayer.IJK_LOG_SILENT);
         } catch (Throwable t) {
             // tryLoadIjkLibrary 只覆盖 native 库加载；ijk 的 Java 类在老平台
@@ -2650,10 +2707,42 @@ public class BiliPlayerActivity extends Activity implements
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "fflags", "flush_packets");
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "reconnect", 1L);
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "user_agent", NetWorkUtil.USER_AGENT_WEB);
+        // 隔离测试：仅设置 headers（Referer/Cookie），MPD 仍走本地代理
+        try {
+            Map<String, String> hdrs = getProxyHeaders();
+            StringBuilder hb = new StringBuilder();
+            for (Map.Entry<String, String> e : hdrs.entrySet()) {
+                if ("User-Agent".equalsIgnoreCase(e.getKey())) continue;
+                hb.append(e.getKey()).append(": ").append(e.getValue()).append("\r\n");
+            }
+            if (hb.length() > 0) {
+                ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "headers", hb.toString());
+            }
+        } catch (Throwable t) {
+        }
 
         if (isNetworkUrl) {
-            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "packet-buffering", 1L);
-            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "max-buffer-size", 512 * 1024L);
+            // 直播不因下溢暂停（尽量播当前已到的数据），点播则暂停攒够再播
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "packet-buffering",
+                    isLiveStream ? 0L : 1L);
+            // max-buffer-size 是压缩包队列的预读上限（见 ff_ffplay_options.h MAX_QUEUE_SIZE）。
+            // 按目标画质分档给缓冲，否则 4K 只给 512KB 时垫子不足 0.2s，会不停缓冲：
+            //   直播                -> 4MB（码率通常较高，老设备内存有限不宜过大）
+            //   4K 及以上(120/125/126/127) -> 10MB
+            //   1080P 系列(80/112/116)     -> 1MB
+            //   其余（720P 及以下）        -> 512KB
+            // 注意：直播没有 qn（mCurrentQn=0），必须单列，否则会落到 512KB 一直缓冲
+            long maxBufferSize;
+            if (isLiveStream) {
+                maxBufferSize = 4 * 1024 * 1024L;
+            } else if (mCurrentQn >= 120) {
+                maxBufferSize = 10 * 1024 * 1024L;
+            } else if (mCurrentQn >= 80) {
+                maxBufferSize = 1024 * 1024L;
+            } else {
+                maxBufferSize = 512 * 1024L;
+            }
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "max-buffer-size", maxBufferSize);
         }
 
         try {
@@ -2716,12 +2805,25 @@ public class BiliPlayerActivity extends Activity implements
             pendingPrepare = false;
             resolveAndPrepare();
         } else if (mediaPlayer != null) {
-            if (isPrepared && videoWidth > 0 && videoHeight > 0) {
-                holder.setFixedSize(videoWidth, videoHeight);
-            }
             setDisplayOnPlayer();
             if (isPrepared && isPlaying) {
                 mediaPlayer.start();
+            }
+            // surface 重建（如休眠唤醒）后必须按当前比例/缩放重设 LayoutParams + setFixedSize，
+            // 否则旧版 surfaceFlinger 上视频会缩到左下角（Android 2.2 Desire HD 实测）
+            if (isPrepared && videoWidth > 0 && videoHeight > 0) {
+                videoView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (mGestureController != null) {
+                            applyVideoScale(mGestureController.getCurrentScale(),
+                                    mGestureController.getTranslateX(),
+                                    mGestureController.getTranslateY());
+                        } else {
+                            applyVideoScale(1.0f, 0, 0);
+                        }
+                    }
+                });
             }
         }
     }
@@ -3221,6 +3323,22 @@ public class BiliPlayerActivity extends Activity implements
             optionsMenuItemBlock = optionsMenuItems.findViewById(R.id.options_menu_item_block);
             optionsMenuItemOrientation = optionsMenuItems.findViewById(R.id.options_menu_item_orientation);
             optionsMenuItemInfo = optionsMenuItems.findViewById(R.id.options_menu_item_info);
+            optionsMenuItemSpeed = optionsMenuItems.findViewById(R.id.options_menu_item_speed);
+
+            // 倍速仅 IJK 播放器可用（与长按 2x 加速一致）
+            if (optionsMenuItemSpeed != null) {
+                if (mediaPlayer instanceof IjkMediaPlayer) {
+                    optionsMenuItemSpeed.setVisibility(View.VISIBLE);
+                    optionsMenuItemSpeed.setOnClickListener(new View.OnClickListener() {
+                        public void onClick(View v) {
+                            hideOptionsMenu();
+                            showPlayerSpeedPanel();
+                        }
+                    });
+                } else {
+                    optionsMenuItemSpeed.setVisibility(View.GONE);
+                }
+            }
 
             if (optionsMenuItemPlayer != null) {
                 optionsMenuItemPlayer.setOnClickListener(new View.OnClickListener() {
@@ -3465,8 +3583,118 @@ public class BiliPlayerActivity extends Activity implements
             mPlayerOptionsPannel.dismiss();
             mPlayerOptionsPannel = null;
         }
+        if (mPlayerSpeedPannel != null && mPlayerSpeedPannel.isShowing()) {
+            mPlayerSpeedPannel.dismiss();
+            mPlayerSpeedPannel = null;
+        }
         if (mDanmakuManager != null) mDanmakuManager.dismissAllPanels();
         hideOptionsMenu();
+    }
+
+    // ---- Player Speed Pannel ----
+
+    /** 倍速面板：右滑出、同款样式、拖动条 0.25x~3.0x（仅 IJK 可用） */
+    private void showPlayerSpeedPanel() {
+        if (!(mediaPlayer instanceof IjkMediaPlayer)) {
+            return;
+        }
+        if (mPlayerSpeedPannel != null && mPlayerSpeedPannel.isShowing()) {
+            mPlayerSpeedPannel.dismiss();
+            return;
+        }
+        dismissAllPanels();
+
+        LayoutInflater inflater = LayoutInflater.from(this);
+        final View panel = inflater.inflate(R.layout.bili_app_player_speed_pannel, null);
+
+        android.widget.FrameLayout wrapper = new android.widget.FrameLayout(this);
+        wrapper.setBackgroundDrawable(null);
+        // 面板宽度写死：wrap_content 时只有一条 label seekbar 会把面板压成 52dp，
+        // 带权重的 SeekBar 分到 0 宽，只剩一个滑块点
+        int speedPanelWidth = (int) (280 * getResources().getDisplayMetrics().density + 0.5f);
+        wrapper.addView(panel, new android.widget.FrameLayout.LayoutParams(
+                speedPanelWidth,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.Gravity.RIGHT));
+
+        TextView titleView = (TextView) panel.findViewById(R.id.title);
+        if (titleView != null) {
+            titleView.setText(R.string.player_speed);
+        }
+
+        View closeBtn = panel.findViewById(R.id.close);
+        if (closeBtn != null) {
+            closeBtn.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    dismissAllPanels();
+                }
+            });
+        }
+
+        View speedOption = panel.findViewById(R.id.option_player_speed);
+        final TextView valueTv = (TextView) speedOption.findViewById(R.id.label);
+        final android.widget.SeekBar seek =
+                (android.widget.SeekBar) speedOption.findViewById(R.id.seekbar);
+        if (seek != null) {
+            seek.setMax(SPEED_MAX_PROGRESS);
+            int progress = Math.round((mPanelSpeed - SPEED_MIN) / SPEED_STEP);
+            if (progress < 0) progress = 0;
+            if (progress > SPEED_MAX_PROGRESS) progress = SPEED_MAX_PROGRESS;
+            seek.setProgress(progress);
+            updateSpeedValueText(valueTv, mPanelSpeed);
+            seek.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+                public void onProgressChanged(android.widget.SeekBar sb, int p, boolean fromUser) {
+                    float speed = SPEED_MIN + p * SPEED_STEP;
+                    updateSpeedValueText(valueTv, speed);
+                    applyPlayerSpeed(speed);
+                }
+
+                public void onStartTrackingTouch(android.widget.SeekBar sb) {
+                }
+
+                public void onStopTrackingTouch(android.widget.SeekBar sb) {
+                }
+            });
+        }
+
+        mPlayerSpeedPannel = new PopupWindow(wrapper,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT, true);
+        mPlayerSpeedPannel.setAnimationStyle(R.style.Animation_SidePannel);
+        mPlayerSpeedPannel.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(
+                android.graphics.Color.TRANSPARENT));
+        tv.biliclassic.util.SdkHelper.setOnDismissListener(mPlayerSpeedPannel, new Runnable() {
+            public void run() {
+                mPlayerSpeedPannel = null;
+            }
+        });
+
+        View root = getWindow().getDecorView();
+        mPlayerSpeedPannel.showAtLocation(root, Gravity.RIGHT, 0, 0);
+        if (SdkHelper.getSdkInt() >= 28) {
+            tv.biliclassic.util.SdkHelper.onViewAttached(wrapper, new Runnable() {
+                public void run() {
+                    applyPopupCutout(mPlayerSpeedPannel);
+                }
+            });
+        }
+        showControlsWithAutoHide();
+    }
+
+    private void updateSpeedValueText(TextView tv, float speed) {
+        if (tv != null) {
+            tv.setText(String.format(java.util.Locale.US, "%.2fx", speed));
+        }
+    }
+
+    private void applyPlayerSpeed(float speed) {
+        mPanelSpeed = speed;
+        if (mediaPlayer instanceof IjkMediaPlayer) {
+            try {
+                ((IjkMediaPlayer) mediaPlayer).setSpeed(speed);
+            } catch (Throwable t) {
+            }
+        }
     }
 
     // 为 PopupWindow 的独立窗口设置挖孔模式
@@ -3538,7 +3766,7 @@ public class BiliPlayerActivity extends Activity implements
         if (decoderType == DECODER_SYSTEM) {
             decoder = "系统硬解";
         } else if (decoderType == DECODER_IJK_HARD) {
-            decoder = "IJK 硬解";
+            decoder = "IJK V3硬解";
         } else {
             decoder = "软件解码器";
         }
@@ -4069,6 +4297,31 @@ public class BiliPlayerActivity extends Activity implements
             updatePlayPauseButton();
             if (mDanmakuManager != null) mDanmakuManager.pause();
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 息屏/切后台回来后，surface 有时并不重建（surfaceCreated 不触发），画面会保持错位/
+        // 缩到角落。这里兜底按当前比例+缩放重设一次（surfaceCreated 那条是主路径）
+        final View vv = videoView;
+        if (vv == null || mRendererType != RENDERER_SURFACEVIEW || !isPrepared
+                || videoWidth <= 0 || videoHeight <= 0) {
+            return;
+        }
+        vv.post(new Runnable() {
+            @Override
+            public void run() {
+                if (isFinishing()) return;
+                if (mGestureController != null) {
+                    applyVideoScale(mGestureController.getCurrentScale(),
+                            mGestureController.getTranslateX(),
+                            mGestureController.getTranslateY());
+                } else {
+                    applyVideoScale(1.0f, 0, 0);
+                }
+            }
+        });
     }
 
     @Override

@@ -12,7 +12,7 @@
  * 修改者：一只毛子球 (BiliClassic)
  * 修改时间：2026年6月30日
  *
- * 安卓2也要看B站！
+ * 安卓1也要看B站！
  */
 package tv.biliclassic.api;
 

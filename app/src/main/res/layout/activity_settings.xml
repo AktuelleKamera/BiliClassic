@@ -331,7 +331,7 @@
                 android:layout_marginTop="12dp"
                 android:background="#E0E0E0" />
 
-            <!-- ========== 实验 ========== -->
+            <!-- 实验 -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -345,8 +345,9 @@
                 android:textSize="13sp"
                 android:textStyle="bold" />
 
+            <!-- tablet mode -->
             <LinearLayout
-                android:id="@+id/online_play_item"
+                android:id="@+id/tablet_mode_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
@@ -365,23 +366,22 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/online_playback"
+                        android:text="@string/tablet_mode"
                         android:textColor="#333333"
                         android:textSize="15sp" />
 
                     <TextView
-                        android:id="@+id/online_play_desc"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="@string/direct_online_play_summary"
+                        android:text="@string/tablet_mode_summary"
                         android:textColor="#999999"
                         android:textSize="11sp" />
 
                 </LinearLayout>
 
                 <CheckBox
-                    android:id="@+id/checkbox_online_play"
+                    android:id="@+id/checkbox_tablet_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
@@ -391,17 +391,6 @@
                     android:padding="0dp" />
 
             </LinearLayout>
-
-            <TextView
-                android:id="@+id/online_play_warning"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="12dp"
-                android:layout_marginRight="12dp"
-                android:layout_marginTop="4dp"
-                android:text="@string/online_play_no_cache_summary"
-                android:textColor="#FF6B35"
-                android:textSize="11sp" />
 
             <LinearLayout
                 android:id="@+id/convert_play_item"
@@ -446,6 +435,59 @@
                     android:focusable="false"
                     android:minHeight="0dp"
                     android:padding="0dp" />
+
+            </LinearLayout>
+
+            <!-- 转码格式选择 -->
+            <LinearLayout
+                android:id="@+id/convert_format_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/settings_item_bg"
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/activity_settings_convert_format"
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/activity_settings_convert_format_desc"
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/convert_format_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
+                    android:layout_gravity="center_vertical"
+                    android:text="240P H.264"
+                    android:textColor="#999999"
+                    android:textSize="13sp" />
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center_vertical"
+                    android:contentDescription="@string/common_select"
+                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -711,10 +753,64 @@
                 android:textSize="13sp"
                 android:textStyle="bold" />
 
+            <!-- 播放方式（在线/离线） -->
+            <LinearLayout
+                android:id="@+id/online_play_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/settings_item_bg"
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/playback"
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/online_play_no_cache_summary"
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/online_play_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
+                    android:layout_gravity="center_vertical"
+                    android:text="@string/online_playback"
+                    android:textColor="#999999"
+                    android:textSize="13sp" />
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center_vertical"
+                    android:contentDescription="@string/common_select"
+                    android:src="@android:drawable/ic_menu_edit" />
+
+            </LinearLayout>
+
             <LinearLayout
                 android:id="@+id/player_choice_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:background="@drawable/settings_item_bg"
                 android:clickable="true"
                 android:orientation="horizontal"
@@ -915,9 +1011,9 @@
 
             </LinearLayout>
 
-            <!-- 主题设置：Metro / Classic -->
+            <!-- 弹幕渲染方式 -->
             <LinearLayout
-                android:id="@+id/theme_item"
+                android:id="@+id/danmaku_render_mode_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
@@ -930,53 +1026,17 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/activity_settings_theme_label"
+                    android:text="@string/danmaku_render_method"
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
                 <TextView
-                    android:id="@+id/theme_text"
+                    android:id="@+id/danmaku_render_mode_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
                     android:layout_marginRight="8dp"
-                    android:textColor="#999999"
-                    android:textSize="13sp" />
-
-            <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:layout_gravity="center_vertical"
-                android:contentDescription="@string/common_select"
-                android:src="@android:drawable/ic_menu_edit" />
-
-            </LinearLayout>
-
-            <!-- Metro 背景图片：自定义，自动拉伸铺满 -->
-            <LinearLayout
-                android:id="@+id/metro_bg_item"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:background="@drawable/settings_item_bg"
-                android:clickable="true"
-                android:orientation="horizontal"
-                android:padding="12dp">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/activity_settings_metro_bg_label"
-                    android:textColor="#333333"
-                    android:textSize="15sp" />
-
-                <TextView
-                    android:id="@+id/metro_bg_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:layout_marginRight="8dp"
+                    android:text="@string/danmaku_render_mode_auto"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
@@ -1045,6 +1105,14 @@
                     android:textColor="#666666"
                     android:textSize="11sp" />
 
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/ostwind_no_decoder_mobo_hint"
+                    android:textColor="#666666"
+                    android:textSize="11sp" />
+
             </LinearLayout>
 
             <!-- 分隔线 -->
@@ -1055,7 +1123,7 @@
                 android:layout_marginTop="12dp"
                 android:background="#E0E0E0" />
 
-            <!-- ========== 默认首页 ========== -->
+            <!-- 界面设置 -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -1069,6 +1137,7 @@
                 android:textSize="13sp"
                 android:textStyle="bold" />
 
+            <!-- 默认首页 -->
             <LinearLayout
                 android:id="@+id/default_tab_item"
                 android:layout_width="match_parent"
@@ -1078,18 +1147,34 @@
                 android:orientation="horizontal"
                 android:padding="12dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/default_home_page"
-                    android:textColor="#333333"
-                    android:textSize="15sp" />
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/default_home_page"
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/default_page_summary"
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/default_tab_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
                     android:layout_marginRight="8dp"
                     android:text="@string/mainactivity_tab_newanime"
                     android:textColor="#999999"
@@ -1098,49 +1183,92 @@
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
+                    android:layout_gravity="center_vertical"
                     android:contentDescription="@string/common_select"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
-            <TextView
+            <!-- 主题设置：Metro / Classic -->
+            <LinearLayout
+                android:id="@+id/theme_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="12dp"
-                android:layout_marginRight="12dp"
                 android:layout_marginTop="4dp"
-                android:text="@string/default_page_summary"
-                android:textColor="#999999"
-                android:textSize="11sp" />
+                android:background="@drawable/settings_item_bg"
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
-            <!-- 分隔线 -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginBottom="12dp"
-                android:layout_marginTop="12dp"
-                android:background="#E0E0E0" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/activity_settings_theme_label"
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
 
-            
-<!-- 语言设置 -->
-            <TextView
+                <TextView
+                    android:id="@+id/theme_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginRight="8dp"
+                    android:textColor="#999999"
+                    android:textSize="13sp" />
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center_vertical"
+                    android:contentDescription="@string/common_select"
+                    android:src="@android:drawable/ic_menu_edit" />
+
+            </LinearLayout>
+
+            <!-- Metro 背景图片 -->
+            <LinearLayout
+                android:id="@+id/metro_bg_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/language"
-                android:background="#F3F3F3"
-                android:paddingLeft="12dp"
-                android:paddingRight="12dp"
-                android:paddingTop="10dp"
-                android:paddingBottom="4dp"
-                android:textColor="#666666"
-                android:textSize="13sp"
-                android:textStyle="bold" />
+                android:layout_marginTop="4dp"
+                android:background="@drawable/settings_item_bg"
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/activity_settings_metro_bg_label"
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/metro_bg_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginRight="8dp"
+                    android:textColor="#999999"
+                    android:textSize="13sp" />
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center_vertical"
+                    android:contentDescription="@string/common_select"
+                    android:src="@android:drawable/ic_menu_edit" />
+
+            </LinearLayout>
+
+            <!-- 语言设置 -->
             <LinearLayout
                 android:id="@+id/locale_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="4dp"
                 android:background="@drawable/settings_item_bg"
                 android:clickable="true"
                 android:orientation="horizontal"
@@ -1187,103 +1315,67 @@
 
             </LinearLayout>
 
-            <!-- 分隔线 -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginBottom="12dp"
-                android:layout_marginTop="12dp"
-                android:background="#E0E0E0" />
-
-            
-<!-- 视频画质 -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/playback_settings"
-                android:background="#F3F3F3"
-                android:paddingLeft="12dp"
-                android:paddingRight="12dp"
-                android:paddingTop="10dp"
-                android:paddingBottom="4dp"
-                android:textColor="#666666"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
+            <!-- 视频画质 -->
             <LinearLayout
                 android:id="@+id/video_quality_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:background="@drawable/settings_item_bg"
                 android:clickable="true"
                 android:orientation="horizontal"
                 android:padding="12dp">
 
-                <TextView
+                <!-- 左边：标题 + 摘要，垂直排列，占剩余空间 -->
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/video_quality"
-                    android:textColor="#333333"
-                    android:textSize="15sp" />
+                    android:orientation="vertical">
 
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/video_quality"
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/video_quality_summary"
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+                <!-- 右边：当前值 -->
                 <TextView
                     android:id="@+id/video_quality_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
                     android:layout_marginRight="8dp"
                     android:text="@string/quality_360p"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
+                <!-- 最右：图标 -->
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
+                    android:layout_gravity="center_vertical"
                     android:contentDescription="@string/common_select"
                     android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginLeft="12dp"
-                android:layout_marginRight="12dp"
-                android:layout_marginTop="4dp"
-                android:text="@string/video_quality_summary"
-                android:textColor="#999999"
-                android:textSize="11sp" />
-
-            <!-- 分隔线 -->
-            <View
-                android:id="@+id/dialog_style_divider_top"
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginBottom="12dp"
-                android:layout_marginTop="12dp"
-                android:background="#E0E0E0" />
-
-            
-<!-- 弹窗设置 -->
-            <TextView
-                android:id="@+id/dialog_style_title"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/activity_settings_5f39_2"
-                android:background="#F3F3F3"
-                android:paddingLeft="12dp"
-                android:paddingRight="12dp"
-                android:paddingTop="10dp"
-                android:paddingBottom="4dp"
-                android:textColor="#666666"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
             <LinearLayout
                 android:id="@+id/dialog_style_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="4dp"
                 android:background="@drawable/settings_item_bg"
                 android:clickable="true"
                 android:orientation="horizontal"
@@ -1332,15 +1424,13 @@
 
             <!-- 分隔线 -->
             <View
-                android:id="@+id/dialog_style_divider_bottom"
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginBottom="12dp"
                 android:layout_marginTop="12dp"
                 android:background="#E0E0E0" />
 
-            
-<!-- 设备信息 -->
+            <!-- 设备信息 -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -1649,15 +1739,40 @@
 
             </LinearLayout>
 
-            <TextView
+            <LinearLayout
+                android:id="@+id/echo_submit_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="12dp"
-                android:layout_marginRight="12dp"
-                android:layout_marginTop="4dp"
-                android:text="@string/echo_cave_summary"
-                android:textColor="#999999"
-                android:textSize="11sp" />
+                android:layout_marginTop="6dp"
+                android:background="@drawable/settings_item_bg"
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/echo_submit"
+                    android:textColor="#333333"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/echo_submit_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
+                    android:text="@string/echo_submit_summary"
+                    android:textColor="#999999"
+                    android:textSize="13sp" />
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:contentDescription="@string/echo_submit"
+                    android:src="@android:drawable/ic_menu_edit" />
+
+            </LinearLayout>
 
             <!-- 分隔线 -->
             <View
@@ -1800,7 +1915,7 @@
                 android:layout_marginTop="12dp"
                 android:background="#E0E0E0" />
 
-            <!-- ========== 隐私与数据 ========== -->
+            <!-- 隐私与数据 -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -1850,52 +1965,6 @@
 
                 <CheckBox
                     android:id="@+id/checkbox_no_image_mode"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:clickable="false"
-                    android:focusable="false"
-                    android:minHeight="0dp"
-                    android:padding="0dp" />
-
-            </LinearLayout>
-
-            <!-- tablet mode -->
-            <LinearLayout
-                android:id="@+id/tablet_mode_item"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/settings_item_bg"
-                android:clickable="true"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="12dp">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/tablet_mode"
-                        android:textColor="#333333"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/tablet_mode_summary"
-                        android:textColor="#999999"
-                        android:textSize="11sp" />
-
-                </LinearLayout>
-
-                <CheckBox
-                    android:id="@+id/checkbox_tablet_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"

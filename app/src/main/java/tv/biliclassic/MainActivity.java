@@ -60,6 +60,9 @@ public class MainActivity extends BaseActivity {
     // 选项菜单是否打开，打开时放行方向键给菜单自身导航
     private boolean mOptionsMenuOpen = false;
 
+    // 持有崩溃提示对话框引用，避免被 GC 回收导致「闪现一下就不见」
+    private AlertDialog mCrashDialog;
+
     private int currentVersionCode = -1;
     private String currentVersionName = "";
 
@@ -109,7 +112,7 @@ public class MainActivity extends BaseActivity {
                 setupShown = true;
                 lastVersionCode = currentVersionCode > 0 ? currentVersionCode - 1 : 0;
             } else {
-                // 完全空文件 → 真·首次安装，记录版本号，让 setupShown=false 走初次使用流程
+                // 完全空文件 → 真首次安装，记录版本号，让 setupShown=false 走初次使用流程
                 SharedPreferencesUtil.putInt("last_version_code", currentVersionCode);
                 lastVersionCode = currentVersionCode;
             }
@@ -235,6 +238,7 @@ public class MainActivity extends BaseActivity {
         mPager.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
             @Override
             public void onPageSelected(int position) {
+                clearTopBarHighlight();
                 updateOrientationForTab();
             }
 
@@ -335,6 +339,9 @@ public class MainActivity extends BaseActivity {
                 }
             }
         });
+
+        // 启动就按比例定 logo 宽，避免老系统上以原图宽度顶着左边
+        fitLogoWidth(logo);
 
         if (shouldEnableLandscape()) {
             boolean tipShown = SharedPreferencesUtil.getBoolean(KEY_LANDSCAPE_TIP_SHOWN, false);
@@ -686,7 +693,7 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
+        AlertDialog dialog = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.last_abnormal_exit))
                 .setMessage(getString(R.string.last_crash_prompt))
                 .setPositiveButton("查看", new DialogInterface.OnClickListener() {
@@ -698,7 +705,26 @@ public class MainActivity extends BaseActivity {
                     }
                 })
                 .setNegativeButton("忽略", null)
-                .show();
+                .create();
+        // 持有引用 + 等窗口挂好后再 show，避免被 GC 回收 / 过早显示导致「闪现一下就没了」
+        mCrashDialog = dialog;
+        dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface d) {
+                mCrashDialog = null;
+            }
+        });
+        getWindow().getDecorView().post(new Runnable() {
+            @Override
+            public void run() {
+                if (!isFinishing() && mCrashDialog != null && !mCrashDialog.isShowing()) {
+                    try {
+                        mCrashDialog.show();
+                    } catch (Throwable t) {
+                    }
+                }
+            }
+        });
     }
 
     private String getLatestCrashLog() {
@@ -875,16 +901,79 @@ public class MainActivity extends BaseActivity {
      * - 左右方向键不再切换 Tab（推荐页内用于移动卡片光标，其他页面直接消费掉，防止 ViewPager 切页）；
      * - Tab 切换改用数字键 1（上一个）和 3（下一个）。
      */
+    /** 直接改 logo 的左边距（避免用 toRightOf 依赖 GONE 的返回键，间距不稳定） */
+    private void setLogoLeftMargin(int px) {
+        ImageView logo = (ImageView) findViewById(R.id.logo);
+        if (logo == null) {
+            return;
+        }
+        android.view.ViewGroup.LayoutParams lp = logo.getLayoutParams();
+        if (lp instanceof android.widget.RelativeLayout.LayoutParams) {
+            android.widget.RelativeLayout.LayoutParams rp =
+                    (android.widget.RelativeLayout.LayoutParams) lp;
+            if (rp.leftMargin != px) {
+                rp.leftMargin = px;
+                logo.setLayoutParams(rp);
+            }
+        }
+    }
+
+    /** 按图片比例算 logo 宽度（清朝系统用） */
+    private void fitLogoWidth(final ImageView logo) {
+        fitLogoWidth(logo, 0);
+    }
+
+    /**
+     * 老系统上 adjustViewBounds 不生效、且 view 尚未测量时 getHeight() 为 0，
+     * 这里等测量完成再按比例设宽（最多重试 ~1s），否则 logo 会以原图宽度显示，
+     * 看起来左边一大块透明留白，等某次布局后才突然「跑回最左边」。
+     */
+    private void fitLogoWidth(final ImageView logo, final int attempt) {
+        if (logo == null) {
+            return;
+        }
+        // 先同步算一次：高度已知时立即设宽，避免"换图标后先按旧宽度渲染一帧（露出一坨）
+        // 再等下一帧复原"的跳动。只有 view 还没测量出来时才 post 重试。
+        android.graphics.drawable.Drawable d = logo.getDrawable();
+        int h = logo.getHeight();
+        if (d != null && h > 0) {
+            int ih = d.getIntrinsicHeight();
+            int iw = d.getIntrinsicWidth();
+            if (ih > 0 && iw > 0) {
+                int w = (int) ((long) h * iw / ih);
+                android.view.ViewGroup.LayoutParams lp = logo.getLayoutParams();
+                if (lp != null && lp.width != w) {
+                    lp.width = w;
+                    logo.setLayoutParams(lp);
+                }
+            }
+            return;
+        }
+        if (attempt < 30) {
+            logo.postDelayed(new Runnable() {
+                public void run() {
+                    fitLogoWidth(logo, attempt + 1);
+                }
+            }, 30);
+        }
+    }
+
     /** 展开主界面标题栏的内联 Holo 搜索框（模仿 1.8.4 iconified SearchView） */
     private void expandTitleSearch() {
+        if (isTitleSearchExpanded()) return; // 防重复展开（物理键盘回车/搜索键可能连发）
+        clearTopBarHighlight();
         View btnSearch = findViewById(R.id.btn_search);
         View container = findViewById(R.id.title_search_container);
         final EditText edit = (EditText) findViewById(R.id.title_search_edit);
         View back = findViewById(R.id.btn_home_back);
         ImageView logo = (ImageView) findViewById(R.id.logo);
         if (btnSearch != null) btnSearch.setVisibility(View.GONE);
-        // 返回键插到 logo 左边，logo 换成应用图标
-        if (logo != null) logo.setImageResource(R.drawable.ic_launcher);
+        // 返回键插到 logo 左边，logo 换成应用图标；同时把 logo 右移，避免和返回键重叠
+        if (logo != null) {
+            logo.setImageResource(R.drawable.ic_launcher);
+            setLogoLeftMargin(DeviceUtil.dpToPx(52));
+            fitLogoWidth(logo);
+        }
         if (back != null) back.setVisibility(View.VISIBLE);
         if (container != null) container.setVisibility(View.VISIBLE);
         if (edit != null) {
@@ -908,12 +997,15 @@ public class MainActivity extends BaseActivity {
 
     /** 收起内联搜索框，恢复 logo 和搜索图标 */
     private void collapseTitleSearch() {
+        clearTopBarHighlight();
         ImageView logo = (ImageView) findViewById(R.id.logo);
         View btnSearch = findViewById(R.id.btn_search);
         View container = findViewById(R.id.title_search_container);
         if (logo != null) {
             logo.setImageResource(R.drawable.ic_home);
             logo.setVisibility(View.VISIBLE);
+            setLogoLeftMargin(DeviceUtil.dpToPx(12));
+            fitLogoWidth(logo);
         }
         if (btnSearch != null) btnSearch.setVisibility(View.VISIBLE);
         View back = findViewById(R.id.btn_home_back);
@@ -924,16 +1016,32 @@ public class MainActivity extends BaseActivity {
             tv.biliclassic.util.SdkHelper.hideSoftInputFromWindow(this, focus.getWindowToken(), 0);
         }
         hideMainSearchHistory();
+        // 键盘收起动画结束后重算底部补白，避免界面停在被键盘挤扁的状态
+        final android.view.View decor = getWindow().getDecorView();
+        decor.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                updateNavBarPadding(decor);
+            }
+        }, 350);
     }
 
     /** 提交内联搜索：带关键词打开搜索页 */
     private void submitTitleSearch() {
+        // 已收起（说明本次已提交过）就不再重复开搜索页（回车/IME 可能连发，曾一次开三个）
+        if (!isTitleSearchExpanded()) return;
         EditText edit = (EditText) findViewById(R.id.title_search_edit);
         if (edit == null) {
             return;
         }
         String keyword = edit.getText().toString().trim();
         if (keyword.length() == 0) {
+            return;
+        }
+        // 作弊码：命中直接执行彩蛋并收起搜索框，不打开搜索页
+        //（否则会先闪一下搜索界面，返回还停在一个空搜索页）
+        if (tv.biliclassic.util.CheatCodeUtil.tryTrigger(this, keyword)) {
+            collapseTitleSearch();
             return;
         }
         saveMainSearchHistory(keyword);
@@ -981,8 +1089,10 @@ public class MainActivity extends BaseActivity {
             tv.setSingleLine(true);
             tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
             tv.setGravity(android.view.Gravity.CENTER_VERTICAL);
-            tv.setPadding(padH, padV, padH, padV);
+            // 先设背景再设 padding：setBackgroundResource → setBackgroundDrawable 会用 drawable
+            // 的 padding 覆盖 View 的 padding（旧设备尤其明显），后设 padding 才不会被清成 0
             tv.setBackgroundResource(R.drawable.titlebar_pink_item_bg);
+            tv.setPadding(padH, padV, padH, padV);
             tv.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -1040,6 +1150,120 @@ public class MainActivity extends BaseActivity {
         }
     }
 
+    private View mTopNavSearch;
+    private View mTopNavMore;
+    private int mTopNavIndex = -1;
+
+    private java.util.ArrayList<View> getTopNavItems() {
+        java.util.ArrayList<View> items = new java.util.ArrayList<View>();
+        if (mTopNavSearch == null) mTopNavSearch = findViewById(R.id.btn_search);
+        if (mTopNavMore == null) mTopNavMore = findViewById(R.id.btn_title_more);
+        if (mTopNavSearch != null && mTopNavSearch.getVisibility() == View.VISIBLE) {
+            items.add(mTopNavSearch);
+        }
+        if (mTopNavMore != null && mTopNavMore.getVisibility() == View.VISIBLE) {
+            items.add(mTopNavMore);
+        }
+        return items;
+    }
+
+    /** 当前原生焦点若落在顶栏按钮上，返回其下标；否则 -1。 */
+    private int topIndexIfFocused() {
+        View f = getCurrentFocus();
+        if (f == null) return -1;
+        java.util.ArrayList<View> items = getTopNavItems();
+        for (int i = 0; i < items.size(); i++) {
+            if (items.get(i) == f) return i;
+        }
+        return -1;
+    }
+
+    /** 进顶栏：把原生焦点给第一个顶栏按钮（高亮由 selector 的 state_focused 渲染）。 */
+    private void enterTopBar() {
+        java.util.ArrayList<View> items = getTopNavItems();
+        if (items.size() == 0) return;
+        mTopNavIndex = 0;
+        items.get(0).requestFocus();
+    }
+
+    /** 退出顶栏：清掉按钮的原生焦点（否则 selector 的 state_focused 粉色高亮残留）。 */
+    private void clearTopBarHighlight() {
+        mTopNavIndex = -1;
+        if (mTopNavSearch == null) mTopNavSearch = findViewById(R.id.btn_search);
+        if (mTopNavMore == null) mTopNavMore = findViewById(R.id.btn_title_more);
+        if (mTopNavSearch != null) mTopNavSearch.clearFocus();
+        if (mTopNavMore != null) mTopNavMore.clearFocus();
+    }
+
+    /** 顶栏导航：左右移动原生焦点，确认触发，上下退出；其它键退出并放行。 */
+    private boolean handleTopBarNav(int action, int repeatCount) {
+        java.util.ArrayList<View> items = getTopNavItems();
+        if (items.size() == 0) {
+            mTopNavIndex = -1;
+            return false;
+        }
+        if (mTopNavIndex >= items.size()) mTopNavIndex = items.size() - 1;
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT) {
+            if (repeatCount == 0 && mTopNavIndex > 0) {
+                mTopNavIndex--;
+                items.get(mTopNavIndex).requestFocus();
+            }
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT) {
+            if (repeatCount == 0 && mTopNavIndex < items.size() - 1) {
+                mTopNavIndex++;
+                items.get(mTopNavIndex).requestFocus();
+            }
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+            if (repeatCount == 0) {
+                View target = items.get(mTopNavIndex);
+                if (target == mTopNavSearch) {
+                    // 搜索：清高亮后展开搜索框（输入框会接走焦点）
+                    clearTopBarHighlight();
+                    target.performClick();
+                } else {
+                    // 更多：弹出溢出菜单后把焦点留在它自己身上，
+                    // 否则清掉焦点会让框架把焦点乱移到「搜索」上
+                    target.performClick();
+                    target.requestFocus();
+                }
+            }
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP
+                || action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
+            clearTopBarHighlight();
+            return true;
+        }
+        // 其它键（返回/菜单/刷新等）不归顶栏管：退出顶栏并放行
+        clearTopBarHighlight();
+        return false;
+    }
+
+    /** 当前页内容光标是否已在最顶部（再按上键进入顶栏）。 */
+    private boolean activeContentAtTop() {
+        if (mActiveFragment == null) return false;
+        if (mActiveFragment instanceof RecommendFragment) {
+            return ((RecommendFragment) mActiveFragment).isAtTabStrip();
+        }
+        if (mActiveFragment instanceof NewAnimeFragment) {
+            return ((NewAnimeFragment) mActiveFragment).isAtTabStrip();
+        }
+        if (mActiveFragment instanceof AboutFragment) {
+            return ((AboutFragment) mActiveFragment).isNavAtTop();
+        }
+        if (mActiveFragment instanceof ProfileFragment) {
+            return ((ProfileFragment) mActiveFragment).isNavAtTop();
+        }
+        if (mActiveFragment instanceof TimelineFragment) {
+            return ((TimelineFragment) mActiveFragment).isNavAtTop();
+        }
+        return false;
+    }
+
     @Override
     public boolean dispatchKeyEvent(android.view.KeyEvent event) {
         // 内联搜索框展开时，返回键先收起搜索框
@@ -1053,6 +1277,24 @@ public class MainActivity extends BaseActivity {
             if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
                 boolean firstPress = (event.getRepeatCount() == 0);
                 int action = tv.biliclassic.util.KeyBindingUtil.classify(event.getKeyCode());
+                // 顶栏导航：原生焦点落在顶栏按钮上时，左右移动焦点、确认触发、上下退出
+                mTopNavIndex = topIndexIfFocused();
+                if (mTopNavIndex >= 0) {
+                    // 物理键盘（如 HTC Chacha）的回车键默认不在绑定表里（classify 返回 -1），
+                    // 会被当"其它键"清焦点放行 → 选中的搜索/更多按不出来。这里把回车当确认键。
+                    int navAction = action;
+                    if (navAction < 0 && (event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER
+                            || event.getKeyCode() == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER)) {
+                        navAction = tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM;
+                    }
+                    return handleTopBarNav(navAction, event.getRepeatCount());
+                }
+                // 内容已在顶部再按上键：进入顶栏（选中搜索/更多）
+                if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP && firstPress
+                        && !isTitleSearchExpanded() && activeContentAtTop()) {
+                    enterTopBar();
+                    return true;
+                }
                 // 放送时间表：方向键/数字键 2/8 滚动列表
                 if (mActiveFragment instanceof TimelineFragment) {
                     TimelineFragment tf = (TimelineFragment) mActiveFragment;
@@ -1170,7 +1412,17 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        clearTopBarHighlight();
         updateOrientationForTab();
+    }
+
+    /** 触屏操作时退出顶栏导航并清高亮（遥控器选中后直接点屏幕的残留场景）。 */
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+        if (ev.getAction() == android.view.MotionEvent.ACTION_DOWN && mTopNavIndex >= 0) {
+            clearTopBarHighlight();
+        }
+        return super.dispatchTouchEvent(ev);
     }
 
     private void addTab(String title, Class<? extends Fragment> clss) {

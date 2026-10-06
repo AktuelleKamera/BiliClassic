@@ -400,108 +400,8 @@ public class SearchActivity extends BaseActivity {
     }
 
     private boolean checkAndTriggerCheatCode(String keyword) {
-        if (keyword == null || keyword.length() == 0) {
-            return false;
-        }
-
-        String lowerKeyword = keyword.toLowerCase();
-
-        // GTA 作弊码 → SettingsActivity
-        if (lowerKeyword.equals("nuttertools") ||
-                lowerKeyword.equals("professionaltools") ||
-                lowerKeyword.equals("thugstools")) {
-
-            try {
-                Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-                if (vibrator != null) {
-                    vibrator.vibrate(200);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            Toast.makeText(this, this.getString(R.string.cheat_code_enabled), Toast.LENGTH_LONG).show();
-
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    startActivity(new Intent(SearchActivity.this, SettingsActivity.class));
-                }
-            }, 800);
-            return true;
-        }
-
-        // giveusatank → 打开神秘页面
-        // 来自 GTA 3 的神秘作弊码……
-        if (lowerKeyword.equals("giveusatank")) {
-            try {
-                Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-                if (vibrator != null) {
-                    vibrator.vibrate(300);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            Toast.makeText(this, this.getString(R.string.cheat_code_enabled), Toast.LENGTH_LONG).show();
-
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    Intent intent = new Intent(SearchActivity.this, WebViewActivity.class);
-                    intent.putExtra("url", "http://www.biliclassic.cn/buy");
-                    intent.putExtra("title", "不必追求2.3版本");
-                    startActivity(intent);
-                }
-            }, 800);
-            return true;
-        }
-
-        // GETTHEREQUICKLY → 生放送（直播）
-        if (lowerKeyword.equals("gettherequickly")) {
-            try {
-                Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-                if (vibrator != null) {
-                    vibrator.vibrate(200);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            Toast.makeText(this, this.getString(R.string.cheat_code_enabled), Toast.LENGTH_LONG).show();
-
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    startActivity(new Intent(SearchActivity.this, LiveRoomListActivity.class));
-                }
-            }, 800);
-            return true;
-        }
-
-        // ASPIRINE → 私信
-        if (lowerKeyword.equals("aspirine")) {
-            try {
-                Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-                if (vibrator != null) {
-                    vibrator.vibrate(200);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            Toast.makeText(this, this.getString(R.string.cheat_code_enabled), Toast.LENGTH_LONG).show();
-
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    startActivity(new Intent(SearchActivity.this, PrivateMsgListActivity.class));
-                }
-            }, 800);
-            return true;
-        }
-
-        return false;
+        // 统一走 CheatCodeUtil：主界面内联搜索也会先调它，命中就直接跳转、不再打开搜索页
+        return tv.biliclassic.util.CheatCodeUtil.tryTrigger(this, keyword);
     }
 
     /** 搜索态：显示搜索框，隐藏排序 + 搜索按钮（模仿 1.8.4 点搜索按钮展开） */
@@ -757,7 +657,7 @@ public class SearchActivity extends BaseActivity {
         }
     }
 
-    /** DatePicker.setMinDate/setMaxDate 是 API 11+，用反射兼容老设备（否则验证器拒绝整个类） */
+    /** DatePicker.setMinDate/setMaxDate 是 API 11+，用反射兼容清朝设备（否则验证器拒绝整个类） */
     private void setPickerRange(android.widget.DatePicker picker, long minMs, long maxMs) {
         if (picker == null) {
             return;
@@ -877,6 +777,9 @@ public class SearchActivity extends BaseActivity {
                     final JSONObject json = requestSearchJson(keyword, page, mode);
                     final int code = json.optInt("code", -1);
                     final String message = json.optString("message", "");
+                    android.util.Log.w("NetDiag", "search code=" + code + " msg="
+                            + message + " voucher=" + isRiskVoucher(json)
+                            + " page=" + page + " mode=" + mode);
 
                     runOnUiThread(new Runnable() {
                         @Override

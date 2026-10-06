@@ -12,7 +12,7 @@
  * 修改者：一只毛子球 (BiliClassic)
  * 修改时间：2026年6月19日
  *
- * 安卓2也要看B站！
+ * 安卓1也要看B站！
  */
 package tv.biliclassic.util;
 
@@ -148,14 +148,14 @@ public class NetWorkUtil {
         if (!cookieMap.containsKey("home_feed_column")) cookieMap.put("home_feed_column", "4");
         if (!cookieMap.containsKey("PVID")) cookieMap.put("PVID", "1");
 
-        String newCookie = mapToCookieString(cookieMap);
+        String newCookie = boundCookie(mapToCookieString(cookieMap));
         SharedPreferencesUtil.putString("cookies", newCookie);
         setCookieString(newCookie);
     }
 
     public static synchronized void refreshHeaders() {
         ensureBrowserCookies();
-        String cookie = cleanCookieString(SharedPreferencesUtil.getString("cookies", ""));
+        String cookie = boundCookie(cleanCookieString(SharedPreferencesUtil.getString("cookies", "")));
         if (cookie == null) cookie = "";
         SharedPreferencesUtil.putString("cookies", cookie);
         sCookieString = mergeCookies(sCookieString, cookie);
@@ -190,6 +190,36 @@ public class NetWorkUtil {
     }
 
     // Cookie 工具方法
+
+    /**
+     * Cookie 头长度上限。Cookie 异常膨胀时（老设备上曾导致 createRequest 拼超大字符串、
+     * GC spin on suspend 整个 VM 卡死）按项裁剪，丢弃异常超长的单条。
+     */
+    private static final int MAX_COOKIE_HEADER_LEN = 8192;
+    private static final int MAX_COOKIE_PAIR_LEN = 2048;
+
+    public static String boundCookie(String cookie) {
+        if (cookie == null || cookie.length() <= MAX_COOKIE_HEADER_LEN) {
+            return cookie;
+        }
+        Log.w("NetDiag", "Cookie 过长(" + cookie.length() + ") 已裁剪");
+        StringBuffer sb = new StringBuffer(MAX_COOKIE_HEADER_LEN + 16);
+        String[] pairs = cookie.split("; ");
+        for (int i = 0; i < pairs.length; i++) {
+            String p = pairs[i];
+            if (p.length() > MAX_COOKIE_PAIR_LEN) {
+                continue;
+            }
+            if (sb.length() + p.length() + 2 > MAX_COOKIE_HEADER_LEN) {
+                break;
+            }
+            if (sb.length() > 0) {
+                sb.append("; ");
+            }
+            sb.append(p);
+        }
+        return sb.toString();
+    }
 
     /**
      * 合并 Cookie：按名称去重，后面的覆盖前面的
@@ -364,24 +394,58 @@ public class NetWorkUtil {
             throw new JSONException("在访问 " + url + " 时返回数据为空");
         }
         try {
-            return new JSONObject(response);
+            return new JSONObject(sanitizeJson(response));
         } catch (OutOfMemoryError e) {
             throw new IOException("响应数据过大，内存不足");
         }
     }
 
     public static JSONObject getJson(String url, ArrayList headers) throws IOException, JSONException {
-        // API < 10 无 JSONTokener(Reader) 构造器，getJsonStream 会走反射失败→重连路径。
-        // Android 1.6 上重连会 Read timed out（0.4.9 单次请求正常，0.4.10 起双请求超时），
-        // 因此低版本直接走单次 get()，与 0.4.9 行为一致。
+        // API < 10 无 JSONTokener(Reader) 构造器，因此低版本直接走单次 get()
         if (SdkHelper.getSdkInt() < 10) {
             String response = get(url, headers);
             if (response == null || response.length() == 0) {
                 throw new JSONException("在访问 " + url + " 时返回数据为空");
             }
-            return new JSONObject(response);
+            return new JSONObject(sanitizeJson(response));
         }
         return getJsonStream(url, headers);
+    }
+
+    /**
+     * 清掉 BOM/前置杂字符并截取 JSON 主体，兼容老 org.json 的严格解析
+     * （PHP 输出 BOM、响应前有空白/警告文字等都会导致 syntaxError）
+     */
+    public static String sanitizeJson(String s) {
+        if (s == null) {
+            return null;
+        }
+        if (s.charAt(0) == '\uFEFF') {
+            s = s.substring(1);
+        }
+        s = s.trim();
+        int obj = s.indexOf('{');
+        int arr = s.indexOf('[');
+        int start;
+        if (obj < 0) {
+            start = arr;
+        } else if (arr < 0) {
+            start = obj;
+        } else {
+            start = obj < arr ? obj : arr;
+        }
+        if (start > 0) {
+            s = s.substring(start);
+        }
+        int end = s.lastIndexOf('}');
+        int endArr = s.lastIndexOf(']');
+        if (endArr > end) {
+            end = endArr;
+        }
+        if (end >= 0 && end < s.length() - 1) {
+            s = s.substring(0, end + 1);
+        }
+        return s;
     }
 
     public static boolean isNetworkAvailable(android.content.Context context) {
@@ -587,11 +651,17 @@ public class NetWorkUtil {
 
         // 应用传入的 headers
         boolean hasCookieInHeaders = false;
+        boolean skipCookie = false;
         if (headers != null) {
             Map headerMap = listToMap(headers);
             for (Iterator it = headerMap.keySet().iterator(); it.hasNext(); ) {
                 String key = (String) it.next();
                 String value = (String) headerMap.get(key);
+                // 调用方声明本次不发 Cookie（未登录搜索：合成指纹 Cookie 会被判风控）
+                if ("X-Skip-Cookie".equalsIgnoreCase(key)) {
+                    skipCookie = true;
+                    continue;
+                }
                 if (key != null && value != null) {
                     conn.setRequestProperty(key, value);
                     if ("Cookie".equalsIgnoreCase(key)) {
@@ -602,7 +672,7 @@ public class NetWorkUtil {
         }
 
         // Cookie 处理 - 如果调用方没有自带 Cookie，再自动合并
-        if (!hasCookieInHeaders) {
+        if (!hasCookieInHeaders && !skipCookie) {
             String cookie = buildCookieHeader();
             if (cookie != null && cookie.length() > 0) {
                 conn.setRequestProperty("Cookie", cookie);
@@ -641,7 +711,7 @@ public class NetWorkUtil {
                 cookie = mergeCookies(cookie, loggedCookie);
             }
         }
-        return cookie;
+        return boundCookie(cookie);
     }
 
     /**
@@ -946,7 +1016,7 @@ public class NetWorkUtil {
             is = null;
             String setCookie = collectSetCookies(conn);
             if (setCookie != null && setCookie.length() > 0) saveCookieFromHeader(setCookie);
-            return new JSONObject(text);
+            return new JSONObject(sanitizeJson(text));
         } finally {
             if (is != null) try { is.close(); } catch (Exception ignored) {}
             if (conn != null) conn.disconnect();
@@ -1016,7 +1086,7 @@ public class NetWorkUtil {
             return;
         }
 
-        String merged = mergeCookies(sCookieString, cookiePure);
+        String merged = boundCookie(mergeCookies(sCookieString, cookiePure));
         sCookieString = merged;
         SharedPreferencesUtil.putString("cookies", merged);
 

@@ -51,7 +51,12 @@ public abstract class BaseObservableAdapter<T> extends BaseAdapter {
             return;
         }
         this.mHideHighlight = hide;
-        notifyDataSetChanged();
+        // 没有选中项时无需重绑（触摸滑动时 selectedPosition 通常为 -1）。
+        // 有选中项才刷新一次高亮——避免一开滑就 notifyDataSetChanged 整屏重绑、
+        // 把视野内已加载的图片清成占位图。
+        if (selectedPosition >= 0) {
+            notifyDataSetChanged();
+        }
     }
 
     public void setScrolling(boolean scrolling) {

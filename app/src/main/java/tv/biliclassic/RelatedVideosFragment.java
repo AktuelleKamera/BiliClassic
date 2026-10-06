@@ -30,11 +30,13 @@ import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.StringUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 public class RelatedVideosFragment extends Fragment {
 
     private ListView listView;
-    private ProgressBar progressBar;
+    // 统一加载条（公共组件）
+    private LoadingBarView progressBar;
     private TextView emptyView;
 
     private RelatedVideosAdapter adapter;
@@ -141,7 +143,8 @@ public class RelatedVideosFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_related_videos, container, false);
 
         listView = (ListView) view.findViewById(R.id.list_view);
-        progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
+        progressBar = (LoadingBarView) view.findViewById(R.id.progress_bar);
+        progressBar.bindBackground(listView);
         emptyView = (TextView) view.findViewById(R.id.empty_view);
 
         adapter = new RelatedVideosAdapter(getActivity(), videoList);
@@ -353,11 +356,11 @@ public class RelatedVideosFragment extends Fragment {
         if (aid == 0 && (bvid == null || bvid.length() == 0)) {
             emptyView.setText(getString(R.string.load_related_failed));
             emptyView.setVisibility(View.VISIBLE);
-            progressBar.setVisibility(View.GONE);
+            progressBar.hide();
             return;
         }
 
-        progressBar.setVisibility(View.VISIBLE);
+        progressBar.showLoading();
         emptyView.setVisibility(View.GONE);
 
         new Thread(new Runnable() {
@@ -405,7 +408,7 @@ public class RelatedVideosFragment extends Fragment {
                                 if (!isAdded() || getView() == null) {
                                     return;
                                 }
-                                progressBar.setVisibility(View.GONE);
+                                progressBar.hide();
                                 emptyView.setText("加载失败: " + errorMsg);
                                 emptyView.setVisibility(View.VISIBLE);
                                 Toast.makeText(getActivity(), "加载失败: " + errorMsg, Toast.LENGTH_SHORT).show();
@@ -465,7 +468,7 @@ public class RelatedVideosFragment extends Fragment {
         runUi(new Runnable() {
             @Override
             public void run() {
-                progressBar.setVisibility(View.GONE);
+                progressBar.hide();
                 videoList.clear();
                 videoList.addAll(items);
                 if (adapter != null) {
@@ -488,7 +491,7 @@ public class RelatedVideosFragment extends Fragment {
             @Override
             public void run() {
                 if (getActivity() == null) return;
-                progressBar.setVisibility(View.GONE);
+                progressBar.hide();
                 emptyView.setText(msg);
                 emptyView.setVisibility(View.VISIBLE);
                 Toast.makeText(getActivity(), msg, Toast.LENGTH_SHORT).show();
@@ -502,7 +505,7 @@ public class RelatedVideosFragment extends Fragment {
             @Override
             public void run() {
                 if (getActivity() == null) return;
-                progressBar.setVisibility(View.GONE);
+                progressBar.hide();
                 emptyView.setText(msg);
                 emptyView.setVisibility(View.VISIBLE);
             }

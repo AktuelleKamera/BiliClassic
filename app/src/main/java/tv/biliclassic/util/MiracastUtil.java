@@ -11,7 +11,7 @@
  *
  * 修改者：一只毛子球 (BiliClassic)
  *
- * 安卓2也要看B站！
+ * 安卓1也要看B站！
  */
 package tv.biliclassic.util;
 

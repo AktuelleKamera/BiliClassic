@@ -24,12 +24,15 @@ import java.util.List;
 import tv.biliclassic.api.PartitionApi;
 import tv.biliclassic.model.VideoCard;
 
+import tv.biliclassic.widget.LoadingBarView;
+
 public class PartitionPageFragment extends Fragment {
 
     private static final String ARG_TID = "tid";
 
     private ListView gridView;
-    private ProgressBar progressBar;
+    // 统一加载条（公共组件）
+    private LoadingBarView progressBar;
     private TextView emptyView;
     private LinearLayout footerContainer;
     private ProgressBar footerProgressBar;
@@ -75,7 +78,8 @@ public class PartitionPageFragment extends Fragment {
         }
 
         gridView = (ListView) view.findViewById(R.id.recommend_grid);
-        progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
+        progressBar = (LoadingBarView) view.findViewById(R.id.progress_bar);
+        progressBar.bindBackground(gridView);
         emptyView = (TextView) view.findViewById(R.id.empty_view);
 
         hideFooter();
@@ -177,7 +181,7 @@ public class PartitionPageFragment extends Fragment {
         isEnd = false;
 
         if (getActivity() == null) return;
-        progressBar.setVisibility(View.VISIBLE);
+        progressBar.showLoading();
         emptyView.setVisibility(View.GONE);
         gridView.setVisibility(View.GONE);
         hideFooter();
@@ -195,7 +199,7 @@ public class PartitionPageFragment extends Fragment {
                         @Override
                         public void run() {
                             if (getActivity() == null) return;
-                            progressBar.setVisibility(View.GONE);
+                            progressBar.hide();
                             if (items == null || items.size() == 0) {
                                 emptyView.setVisibility(View.VISIBLE);
                                 gridView.setVisibility(View.GONE);
@@ -225,7 +229,7 @@ public class PartitionPageFragment extends Fragment {
                         @Override
                         public void run() {
                             if (getActivity() == null) return;
-                            progressBar.setVisibility(View.GONE);
+                            progressBar.hide();
                             emptyView.setText("加载失败: " + e.getMessage());
                             emptyView.setVisibility(View.VISIBLE);
                         }

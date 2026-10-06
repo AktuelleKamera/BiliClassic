@@ -12,7 +12,7 @@
  * 修改者：一只毛子球 (BiliClassic)
  * 修改时间：2026年6月19日
  *
- * 安卓2也要看B站！
+ * 安卓1也要看B站！
  */
 package tv.biliclassic.model;
 
@@ -32,6 +32,7 @@ public class UserInfo implements Serializable {
     public int level;
     public int following;
     public boolean followed;
+    public boolean blocked;
     public String notice;
     public boolean isSeniorMember;  // 硬核会员
 

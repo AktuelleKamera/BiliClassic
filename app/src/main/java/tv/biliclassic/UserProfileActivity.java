@@ -46,6 +46,7 @@ import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 public class UserProfileActivity extends BaseActivity {
 
@@ -58,7 +59,8 @@ public class UserProfileActivity extends BaseActivity {
     private View loadingLayout;
     private View contentLayout;
     private ListView listView;
-    private ProgressBar videoProgressBar;
+    // 统一加载条（公共组件）
+    private LoadingBarView videoProgressBar;
     private TextView videoEmptyView;
     private View footerView;
     private ProgressBar footerProgressBar;
@@ -80,12 +82,14 @@ public class UserProfileActivity extends BaseActivity {
 
     private Set<Long> videoIdSet = new HashSet<Long>();
 
-    // ===== 顶栏内容切换：视频 / 动态 =====
+    // ===== 顶栏内容切换：视频 / 动态 / 专栏 =====
     private static final int MODE_VIDEO = 0;
     private static final int MODE_DYNAMIC = 1;
-    private static final String[] SPACE_TAB_NAMES = {"视频", "动态"};
+    private static final int MODE_ARTICLE = 2;
+    private static final String[] SPACE_TAB_NAMES = {"视频", "动态", "专栏"};
 
     private int currentMode = MODE_VIDEO;
+    private UserInfo mUserInfo;
 
     private List<Dynamic> dynamicList = new ArrayList<Dynamic>();
     private DynamicAdapter dynamicAdapter;
@@ -93,6 +97,13 @@ public class UserProfileActivity extends BaseActivity {
     private boolean isLoadingDynamics = false;
     private boolean isDynamicEnd = true;
     private boolean mDynamicLoaded = false;
+
+    private List<VideoCard> articleList = new ArrayList<VideoCard>();
+    private VideoListAdapter articleAdapter;
+    private int articlePage = 1;
+    private boolean isLoadingArticles = false;
+    private boolean isArticleEnd = false;
+    private boolean mArticleLoaded = false;
 
     private boolean isDestroyed = false;
 
@@ -192,7 +203,8 @@ public class UserProfileActivity extends BaseActivity {
         loadingLayout = findViewById(R.id.loading_layout);
         contentLayout = findViewById(R.id.content_layout);
         listView = (ListView) findViewById(R.id.list_view);
-        videoProgressBar = (ProgressBar) findViewById(R.id.video_progress);
+        videoProgressBar = (LoadingBarView) findViewById(R.id.video_progress);
+        videoProgressBar.bindBackground(listView);
         videoEmptyView = (TextView) findViewById(R.id.video_empty_view);
 
         footerView = getLayoutInflater().inflate(R.layout.list_footer, null);
@@ -215,7 +227,8 @@ public class UserProfileActivity extends BaseActivity {
         tvUserSign.setMaxLines(Integer.MAX_VALUE);
         tvUserSign.setEllipsize(null);
 
-        videoAdapter = new VideoListAdapter();
+        videoAdapter = new VideoListAdapter(videoList);
+        articleAdapter = new VideoListAdapter(articleList);
         listView.setAdapter(videoAdapter);
 
         dynamicAdapter = new DynamicAdapter(this, dynamicList, new DynamicAdapter.Listener() {
@@ -230,16 +243,6 @@ public class UserProfileActivity extends BaseActivity {
             }
         });
 
-        // 用户名标题可点击：弹出 视频/动态 下拉
-        if (tvUserNameTitle != null) {
-            tvUserNameTitle.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    showSpaceTabMenu();
-                }
-            });
-        }
-
         listView.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(AbsListView view, int scrollState) {
@@ -250,6 +253,13 @@ public class UserProfileActivity extends BaseActivity {
                             int lastVisible = view.getLastVisiblePosition();
                             if (lastVisible >= dynamicAdapter.getCount() - 1) {
                                 loadMoreDynamics();
+                            }
+                        }
+                    } else if (currentMode == MODE_ARTICLE) {
+                        if (!isLoadingArticles && !isArticleEnd && articleList.size() > 0) {
+                            int lastVisible = view.getLastVisiblePosition();
+                            if (lastVisible >= articleAdapter.getCount() - 1) {
+                                loadMoreArticles();
                             }
                         }
                     } else if (!isLoadingMore && !isLoadingVideos && !isVideoEnd) {
@@ -271,6 +281,11 @@ public class UserProfileActivity extends BaseActivity {
                     if (!isLoadingDynamics && !isDynamicEnd && totalItemCount > 0
                             && firstVisibleItem + visibleItemCount >= totalItemCount - 3) {
                         loadMoreDynamics();
+                    }
+                } else if (currentMode == MODE_ARTICLE) {
+                    if (!isLoadingArticles && !isArticleEnd && totalItemCount > 0
+                            && firstVisibleItem + visibleItemCount >= totalItemCount - 3) {
+                        loadMoreArticles();
                     }
                 } else if (!isLoadingMore && !isLoadingVideos && !isVideoEnd && totalItemCount > 0) {
                     if (firstVisibleItem + visibleItemCount >= totalItemCount - 3) {
@@ -300,23 +315,9 @@ public class UserProfileActivity extends BaseActivity {
         }
     }
 
-    private void showSpaceTabMenu() {
-        android.content.Context ctx = tv.biliclassic.util.SdkHelper.dialogContext(
-                tv.biliclassic.util.DialogUtil.wrap(this));
-        new AlertDialog.Builder(ctx)
-                .setTitle("选择内容")
-                .setItems(SPACE_TAB_NAMES, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        switchMode(which);
-                    }
-                })
-                .show();
-    }
-
-    /** 切换顶栏内容：视频列表 / 用户动态 */
+    /** 切换顶栏内容：视频列表 / 用户动态 / 用户专栏 */
     private void switchMode(int mode) {
-        if ((mode != MODE_VIDEO && mode != MODE_DYNAMIC) || mode == currentMode) {
+        if ((mode != MODE_VIDEO && mode != MODE_DYNAMIC && mode != MODE_ARTICLE) || mode == currentMode) {
             return;
         }
         currentMode = mode;
@@ -326,7 +327,7 @@ public class UserProfileActivity extends BaseActivity {
             videoEmptyView.setText(getString(R.string.user_has_no_videos));
             footerView.setVisibility(
                     (videoList.size() > 0 && !isVideoEnd) ? View.VISIBLE : View.GONE);
-        } else {
+        } else if (mode == MODE_DYNAMIC) {
             listView.setAdapter(dynamicAdapter);
             videoEmptyView.setText(getString(R.string.no_dynamics));
             footerView.setVisibility(View.GONE);
@@ -340,8 +341,176 @@ public class UserProfileActivity extends BaseActivity {
                     footerText.setVisibility(View.VISIBLE);
                 }
             }
+        } else {
+            listView.setAdapter(articleAdapter);
+            videoEmptyView.setText(getString(R.string.no_articles));
+            footerView.setVisibility(View.GONE);
+            if (!mArticleLoaded) {
+                loadUserArticles();
+            } else if (articleList.size() > 0 && !isArticleEnd) {
+                footerView.setVisibility(View.VISIBLE);
+                if (footerProgressBar != null) footerProgressBar.setVisibility(View.GONE);
+                if (footerText != null) {
+                    footerText.setText(getString(R.string.login_working_hard));
+                    footerText.setVisibility(View.VISIBLE);
+                }
+            }
         }
         listView.setEmptyView(videoEmptyView);
+    }
+
+    @Override
+    protected boolean includeDefaultOverflowMenu() {
+        return false;
+    }
+
+    @Override
+    protected int onAppendOverflowItems(int[] ids, String[] titles, int n) {
+        long myMid = SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0);
+        // 不能关注自己（否则接口报 22001），自己的空间不显示关注项
+        if (n < ids.length && mid != 0 && mid != myMid) {
+            boolean followed = mUserInfo != null && mUserInfo.followed;
+            ids[n] = R.id.menu_space_follow;
+            titles[n] = followed ? "取关TA" : "关注TA";
+            n++;
+        }
+        if (n < ids.length && mid != 0 && mid != myMid) {
+            ids[n] = R.id.menu_space_message;
+            titles[n] = "私信TA";
+            n++;
+        }
+        if (n < ids.length && mid != 0 && mid != myMid) {
+            boolean blocked = mUserInfo != null && mUserInfo.blocked;
+            ids[n] = R.id.menu_space_block;
+            titles[n] = blocked ? "取消拉黑" : "拉黑TA";
+            n++;
+        }
+        for (int mode = MODE_VIDEO; mode <= MODE_ARTICLE; mode++) {
+            if (mode == currentMode || n >= ids.length) {
+                continue;
+            }
+            ids[n] = modeMenuId(mode);
+            titles[n] = SPACE_TAB_NAMES[mode];
+            n++;
+        }
+        return n;
+    }
+
+    private static int modeMenuId(int mode) {
+        if (mode == MODE_DYNAMIC) {
+            return R.id.menu_space_dynamic;
+        }
+        if (mode == MODE_ARTICLE) {
+            return R.id.menu_space_article;
+        }
+        return R.id.menu_space_video;
+    }
+
+    @Override
+    protected void onMenuAction(int id) {
+        if (id == R.id.menu_space_block) {
+            toggleBlock();
+            return;
+        }
+        if (id == R.id.menu_space_message) {
+            Intent it = new Intent(this, PrivateMsgActivity.class);
+            it.putExtra("uid", mid);
+            if (mUserInfo != null) {
+                it.putExtra("name", mUserInfo.name);
+                it.putExtra("face", mUserInfo.avatar);
+            }
+            startActivity(it);
+            return;
+        }
+        if (id == R.id.menu_space_follow) {
+            toggleFollow();
+            return;
+        }
+        if (id == R.id.menu_space_video) {
+            switchMode(MODE_VIDEO);
+            return;
+        }
+        if (id == R.id.menu_space_dynamic) {
+            switchMode(MODE_DYNAMIC);
+            return;
+        }
+        if (id == R.id.menu_space_article) {
+            switchMode(MODE_ARTICLE);
+            return;
+        }
+        super.onMenuAction(id);
+    }
+
+    /** 关注/取关当前 UP。 */
+    private void toggleFollow() {
+        final boolean wantFollow = !(mUserInfo != null && mUserInfo.followed);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final int code;
+                try {
+                    code = UserInfoApi.followUser(mid, wantFollow);
+                } catch (Exception e) {
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (!isDestroyed) {
+                                Toast.makeText(UserProfileActivity.this, "操作失败", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    });
+                    return;
+                }
+                mainHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isDestroyed) return;
+                        if (code == 0) {
+                            if (mUserInfo != null) mUserInfo.followed = wantFollow;
+                            Toast.makeText(UserProfileActivity.this,
+                                    wantFollow ? "已关注" : "已取消关注", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(UserProfileActivity.this, "操作失败(" + code + ")", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    /** 拉黑/取消拉黑当前 UP。 */
+    private void toggleBlock() {
+        final boolean wantBlock = !(mUserInfo != null && mUserInfo.blocked);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final int code;
+                try {
+                    code = UserInfoApi.blockUser(mid, wantBlock);
+                } catch (Exception e) {
+                    mainHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (!isDestroyed) Toast.makeText(UserProfileActivity.this, "操作失败", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                    return;
+                }
+                mainHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isDestroyed) return;
+                        if (code == 0) {
+                            if (mUserInfo != null) mUserInfo.blocked = wantBlock;
+                            Toast.makeText(UserProfileActivity.this,
+                                    wantBlock ? "已拉黑" : "已取消拉黑", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(UserProfileActivity.this, "操作失败(" + code + ")", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+            }
+        }).start();
     }
 
     private void loadUserInfo() {
@@ -354,6 +523,13 @@ public class UserProfileActivity extends BaseActivity {
             public void run() {
                 try {
                     final UserInfo userInfo = UserInfoApi.getUserInfo(mid);
+                    if (userInfo != null) {
+                        int attr = UserInfoApi.getRelationAttribute(mid);
+                        if (attr >= 0) {
+                            userInfo.followed = (attr & 2) != 0;
+                            userInfo.blocked = (attr & 128) != 0;
+                        }
+                    }
                     mainHandler.post(new Runnable() {
                         @Override
                         public void run() {
@@ -386,6 +562,7 @@ public class UserProfileActivity extends BaseActivity {
 
     private void displayUserInfo(UserInfo userInfo) {
         if (isDestroyed) return;
+        mUserInfo = userInfo;
 
         if (tvUserNameTitle != null) {
             tvUserNameTitle.setText(userInfo.name + "的空间");
@@ -533,7 +710,7 @@ public class UserProfileActivity extends BaseActivity {
         currentPage = 1;
         isVideoEnd = false;
         isLoadingMore = false;
-        videoProgressBar.setVisibility(View.VISIBLE);
+        videoProgressBar.showLoading();
         footerView.setVisibility(View.GONE);
 
         Log.d("UserProfile", "开始加载视频列表，mid=" + mid);
@@ -551,7 +728,7 @@ public class UserProfileActivity extends BaseActivity {
                         @Override
                         public void run() {
                             if (isDestroyed) return;
-                            videoProgressBar.setVisibility(View.GONE);
+                            videoProgressBar.hide();
                             Log.d("UserProfile", "UI 线程更新，视频数量=" + (items == null ? 0 : items.size()));
 
                             if (items == null || items.size() == 0) {
@@ -599,7 +776,7 @@ public class UserProfileActivity extends BaseActivity {
                         @Override
                         public void run() {
                             if (isDestroyed) return;
-                            videoProgressBar.setVisibility(View.GONE);
+                            videoProgressBar.hide();
                             videoEmptyView.setText("加载失败: " + e.getMessage());
                             footerView.setVisibility(View.GONE);
                             Log.e("UserProfile", "UI 显示错误: " + e.getMessage());
@@ -718,6 +895,115 @@ public class UserProfileActivity extends BaseActivity {
         }).start();
     }
 
+    // ===== 用户专栏 =====
+
+    private void loadUserArticles() {
+        articleList.clear();
+        articlePage = 1;
+        isArticleEnd = false;
+        isLoadingArticles = false;
+        mArticleLoaded = true;
+        videoProgressBar.showLoading();
+        footerView.setVisibility(View.GONE);
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final List<VideoCard> items = new ArrayList<VideoCard>();
+                int result = -1;
+                String error = null;
+                try {
+                    result = UserInfoApi.getUserArticles(mid, 1, items);
+                } catch (Exception e) {
+                    error = e.getMessage();
+                }
+                final int fResult = result;
+                final String fError = error;
+                mainHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isDestroyed) return;
+                        videoProgressBar.hide();
+                        if (fError != null) {
+                            mArticleLoaded = false;
+                            videoEmptyView.setText("加载失败: " + fError);
+                            footerView.setVisibility(View.GONE);
+                            return;
+                        }
+                        articleList.addAll(items);
+                        articleAdapter.notifyDataSetChanged();
+                        if (articleList.size() == 0) {
+                            videoEmptyView.setText(getString(R.string.no_articles));
+                            footerView.setVisibility(View.GONE);
+                        } else if (fResult == 1) {
+                            isArticleEnd = true;
+                            showLoadEndTip();
+                        } else {
+                            articlePage = 2;
+                            footerView.setVisibility(View.VISIBLE);
+                            if (footerProgressBar != null) footerProgressBar.setVisibility(View.GONE);
+                            if (footerText != null) {
+                                footerText.setText(getString(R.string.login_working_hard));
+                                footerText.setVisibility(View.VISIBLE);
+                            }
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void loadMoreArticles() {
+        if (isLoadingArticles || isArticleEnd || isDestroyed) return;
+        isLoadingArticles = true;
+        if (footerProgressBar != null) footerProgressBar.setVisibility(View.VISIBLE);
+        if (footerText != null) {
+            footerText.setText(getString(R.string.login_working_hard));
+            footerText.setVisibility(View.VISIBLE);
+        }
+        footerView.setVisibility(View.VISIBLE);
+
+        final int page = articlePage;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final List<VideoCard> items = new ArrayList<VideoCard>();
+                int result = -1;
+                String error = null;
+                try {
+                    result = UserInfoApi.getUserArticles(mid, page, items);
+                } catch (Exception e) {
+                    error = e.getMessage();
+                }
+                final int fResult = result;
+                final String fError = error;
+                mainHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isDestroyed) return;
+                        isLoadingArticles = false;
+                        if (footerProgressBar != null) footerProgressBar.setVisibility(View.GONE);
+                        if (fError != null) {
+                            Toast.makeText(UserProfileActivity.this,
+                                    "加载更多失败: " + fError, Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        articleList.addAll(items);
+                        articleAdapter.notifyDataSetChanged();
+                        if (items.size() == 0 || fResult == 1) {
+                            isArticleEnd = true;
+                            showLoadEndTip();
+                        } else {
+                            articlePage = page + 1;
+                            footerView.setVisibility(View.VISIBLE);
+                            if (footerText != null) footerText.setVisibility(View.GONE);
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
     // ===== 用户动态 =====
 
     private boolean isLoggedIn() {
@@ -736,7 +1022,7 @@ public class UserProfileActivity extends BaseActivity {
 
         dynamicList.clear();
         dynamicAdapter.notifyDataSetChanged();
-        videoProgressBar.setVisibility(View.VISIBLE);
+        videoProgressBar.showLoading();
         footerView.setVisibility(View.GONE);
 
         new Thread(new Runnable() {
@@ -757,7 +1043,7 @@ public class UserProfileActivity extends BaseActivity {
                     public void run() {
                         if (isDestroyed) return;
                         isLoadingDynamics = false;
-                        videoProgressBar.setVisibility(View.GONE);
+                        videoProgressBar.hide();
                         if (fError != null) {
                             mDynamicLoaded = false;
                             videoEmptyView.setText("加载失败: " + fError);
@@ -952,6 +1238,9 @@ public class UserProfileActivity extends BaseActivity {
         if (dynamicList != null) {
             dynamicList.clear();
         }
+        if (articleList != null) {
+            articleList.clear();
+        }
         if (dynamicAdapter != null) {
             dynamicAdapter.clearCache();
         }
@@ -961,14 +1250,20 @@ public class UserProfileActivity extends BaseActivity {
 
     class VideoListAdapter extends BaseAdapter {
 
+        private final List<VideoCard> data;
+
+        VideoListAdapter(List<VideoCard> data) {
+            this.data = data;
+        }
+
         @Override
         public int getCount() {
-            return videoList.size();
+            return data.size();
         }
 
         @Override
         public Object getItem(int position) {
-            return videoList.get(position);
+            return data.get(position);
         }
 
         @Override
@@ -990,7 +1285,21 @@ public class UserProfileActivity extends BaseActivity {
                 holder = (ViewHolder) convertView.getTag();
             }
 
-            VideoCard item = videoList.get(position);
+            // 夜间：白底换灰底、封面框深灰、标题调亮
+            boolean night = tv.biliclassic.metro.MetroTheme.isNight();
+            convertView.setBackgroundResource(night
+                    ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white);
+            holder.title.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
+            View coverBox = (View) holder.cover.getParent();
+            if (coverBox != null) {
+                if (night) {
+                    coverBox.setBackgroundColor(0xFF484848);
+                } else {
+                    coverBox.setBackgroundResource(R.drawable.bili_thumb_boarder);
+                }
+            }
+
+            VideoCard item = data.get(position);
             holder.title.setText(item.title);
             holder.view.setText(item.view);
 
@@ -1080,6 +1389,14 @@ public class UserProfileActivity extends BaseActivity {
                 @Override
                 public void onClick(View v) {
                     if (clickItem == null) return;
+                    // 专栏：跳文章详情
+                    if ("article".equals(clickItem.type) && clickItem.articleId != 0) {
+                        Intent articleIntent = new Intent(UserProfileActivity.this, ArticleActivity.class);
+                        articleIntent.putExtra("cvid", clickItem.articleId);
+                        articleIntent.putExtra("title", clickItem.title);
+                        startActivity(articleIntent);
+                        return;
+                    }
                     Intent intent = new Intent(UserProfileActivity.this, VideoDetailActivity.class);
                     if (clickItem.aid != 0) {
                         intent.putExtra("aid", clickItem.aid);

@@ -64,19 +64,6 @@
         android:layout_height="match_parent"
         android:layout_below="@id/shadow">
 
-        <!-- 加载头部 -->
-        <FrameLayout
-            android:id="@+id/header_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone">
-
-            <include
-                android:id="@+id/list_header"
-                layout="@layout/list_header" />
-
-        </FrameLayout>
-
         <!-- 列表 -->
         <ListView
             android:id="@+id/list_view"
@@ -85,6 +72,13 @@
             android:background="#F5F5F5"
             android:divider="@null"
             android:dividerHeight="0dp"
+            android:visibility="gone" />
+
+        <!-- 加载条：必须声明在列表后面才不会被列表盖住 -->
+        <tv.biliclassic.widget.LoadingBarView
+            android:id="@+id/progress_bar"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
             android:visibility="gone" />
 
         <!-- 空视图 -->

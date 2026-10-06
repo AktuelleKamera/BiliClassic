@@ -39,6 +39,7 @@ import tv.biliclassic.util.ReplyHelper;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 public class CommentFragment extends Fragment {
 
@@ -48,7 +49,8 @@ public class CommentFragment extends Fragment {
     private static final long CACHE_TTL_MS = 5 * 60 * 1000;
 
     private ListView listView;
-    private ProgressBar progressBar;
+    // 统一加载条（公共组件）
+    private LoadingBarView progressBar;
     private TextView emptyView;
     private View footerView;
     private ProgressBar footerProgressBar;
@@ -160,7 +162,8 @@ public class CommentFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_comment, container, false);
 
         listView = (ListView) view.findViewById(R.id.list_view);
-        progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
+        progressBar = (LoadingBarView) view.findViewById(R.id.progress_bar);
+        progressBar.bindBackground(listView);
         emptyView = (TextView) view.findViewById(R.id.empty_view);
 
         listView.setDivider(null);
@@ -315,6 +318,11 @@ public class CommentFragment extends Fragment {
         }
         if (!isRestoring) {
             restoreScrollPosition();
+        }
+        // 夜间：本 Fragment 在 UiSkin.apply 之后才创建，补一次套色（避免闪白）
+        View root = getView();
+        if (root != null) {
+            tv.biliclassic.util.UiSkin.recolorItem(root);
         }
     }
 
@@ -496,7 +504,7 @@ public class CommentFragment extends Fragment {
                     public void run() {
                         emptyView.setText(getString(R.string.load_comments_failed));
                         emptyView.setVisibility(View.VISIBLE);
-                        progressBar.setVisibility(View.GONE);
+                        progressBar.hide();
                     }
                 });
             }
@@ -538,7 +546,7 @@ public class CommentFragment extends Fragment {
                 }
             }
 
-            progressBar.setVisibility(View.GONE);
+            progressBar.hide();
             adapter.updateData(commentList);
             if (commentList.size() == 0) {
                 emptyView.setText(getString(R.string.no_comments));
@@ -564,7 +572,7 @@ public class CommentFragment extends Fragment {
         commentList.clear();
         commentIdSet.clear();
 
-        progressBar.setVisibility(View.VISIBLE);
+        progressBar.showLoading();
         emptyView.setVisibility(View.GONE);
         footerView.setVisibility(View.GONE);
 
@@ -658,7 +666,7 @@ public class CommentFragment extends Fragment {
                 uiAct2.runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        progressBar.setVisibility(View.GONE);
+                        progressBar.hide();
                     }
                 });
             }
@@ -1273,7 +1281,7 @@ public class CommentFragment extends Fragment {
             @Override
             public void run() {
                 isLoading = false;
-                progressBar.setVisibility(View.GONE);
+                progressBar.hide();
                 emptyView.setText(msg);
                 emptyView.setVisibility(View.VISIBLE);
                 Toast.makeText(getActivity(), msg, Toast.LENGTH_SHORT).show();
@@ -1287,7 +1295,7 @@ public class CommentFragment extends Fragment {
             @Override
             public void run() {
                 isLoading = false;
-                progressBar.setVisibility(View.GONE);
+                progressBar.hide();
                 emptyView.setText(msg);
                 emptyView.setVisibility(View.VISIBLE);
             }

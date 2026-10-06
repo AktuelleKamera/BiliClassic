@@ -33,6 +33,11 @@
             android:screenOrientation="unspecified" />
 
         <activity
+            android:name=".CropActivity"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".CrashReportActivity"
             android:screenOrientation="portrait" />
 
@@ -126,6 +131,15 @@
             android:name=".AboutActivity"
             android:theme="@android:style/Theme.Black.NoTitleBar"
             android:screenOrientation="portrait" />
+
+        <!-- 彩蛋：星战字幕 -->
+        <activity
+            android:name=".EasterEggActivity"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
+            android:screenOrientation="landscape"
+            android:launchMode="singleTop"
+            android:hardwareAccelerated="false"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|keyboard|navigation|uiMode|density|fontScale|layoutDirection" />
 
         <activity
             android:name=".VideoDetailActivity"

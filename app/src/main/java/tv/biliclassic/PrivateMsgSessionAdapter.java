@@ -105,6 +105,7 @@ public class PrivateMsgSessionAdapter extends BaseObservableAdapter<PrivateMsgSe
 
         avatar.setImageResource(R.drawable.bili_default_avatar);
         ImageLoader.bind(avatar, avatarUrl, R.drawable.bili_default_avatar, 48, 48);
+        tv.biliclassic.util.UiSkin.recolorItem(convertView);
         return convertView;
     }
 

@@ -1,3 +1,19 @@
+/*
+ * 本软件基于以下项目修改，致谢前辈：
+ *   - 哔哩终端 (BiliTerminal) by RobinNotBad
+ *   - 腕上哔哩 (WristBilibili) by luern0313
+ *
+ * 本程序是自由软件，遵循 GNU 通用公共许可证第 3 版（或更高版本）发布。
+ * 你可以重新分发或修改它，希望它能为你带来快乐。
+ *
+ * 详情请参阅 GNU 通用公共许可证：
+ * <https://www.gnu.org/licenses/>
+ *
+ * 修改者：一只毛子球 (BiliClassic)
+ * 修改时间：2026年10月5日
+ *
+ * 安卓1也要看B站！
+ */
 package tv.biliclassic.api;
 
 import org.json.JSONArray;
@@ -102,7 +118,7 @@ public class PlayerApi {
  * 修改者：一只毛子球 (BiliClassic)
  * 修改时间：2026年6月19日
  *
- * 安卓2也要看B站！
+ * 安卓1也要看B站！
  */
 
     /**
@@ -111,7 +127,7 @@ public class PlayerApi {
      * @param download 是否下载模式（影响画质参数）
      */
     public static void getVideo(PlayerData playerData, boolean download) throws JSONException, IOException {
-        android.util.Log.e("PlayerApi", "========== getVideo 开始 ==========");
+        android.util.Log.e("PlayerApi", "getVideo 开始");
         android.util.Log.e("PlayerApi", "aid=" + playerData.aid + ", cid=" + playerData.cid + ", qn=" + playerData.qn);
         android.util.Log.e("PlayerApi", "timeStamp=" + playerData.timeStamp + ", currentTime=" + System.currentTimeMillis());
 
@@ -163,13 +179,19 @@ public class PlayerApi {
         String idParam = (playerData.bvid != null && playerData.bvid.length() > 0)
                 ? "&bvid=" + playerData.bvid
                 : "&avid=" + playerData.aid;
+        // fnval 是按位请求的格式开关：只写 16（DASH）会让接口把画质封顶在 1080P。
+        // 4048 = DASH(16)|HDR(64)|4K(128)|杜比音频(256)|杜比视界(512)|8K(1024)|AV1(2048)，
+        // 必须带上 4K 位（外加 fourk=1）接口才会在 accept_quality / dash.video 里给出 4K 及以上
+        int fnval = download ? 1
+                : (tv.biliclassic.SettingsActivity.getPlayStreamFormat() == 16 ? 4048 : 1);
         String url = "https://api.bilibili.com/x/player/wbi/playurl?"
                 + idParam
                 + "&cid=" + playerData.cid
                 + (html5 ? "&high_quality=1" : "")
                 + "&qn=" + playerData.qn
-                + "&fnval=" + (download ? 1 : tv.biliclassic.SettingsActivity.getPlayStreamFormat()) // 1=MP4, 16=DASH
+                + "&fnval=" + fnval
                 + "&fnver=0"
+                + "&fourk=1"
                 + "&platform=" + (html5 ? "html5" : "pc")
                 + "&voice_balance=1"
                 + "&gaia_source=pre-load"
@@ -197,7 +219,7 @@ public class PlayerApi {
         String audioUrl = "";
         boolean dashRequested = !download && tv.biliclassic.SettingsActivity.getPlayStreamFormat() == 16;
 
-        // ========== 优先解析 dash（DASH 音视频分离流，仅非下载模式） ==========
+        // 优先解析DASH
         if (dashRequested && data.has("dash")) {
             JSONObject dash = data.getJSONObject("dash");
             android.util.Log.e("PlayerApi", "使用 dash 格式");
@@ -233,7 +255,7 @@ public class PlayerApi {
             }
         }
 
-        // ========== 尝试解析 durl（MP4 格式，作为回退） ==========
+        // 尝试解析durl
         if ((videoUrl == null || videoUrl.length() == 0) && data.has("durl")) {
             JSONArray durl = data.getJSONArray("durl");
             android.util.Log.e("PlayerApi", "durl 数组长度: " + durl.length());
@@ -295,7 +317,7 @@ public class PlayerApi {
             }
         }
 
-        android.util.Log.e("PlayerApi", "========== getVideo 结束，videoUrl=" + playerData.videoUrl + " ==========");
+        android.util.Log.e("PlayerApi", "getVideo 结束，videoUrl=" + playerData.videoUrl);
     }
 
     /**
@@ -343,7 +365,7 @@ public class PlayerApi {
      * 获取番剧播放地址（与普通视频 API 不同）
      */
     public static void getBangumi(PlayerData playerData) throws JSONException, IOException {
-        android.util.Log.e("PlayerApi", "========== getBangumi 开始 ==========");
+        android.util.Log.e("PlayerApi", "getBangumi 开始");
         android.util.Log.e("PlayerApi", "aid=" + playerData.aid + ", cid=" + playerData.cid + ", qn=" + playerData.qn);
 
         NetWorkUtil.FormData reqData = new NetWorkUtil.FormData()
@@ -352,6 +374,7 @@ public class PlayerApi {
                 .put("cid", playerData.cid)
                 .put("fnval", 4048)
                 .put("fnvar", 0)
+                .put("fourk", 1)
                 .put("qn", playerData.qn)
                 .put("season_type", 1)
                 .put("platform", "pc");
@@ -376,7 +399,7 @@ public class PlayerApi {
         boolean dashRequested = tv.biliclassic.SettingsActivity.getPlayStreamFormat() == 16;
         JSONObject dash = data.optJSONObject("dash");
 
-        // ========== 优先解析 dash（与 getVideo 同一套逻辑） ==========
+        // 优先解析DASH
         if (dashRequested && dash != null) {
             android.util.Log.e("PlayerApi", "番剧使用 dash 格式");
             JSONArray video = dash.optJSONArray("video");
@@ -408,7 +431,7 @@ public class PlayerApi {
             }
         }
 
-        // ========== 取不到 dash 再退回 durl（MP4 单文件，下载/不支持 DASH 时用） ==========
+        // 取不到dash再退回durl
         if ((videoUrl == null || videoUrl.length() == 0) && data.has("durl")) {
             JSONArray durl = data.getJSONArray("durl");
             if (durl.length() > 0) {
@@ -448,6 +471,6 @@ public class PlayerApi {
         playerData.qnStrList = qnStrList;
         playerData.qnValueList = qnValueList;
 
-        android.util.Log.e("PlayerApi", "========== getBangumi 结束 ==========");
+        android.util.Log.e("PlayerApi", "getBangumi 结束");
     }
 }

@@ -248,15 +248,21 @@ public class AnnouncementUtil {
                                                  final List<Announcement> announcements,
                                                  final int index,
                                                  final AlertDialog[] dialogHolder) {
+        final boolean night = SharedPreferencesUtil.getBoolean(
+                SharedPreferencesUtil.NIGHT_MODE, false);
         LinearLayout root = new LinearLayout(dialogContext);
         root.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(dialogContext, 16);
         root.setPadding(pad, pad / 2, pad, pad / 2);
+        // 自定义内容没有主题面板底色，部分设备上弹窗窗口底色偏深 → 白天深色字会"黑配黑"。
+        // 显式给内容一个配套底色（白天白、夜间深灰），不依赖各 ROM 的弹窗主题
+        root.setBackgroundColor(night ? 0xFF2A2A2A : 0xFFFFFFFF);
 
         TextView body = new TextView(dialogContext);
         body.setText(a.getDisplayContent());
         body.setTextSize(16);
-        body.setTextColor(0xFF333333);
+        // 夜间模式用浅色文字，否则深色底上看不见
+        body.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
         root.addView(body, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));

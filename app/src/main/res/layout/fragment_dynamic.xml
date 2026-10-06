@@ -77,11 +77,12 @@
 
         </android.support.v4.widget.SwipeRefreshLayout>
 
-        <ProgressBar
+        <!-- 加载中：统一加载条（与关注的人页一致，贴列表顶部居中） -->
+        <tv.biliclassic.widget.LoadingBarView
             android:id="@+id/dynamic_progress"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_gravity="top|center_horizontal"
             android:visibility="gone" />
 
         <TextView

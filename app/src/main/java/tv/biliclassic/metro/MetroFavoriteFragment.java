@@ -24,6 +24,7 @@ import tv.biliclassic.R;
 import tv.biliclassic.api.FavoriteApi;
 import tv.biliclassic.model.FavoriteFolder;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 /**
  * Metro 主题下的"我的收藏"页（作为 MetroHome 内的 Fragment，与推荐/历史同构）。
@@ -33,7 +34,8 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 public class MetroFavoriteFragment extends Fragment implements MetroTurnPage {
 
     private ListView mFolderList;
-    private TextView mTvLoading;
+    // 统一加载条（公共组件）
+    private LoadingBarView mLoadingBar;
     private SwipeRefreshLayout mSwipeRefresh;
     private ArrayList<FavoriteFolder> mFolders = new ArrayList<FavoriteFolder>();
     private final android.os.Handler mHandler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -51,9 +53,10 @@ public class MetroFavoriteFragment extends Fragment implements MetroTurnPage {
         View root = inflater.inflate(R.layout.metro_favorite, container, false);
 
         mFolderList = (ListView) root.findViewById(R.id.folder_list);
-        mTvLoading = (TextView) root.findViewById(R.id.tv_loading);
+        mLoadingBar = (LoadingBarView) root.findViewById(R.id.progress_bar);
         // 夜间模式：灰色提示文字换白色
-        mTvLoading.setTextColor(MetroTheme.grey());
+        mLoadingBar.setTextColor(MetroTheme.grey());
+        mLoadingBar.bindBackground(mFolderList);
 
         // API 3: 移除 SwipeRefreshLayout（引起 Layout.draw 递归），与推荐页处理一致
         if (tv.biliclassic.util.SdkHelper.getSdkInt() < 4) {
@@ -90,7 +93,7 @@ public class MetroFavoriteFragment extends Fragment implements MetroTurnPage {
         }
 
         // 状态文本点击：失败时重试
-        mTvLoading.setOnClickListener(new View.OnClickListener() {
+        mLoadingBar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (mHasError) {
@@ -131,7 +134,7 @@ public class MetroFavoriteFragment extends Fragment implements MetroTurnPage {
 
         long mid = SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0);
         if (mid <= 0) {
-            mTvLoading.setText(getString(R.string.not_logged_in_yet));
+            mLoadingBar.showStatus(getString(R.string.not_logged_in_yet));
             mFirstLoad = false;
             stopRefreshing();
             return;
@@ -174,7 +177,7 @@ public class MetroFavoriteFragment extends Fragment implements MetroTurnPage {
 
                         if (result == null) {
                             mHasError = true;
-                            mTvLoading.setText(getString(R.string.load_failed_tap_retry) + "\n点击重试");
+                            mLoadingBar.showStatus(getString(R.string.load_failed_tap_retry) + "\n点击重试");
                             stopRefreshing();
                             return;
                         }
@@ -183,11 +186,10 @@ public class MetroFavoriteFragment extends Fragment implements MetroTurnPage {
                         mFolders.addAll(result);
 
                         if (mFolders.size() == 0) {
-                            mTvLoading.setText(getString(R.string.no_favorite_folders));
-                            mTvLoading.setVisibility(View.VISIBLE);
+                            mLoadingBar.showStatus(getString(R.string.no_favorite_folders));
                             mFolderList.setVisibility(View.GONE);
                         } else {
-                            mTvLoading.setVisibility(View.GONE);
+                            mLoadingBar.hide();
                             mFolderList.setVisibility(View.VISIBLE);
                             mAdapter.notifyDataSetChanged();
                             mFolderList.post(new Runnable() {
@@ -247,8 +249,7 @@ public class MetroFavoriteFragment extends Fragment implements MetroTurnPage {
         mFolders.clear();
         mAdapter.notifyDataSetChanged();
         mFolderList.setVisibility(View.GONE);
-        mTvLoading.setVisibility(View.VISIBLE);
-        mTvLoading.setText("正在加载…");
+        mLoadingBar.showLoading();
         loadFolders();
     }
 
@@ -269,8 +270,12 @@ public class MetroFavoriteFragment extends Fragment implements MetroTurnPage {
                 mFolderList.invalidateViews();
             }
         }
-        if (mTvLoading != null) {
-            mTvLoading.setVisibility(mFolders.size() > 0 ? View.GONE : View.VISIBLE);
+        if (mLoadingBar != null) {
+            if (mFolders.size() > 0) {
+                mLoadingBar.hide();
+            } else {
+                mLoadingBar.show();
+            }
         }
     }
 

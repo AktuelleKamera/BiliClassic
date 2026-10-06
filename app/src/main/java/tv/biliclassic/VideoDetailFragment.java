@@ -12,7 +12,7 @@
  * 修改者：一只毛子球 (BiliClassic)
  * 修改时间：2026年7月12日
  *
- * 安卓2也要看B站！
+ * 安卓1也要看B站！
  */
 package tv.biliclassic;
 
@@ -187,6 +187,11 @@ public class VideoDetailFragment extends Fragment {
         // 重置防连点
         isPlayButtonClicked = false;
         // 滚动到顶部由数据加载完成后的 forceScrollToTop 负责，这里不重复触发
+        // 夜间：ViewPager 里的 Fragment 在 UiSkin.apply 之后才创建，这里补一次套色（避免闪白）
+        View root = getView();
+        if (root != null) {
+            tv.biliclassic.util.UiSkin.recolorItem(root);
+        }
     }
 
     @Override
@@ -425,7 +430,7 @@ public class VideoDetailFragment extends Fragment {
     }
 
     private int getSafeQuality() {
-        // 转码播放时强制 360P：老设备软解/转码性能有限，取更高画质反而白白增加转码耗时与流量
+        // 转码播放时强制360P
         if (tv.biliclassic.util.ConvertPlayUtil.isConvertEnabled()) {
             return 16; // 360P
         }

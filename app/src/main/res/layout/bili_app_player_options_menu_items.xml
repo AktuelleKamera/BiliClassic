@@ -33,6 +33,13 @@
         style="@style/PlayerOptionsMenuItem"/>
     <View style="@style/CommonUnderline"/>
     <TextView
+        android:id="@+id/options_menu_item_speed"
+        android:focusable="true"
+        android:visibility="gone"
+        android:text="@string/player_speed"
+        style="@style/PlayerOptionsMenuItem"/>
+    <View style="@style/CommonUnderline"/>
+    <TextView
         android:id="@+id/options_menu_item_info"
         android:focusable="true"
         android:text="@string/video_info"

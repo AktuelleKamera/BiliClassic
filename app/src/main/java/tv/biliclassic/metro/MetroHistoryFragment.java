@@ -24,6 +24,7 @@ import tv.biliclassic.model.ApiResult;
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 /**
  * Metro 主题下的"历史记录"页（作为 MetroHome 内的 Fragment，与推荐/个人中心同构）。
@@ -33,7 +34,8 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
 
     private ListView mHistoryList;
-    private TextView mTvLoading;
+    // 统一加载条（公共组件）
+    private LoadingBarView mLoadingBar;
     private SwipeRefreshLayout mSwipeRefresh;
     private List<VideoCard> mVideoList = new ArrayList<VideoCard>();
     private final android.os.Handler mHandler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -53,9 +55,10 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
         View root = inflater.inflate(R.layout.metro_history, container, false);
 
         mHistoryList = (ListView) root.findViewById(R.id.history_list);
-        mTvLoading = (TextView) root.findViewById(R.id.tv_loading);
+        mLoadingBar = (LoadingBarView) root.findViewById(R.id.progress_bar);
         // 夜间模式：灰色提示文字换白色
-        mTvLoading.setTextColor(MetroTheme.grey());
+        mLoadingBar.setTextColor(MetroTheme.grey());
+        mLoadingBar.bindBackground(mHistoryList);
 
         // API 3: 移除 SwipeRefreshLayout（引起 Layout.draw 递归），与推荐页处理一致
         if (tv.biliclassic.util.SdkHelper.getSdkInt() < 4) {
@@ -99,7 +102,7 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
         }
 
         // 状态文本点击：失败/为空时重试
-        mTvLoading.setOnClickListener(new View.OnClickListener() {
+        mLoadingBar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (mHasError) {
@@ -156,8 +159,12 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
                 mHistoryList.invalidateViews();
             }
         }
-        if (mTvLoading != null) {
-            mTvLoading.setVisibility(mVideoList.size() > 0 ? View.GONE : View.VISIBLE);
+        if (mLoadingBar != null) {
+            if (mVideoList.size() > 0) {
+                mLoadingBar.hide();
+            } else {
+                mLoadingBar.show();
+            }
         }
     }
 
@@ -173,7 +180,7 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
         // 未登录：历史记录需要 Cookie
         String cookies = SharedPreferencesUtil.getString("cookies", "");
         if (cookies == null || cookies.length() == 0) {
-            mTvLoading.setText(getString(R.string.not_logged_in_yet));
+            mLoadingBar.showStatus(getString(R.string.not_logged_in_yet));
             mFirstLoad = false;
             stopRefreshing();
             return;
@@ -215,11 +222,10 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
                                 }
 
                                 if (mVideoList.size() == 0) {
-                                    mTvLoading.setText(getString(R.string.no_history));
-                                    mTvLoading.setVisibility(View.VISIBLE);
+                                    mLoadingBar.showStatus(getString(R.string.no_history));
                                     mHistoryList.setVisibility(View.GONE);
                                 } else {
-                                    mTvLoading.setVisibility(View.GONE);
+                                    mLoadingBar.hide();
                                     mHistoryList.setVisibility(View.VISIBLE);
                                     mAdapter.notifyDataSetChanged();
                                     mHistoryList.post(new Runnable() {
@@ -231,7 +237,7 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
                                 }
                             } else {
                                 mHasError = true;
-                                mTvLoading.setText(loadErrMsg(result.message) + "\n点击重试");
+                                mLoadingBar.showStatus(loadErrMsg(result.message) + "\n点击重试");
                             }
                             stopRefreshing();
                         }
@@ -248,7 +254,7 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
                             mIsLoading = false;
                             mFirstLoad = false;
                             mHasError = true;
-                            mTvLoading.setText(loadErrMsg(e.getMessage()) + "\n点击重试");
+                            mLoadingBar.showStatus(loadErrMsg(e.getMessage()) + "\n点击重试");
                             stopRefreshing();
                         }
                     });
@@ -269,8 +275,7 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
         mVideoList.clear();
         mAdapter.notifyDataSetChanged();
         mHistoryList.setVisibility(View.GONE);
-        mTvLoading.setVisibility(View.VISIBLE);
-        mTvLoading.setText("正在加载…");
+        mLoadingBar.showLoading();
         loadHistory();
     }
 
@@ -348,7 +353,7 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
         startActivity(intent);
     }
 
-    // ===== 动画 =====
+    // 动画
 
     /** 清除可见行上残留的动画 */
     private void clearRowAnimations() {

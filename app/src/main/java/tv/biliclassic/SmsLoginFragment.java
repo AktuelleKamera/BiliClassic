@@ -36,9 +36,31 @@ public class SmsLoginFragment extends Fragment {
     private Button loginBtn;
     private Button clearBtn;
     private TextView status;
+    private TextView ccText;
 
     private String mCaptchaKey = "";
     private boolean mSending = false;
+    private String mArea = "86";
+
+    private static final String KEY_AREA = "sms_area_code";
+    private static final String[][] AREA_CODES = {
+            {"86", "中国大陆"},
+            {"852", "香港"},
+            {"853", "澳门"},
+            {"886", "台湾"},
+            {"1", "美国/加拿大"},
+            {"81", "日本"},
+            {"82", "韩国"},
+            {"66", "泰国"},
+            {"65", "新加坡"},
+            {"60", "马来西亚"},
+            {"61", "澳大利亚"},
+            {"44", "英国"},
+            {"49", "德国"},
+            {"33", "法国"},
+            {"7", "俄罗斯"},
+            {"91", "印度"},
+    };
 
     private Handler mUi;
     private boolean fromSetup = false;
@@ -79,6 +101,18 @@ public class SmsLoginFragment extends Fragment {
         loginBtn = (Button) view.findViewById(R.id.sms_login);
         clearBtn = (Button) view.findViewById(R.id.sms_clear);
         status = (TextView) view.findViewById(R.id.sms_status);
+        ccText = (TextView) view.findViewById(R.id.sms_cc);
+        mArea = SharedPreferencesUtil.getString(KEY_AREA, "86");
+        if (mArea == null || mArea.length() == 0) {
+            mArea = "86";
+        }
+        ccText.setText("+" + mArea);
+        ccText.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showAreaDialog();
+            }
+        });
 
         clearBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -92,9 +126,8 @@ public class SmsLoginFragment extends Fragment {
         sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String tel = telEd.getText() == null ? "" : telEd.getText().toString().trim();
-                if (tel.length() != 11) {
-                    Toast.makeText(getActivity(), "请输入 11 位手机号", Toast.LENGTH_SHORT).show();
+                String tel = telEd.getText() == null ? "" : telEd.getText().toString().trim().replaceAll("[^0-9]", "");
+                if (!isTelValid(tel)) {
                     return;
                 }
                 if (mSending) {
@@ -102,24 +135,23 @@ public class SmsLoginFragment extends Fragment {
                 }
                 mSending = true;
                 sendBtn.setEnabled(false);
-                requestSmsCodeApp(tel);
+                requestSmsCodeApp(tel, mArea);
             }
         });
 
         loginBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String tel = telEd.getText() == null ? "" : telEd.getText().toString().trim();
+                String tel = telEd.getText() == null ? "" : telEd.getText().toString().trim().replaceAll("[^0-9]", "");
                 String code = codeEd.getText() == null ? "" : codeEd.getText().toString().trim();
-                if (tel.length() != 11) {
-                    Toast.makeText(getActivity(), "请输入 11 位手机号", Toast.LENGTH_SHORT).show();
+                if (!isTelValid(tel)) {
                     return;
                 }
                 if (code.length() == 0) {
                     Toast.makeText(getActivity(), "请输入短信验证码", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                loginBySmsApp(tel, code);
+                loginBySmsApp(tel, code, mArea);
             }
         });
 
@@ -135,12 +167,12 @@ public class SmsLoginFragment extends Fragment {
 
     // ===== 发送验证码 =====
 
-    private void requestSmsCodeApp(final String tel) {
+    private void requestSmsCodeApp(final String tel, final String area) {
         setStatus("正在发送验证码…");
         new Thread(new Runnable() {
             @Override
             public void run() {
-                BiliAppLogin.SendResult r = BiliAppLogin.sendSms(tel, null, null, null, null);
+                BiliAppLogin.SendResult r = BiliAppLogin.sendSms(tel, area, null, null, null, null);
                 if (r.ok) {
                     mCaptchaKey = r.captchaKey == null ? "" : r.captchaKey;
                     smsSentUi();
@@ -183,7 +215,7 @@ public class SmsLoginFragment extends Fragment {
                                     @Override
                                     public void run() {
                                         BiliAppLogin.SendResult r2 =
-                                                BiliAppLogin.sendSms(tel, c2, validate, seccode, token);
+                                                BiliAppLogin.sendSms(tel, area, c2, validate, seccode, token);
                                         if (r2.ok) {
                                             mCaptchaKey = r2.captchaKey == null ? "" : r2.captchaKey;
                                             smsSentUi();
@@ -254,12 +286,12 @@ public class SmsLoginFragment extends Fragment {
 
     // ===== 验证码登录 =====
 
-    private void loginBySmsApp(final String tel, final String code) {
+    private void loginBySmsApp(final String tel, final String code, final String area) {
         setStatus("正在登录…");
         new Thread(new Runnable() {
             @Override
             public void run() {
-                final BiliAppLogin.LoginResult r = BiliAppLogin.loginBySms(tel, code, mCaptchaKey);
+                final BiliAppLogin.LoginResult r = BiliAppLogin.loginBySms(tel, area, code, mCaptchaKey);
                 if (!r.ok) {
                     final String m = "(" + r.code + ") " + r.message;
                     mUi.post(new Runnable() {
@@ -311,6 +343,49 @@ public class SmsLoginFragment extends Fragment {
         getActivity().finish();
     }
 
+    private boolean isTelValid(String tel) {
+        if ("86".equals(mArea)) {
+            if (tel.length() != 11) {
+                Toast.makeText(getActivity(), "请输入 11 位手机号", Toast.LENGTH_SHORT).show();
+                return false;
+            }
+        } else if (tel.length() < 6 || tel.length() > 15) {
+            Toast.makeText(getActivity(), "手机号格式不正确", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        return true;
+    }
+
+    private void showAreaDialog() {
+        if (getActivity() == null) {
+            return;
+        }
+        android.content.Context ctx = tv.biliclassic.util.SdkHelper.dialogContext(
+                tv.biliclassic.util.DialogUtil.wrap(getActivity()));
+        String[] items = new String[AREA_CODES.length];
+        int checked = 0;
+        for (int i = 0; i < AREA_CODES.length; i++) {
+            items[i] = "+" + AREA_CODES[i][0] + "  " + AREA_CODES[i][1];
+            if (AREA_CODES[i][0].equals(mArea)) {
+                checked = i;
+            }
+        }
+        new android.app.AlertDialog.Builder(ctx)
+                .setTitle("选择区号")
+                .setSingleChoiceItems(items, checked, new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        mArea = AREA_CODES[which][0];
+                        SharedPreferencesUtil.putString(KEY_AREA, mArea);
+                        if (ccText != null) {
+                            ccText.setText("+" + mArea);
+                        }
+                        dialog.dismiss();
+                    }
+                })
+                .show();
+    }
+
     private void setStatus(final String msg) {
         mUi.post(new Runnable() {
             @Override
@@ -326,6 +401,7 @@ public class SmsLoginFragment extends Fragment {
 
     private void rebuildNavViews() {
         mNavViews.clear();
+        if (ccText != null) mNavViews.add(ccText);
         if (telEd != null) mNavViews.add(telEd);
         if (codeEd != null) mNavViews.add(codeEd);
         if (sendBtn != null) mNavViews.add(sendBtn);
@@ -390,7 +466,7 @@ public class SmsLoginFragment extends Fragment {
             } else if (v == loginBtn || v == clearBtn) {
                 // Holo 按钮：按下态高亮（selector 的 state_pressed）
                 v.setPressed(i == mNavIndex);
-            } else if (v == sendBtn) {
+            } else if (v == sendBtn || v == ccText) {
                 // 链接式“获取验证码”：选中加深
                 ((TextView) v).setTextColor(i == mNavIndex ? 0xFFA94E80 : 0xFFD86DA5);
             }

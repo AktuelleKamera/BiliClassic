@@ -41,7 +41,25 @@ public class PlayerAnimActivity extends Activity {
 
     @Override
     protected void attachBaseContext(android.content.Context newBase) {
-        super.attachBaseContext(new tv.biliclassic.util.StorageFallbackContext(newBase));
+        // 先包存储回退，再套 Locale（播放器不走 BaseActivity）
+        android.content.Context wrapped = new tv.biliclassic.util.StorageFallbackContext(newBase);
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 17) {
+            super.attachBaseContext(tv.biliclassic.util.LocaleHelper.wrapContext(wrapped));
+        } else {
+            super.attachBaseContext(wrapped);
+        }
+    }
+
+    @Override
+    public android.content.res.Resources getResources() {
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 17) {
+            return super.getResources();
+        }
+        android.content.res.Resources res = super.getResources();
+        android.content.res.Configuration config = res.getConfiguration();
+        config.locale = tv.biliclassic.util.LocaleHelper.getLocale();
+        res.updateConfiguration(config, res.getDisplayMetrics());
+        return res;
     }
 
     private ImageView ivTvAnim;

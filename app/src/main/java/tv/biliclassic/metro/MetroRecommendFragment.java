@@ -38,6 +38,7 @@ import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 /**
  * Metro 主题下的"推荐视频"页（作为 MetroHome 内的 Fragment）。
@@ -47,7 +48,8 @@ import tv.biliclassic.util.NetWorkUtil;
 public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
 
     private ListView mTileList;
-    private TextView mTvLoading;
+    // 统一加载条（公共组件）
+    private LoadingBarView mLoadingBar;
     private SwipeRefreshLayout mSwipeRefresh;
     private List<VideoCard> mVideoList = new ArrayList<VideoCard>();
     private android.os.Handler mHandler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -77,9 +79,10 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
         }
 
         mTileList = (ListView) root.findViewById(R.id.tile_list);
-        mTvLoading = (TextView) root.findViewById(R.id.tv_loading);
+        mLoadingBar = (LoadingBarView) root.findViewById(R.id.progress_bar);
         // 夜间模式：灰色提示文字换白色
-        mTvLoading.setTextColor(MetroTheme.grey());
+        mLoadingBar.setTextColor(MetroTheme.grey());
+        mLoadingBar.bindBackground(mTileList);
 
         // API 3: 移除 SwipeRefreshLayout（引起 Layout.draw 递归），与推荐页处理一致
         if (tv.biliclassic.util.SdkHelper.getSdkInt() < 4) {
@@ -159,7 +162,9 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
             // 重挂载后也强制可见行重新绑定，避免残留旧内容
             mTileList.invalidateViews();
         }
-        if (mTvLoading != null) mTvLoading.setVisibility(View.GONE);
+        if (mLoadingBar != null) {
+            mLoadingBar.hide();
+        }
     }
 
     private void loadRecommend() {
@@ -170,6 +175,10 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
             return;
         }
         mIsLoading = true;
+        // 重试时文字可能还停在失败提示，先复位成加载条
+        if (mLoadingBar != null) {
+            mLoadingBar.showLoading();
+        }
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -185,13 +194,13 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
                                 return;
                             }
                             if (items.size() == 0) {
-                                mTvLoading.setText(getString(R.string.no_recommendations));
+                                mLoadingBar.showStatus(getString(R.string.no_recommendations));
                                 mIsLoading = false;
                                 stopRefreshing();
                                 return;
                             }
                             mVideoList.addAll(items);
-                            mTvLoading.setVisibility(View.GONE);
+                            mLoadingBar.hide();
                             mTileList.setVisibility(View.VISIBLE);
                             mTileAdapter.notifyDataSetChanged();
                             mFirstLoad = false;
@@ -218,7 +227,7 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
                                 return;
                             }
                             if (mVideoList.size() == 0) {
-                                mTvLoading.setText(getString(R.string.load_failed));
+                                mLoadingBar.showStatus(getString(R.string.load_failed));
                             }
                             mIsLoading = false;
                             stopRefreshing();

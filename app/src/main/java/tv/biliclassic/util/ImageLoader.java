@@ -126,6 +126,40 @@ public class ImageLoader {
     }
 
     /**
+     * 占位图 ConstantState 缓存。
+     * 老 ROM（如 1.6）的 Resources 占位图缓存是弱引用，内存紧张时会被回收，
+     * 导致每次 setImageResource 都重新解码位图（曾出现 OOM: bitmap size exceeds VM budget）。
+     * 这里用强引用缓存 ConstantState，newDrawable() 复用同一份位图，不再重复解码。
+     */
+    private static final android.util.SparseArray<android.graphics.drawable.Drawable.ConstantState> sPlaceholderStates =
+            new android.util.SparseArray<android.graphics.drawable.Drawable.ConstantState>();
+
+    private static void setPlaceholder(ImageView view, int resId) {
+        if (view == null || resId == 0) return;
+        try {
+            android.graphics.drawable.Drawable.ConstantState cs = sPlaceholderStates.get(resId);
+            if (cs == null) {
+                android.graphics.drawable.Drawable d = view.getResources().getDrawable(resId);
+                if (d == null) return;
+                cs = d.getConstantState();
+                if (cs == null) {
+                    view.setImageDrawable(d);
+                    return;
+                }
+                sPlaceholderStates.put(resId, cs);
+                view.setImageDrawable(d);
+                return;
+            }
+            view.setImageDrawable(cs.newDrawable());
+        } catch (Throwable t) {
+            try {
+                view.setImageResource(resId);
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    /**
      * 绑定图片到 ImageView。
      *
      * @param view            目标 ImageView
@@ -137,7 +171,7 @@ public class ImageLoader {
         if (view == null) return;
         final Context ctx = view.getContext();
         if (url == null || url.length() == 0) {
-            if (placeholderResId != 0) view.setImageResource(placeholderResId);
+            setPlaceholder(view, placeholderResId);
             return;
         }
         String coverUrl = url;
@@ -145,6 +179,10 @@ public class ImageLoader {
             coverUrl = "http://" + coverUrl.substring(8);
         }
         final String finalUrl = coverUrl;
+        // 旧 tag：若本 view 现在显示的就是同一张图（全列表重绑/notifyDataSetChanged 时会这样），
+        // 即使缓存没命中也不要清成占位图，保留当前画面后台补载即可
+        Object oldTag = view.getTag();
+        boolean sameItem = oldTag != null && oldTag.equals(finalUrl);
         view.setTag(finalUrl);
 
         // 1) 全局缓存（跨页面共享）
@@ -164,11 +202,13 @@ public class ImageLoader {
                 softCacheRemove(finalUrl);
             }
         }
-        // 3) 未命中：仅此时显示占位图并异步加载（命中缓存不闪烁、不重新下载）
+        // 3) 未命中：异步加载。仅当不是同一张图时才显示占位图，避免滑动中整屏图片被清掉
         final ImageView fView = view;
         final int fDpW = dpW;
         final int fDpH = dpH;
-        if (placeholderResId != 0) view.setImageResource(placeholderResId);
+        if (!sameItem) {
+            setPlaceholder(view, placeholderResId);
+        }
         Boolean isLoading = loadingMapGet(finalUrl);
         if (isLoading == null || !isLoading) {
             loadingMapPut(finalUrl, true);
@@ -241,6 +281,32 @@ public class ImageLoader {
         return bitmap;
     }
 
+    /**
+     * 给 B 站图床 URL 追加大图尺寸后缀（@<w>w_<h>h_1c.jpg），让服务端直接返回缩略图，
+     * 避免下载整张原图（现代手机上这是加载慢的主因）。非 hdslb 图床 / gif / 已有后缀的不动。
+     */
+    private static String resizedUrl(String urlStr, int decodeW, int decodeH) {
+        try {
+            if (urlStr == null || decodeW <= 0 || decodeH <= 0) return urlStr;
+            if (urlStr.indexOf('@') >= 0) return urlStr;
+            int q = urlStr.indexOf('?');
+            String base = q >= 0 ? urlStr.substring(0, q) : urlStr;
+            String query = q >= 0 ? urlStr.substring(q) : "";
+            String lower = base.toLowerCase();
+            if (!lower.contains("hdslb.com")) return urlStr;
+            if (!(lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png"))) {
+                return urlStr;
+            }
+            int w = (decodeW + 9) / 10 * 10;
+            int h = (decodeH + 9) / 10 * 10;
+            if (w < 80) w = 80;
+            if (h < 80) h = 80;
+            return base + "@" + w + "w_" + h + "h_1c.jpg" + query;
+        } catch (Throwable t) {
+            return urlStr;
+        }
+    }
+
     private static Bitmap downloadImage(Context context, String urlStr, int dpW, int dpH) {
         if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
         // 本地文件（离线封面等）：直接解码，不联网
@@ -251,13 +317,16 @@ public class ImageLoader {
             float density = context.getResources().getDisplayMetrics().density;
             int decodeW = (int) (dpW * density + 0.5f);
             int decodeH = (int) (dpH * density + 0.5f);
-            int minScale = SdkHelper.getSdkInt() >= 9 ? 2 : 4;
+            int minScale = 1;
             return GlobalImageCache.decodeFileSafely(localFile, decodeW, decodeH, minScale);
         }
         HttpURLConnection conn = null;
         java.io.File tempFile = null;
         try {
-            URL url = new URL(urlStr);
+            float density = context.getResources().getDisplayMetrics().density;
+            final int decodeW = (int) (dpW * density + 0.5f);
+            final int decodeH = (int) (dpH * density + 0.5f);
+            URL url = new URL(resizedUrl(urlStr, decodeW, decodeH));
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(12000);
             conn.setReadTimeout(12000);
@@ -277,10 +346,7 @@ public class ImageLoader {
 
             if (!tempFile.exists() || tempFile.length() == 0) return null;
 
-            float density = context.getResources().getDisplayMetrics().density;
-            int decodeW = (int) (dpW * density + 0.5f);
-            int decodeH = (int) (dpH * density + 0.5f);
-            int minScale = SdkHelper.getSdkInt() >= 9 ? 2 : 4;
+            int minScale = 1;
             return GlobalImageCache.decodeFileSafely(tempFile, decodeW, decodeH, minScale);
         } catch (Exception e) {
             return null;
@@ -336,7 +402,7 @@ public class ImageLoader {
             float density = context.getResources().getDisplayMetrics().density;
             int targetW = (int) (dpW * density + 0.5f);
             int targetH = (int) (dpH * density + 0.5f);
-            int minScale = SdkHelper.getSdkInt() >= 9 ? 2 : 4;
+            int minScale = 1;
 
             android.os.ParcelFileDescriptor pfd = cr.openFileDescriptor(uri, "r");
             if (pfd == null) return null;

@@ -46,7 +46,7 @@ public class BiliAppLogin {
     private static final String URL_PRE_CAPTCHA = "https://passport.bilibili.com/x/safecenter/captcha/pre";
     private static final String URL_WEB_KEY = "https://passport.bilibili.com/x/passport-login/web/key";
 
-    // ===== 对外结果 =====
+    // 对外结果
 
     /** 发送验证码结果 */
     public static class SendResult {
@@ -75,10 +75,10 @@ public class BiliAppLogin {
         public String cookieString = "";
     }
 
-    // ===== 发送短信验证码 =====
+    // 发送短信验证码
 
     /** 发送短信验证码；gee 参数为空则先直发，返回 -105 时需要人机验证 */
-    public static SendResult sendSms(String tel, String geeChallenge, String geeValidate,
+    public static SendResult sendSms(String tel, String cid, String geeChallenge, String geeValidate,
                                      String geeSeccode, String recaptchaToken) {
         SendResult r = new SendResult();
         try {
@@ -88,7 +88,7 @@ public class BiliAppLogin {
             p.put("buvid", buvid());
             p.put("c_locale", "zh_CN");
             p.put("channel", "master");
-            p.put("cid", "86");
+            p.put("cid", areaCode(cid));
             p.put("disable_rcmd", "0");
             if (geeChallenge != null && geeChallenge.length() > 0) {
                 p.put("gee_challenge", geeChallenge);
@@ -136,6 +136,14 @@ public class BiliAppLogin {
             r.message = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
         }
         return r;
+    }
+
+    /** 区号为空按 86 处理 */
+    private static String areaCode(String cid) {
+        if (cid == null || cid.length() == 0) {
+            return "86";
+        }
+        return cid;
     }
 
     /** 从 recaptcha_url 解析 gee_gt / gee_challenge / recaptcha_token */
@@ -189,9 +197,9 @@ public class BiliAppLogin {
         return r;
     }
 
-    // ===== 验证码登录 =====
+    // 验证码登录
 
-    public static LoginResult loginBySms(String tel, String code, String captchaKey) {
+    public static LoginResult loginBySms(String tel, String cid, String code, String captchaKey) {
         LoginResult r = new LoginResult();
         try {
             String key = null;
@@ -217,7 +225,7 @@ public class BiliAppLogin {
             p.put("c_locale", "zh_CN");
             p.put("captcha_key", captchaKey == null ? "" : captchaKey);
             p.put("channel", "master");
-            p.put("cid", "86");
+            p.put("cid", areaCode(cid));
             p.put("code", code);
             p.put("device", "phone");
             p.put("device_id", deviceId);
@@ -290,7 +298,7 @@ public class BiliAppLogin {
         return r;
     }
 
-    // ===== 设备标识 =====
+    // 设备标识
 
     /** buvid：优先用本机已有 buvid3，没有则按 PiliPlus 规则生成并持久化 */
     public static String buvid() {
@@ -348,7 +356,7 @@ public class BiliAppLogin {
         return ((dec / 10) << 4) | (dec % 10);
     }
 
-    // ===== 签名 / 加密 / 网络 =====
+    // 签名 / 加密 / 网络
 
     /** AppSign：加 appkey/ts → 按 key 字典序排序 → k=v&... + appsec → md5 */
     public static LinkedHashMap<String, String> appSign(LinkedHashMap<String, String> params) {
@@ -574,7 +582,7 @@ public class BiliAppLogin {
         NetWorkUtil.syncLoginState();
     }
 
-    // ===== Base64（纯 Java，兼容 API < 8，避免引用 android.util.Base64 触发 VerifyError） =====
+    // Base64
 
     private static final char[] BASE64_CHARS =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".toCharArray();

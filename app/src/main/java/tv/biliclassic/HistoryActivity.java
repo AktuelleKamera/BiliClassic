@@ -22,13 +22,15 @@ import tv.biliclassic.model.ApiResult;
 import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 public class HistoryActivity extends BaseActivity {
 
     private static final String TAG = "HistoryActivity";
 
     private ListView historyList;
-    private ProgressBar progressBar;
+    // 统一加载条（公共组件）
+    private LoadingBarView progressBar;
     private TextView emptyView;
     private ImageView backBtn;
     private ProgressBar footerProgressBar;
@@ -52,7 +54,8 @@ public class HistoryActivity extends BaseActivity {
         initRoundTitleBar();
 
         historyList = (ListView) findViewById(R.id.history_list);
-        progressBar = (ProgressBar) findViewById(R.id.progress_bar);
+        progressBar = (LoadingBarView) findViewById(R.id.progress_bar);
+        progressBar.bindBackground(historyList);
         emptyView = (TextView) findViewById(R.id.empty_view);
         backBtn = (ImageView) findViewById(R.id.btn_back);
 
@@ -230,7 +233,7 @@ public class HistoryActivity extends BaseActivity {
         videoList.clear();
         adapter.notifyDataSetChanged();
         emptyView.setVisibility(View.GONE);
-        progressBar.setVisibility(View.VISIBLE);
+        progressBar.showLoading();
         loadHistory();
     }
 
@@ -239,7 +242,7 @@ public class HistoryActivity extends BaseActivity {
         if (!NetWorkUtil.isNetworkAvailable(HistoryActivity.this)) {
             mainHandler.post(new Runnable() {
                 public void run() {
-                    progressBar.setVisibility(View.GONE);
+                    progressBar.hide();
                     emptyView.setText(getString(R.string.emoticon__no_network));
                     emptyView.setVisibility(View.VISIBLE);
                     historyList.setVisibility(View.GONE);
@@ -256,7 +259,7 @@ public class HistoryActivity extends BaseActivity {
             }
             emptyView.setText(getString(R.string.load_failed_tap_retry));
             emptyView.setVisibility(View.VISIBLE);
-            progressBar.setVisibility(View.GONE);
+            progressBar.hide();
             return;
         }
 
@@ -267,7 +270,7 @@ public class HistoryActivity extends BaseActivity {
             Log.e(TAG, "loadHistory - 未登录");
             mainHandler.post(new Runnable() {
                 public void run() {
-                    progressBar.setVisibility(View.GONE);
+                    progressBar.hide();
                     emptyView.setText(getString(R.string.not_logged_in_yet));
                     emptyView.setVisibility(View.VISIBLE);
                     historyList.setVisibility(View.GONE);
@@ -279,7 +282,7 @@ public class HistoryActivity extends BaseActivity {
         if (isLoading) return;
         isLoading = true;
 
-        progressBar.setVisibility(View.VISIBLE);
+        progressBar.showLoading();
         emptyView.setVisibility(View.GONE);
         historyList.setVisibility(View.VISIBLE);
         videoList.clear();
@@ -317,7 +320,7 @@ public class HistoryActivity extends BaseActivity {
                                 return;
                             }
 
-                            progressBar.setVisibility(View.GONE);
+                            progressBar.hide();
                             isLoading = false;
 
                             if (result.code == 0) {
@@ -364,7 +367,7 @@ public class HistoryActivity extends BaseActivity {
                     Log.e(TAG, "loadHistory - 异常: ", e);
                     mainHandler.post(new Runnable() {
                         public void run() {
-                            progressBar.setVisibility(View.GONE);
+                            progressBar.hide();
                             isLoading = false;
                             String errMsg = e.getMessage();
                             if (errMsg == null || errMsg.length() == 0) {

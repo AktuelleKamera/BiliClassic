@@ -27,6 +27,15 @@ public class ReplyHelper {
      */
     public static void sendReply(final Context context, final long aid, final long root,
                                  final long parent, final String text, final ReplyCallback callback) {
+        sendReply(context, aid, root, parent, text, ReplyApi.REPLY_TYPE_VIDEO, callback);
+    }
+
+    /**
+     * 发送回复（指定评论类型：1=视频，17=动态，12=专栏）
+     */
+    public static void sendReply(final Context context, final long oid, final long root,
+                                 final long parent, final String text, final int type,
+                                 final ReplyCallback callback) {
         // 1000字限制
         if (text == null || text.length() == 0) {
             showToast(context, "回复内容不能为空哦");
@@ -64,7 +73,7 @@ public class ReplyHelper {
 
                     final String encodedMessage = java.net.URLEncoder.encode(text, "UTF-8");
                     final String url = "https://api.bilibili.com/x/v2/reply/add";
-                    final String arg = "oid=" + aid + "&type=1&root=" + root + "&parent=" + parent
+                    final String arg = "oid=" + oid + "&type=" + type + "&root=" + root + "&parent=" + parent
                             + "&message=" + encodedMessage + "&jsonp=jsonp&csrf=" + csrf;
 
                     final String response = NetWorkUtil.post(url, arg);
@@ -113,6 +122,17 @@ public class ReplyHelper {
     public static void sendReplyWithPictures(final Context context, final long aid, final long root,
                                              final long parent, final String text,
                                              final String picturesJson, final ReplyCallback callback) {
+        sendReplyWithPictures(context, aid, root, parent, text, picturesJson,
+                ReplyApi.REPLY_TYPE_VIDEO, callback);
+    }
+
+    /**
+     * 发送回复（带图片，指定评论类型：1=视频，17=动态，12=专栏）
+     */
+    public static void sendReplyWithPictures(final Context context, final long oid, final long root,
+                                             final long parent, final String text,
+                                             final String picturesJson, final int type,
+                                             final ReplyCallback callback) {
         if (text == null || text.length() == 0) {
             showToast(context, "回复内容不能为空哦");
             if (callback != null) callback.onFailed("回复内容不能为空哦");
@@ -147,7 +167,7 @@ public class ReplyHelper {
                         pictureParam = "&pictures=" + java.net.URLEncoder.encode(picturesJson, "UTF-8");
                     }
                     final String url = "https://api.bilibili.com/x/v2/reply/add";
-                    final String arg = "oid=" + aid + "&type=1&root=" + root + "&parent=" + parent
+                    final String arg = "oid=" + oid + "&type=" + type + "&root=" + root + "&parent=" + parent
                             + "&message=" + encodedMessage + pictureParam + "&jsonp=jsonp&csrf=" + csrf;
 
                     final String response = NetWorkUtil.post(url, arg);

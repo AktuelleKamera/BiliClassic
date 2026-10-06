@@ -10,6 +10,13 @@
         android:layout_height="1px"
         android:background="#FCA3C5" />
 
+    <!-- 加载中：统一加载条（与关注的人页一致，放在列表上方） -->
+    <tv.biliclassic.widget.LoadingBarView
+        android:id="@+id/progress_bar"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:visibility="gone" />
+
     <ListView
         android:id="@+id/list_view"
         android:layout_width="match_parent"
@@ -17,14 +24,6 @@
         android:background="#F5F5F5"
         android:divider="#E0E0E0"
         android:dividerHeight="1dp" />
-
-    <ProgressBar
-        android:id="@+id/progress_bar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginTop="50dp"
-        android:visibility="gone" />
 
     <TextView
         android:id="@+id/empty_view"

@@ -102,9 +102,10 @@ public class SettingsActivity extends BaseActivity {
     public static final String KEY_UI_THEME = "ui_theme";
     public static final int THEME_CLASSIC = 0;
     public static final int THEME_METRO = 1;
-    /** Metro 主题自定义背景图片（内部文件绝对路径，空=默认白底）。 */
+    /** 自定义背景图片（内部文件绝对路径，空=默认纹理/白底）。 */
     public static final String KEY_METRO_BG = "metro_bg_path";
     private static final int REQ_PICK_METRO_BG = 7001;
+    private static final int REQ_CROP = 7002;
 
     // 内置播放器最低系统版本要求（已解除 Android 2.3 限制，所有版本均可选择；
     // 老设备上若 IJK native 库加载失败，BiliPlayerActivity 会自动回退系统解码器）
@@ -124,6 +125,8 @@ public class SettingsActivity extends BaseActivity {
     private TextView decoderChoiceText;
     private LinearLayout playStreamFormatItem;
     private TextView playStreamFormatText;
+    private LinearLayout convertFormatItem;
+    private TextView convertFormatText;
     private LinearLayout defaultTabItem;
     private TextView defaultTabText;
     private LinearLayout videoQualityItem;
@@ -159,9 +162,8 @@ public class SettingsActivity extends BaseActivity {
     private LinearLayout castItem;
 
     // 在线播放开关
-    private CheckBox checkboxOnlinePlay;
     private LinearLayout onlinePlayItem;
-    private View onlinePlayWarning;
+    private TextView onlinePlayText;
 
     private CheckBox checkboxRoundScreenCenter;
     private CheckBox checkboxNightMode;
@@ -235,16 +237,10 @@ public class SettingsActivity extends BaseActivity {
             });
         }
 
-        // 弹窗样式选择（2.3不支持，隐藏标题、选项、分隔线，避免隐藏不完全）
+        // 弹窗样式选择（2.3不支持，直接隐藏该项）
         LinearLayout dialogStyleItem = (LinearLayout) findViewById(R.id.dialog_style_item);
-        TextView dialogStyleTitle = (TextView) findViewById(R.id.dialog_style_title);
-        View dialogStyleDividerTop = findViewById(R.id.dialog_style_divider_top);
-        View dialogStyleDividerBottom = findViewById(R.id.dialog_style_divider_bottom);
         if (tv.biliclassic.util.SdkHelper.getSdkInt() < 11) {
             if (dialogStyleItem != null) dialogStyleItem.setVisibility(View.GONE);
-            if (dialogStyleTitle != null) dialogStyleTitle.setVisibility(View.GONE);
-            if (dialogStyleDividerTop != null) dialogStyleDividerTop.setVisibility(View.GONE);
-            if (dialogStyleDividerBottom != null) dialogStyleDividerBottom.setVisibility(View.GONE);
         } else {
             final TextView dialogStyleText = (TextView) findViewById(R.id.dialog_style_text);
             updateDialogStyleDisplay(dialogStyleText);
@@ -258,12 +254,14 @@ public class SettingsActivity extends BaseActivity {
             }
         }
 
-        // 横屏适配开关
+        // 横屏模式开关
         final CheckBox landscapeCheckbox = (CheckBox) findViewById(R.id.checkbox_landscape);
         LinearLayout landscapeItem = (LinearLayout) findViewById(R.id.landscape_item);
 
         if (landscapeCheckbox != null) {
-            boolean landscapeEnabled = SharedPreferencesUtil.getBoolean(KEY_LANDSCAPE_ENABLED, true);
+            // 识别的横屏老设备默认开启，用户仍可手动关闭
+            boolean landscapeEnabled = SharedPreferencesUtil.getBoolean(
+                    KEY_LANDSCAPE_ENABLED, isLandscapeDevice());
             landscapeCheckbox.setChecked(landscapeEnabled);
 
             landscapeCheckbox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -370,71 +368,22 @@ public class SettingsActivity extends BaseActivity {
             }
         }
 
-        // 在线播放开关 - 低版本完全隐藏
-        checkboxOnlinePlay = (CheckBox) findViewById(R.id.checkbox_online_play);
+        // 在线播放：视频画质区，点击弹窗选择
         onlinePlayItem = (LinearLayout) findViewById(R.id.online_play_item);
-        onlinePlayWarning = findViewById(R.id.online_play_warning);
+        onlinePlayText = (TextView) findViewById(R.id.online_play_text);
 
         if (onlinePlayItem != null) {
-            // 在线播放开关始终可用（Ostwind 等播放器用 MediaPlayer+本地代理，
-            // 即使系统不支持内置 IJK 也能在线播放），不再因内置播放器不可用而隐藏/强制关闭
-            onlinePlayItem.setVisibility(View.VISIBLE);
-            if (onlinePlayWarning != null) {
-                onlinePlayWarning.setVisibility(View.VISIBLE);
-            }
-
-            boolean onlinePlayEnabled = SharedPreferencesUtil.getBoolean(KEY_ONLINE_PLAY, isBuiltinPlayerSupported());
             if (!SharedPreferencesUtil.contains(KEY_ONLINE_PLAY)) {
-                onlinePlayEnabled = isBuiltinPlayerSupported();
-                SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, onlinePlayEnabled);
+                SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, isBuiltinPlayerSupported());
             }
-            checkboxOnlinePlay.setChecked(onlinePlayEnabled);
+            updateOnlinePlayDisplay();
 
-                checkboxOnlinePlay.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                    @Override
-                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                        if (isChecked) {
-                            // 2.3 以下（内置播放器不可用）：提示改用东风(Ostwind)播放器
-                            if (!isBuiltinPlayerSupported()
-                                    && getPlayerPreference() != PLAYER_OSTWIND) {
-                                new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(SettingsActivity.this)))
-                                        .setTitle(getString(R.string.common_hint))
-                                        .setMessage(getString(R.string.settingsactivity_setmessage_ostwind))
-                                        .setPositiveButton("切换并开启", new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialog, int which) {
-                                                SharedPreferencesUtil.putInt(KEY_PLAYER_PREFERENCE, PLAYER_OSTWIND);
-                                                updatePlayerChoiceDisplay();
-                                                SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, true);
-                                                checkboxOnlinePlay.setChecked(true);
-                                                Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2_1), Toast.LENGTH_SHORT).show();
-                                            }
-                                        })
-                                        .setNegativeButton("取消", new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialog, int which) {
-                                                checkboxOnlinePlay.setChecked(false);
-                                            }
-                                        })
-                                        .show();
-                                return;
-                            }
-                            // 2.3+（或已是东风播放器）：内置/东风均可在线，直接开启
-                            SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, true);
-                            Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2_4), Toast.LENGTH_SHORT).show();
-                        } else {
-                            SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, false);
-                            Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.online_play_disabled), Toast.LENGTH_SHORT).show();
-                        }
-                    }
-                });
-
-                onlinePlayItem.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        checkboxOnlinePlay.toggle();
-                    }
-                });
+            onlinePlayItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showOnlinePlayDialog();
+                }
+            });
         }
 
         // 转码播放开关 - 安卓5.0及以上、或有NEON的设备隐藏（仅老旧无NEON低配置设备可用）
@@ -446,7 +395,7 @@ public class SettingsActivity extends BaseActivity {
             } else {
                 final CheckBox checkboxConvertPlay = (CheckBox) findViewById(R.id.checkbox_convert_play);
                 if (checkboxConvertPlay != null) {
-                    checkboxConvertPlay.setChecked(SharedPreferencesUtil.getBoolean(KEY_CONVERT_PLAY, false));
+                    checkboxConvertPlay.setChecked(isConvertPlayEnabled());
                     convertPlayItem.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View v) {
@@ -464,6 +413,23 @@ public class SettingsActivity extends BaseActivity {
                         }
                     });
                 }
+            }
+        }
+
+        // 转码格式选择 - 与转码播放开关同条件显示（仅老旧无NEON低配置设备可用）
+        convertFormatItem = (LinearLayout) findViewById(R.id.convert_format_item);
+        convertFormatText = (TextView) findViewById(R.id.convert_format_text);
+        if (convertFormatItem != null) {
+            if (SdkHelper.getSdkInt() >= 21 || DeviceInfoUtil.hasNeon()) {
+                convertFormatItem.setVisibility(View.GONE);
+            } else {
+                updateConvertFormatDisplay();
+                convertFormatItem.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showConvertFormatDialog();
+                    }
+                });
             }
         }
 
@@ -503,10 +469,10 @@ public class SettingsActivity extends BaseActivity {
                     Toast.makeText(SettingsActivity.this,
                             isChecked ? "已开启夜间模式" : "已关闭夜间模式",
                             Toast.LENGTH_SHORT).show();
-                    // 立即应用：直接切换当前界面窗口背景
-                    getWindow().setBackgroundDrawableResource(isChecked
-                            ? R.drawable.bili_texture_background_night
-                            : R.drawable.bili_texture_background);
+                    // 立即应用：重算窗口背景（含自定义图的模糊/遮罩）并套用皮肤
+                    tv.biliclassic.util.BgUtil.clearCache();
+                    tv.biliclassic.util.BgUtil.applyWindowBackground(SettingsActivity.this);
+                    tv.biliclassic.util.UiSkin.apply(SettingsActivity.this);
                 }
             });
             nightModeItem.setOnClickListener(new View.OnClickListener() {
@@ -578,6 +544,37 @@ public class SettingsActivity extends BaseActivity {
                 @Override
                 public void onClick(View v) {
                     loadEchoHole();
+                }
+            });
+        }
+
+        // 回声洞投稿
+        LinearLayout echoSubmitItem = (LinearLayout) findViewById(R.id.echo_submit_item);
+        if (echoSubmitItem != null) {
+            echoSubmitItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    try {
+                        String model = android.os.Build.MODEL == null ? "" : android.os.Build.MODEL;
+                        // HTC Desire HD 这类机型 Build.MODEL 只有 "Desire HD"，补上厂商名更易认
+                        String mfr = "";
+                        try {
+                            mfr = String.valueOf(android.os.Build.class
+                                    .getField("MANUFACTURER").get(null));
+                        } catch (Throwable t) {
+                        }
+                        if (mfr.length() > 0 && model.length() > 0
+                                && !model.toLowerCase().startsWith(mfr.toLowerCase())) {
+                            model = mfr + " " + model;
+                        }
+                        String url = "http://oldpods.cn/biliclassic_echo.php?model="
+                                + java.net.URLEncoder.encode(model, "UTF-8");
+                        Intent intent = new Intent(SettingsActivity.this, WebViewActivity.class);
+                        intent.putExtra("url", url);
+                        intent.putExtra("title", getString(R.string.echo_submit));
+                        startActivity(intent);
+                    } catch (Throwable t) {
+                    }
                 }
             });
         }
@@ -661,6 +658,19 @@ public class SettingsActivity extends BaseActivity {
                 @Override
                 public void onClick(View v) {
                     showDanmakuEngineDialog(danmakuEngineText);
+                }
+            });
+        }
+
+        // 弹幕渲染方式
+        LinearLayout danmakuRenderModeItem = (LinearLayout) findViewById(R.id.danmaku_render_mode_item);
+        final TextView danmakuRenderModeText = (TextView) findViewById(R.id.danmaku_render_mode_text);
+        if (danmakuRenderModeItem != null && danmakuRenderModeText != null) {
+            updateDanmakuRenderModeDisplay(danmakuRenderModeText);
+            danmakuRenderModeItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showDanmakuRenderModeDialog(danmakuRenderModeText);
                 }
             });
         }
@@ -1087,7 +1097,9 @@ public class SettingsActivity extends BaseActivity {
 
     // 获取转码播放状态（转码播放服务地址）
     public static boolean isConvertPlayEnabled() {
-        return SharedPreferencesUtil.getBoolean(KEY_CONVERT_PLAY, false);
+        // 老设备（ARMv5 / 无 VFP 的 ARMv6）默认开转码，转成 240P 后能硬解
+        return SharedPreferencesUtil.getBoolean(KEY_CONVERT_PLAY,
+                DeviceInfoUtil.needsTranscodeForHwDecode());
     }
 
     // 转码播放服务地址（SCF Web 函数 /transcode）
@@ -1139,8 +1151,18 @@ public class SettingsActivity extends BaseActivity {
         return SdkHelper.getSdkInt() >= MIN_SDK_FOR_BUILTIN;
     }
 
+    // Android 1.5(API 3)及以下：默认用 Ostwind（用户仍可自行改）
+    private static final int MAX_SDK_FOR_DEFAULT_OSTWIND = 3;
+
+    private static boolean defaultOstwind() {
+        return SdkHelper.getSdkInt() <= MAX_SDK_FOR_DEFAULT_OSTWIND;
+    }
+
     // 获取默认播放器偏好（已解除版本限制，全版本默认内置播放器）
     public static int getDefaultPlayerPreference() {
+        if (defaultOstwind()) {
+            return PLAYER_OSTWIND;
+        }
         if (!isBuiltinPlayerSupported()) {
             return PLAYER_AUTO;
         }
@@ -1180,11 +1202,11 @@ public class SettingsActivity extends BaseActivity {
             case PLAYER_QQPLAYER:
                 return "QQ影音";
             case PLAYER_BUILTIN:
-                return isBuiltinPlayerSupported() ? "内置播放器" : "内置播放器 (不可用)";
+                return isBuiltinPlayerSupported() ? "内置播放器（IJK V3）" : "内置播放器（IJK V3）(不可用)";
             case PLAYER_LIANGWAN:
                 return "凉腕播放器";
             case PLAYER_OSTWIND:
-                return "Ostwind播放器";
+                return "内置播放器（Ostwind）";
             case PLAYER_SYSTEM:
             default:
                 return "系统播放器";
@@ -1226,8 +1248,16 @@ public class SettingsActivity extends BaseActivity {
 
     // 获取解码方式
     public static int getDecoderType() {
-        // 默认值：4.1 以下默认软解，4.1 以上默认硬解
-        int defaultDecoder = isIjkHardwareSupported() ? DECODER_IJK_HARD : DECODER_IJK_SOFT;
+        // 默认值：4.1 以上默认 IJK 硬解；4.1 以下带硬件解码 DSP 的老 SoC 默认系统解码（走 DSP 硬解），
+        // 其余无 VFP 老设备默认 IJK 软解
+        int defaultDecoder;
+        if (isIjkHardwareSupported()) {
+            defaultDecoder = DECODER_IJK_HARD;
+        } else if (DeviceInfoUtil.hasHardwareVideoDsp()) {
+            defaultDecoder = DECODER_SYSTEM;
+        } else {
+            defaultDecoder = DECODER_IJK_SOFT;
+        }
         int stored = SharedPreferencesUtil.getInt(KEY_DECODER_TYPE, defaultDecoder);
         // 4.1 以下不支持 IJK 硬解：即使之前存过硬解选择，也强制回退系统解码器
         if (stored == DECODER_IJK_HARD && !isIjkHardwareSupported()) {
@@ -1317,6 +1347,8 @@ public class SettingsActivity extends BaseActivity {
                     public void onClick(DialogInterface dialog, int which) {
                         SharedPreferencesUtil.putInt(SharedPreferencesUtil.RENDERER_TYPE, values[which]);
                         updateRendererTypeDisplay(textView);
+                        // 弹幕渲染方式跟随视频渲染方式（View 保留），避免跨层组合黑屏
+                        syncDanmakuRenderModeToVideo();
                         Toast.makeText(SettingsActivity.this,
                                 "已切换为: " + modes[which],
                                 Toast.LENGTH_SHORT).show();
@@ -1327,6 +1359,16 @@ public class SettingsActivity extends BaseActivity {
                 .show();
     }
 
+    /** 切换视频渲染方式后，把弹幕渲染方式重置为与该视频渲染方式对应的默认值，并刷新显示 */
+    private void syncDanmakuRenderModeToVideo() {
+        SharedPreferencesUtil.putString(KEY_DANMAKU_RENDER_MODE,
+                getRendererType() == 1 ? "view" : "surface");
+        TextView danmakuText = (TextView) findViewById(R.id.danmaku_render_mode_text);
+        if (danmakuText != null) {
+            updateDanmakuRenderModeDisplay(danmakuText);
+        }
+    }
+
     private void updateRendererTypeDisplay(TextView textView) {
         int type = getRendererType();
         textView.setText(type == 1 ? "TextureView" : "SurfaceView");
@@ -1334,7 +1376,7 @@ public class SettingsActivity extends BaseActivity {
 
     // 播放流格式选择 (1=MP4, 16=DASH)
     private void showPlayStreamFormatDialog() {
-        final String[] modes = {"MP4 (fnval=1)", "DASH (fnval=16)"};
+        final String[] modes = {"MP4 (fnval=1)", "DASH (fnval=4048)"};
         final int[] values = {1, 16};
         int current = getPlayStreamFormat();
 
@@ -1369,7 +1411,117 @@ public class SettingsActivity extends BaseActivity {
     }
 
     public static int getPlayStreamFormat() {
-        return SharedPreferencesUtil.getInt(SharedPreferencesUtil.PLAY_STREAM_FORMAT, 1);
+        // 非内置播放器不支持 DASH（音视频分离），一律走 MP4
+        if (getPlayerPreference() != PLAYER_BUILTIN) {
+            return 1;
+        }
+        // 内置播放器时：默认解码器是 IJK 硬解（Android 4.1+）则默认 DASH，否则 MP4
+        int def = isIjkHardwareSupported() ? 16 : 1;
+        return SharedPreferencesUtil.getInt(SharedPreferencesUtil.PLAY_STREAM_FORMAT, def);
+    }
+
+    // 转码格式选择（对应服务端 /transcode 的 format 参数）
+    private static final String[] CONVERT_FORMATS = {
+            "h264", "mpeg4", "3gp"};
+    private static final String[] CONVERT_FORMAT_LABELS = {
+            "240P H.264", "MPEG-4 SP", "3GP H.263"};
+
+    private void showConvertFormatDialog() {
+        String current = getConvertFormat();
+        int checkedIndex = 0;
+        for (int i = 0; i < CONVERT_FORMATS.length; i++) {
+            if (CONVERT_FORMATS[i].equals(current)) {
+                checkedIndex = i;
+                break;
+            }
+        }
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
+                .setTitle(getString(R.string.activity_settings_convert_format))
+                .setSingleChoiceItems(CONVERT_FORMAT_LABELS, checkedIndex, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        SharedPreferencesUtil.putString(SharedPreferencesUtil.CONVERT_FORMAT,
+                                CONVERT_FORMATS[which]);
+                        updateConvertFormatDisplay();
+                        Toast.makeText(SettingsActivity.this,
+                                getString(R.string.settingsactivity_toast_convert_format,
+                                        CONVERT_FORMAT_LABELS[which]),
+                                Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void updateConvertFormatDisplay() {
+        if (convertFormatText == null) return;
+        String f = getConvertFormat();
+        String label = CONVERT_FORMAT_LABELS[0];
+        for (int i = 0; i < CONVERT_FORMATS.length; i++) {
+            if (CONVERT_FORMATS[i].equals(f)) {
+                label = CONVERT_FORMAT_LABELS[i];
+                break;
+            }
+        }
+        convertFormatText.setText(label);
+    }
+
+    private void showOnlinePlayDialog() {
+        boolean online = SharedPreferencesUtil.getBoolean(KEY_ONLINE_PLAY, isBuiltinPlayerSupported());
+        String[] items = {getString(R.string.offline_playback), getString(R.string.online_playback)};
+        int checkedIndex = online ? 1 : 0;
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
+                .setTitle(getString(R.string.online_playback))
+                .setSingleChoiceItems(items, checkedIndex, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        applyOnlinePlayChoice(which == 1);
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void applyOnlinePlayChoice(final boolean enable) {
+        if (enable) {
+            // 2.3 以下（内置播放器不可用）：提示改用东风(Ostwind)播放器
+            if (!isBuiltinPlayerSupported() && getPlayerPreference() != PLAYER_OSTWIND) {
+                new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(SettingsActivity.this)))
+                        .setTitle(getString(R.string.common_hint))
+                        .setMessage(getString(R.string.settingsactivity_setmessage_ostwind))
+                        .setPositiveButton("切换并开启", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                SharedPreferencesUtil.putInt(KEY_PLAYER_PREFERENCE, PLAYER_OSTWIND);
+                                updatePlayerChoiceDisplay();
+                                SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, true);
+                                updateOnlinePlayDisplay();
+                                Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2_1), Toast.LENGTH_SHORT).show();
+                            }
+                        })
+                        .setNegativeButton("取消", null)
+                        .show();
+                return;
+            }
+            SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, true);
+            updateOnlinePlayDisplay();
+            Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2_4), Toast.LENGTH_SHORT).show();
+        } else {
+            SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, false);
+            updateOnlinePlayDisplay();
+            Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.online_play_disabled), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void updateOnlinePlayDisplay() {
+        if (onlinePlayText == null) return;
+        boolean online = SharedPreferencesUtil.getBoolean(KEY_ONLINE_PLAY, isBuiltinPlayerSupported());
+        onlinePlayText.setText(online ? R.string.online_playback : R.string.offline_playback);
+    }
+
+    // 转码播放输出格式（默认 h264，即 240P H.264 Baseline）
+    public static String getConvertFormat() {
+        return SharedPreferencesUtil.getString(SharedPreferencesUtil.CONVERT_FORMAT, "h264");
     }
 
     // 弹幕引擎选择
@@ -1398,6 +1550,68 @@ public class SettingsActivity extends BaseActivity {
     private void updateDanmakuEngineDisplay(TextView textView) {
         int mode = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, 0);
         textView.setText(mode == 1 ? "简易版（BT-5弹幕引擎）" : "完整版");
+    }
+
+    // 弹幕渲染方式
+    private static final String KEY_DANMAKU_RENDER_MODE = "danmaku_render_mode";
+
+    private void showDanmakuRenderModeDialog(final TextView textView) {
+        final boolean videoTexture =
+                tv.biliclassic.util.SdkHelper.getSdkInt() >= 14 && getRendererType() == 1;
+        final String[] labels;
+        final String[] values;
+        // 只列出与当前视频渲染方式安全的弹幕宿主：
+        //   视频=TextureView → View / TextureView（Surface 弹幕会挖黑视频）
+        //   视频=SurfaceView → SurfaceView / View（Texture 组合没测过，先不提供）
+        if (videoTexture) {
+            labels = new String[]{"View", "TextureView"};
+            values = new String[]{"view", "texture"};
+        } else {
+            labels = new String[]{"SurfaceView", "View"};
+            values = new String[]{"surface", "view"};
+        }
+        String def = videoTexture ? "view" : "surface";
+        String current = SharedPreferencesUtil.getString(KEY_DANMAKU_RENDER_MODE, def);
+        int checkedIndex = 0;
+        for (int i = 0; i < values.length; i++) {
+            if (values[i].equals(current)) {
+                checkedIndex = i;
+                break;
+            }
+        }
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
+                .setTitle(getString(R.string.danmaku_render_method))
+                .setSingleChoiceItems(labels, checkedIndex, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        SharedPreferencesUtil.putString(KEY_DANMAKU_RENDER_MODE, values[which]);
+                        updateDanmakuRenderModeDisplay(textView);
+                        Toast.makeText(SettingsActivity.this,
+                                "已切换为: " + labels[which],
+                                Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void updateDanmakuRenderModeDisplay(TextView textView) {
+        // 弹幕渲染方式与视频渲染方式绑定（见 DanmakuManager.resolveRenderMode）：
+        // 视频 TextureView → View（可选 TextureView）；视频 SurfaceView → SurfaceView（可选 View）
+        boolean videoTexture =
+                tv.biliclassic.util.SdkHelper.getSdkInt() >= 14 && getRendererType() == 1;
+        String mode = SharedPreferencesUtil.getString(KEY_DANMAKU_RENDER_MODE,
+                videoTexture ? "view" : "surface");
+        String label;
+        if ("surface".equals(mode)) {
+            label = "SurfaceView";
+        } else if ("texture".equals(mode)) {
+            label = "TextureView";
+        } else {
+            label = "View";
+        }
+        textView.setText(label);
     }
 
     // 获取当前主题（Metro / Classic），默认 Classic
@@ -1455,7 +1669,7 @@ public class SettingsActivity extends BaseActivity {
     private void showMetroBgDialog(final TextView textView) {
         final String[] items = {"选择图片", "恢复默认"};
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
-                .setTitle("Metro 背景图片")
+                .setTitle("图片背景")
                 .setItems(items, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -1469,8 +1683,10 @@ public class SettingsActivity extends BaseActivity {
                             }
                         } else {
                             setMetroBgPath("");
+                            tv.biliclassic.util.BgUtil.clearCache();
                             updateMetroBgDisplay(textView);
-                            Toast.makeText(SettingsActivity.this, "已恢复默认，重启后生效", Toast.LENGTH_SHORT).show();
+                            tv.biliclassic.util.BgUtil.applyWindowBackground(SettingsActivity.this);
+                            Toast.makeText(SettingsActivity.this, "已恢复默认背景", Toast.LENGTH_SHORT).show();
                         }
                     }
                 })
@@ -1483,52 +1699,32 @@ public class SettingsActivity extends BaseActivity {
         if (requestCode == REQ_PICK_METRO_BG && resultCode == RESULT_OK && data != null) {
             final android.net.Uri uri = data.getData();
             if (uri != null) {
-                saveMetroBg(uri);
+                launchMetroBgCrop(uri);
             }
+        } else if (requestCode == REQ_CROP && resultCode == RESULT_OK) {
+            String path = data == null ? null : data.getStringExtra(CropActivity.EXTRA_OUTPUT);
+            if (path == null || path.length() == 0) {
+                path = new java.io.File(getFilesDir(), "metro_bg.jpg").getAbsolutePath();
+            }
+            setMetroBgPath(path);
+            tv.biliclassic.util.BgUtil.clearCache();
+            if (metroBgText != null) updateMetroBgDisplay(metroBgText);
+            tv.biliclassic.util.BgUtil.applyWindowBackground(SettingsActivity.this);
+            Toast.makeText(SettingsActivity.this, "背景图片已设置", Toast.LENGTH_SHORT).show();
         }
         super.onActivityResult(requestCode, resultCode, data);
     }
 
-    private void saveMetroBg(final android.net.Uri uri) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    java.io.InputStream is = getContentResolver().openInputStream(uri);
-                    if (is == null) return;
-                    String mime = getContentResolver().getType(uri);
-                    String ext = "jpg";
-                    if (mime != null) {
-                        if (mime.contains("png")) ext = "png";
-                        else if (mime.contains("gif")) ext = "gif";
-                        else if (mime.contains("webp")) ext = "webp";
-                    }
-                    java.io.File f = new java.io.File(getFilesDir(), "metro_bg." + ext);
-                    java.io.FileOutputStream fos = new java.io.FileOutputStream(f);
-                    byte[] buf = new byte[8192];
-                    int len;
-                    while ((len = is.read(buf)) != -1) fos.write(buf, 0, len);
-                    fos.close();
-                    is.close();
-                    final String path = f.getAbsolutePath();
-                    setMetroBgPath(path);
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (metroBgText != null) updateMetroBgDisplay(metroBgText);
-                            Toast.makeText(SettingsActivity.this, "背景图片已保存，重启后生效", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                } catch (final Exception e) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(SettingsActivity.this, "保存背景失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                }
-            }
-        }).start();
+    private void launchMetroBgCrop(android.net.Uri uri) {
+        Intent crop = new Intent(this, CropActivity.class);
+        crop.putExtra(CropActivity.EXTRA_INPUT, uri.toString());
+        crop.putExtra(CropActivity.EXTRA_OUTPUT,
+                new java.io.File(getFilesDir(), "metro_bg.jpg").getAbsolutePath());
+        try {
+            startActivityForResult(crop, REQ_CROP);
+        } catch (Exception e) {
+            Toast.makeText(this, "无法打开裁剪页", Toast.LENGTH_SHORT).show();
+        }
     }
 
     // 默认首页选择
@@ -1578,8 +1774,8 @@ public class SettingsActivity extends BaseActivity {
 
     // 播放器选择对话框
     private void showPlayerChoiceDialog() {
-        final String[] allPlayers = {"内置播放器", "自动检测", "MX Player (免费版)", "MX Player (专业版)", "MoboPlayer", "MoboPlayer Pro", "VLC", "VPlayer", "RockPlaye Liter", "QQ影音", "凉腕播放器", "Ostwind播放器", "系统播放器"};
-        final int[] allValues = {PLAYER_BUILTIN, PLAYER_AUTO, PLAYER_MX_AD, PLAYER_MX_PRO, PLAYER_MOBO, PLAYER_MOBO_PRO, PLAYER_VLC, PLAYER_VPLAYER, PLAYER_ROCKPLAYER, PLAYER_QQPLAYER, PLAYER_LIANGWAN, PLAYER_OSTWIND, PLAYER_SYSTEM};
+        final String[] allPlayers = {"内置播放器（IJK V3）", "内置播放器（Ostwind）", "自动检测", "MX Player (免费版)", "MX Player (专业版)", "MoboPlayer", "MoboPlayer Pro", "VLC", "VPlayer", "RockPlaye Liter", "QQ影音", "凉腕播放器", "系统播放器"};
+        final int[] allValues = {PLAYER_BUILTIN, PLAYER_OSTWIND, PLAYER_AUTO, PLAYER_MX_AD, PLAYER_MX_PRO, PLAYER_MOBO, PLAYER_MOBO_PRO, PLAYER_VLC, PLAYER_VPLAYER, PLAYER_ROCKPLAYER, PLAYER_QQPLAYER, PLAYER_LIANGWAN, PLAYER_SYSTEM};
 
         // 低版本过滤掉内置播放器
         ArrayList filteredPlayers = new ArrayList();
@@ -1665,7 +1861,7 @@ public class SettingsActivity extends BaseActivity {
         filtered.add("系统解码器");
         filteredValues.add(Integer.valueOf(DECODER_SYSTEM));
         if (isIjkHardwareSupported()) {
-            filtered.add("IJK 硬解");
+            filtered.add("IJK V3硬解");
             filteredValues.add(Integer.valueOf(DECODER_IJK_HARD));
         }
         filtered.add("软件解码器");
@@ -1730,7 +1926,8 @@ public class SettingsActivity extends BaseActivity {
                         } else {
                             SharedPreferencesUtil.putInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, values[which]);
                             updateImageThreadDisplay(textView);
-                            Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.take_effect_after_restart), Toast.LENGTH_SHORT).show();
+                            tv.biliclassic.util.ImageLoader.reloadExecutor();
+                            Toast.makeText(SettingsActivity.this, "已生效", Toast.LENGTH_SHORT).show();
                         }
                         dialog.dismiss();
                     }
@@ -1786,7 +1983,8 @@ public class SettingsActivity extends BaseActivity {
     private void saveThreadValue(int val, TextView textView) {
         SharedPreferencesUtil.putInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, val);
         updateImageThreadDisplay(textView);
-        Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.take_effect_after_restart), Toast.LENGTH_SHORT).show();
+        tv.biliclassic.util.ImageLoader.reloadExecutor();
+        Toast.makeText(SettingsActivity.this, "已生效", Toast.LENGTH_SHORT).show();
     }
 
     private void showDialogStyleDialog(final TextView textView) {
@@ -2326,7 +2524,7 @@ public class SettingsActivity extends BaseActivity {
         }
         try {
             JSONObject json = new JSONObject(jsonStr);
-            String cookies = json.optString("cookies", "");
+            String cookies = NetWorkUtil.boundCookie(json.optString("cookies", ""));
             if (cookies == null || cookies.length() == 0) {
                 Toast.makeText(this, this.getString(R.string.invalid_cookie_data), Toast.LENGTH_SHORT).show();
                 return;
@@ -2454,7 +2652,7 @@ public class SettingsActivity extends BaseActivity {
                             echoHoleItem.setEnabled(true);
                             if (isFinishing()) return;
                             try {
-                                JSONArray arr = new JSONArray(jsonStr);
+                                JSONArray arr = new JSONArray(NetWorkUtil.sanitizeJson(jsonStr));
                                 if (arr.length() > 0) {
                                     int idx = (int) (Math.random() * arr.length());
                                     if (arr.length() > 1) {

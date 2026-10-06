@@ -32,13 +32,14 @@ import java.util.TimeZone;
 
 import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 public class TimelineFragment extends Fragment {
 
     private ListView listView;
-    private ProgressBar progressBar;
+    // 统一加载条（公共组件）
+    private LoadingBarView progressBar;
     private TextView emptyView;
-    private View headerContainer;
 
     private TimelineAdapter adapter;
     private List<timelineDay> timelineList = new ArrayList<timelineDay>();
@@ -54,13 +55,9 @@ public class TimelineFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_timeline, container, false);
 
         listView = (ListView) view.findViewById(R.id.timeline_list);
-        progressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
+        progressBar = (LoadingBarView) view.findViewById(R.id.progress_bar);
+        progressBar.bindBackground(listView);
         emptyView = (TextView) view.findViewById(R.id.empty_view);
-        headerContainer = view.findViewById(R.id.header_container);
-
-        if (headerContainer != null) {
-            headerContainer.setVisibility(View.GONE);
-        }
 
         listView.setDivider(null);
         listView.setDividerHeight(0);
@@ -91,6 +88,11 @@ public class TimelineFragment extends Fragment {
         if (listView != null && listView.getVisibility() == View.VISIBLE) {
             listView.requestFocus();
         }
+    }
+
+    /** 供 MainActivity 判断列表是否已在最顶部（再按上键进入顶栏）。 */
+    public boolean isNavAtTop() {
+        return listView != null && listView.getFirstVisiblePosition() == 0;
     }
 
     /**
@@ -149,14 +151,11 @@ public class TimelineFragment extends Fragment {
     }
 
     private void showLoading() {
-        if (headerContainer != null) {
-            headerContainer.setVisibility(View.VISIBLE);
+        if (progressBar != null) {
+            progressBar.showLoading();
         }
         if (emptyView != null) {
             emptyView.setVisibility(View.GONE);
-        }
-        if (progressBar != null) {
-            progressBar.setVisibility(View.GONE);
         }
         if (listView != null) {
             listView.setVisibility(View.GONE);
@@ -164,8 +163,8 @@ public class TimelineFragment extends Fragment {
     }
 
     private void hideAllLoading() {
-        if (headerContainer != null) {
-            headerContainer.setVisibility(View.GONE);
+        if (progressBar != null) {
+            progressBar.hide();
         }
     }
 

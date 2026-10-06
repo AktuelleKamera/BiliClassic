@@ -35,6 +35,7 @@ import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.ProxyStreamService;
 import tv.biliclassic.util.CookieGenerator;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 // 并没有什么用处的竖屏模式……才不是因为哔哩轻享才加入的呢~
 public class RecommendVerticalFragment extends Fragment {
@@ -43,7 +44,8 @@ public class RecommendVerticalFragment extends Fragment {
 
     private FrameLayout mRootView;
     private ListView mListView;
-    private ProgressBar mProgressBar;
+    // 统一加载条（公共组件）
+    private LoadingBarView mProgressBar;
     private TextView mEmptyView;
     private TextView mHintView;
     private VerticalAdapter mAdapter;
@@ -71,7 +73,8 @@ public class RecommendVerticalFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         mRootView = (FrameLayout) inflater.inflate(R.layout.fragment_recommend_vertical, container, false);
         mListView = (ListView) mRootView.findViewById(R.id.vertical_list);
-        mProgressBar = (ProgressBar) mRootView.findViewById(R.id.vertical_progress);
+        mProgressBar = (LoadingBarView) mRootView.findViewById(R.id.vertical_progress);
+        mProgressBar.bindBackground(mListView);
         mEmptyView = (TextView) mRootView.findViewById(R.id.vertical_empty);
         mHintView = (TextView) mRootView.findViewById(R.id.vertical_hint);
 
@@ -538,7 +541,7 @@ public class RecommendVerticalFragment extends Fragment {
     }
 
     private void loadData() {
-        mProgressBar.setVisibility(View.VISIBLE);
+        mProgressBar.showLoading();
         mEmptyView.setVisibility(View.GONE);
         new Thread(new Runnable() {
             public void run() {
@@ -551,7 +554,7 @@ public class RecommendVerticalFragment extends Fragment {
                 }
                 mHandler.post(new Runnable() {
                     public void run() {
-                        mProgressBar.setVisibility(View.GONE);
+                        mProgressBar.hide();
                         if (mItems.size() == 0) {
                             mEmptyView.setVisibility(View.VISIBLE);
                         } else {

@@ -73,7 +73,7 @@ public class DeviceInfoUtil {
                     sb.append(model + "\n");
                 }
                 sb.append("BB10已死，但经典永存！\n");
-                sb.append("架构: ARMv7-A | 请使用v7a解码包~");
+                sb.append("架构: ARMv7-A | 请使用IJK硬解~");
                 return sb.toString();
             }
         }
@@ -88,9 +88,9 @@ public class DeviceInfoUtil {
                     model.contains("PB86100"))) {
                 android.util.Log.e("DeviceInfoUtil", "✅ 匹配到 HTC ChaCha 系列！");
                 sb.append("HTC ChaCha / Status\n");
-                sb.append("群主的专用开发机！全键盘好评desu~\n");
+                sb.append("群主过去的开发机！全键盘好评desu~\n");
                 sb.append("横屏专属适配机型~\n");
-                sb.append("架构: ARMv6 | 请使用v6解码包~");
+                sb.append("架构: armeabi | 请使用软解或转码播放硬解~");
                 return sb.toString();
             } else {
                 android.util.Log.e("DeviceInfoUtil", "型号不匹配，model=[" + model + "]");
@@ -110,7 +110,7 @@ public class DeviceInfoUtil {
                 sb.append("三星Galaxy Y Pro / Galaxy Pro\n");
                 sb.append("横屏全键盘小钢炮！\n");
                 sb.append("横屏专属适配机型~\n");
-                sb.append("架构: ARMv6 | 请使用v6解码包~");
+                sb.append("架构: armeabi | 请使用软解或转码播放硬解~");
                 return sb.toString();
             }
         }
@@ -123,7 +123,7 @@ public class DeviceInfoUtil {
             sb.append("诶？！这不是相机吗？！\n");
             sb.append("咱的软件居然在微单上跑起来了！\n");
             sb.append("你该不会是用相机在刷B站吧！(°ω°)\n");
-            sb.append("架构: ARMv7-A | 请使用v7a解码包~");
+            sb.append("架构: armeabi-v7a | 请使用软解~");
             return sb.toString();
         }
 
@@ -136,9 +136,9 @@ public class DeviceInfoUtil {
                 model.equalsIgnoreCase("mione_plus"))) {
             android.util.Log.e("DeviceInfoUtil", "✅ 匹配到小米手机1 Plus！");
             sb.append("小米手机1 (MI-ONE Plus)\n");
-            sb.append("为发烧而生！一代神机！\n");
+            sb.append("为发烧而生的一代神机！\n");
             sb.append("1999交个朋友！\n");
-            sb.append("架构: ARMv7-A | 请使用v7a解码包~");
+            sb.append("架构: ARMv7-A | 请使用系统解码器/IJK硬解~");
             return sb.toString();
         }
 
@@ -150,7 +150,7 @@ public class DeviceInfoUtil {
             sb.append("小米手机青春版 (MI-ONE)\n");
             sb.append("15万台限量！你居然是那十五万分之一！\n");
             sb.append("稀有精英desu！\n");
-            sb.append("架构: ARMv7-A | 请使用v7a解码包~");
+            sb.append("架构: ARMv7-A | 请使用系统解码器/IJK硬解~");
             return sb.toString();
         }
 
@@ -163,7 +163,7 @@ public class DeviceInfoUtil {
             sb.append("小米1S (MI 1S)\n");
             sb.append("1S青春版/原版共用型号\n");
             sb.append("小米手机1的升级版，一代经典！\n");
-            sb.append("架构: ARMv7-A | 请使用v7a解码包~");
+            sb.append("架构: ARMv7-A | 请使用系统解码器/IJK硬解~");
             return sb.toString();
         }
 
@@ -177,7 +177,7 @@ public class DeviceInfoUtil {
             android.util.Log.e("DeviceInfoUtil", "✅ 匹配到小米2/2S！");
             sb.append("小米2 / 小米2S\n");
             sb.append("一代经典！是不是碉堡了~\n");
-            sb.append("架构: ARMv7-A | 请使用v7a解码包~");
+            sb.append("架构: ARMv7-A | 请使用IJK硬解~");
             return sb.toString();
         }
 
@@ -187,7 +187,7 @@ public class DeviceInfoUtil {
             android.util.Log.e("DeviceInfoUtil", "✅ 匹配到小米2A！");
             sb.append("小米2A\n");
             sb.append("千元就有顶级双核和NFC！是不是碉堡了~\n");
-            sb.append("架构: ARMv7-A | 请使用v7a解码包~");
+            sb.append("架构: ARMv7-A | 请使用IJK硬解~");
             return sb.toString();
         }
 
@@ -199,7 +199,7 @@ public class DeviceInfoUtil {
             android.util.Log.e("DeviceInfoUtil", "✅ 匹配到小米3联通/电信版！");
             sb.append("小米3 联通/电信版\n");
             sb.append("骁龙800！当年的旗舰配置！\n");
-            sb.append("架构: ARMv7-A | 请使用v7a解码包~");
+            sb.append("架构: ARMv7-A | 请使用IJK硬解~");
             return sb.toString();
         }
 
@@ -210,7 +210,7 @@ public class DeviceInfoUtil {
             sb.append("小米3 移动版 (Tegra 4)\n");
             sb.append("核弹级神U！移动版专属！\n");
             sb.append("一发就可以摧毁一个航母战斗群~ (｀・ω・´)\n");
-            sb.append("架构: ARMv7-A | 请使用v7a解码包~");
+            sb.append("架构: ARMv7-A | 请使用IJK硬解~");
             return sb.toString();
         }
 
@@ -224,7 +224,7 @@ public class DeviceInfoUtil {
             sb.append("小米4 (Cancro)\n");
             sb.append("一块钢板的艺术之旅！\n");
             sb.append("骁龙801，依然能战！\n");
-            sb.append("架构: ARMv7-A | 请使用v7a解码包~");
+            sb.append("架构: ARMv7-A | 请使用IJK硬解~");
             return sb.toString();
         }
 
@@ -236,7 +236,7 @@ public class DeviceInfoUtil {
             sb.append("小米5 (gemini)\n");
             sb.append("看片快，打飞机更快！\n");
             sb.append("骁龙820，发烧也快！\n");
-            sb.append("架构: ARMv8-A | 请使用v8a解码包~");
+            sb.append("架构: ARMv8-A | 请使用IJK硬解~");
             return sb.toString();
         }
 
@@ -252,7 +252,7 @@ public class DeviceInfoUtil {
             android.util.Log.e("DeviceInfoUtil", "✅ 匹配到红米1/1S！");
             sb.append("红米1 / 红米1S\n");
             sb.append("曾经的性价比神机！799交个朋友~\n");
-            sb.append("架构: ARMv7-A | 请使用v7a解码包~");
+            sb.append("架构: ARMv7-A | 请使用IJK硬解~");
             return sb.toString();
         }
 
@@ -267,7 +267,7 @@ public class DeviceInfoUtil {
                 !"Xiaomi".equalsIgnoreCase(manufacturer)) { // 注意：小米Note顶配版也叫leo！
             android.util.Log.e("DeviceInfoUtil", "✅ 匹配到HTC HD2！");
             sb.append("HTC HD2\n");
-            sb.append("一代神机！从WM6.5刷到各种奇葩系统和Android 7.1！\n");
+            sb.append("一代神机！能从WM6.5刷到各种奇葩系统和Android 7.1！不过你也可以刷回WM用哔哩经典WM版（不是）\n");
             sb.append("架构: ARMv7-A | 请使用v7a解码包~");
             return sb.toString();
         }
@@ -279,7 +279,7 @@ public class DeviceInfoUtil {
             if (abi.contains("arm64") || abi.contains("aarch64")) {
                 android.util.Log.e("DeviceInfoUtil", "检测到 ARMv8-A");
                 sb.append("ARMv8-A (AArch64)\n");
-                sb.append("诶？64位？这就是传说中的未来手机吗？建议用系统播放器试试看~\n");
+                sb.append("诶？64位？这就是传说中的未来手机吗？你居然还在用我们的客户端？建议用IJK硬解试试看~\n");
                 sb.append("架构: ARMv8-A");
                 return sb.toString();
             } else if (abi.contains("armeabi-v7a")) {
@@ -290,7 +290,7 @@ public class DeviceInfoUtil {
                     sb.append("注意：此设备不支持NEON指令集！\n");
                     sb.append("虽然需要安装v7a解码包，但可能无法愉快玩耍哦~\n");
                 } else {
-                    sb.append("主流配置desu！使用v7a解码包就能愉快玩耍了~\n");
+                    sb.append("主流配置desu！使用系统解码或IJK硬解就能愉快玩耍了~\n");
                 }
                 sb.append("架构: ARMv7-A");
                 return sb.toString();
@@ -300,24 +300,24 @@ public class DeviceInfoUtil {
                 if (armVersion.equals("ARMv5te")) {
                     sb.append("ARMv5TE (ARM9)\n");
                     sb.append("Orz... 这是从博物馆里挖出来的出土文物吗？\n");
-                    sb.append("能跑起来已经是奇迹了desu！请使用v5te解码包~\n");
+                    sb.append("能跑起来已经是奇迹了desu！硬解建议使用转码的说，软解emm，请使用Legacy解码包~\n");
                     sb.append("架构: ARMv5TE");
                 } else {
                     sb.append("ARMv6 (ARM11)\n");
-                    sb.append("普通手机desu！请使用v6解码包就能看了哦~\n");
+                    sb.append("普通手机desu！打开转码播放来使用系统解码器就能获得高质量的手机播放体验哦~\n");
                     sb.append("架构: ARMv6");
                 }
                 return sb.toString();
             } else if (abi.contains("x86_64")) {
                 android.util.Log.e("DeviceInfoUtil", "检测到 x86-64");
                 sb.append("x86-64 (64位)\n");
-                sb.append("平板的英特尔芯！好稀有desu...可以试试系统播放器~\n");
+                sb.append("平板的英特尔芯！好稀有desu...可以试试IJK硬解~\n");
                 sb.append("架构: x86-64");
                 return sb.toString();
             } else if (abi.contains("x86")) {
                 android.util.Log.e("DeviceInfoUtil", "检测到 x86");
                 sb.append("IA-32 (x86)\n");
-                sb.append("平板的英特尔芯！好稀有desu...可以试试系统播放器~\n");
+                sb.append("平板的英特尔芯！好稀有desu...可以试试IJK硬解或系统解码器~\n");
                 sb.append("架构: IA-32");
                 return sb.toString();
             }
@@ -344,7 +344,57 @@ public class DeviceInfoUtil {
     public static boolean isLegacy = false;
 
     public static boolean isUnsupportedCpu() {
-        return !isLegacy && (isArmv5() || isArmv6WithoutVfp());
+        // ARMv5 / 无 VFP 的 ARMv6：本身解码吃力，但若带硬件视频解码 DSP
+        // （如 RK、全志等播放器 SoC），可转码成 240P 后硬解，不算无法播放。
+        return !isLegacy && (isArmv5() || isArmv6WithoutVfp()) && !hasHardwareVideoDsp();
+    }
+
+    /**
+     * 需要服务端转码才能硬解的老设备（ARMv5 / 无 VFP 的 ARMv6）。
+     * 命中则默认开启「转码播放」，让这类设备也能流畅看 240P。
+     *
+     * 带硬件视频解码 DSP 的（RK / 全志等）直接硬解，不默认转码，
+     * 与 {@link #isUnsupportedCpu()} 保持一致。
+     */
+    public static boolean needsTranscodeForHwDecode() {
+        return needsNoVfpIjk() && !hasHardwareVideoDsp();
+    }
+
+    /**
+     * 无 VFP 的 ARMv5 / ARMv6：自带 libijkffmpeg.so 含 VFP 指令跑不了，
+     * 需要单独的 no-VFP legacy 版（放在兼容包 tv.biliclassic.libnovfp 里）。
+     */
+    public static boolean needsNoVfpIjk() {
+        return isArmv5() || isArmv6WithoutVfp();
+    }
+
+    // 带硬件视频解码 DSP 的老 SoC 关键字（ARMv5TE/ARM11 上也能硬解转码后的 H.264）
+    private static final String[] DSP_SOC_KEYS = {
+        "rockchip", "rk26", "rk27", "rk28", "rk29", "rk30", "rk31", "rk32", "rk33",
+        "telechips", "tcc8", "tcc9",
+        "allwinner", "boxchip", "sunxi", "sun4i", "sun5i", "sun6i",
+        "amlogic", "meson", "aml8",
+        "mstar", "novatek", "sigma", "smp86", "realtek", "rtd"
+    };
+
+    /**
+     * 设备是否带硬件视频解码 DSP：扫描 Build 字段与 /proc/cpuinfo 里的 SoC 型号关键字。
+     * 用于把 RK / 全志等"有能力"的 ARMv5TE 老设备从无法播放名单里排除。
+     */
+    public static boolean hasHardwareVideoDsp() {
+        StringBuilder sb = new StringBuilder();
+        String[] fields = {"HARDWARE", "BOARD", "DEVICE", "MANUFACTURER", "BRAND", "PRODUCT", "MODEL"};
+        for (String f : fields) {
+            String v = getBuildField(f);
+            if (v != null) sb.append(v).append(' ');
+        }
+        String cpuinfo = readCpuInfo();
+        String probe = sb.toString().toLowerCase() + " "
+                + (cpuinfo == null ? "" : cpuinfo.toLowerCase());
+        for (String k : DSP_SOC_KEYS) {
+            if (probe.contains(k)) return true;
+        }
+        return false;
     }
 
     private static boolean isArmeabiLegacy() {
@@ -393,7 +443,7 @@ public class DeviceInfoUtil {
 
     /**
      * 是否高通（Qualcomm）/ 联发科（MediaTek）芯片组设备。
-     * 老设备 Build.HARDWARE / Build.BOARD 常是机型代号（如 HTC saga），不含芯片型号，
+     * 老设备 Build.HARDWARE / Build.BOARD 常是机型代号，不含芯片型号，
      * 所以不能只靠单个 Build 字段，需联查多项 Build 字段 + 扫描 /proc/cpuinfo 全文。
      * 用于 2.1-4.0 老设备上 IJK 硬解选项的显示条件。
      */

@@ -6,4 +6,19 @@
     <!-- 二级页右上角搜索与溢出按钮（运行时创建） -->
     <item name="btn_title_search" type="id" />
     <item name="btn_title_more" type="id" />
+
+    <!-- 个人空间页溢出菜单的视频/动态/专栏切换项 -->
+    <item name="menu_space_content" type="id" />
+    <item name="menu_space_follow" type="id" />
+    <item name="menu_space_block" type="id" />
+    <item name="menu_space_message" type="id" />
+    <item name="menu_fav_video" type="id" />
+    <item name="menu_fav_later" type="id" />
+    <item name="menu_fav_bangumi" type="id" />
+    <item name="menu_space_video" type="id" />
+    <item name="menu_space_dynamic" type="id" />
+    <item name="menu_space_article" type="id" />
+
+    <!-- 皮肤标记（记录已套用的夜间/半透明状态，防止重复刷新） -->
+    <item name="skin_mark" type="id" />
 </resources>

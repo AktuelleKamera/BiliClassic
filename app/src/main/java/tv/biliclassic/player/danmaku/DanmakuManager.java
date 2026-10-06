@@ -41,6 +41,8 @@ import master.flame.danmaku.danmaku.model.android.DanmakuGlobalConfig;
 import master.flame.danmaku.danmaku.parser.BaseDanmakuParser;
 import master.flame.danmaku.danmaku.parser.IDataSource;
 import master.flame.danmaku.danmaku.parser.android.BiliDanmukuParser;
+import master.flame.danmaku.controller.IDanmakuView;
+import master.flame.danmaku.ui.widget.DanmakuSurfaceView;
 import master.flame.danmaku.ui.widget.DanmakuView;
 import tv.biliclassic.R;
 import tv.biliclassic.api.DanmakuApi;
@@ -69,6 +71,7 @@ public class DanmakuManager {
     private static final String KEY_BLOCK_GUEST = "danmaku_block_guest";
     private static final String KEY_BLOCK_COLORFUL = "danmaku_block_colorful";
     private static final String KEY_DUP_MERGE = "danmaku_duplicate_merge";
+    private static final String KEY_RENDER_MODE = "danmaku_render_mode";
 
     // 直播弹幕轮询间隔（gethistory 拉取周期）
     private static final long LIVE_POLL_INTERVAL_MS = 4000L;
@@ -81,7 +84,7 @@ public class DanmakuManager {
     private final boolean mIsLive;
     private final long mLiveRoomId;
 
-    private DanmakuView mDanmakuView;
+    private IDanmakuView mDanmakuView;
     private SimpleDanmakuEngine mSimpleEngine;
     private String mDanmakuUrl;
     private File mDanmakuCacheFile;
@@ -364,22 +367,86 @@ public class DanmakuManager {
 
     private void initSimpleEngine() {
         mSimpleEngine = new SimpleDanmakuEngine(mActivity);
-        mSimpleEngine.init(mContainer);
+        mContainer.removeAllViews();
+        String mode = resolveRenderMode();
+        View host;
+        if ("view".equals(mode)) {
+            host = new SimpleDanmakuViewPresenter(mActivity, mSimpleEngine);
+        } else if ("texture".equals(mode) && SdkHelper.getSdkInt() >= 14) {
+            try {
+                host = SimpleDanmakuTexturePresenterFactory.create(mActivity, mSimpleEngine);
+            } catch (Throwable t) {
+                host = new SimpleDanmakuSurfacePresenter(mActivity, mSimpleEngine);
+            }
+        } else {
+            host = new SimpleDanmakuSurfacePresenter(mActivity, mSimpleEngine);
+        }
+        mSimpleEngine.setPresenter((SimpleDanmakuEngine.Presenter) host);
+        mContainer.addView(host, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    /**
+     * 解析弹幕渲染方式：
+     *   视频=TextureView → View（默认）或 TextureView
+     *     —— 禁止 Surface：Surface 弹幕会在窗口挖洞、把窗口层里的 TextureView 视频一起
+     *        挖掉（黑屏）。Texture 弹幕为可选（软件 lockCanvas，较慢）。
+     *   视频=SurfaceView → SurfaceView（默认）或 View
+     *     —— 禁止 Texture：这个组合没测过，先不开放（懒得测了）。
+     */
+    private String resolveRenderMode() {
+        if (isVideoTextureView()) {
+            String mode = SharedPreferencesUtil.getString(KEY_RENDER_MODE, "view");
+            return "texture".equals(mode) ? "texture" : "view";
+        }
+        String mode = SharedPreferencesUtil.getString(KEY_RENDER_MODE, "surface");
+        return "view".equals(mode) ? "view" : "surface";
+    }
+
+    /** 视频渲染方式是否为 TextureView（与 SettingsActivity.getRendererType 一致：1=TextureView） */
+    private static boolean isVideoTextureView() {
+        return SdkHelper.getSdkInt() >= 14
+                && tv.biliclassic.SettingsActivity.getRendererType() == 1;
+    }
+
+    private IDanmakuView createDanmakuWidget() {
+        String mode = resolveRenderMode();
+        if ("view".equals(mode)) {
+            return new DanmakuView(mActivity);
+        }
+        if ("texture".equals(mode) && SdkHelper.getSdkInt() >= 14) {
+            try {
+                return DanmakuTextureViewFactory.create(mActivity);
+            } catch (Throwable t) {
+                // TextureView 不可用则回落到 SurfaceView
+            }
+        }
+        return new DanmakuSurfaceView(mActivity);
     }
 
     private void initFullEngine() {
         for (int i = mContainer.getChildCount() - 1; i >= 0; i--) {
             View child = mContainer.getChildAt(i);
-            if (child instanceof DanmakuView) {
-                ((DanmakuView) child).release();
-                mContainer.removeView(child);
+            if (child instanceof IDanmakuView) {
+                try { ((IDanmakuView) child).release(); } catch (Throwable t) {}
             }
         }
-        mDanmakuView = new DanmakuView(mActivity);
-        mContainer.addView(mDanmakuView,
+        mContainer.removeAllViews();
+        mDanmakuView = createDanmakuWidget();
+        mContainer.addView(mDanmakuView.getView(),
                 new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT));
+
+        // 注入「视频位置」时钟：完整版弹幕时间轴改为跟随视频位置，从而跟随倍速 / 暂停 / 拖动
+        // （DFM 默认走内部墙钟，恒 1x，倍速时弹幕不加速）
+        mDanmakuView.setClock(new DrawHandler.Clock() {
+            public long getCurrentTime() {
+                long pos = getCurrentVideoPosition();
+                return pos >= 0 ? pos : 0;
+            }
+        });
 
         float textSize = SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, 0.9f);
         float transparency = SharedPreferencesUtil.getFloat(KEY_TRANSPARENCY, 0.4f);

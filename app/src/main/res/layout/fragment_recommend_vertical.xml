@@ -11,10 +11,11 @@
         android:divider="@null"
         android:scrollbars="none" />
 
-    <ProgressBar
+    <!-- 加载中：统一加载条（与关注的人页一致） -->
+    <tv.biliclassic.widget.LoadingBarView
         android:id="@+id/vertical_progress"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
         android:layout_gravity="center"
         android:visibility="gone" />
 
@@ -33,7 +34,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="top|center_horizontal"
         android:layout_marginTop="8dp"
-        android:text="上滑切换 · 竖屏模式"
+        android:text="上滑可切换视频"
         android:textColor="#99FFFFFF"
         android:textSize="12sp" />
 

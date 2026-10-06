@@ -32,7 +32,7 @@ public class PlayerQualityManager {
     }
 
     public void init(String[] names, int[] values, int currentQn, boolean allowSwitch) {
-        mQualityNames = names;
+        mQualityNames = normalizeQualityNames(names);
         mQualityValues = values;
         mCurrentQn = currentQn;
         mAllowSwitch = allowSwitch;
@@ -111,7 +111,9 @@ public class PlayerQualityManager {
         if (mAdapter != null) {
             mAdapter.notifyDataSetChanged();
         }
-        mQualityListView.setVisibility(View.VISIBLE);
+        // 先设 INVISIBLE：仍参与布局（能取到宽高/位置）但不绘制，
+        // 等下面把水平位置对齐好再 VISIBLE，避免先按默认位置画一帧再位移的闪烁
+        mQualityListView.setVisibility(View.INVISIBLE);
         mListVisible = true;
         alignQualityList();
     }
@@ -121,6 +123,13 @@ public class PlayerQualityManager {
         mQualityListView.post(new Runnable() {
             @Override
             public void run() {
+                // 还没完成布局（宽度为 0）→ 下一帧再试，否则会算错水平偏移（时对时不对）
+                if (mQualityListView.getWidth() == 0 || mQualityButton.getWidth() == 0) {
+                    if (mListVisible) {
+                        mQualityListView.post(this);
+                    }
+                    return;
+                }
                 try {
                     int[] btnLoc = new int[2];
                     int[] listLoc = new int[2];
@@ -147,6 +156,10 @@ public class PlayerQualityManager {
                     }
                 } catch (Exception e) {
                     // ignore
+                }
+                // 对齐完成后再显示，避免先按默认位置绘制一帧的闪烁
+                if (mListVisible) {
+                    mQualityListView.setVisibility(View.VISIBLE);
                 }
             }
         });
@@ -195,8 +208,39 @@ public class PlayerQualityManager {
             case 112: return "超清+"; //1080P+
             case 116: return "超清60帧"; //1080P60
             case 120: return "超高清"; //4K
+            case 125: return "HDR"; //HDR 真彩
+            case 126: return "杜比"; //杜比视界
+            case 127: return "8K"; //8K 超高清
             default: return qn > 0 ? (qn + "P") : "画质";
         }
+    }
+
+    /**
+     * 统一弹窗画质用词，与按钮短名（getQualityShortName）保持同一套：
+     * 720P 高清 / 1080P 超清 / 4K 超高清。接口返回的 accept_description 原文
+     * （如「1080P 高清」「超清 4K」）在这里归一，否则会与按钮显示不一致。
+     */
+    public static String normalizeQualityName(String name) {
+        if (name == null) return null;
+        if (name.contains("1080P") && name.contains("高清")) {
+            return name.replace("高清", "超清");
+        }
+        if (name.contains("720") && name.contains("准高清")) {
+            return name.replace("准高清", "高清");
+        }
+        if (name.contains("4K") && name.contains("超清")) {
+            return name.replace("超清", "超高清");
+        }
+        return name;
+    }
+
+    private static String[] normalizeQualityNames(String[] names) {
+        if (names == null) return null;
+        String[] out = new String[names.length];
+        for (int i = 0; i < names.length; i++) {
+            out[i] = normalizeQualityName(names[i]);
+        }
+        return out;
     }
 
     public void release() {

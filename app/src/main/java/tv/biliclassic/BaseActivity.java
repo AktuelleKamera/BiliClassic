@@ -31,6 +31,7 @@ import java.lang.reflect.Method;
 
 import tv.biliclassic.util.DeviceUtil;
 import tv.biliclassic.util.LocaleHelper;
+import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SdkHelper;
 import tv.biliclassic.util.SharedPreferencesUtil;
@@ -155,24 +156,59 @@ public abstract class BaseActivity extends FragmentActivity {
         tv.biliclassic.util.CrownScrollHelper.attachToWindow(this);
         wireTitleActions();
         wireTitlePress();
+        tv.biliclassic.util.UiSkin.apply(this);
+        installSkinReloader();
+    }
+
+    private long mLastSkinReload = 0L;
+    private android.view.ViewTreeObserver.OnGlobalLayoutListener mSkinReloader;
+
+    /**
+     * 动态内容（Fragment/异步列表）出现后重新套用夜间/半透明皮肤
+     */
+    private void installSkinReloader() {
+        if (mSkinReloader != null) {
+            return;
+        }
+        try {
+            mSkinReloader = new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    long now = System.currentTimeMillis();
+                    if (now - mLastSkinReload < 400) {
+                        return;
+                    }
+                    mLastSkinReload = now;
+                    tv.biliclassic.util.UiSkin.apply(BaseActivity.this);
+                }
+            };
+            getWindow().getDecorView().getViewTreeObserver()
+                    .addOnGlobalLayoutListener(mSkinReloader);
+        } catch (Throwable t) {
+            mSkinReloader = null;
+        }
     }
 
     /**
-     * 让应用内容绘制到系统栏之下（edge-to-edge）。
-     * 不设置 LAYOUT 标志、也不加顶部 padding，避免多出一截状态栏空白。
-     * 启用时：底部延伸到手势/导航区（LAYOUT_HIDE_NAVIGATION），并把内容顶部下移状态栏高度，
-     * 顶部标题不会被状态栏遮挡；API 21+ 导航栏透明。
+     * 让应用内容（含窗口背景图）绘制到状态栏之下（edge-to-edge）。
+     * 关键：API 21+ 设 LAYOUT_FULLSCREEN，窗口背景才会延伸到状态栏下，
+     * 否则状态栏只是一层纯色，背景图/模糊在此处「断掉」。
+     * 同时底部在 API 28+ 延伸到手势区（LAYOUT_HIDE_NAVIGATION），
+     * 并把内容顶部下移状态栏高度，顶部标题不会被状态栏遮挡；导航栏透明。
      */
     protected void applyEdgeToEdge() {
-        if (SdkHelper.getSdkInt() < 28) return; // 仅手势导航设备启用
+        if (SdkHelper.getSdkInt() < 21) return; // 状态栏透明/背景延伸需要 API 21+
         try {
             int flags = android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    | android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION;
+                    | android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN;
+            if (SdkHelper.getSdkInt() >= 28) {
+                flags |= android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION; // 手势区
+            }
             android.view.View.class.getMethod("setSystemUiVisibility", int.class)
                     .invoke(getWindow().getDecorView(), Integer.valueOf(flags));
         } catch (Throwable t) {
         }
-        if (SdkHelper.getSdkInt() >= 21) {
+        if (SdkHelper.getSdkInt() >= 28) {
             try {
                 android.view.Window.class.getMethod("setNavigationBarColor", int.class)
                         .invoke(getWindow(), Integer.valueOf(0));
@@ -211,6 +247,8 @@ public abstract class BaseActivity extends FragmentActivity {
     /**
      * 底部被虚拟导航键盖住时给内容补 padding。
      * 窗口实际底高于系统可见帧的差值就是被盖的部分，全屏页差值为 0 不受影响。
+     * 软键盘弹起时差值≈键盘高度，补进去会把内容挤成上半屏且收起键盘后回不来，
+     * 所以差值超过屏高 1/4 就按键盘处理，直接不补（导航栏一般不到屏高 1/10）。
      */
     protected void applyNavBarPadding() {
         if (mNavBarPadListener != null) {
@@ -220,19 +258,51 @@ public abstract class BaseActivity extends FragmentActivity {
         mNavBarPadListener = new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
             public void onGlobalLayout() {
-                try {
-                    android.graphics.Rect r = new android.graphics.Rect();
-                    decor.getWindowVisibleDisplayFrame(r);
-                    int diff = decor.getHeight() - r.bottom;
-                    android.view.View c = decor.findViewById(android.R.id.content);
-                    if (c != null && diff > 0 && c.getPaddingBottom() != diff) {
-                        c.setPadding(c.getPaddingLeft(), c.getPaddingTop(), c.getPaddingRight(), diff);
-                    }
-                } catch (Throwable t) {
-                }
+                updateNavBarPadding(decor);
             }
         };
         decor.getViewTreeObserver().addOnGlobalLayoutListener(mNavBarPadListener);
+        updateNavBarPadding(decor);
+    }
+
+    /** 按当前可见帧重算底部补白；键盘弹起期间不改，避免界面被挤到上半屏。 */
+    protected void updateNavBarPadding(android.view.View decor) {
+        if (decor == null || mNavBarPadListener == null) {
+            return;
+        }
+        try {
+            android.graphics.Rect r = new android.graphics.Rect();
+            android.view.View.class
+                    .getMethod("getWindowVisibleDisplayFrame", android.graphics.Rect.class)
+                    .invoke(decor, r);
+            int diff = decor.getHeight() - r.bottom;
+            if (diff >= decor.getHeight() / 4) {
+                return;
+            }
+            android.view.View c = decor.findViewById(android.R.id.content);
+            if (c == null) {
+                return;
+            }
+            int pad = diff > 0 ? diff : 0;
+            if (c.getPaddingBottom() != pad) {
+                c.setPadding(c.getPaddingLeft(), c.getPaddingTop(), c.getPaddingRight(), pad);
+            }
+        } catch (Throwable t) {
+        }
+    }
+
+    /** 手动重算（返回页面、软键盘收起后等时机调用）。 */
+    protected void refreshNavBarPadding() {
+        if (mNavBarPadListener == null) {
+            return;
+        }
+        final android.view.View decor = getWindow().getDecorView();
+        decor.post(new Runnable() {
+            @Override
+            public void run() {
+                updateNavBarPadding(decor);
+            }
+        });
     }
 
     @Override
@@ -245,17 +315,57 @@ public abstract class BaseActivity extends FragmentActivity {
             }
             mNavBarPadListener = null;
         }
+        if (mSkinReloader != null) {
+            try {
+                getWindow().getDecorView().getViewTreeObserver()
+                        .removeGlobalOnLayoutListener(mSkinReloader);
+            } catch (Throwable t) {
+            }
+            mSkinReloader = null;
+        }
         super.onDestroy();
     }
+
+    private boolean mThemeStateInit = false;
+    private int mThemeState = 0;
 
     @Override
     protected void onResume() {
         super.onResume();
-        // 夜间模式：实时切换窗口背景纹理（返回已打开的界面时也生效）
-        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NIGHT_MODE, false)) {
-            getWindow().setBackgroundDrawableResource(R.drawable.bili_texture_background_night);
-        } else {
-            getWindow().setBackgroundDrawableResource(R.drawable.bili_texture_background);
+        // 夜间/自定义背景切换后不必重启：检测到状态变化就重建当前页，
+        // 否则列表/适配器仍保留旧配色（老 ROM 上不会自动重刷）
+        int themeState = (tv.biliclassic.util.UiSkin.isNight() ? 1 : 0)
+                | (tv.biliclassic.util.BgUtil.hasImage() ? 2 : 0);
+        if (mThemeStateInit && mThemeState != themeState && !isFinishing()) {
+            mThemeState = themeState;
+            recreateForTheme();
+            return;
+        }
+        mThemeStateInit = true;
+        mThemeState = themeState;
+        // 背景：自定义图片优先，否则纹理；并套用夜间/半透明皮肤
+        tv.biliclassic.util.BgUtil.applyWindowBackground(this);
+        tv.biliclassic.util.UiSkin.apply(this);
+        refreshNavBarPadding();
+    }
+
+    /** 主题（夜间/背景）变化后重建当前 Activity，避免老 ROM 上列表不重刷。 */
+    private void recreateForTheme() {
+        try {
+            if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 11) {
+                BaseActivity.class.getMethod("recreate").invoke(this);
+                return;
+            }
+        } catch (Throwable t) {
+        }
+        try {
+            android.content.Intent intent = getIntent();
+            if (intent != null) {
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NO_ANIMATION);
+                startActivity(intent);
+            }
+            finish();
+        } catch (Throwable t) {
         }
     }
 
@@ -385,38 +495,49 @@ public abstract class BaseActivity extends FragmentActivity {
     }
 
     /**
+     * 是否把通用菜单项（登录/收藏/设置等 main_menu）列进溢出菜单。
+     * 子类返回 false 时只显示 {@link #onAppendOverflowItems} 追加的项。
+     */
+    protected boolean includeDefaultOverflowMenu() {
+        return true;
+    }
+
+    /**
      * 右上溢出菜单弹出，样式对齐原版 Holo 弹层
      */
     protected void showOverflowMenu(View anchor) {
         try {
             XmlResourceParser xp = getResources().getXml(R.menu.main_menu);
             String ns = "http://schemas.android.com/apk/res/android";
-            int[] ids = new int[6];
-            String[] titles = new String[6];
+            int[] ids = new int[8];
+            String[] titles = new String[8];
             int n = 0;
-            int event = xp.getEventType();
-            while (event != XmlResourceParser.END_DOCUMENT && n < 6) {
-                if (event == XmlResourceParser.START_TAG
-                        && "item".equals(xp.getName())) {
-                    int mid = xp.getAttributeResourceValue(ns, "id", 0);
-                    String title = xp.getAttributeValue(ns, "title");
-                    if (title != null && title.length() > 0
-                            && title.charAt(0) == '@') {
-                        int tid = xp.getAttributeResourceValue(
-                                ns, "title", 0);
-                        if (tid != 0) {
-                            title = getString(tid);
+            if (includeDefaultOverflowMenu()) {
+                int event = xp.getEventType();
+                while (event != XmlResourceParser.END_DOCUMENT && n < 8) {
+                    if (event == XmlResourceParser.START_TAG
+                            && "item".equals(xp.getName())) {
+                        int mid = xp.getAttributeResourceValue(ns, "id", 0);
+                        String title = xp.getAttributeValue(ns, "title");
+                        if (title != null && title.length() > 0
+                                && title.charAt(0) == '@') {
+                            int tid = xp.getAttributeResourceValue(
+                                    ns, "title", 0);
+                            if (tid != 0) {
+                                title = getString(tid);
+                            }
+                        }
+                        if (mid != 0 && title != null && title.length() > 0) {
+                            ids[n] = mid;
+                            titles[n] = title;
+                            n++;
                         }
                     }
-                    if (mid != 0 && title != null && title.length() > 0) {
-                        ids[n] = mid;
-                        titles[n] = title;
-                        n++;
-                    }
+                    event = xp.next();
                 }
-                event = xp.next();
             }
             xp.close();
+            n = onAppendOverflowItems(ids, titles, n);
             if (n == 0) {
                 return;
             }
@@ -439,8 +560,13 @@ public abstract class BaseActivity extends FragmentActivity {
             for (int i = 0; i < n; i++) {
                 if (i > 0) {
                     View div = new View(this);
-                    div.setBackgroundDrawable(getResources().getDrawable(
-                            R.drawable.abs__list_divider_holo_light));
+                    android.graphics.drawable.Drawable dv =
+                            safeDrawable(R.drawable.abs__list_divider_holo_light);
+                    if (dv != null) {
+                        div.setBackgroundDrawable(dv);
+                    } else {
+                        div.setBackgroundColor(0xFFE0E0E0);
+                    }
                     panel.addView(div, new LinearLayout.LayoutParams(
                             LinearLayout.LayoutParams.MATCH_PARENT, divH));
                 }
@@ -456,8 +582,13 @@ public abstract class BaseActivity extends FragmentActivity {
                 row.setPadding(pad, 0, pad, 0);
                 row.setClickable(true);
                 row.setFocusable(true);
-                row.setBackgroundResource(
-                        R.drawable.apptheme__app__list_selector_holo_light);
+                android.graphics.drawable.Drawable rs =
+                        safeDrawable(R.drawable.apptheme__app__list_selector_holo_light);
+                if (rs != null) {
+                    row.setBackgroundDrawable(rs);
+                } else {
+                    row.setBackgroundColor(0xFFFFFFFF);
+                }
                 row.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
@@ -472,8 +603,13 @@ public abstract class BaseActivity extends FragmentActivity {
             }
 
             ScrollView scroll = new ScrollView(this);
-            scroll.setBackgroundResource(
-                    R.drawable.abs__menu_dropdown_panel_holo_light);
+            android.graphics.drawable.Drawable pbg =
+                    safeDrawable(R.drawable.abs__menu_dropdown_panel_holo_light);
+            if (pbg != null) {
+                scroll.setBackgroundDrawable(pbg);
+            } else {
+                scroll.setBackgroundDrawable(new ColorDrawable(0xFFF2F2F2));
+            }
             scroll.addView(panel, new ScrollView.LayoutParams(
                     ScrollView.LayoutParams.WRAP_CONTENT,
                     ScrollView.LayoutParams.WRAP_CONTENT));
@@ -493,18 +629,41 @@ public abstract class BaseActivity extends FragmentActivity {
                 contentW = maxW;
             }
             android.graphics.Rect bgRect = new android.graphics.Rect();
-            getResources().getDrawable(
-                    R.drawable.abs__menu_dropdown_panel_holo_light)
-                    .getPadding(bgRect);
+            if (pbg != null) {
+                pbg.getPadding(bgRect);
+            } else {
+                int m = (int) (4 * dens + 0.5f);
+                bgRect.set(m, m, m, m);
+            }
 
             mOverflow = new PopupWindow(scroll,
                     bgRect.left + bgRect.right + contentW,
                     ScrollView.LayoutParams.WRAP_CONTENT, true);
             mOverflow.setBackgroundDrawable(new ColorDrawable(0x00000000));
-            mOverflow.setOutsideTouchable(true);
-            mOverflow.showAsDropDown(anchor);
-        } catch (Throwable t) {
+            try {
+                android.widget.PopupWindow.class
+                        .getMethod("setOutsideTouchable", boolean.class)
+                        .invoke(mOverflow, Boolean.TRUE);
+            } catch (Throwable t) {
+            }
+            mOverflow.showAsDropDown(anchor);        } catch (Throwable t) {
         }
+    }
+
+    /** 取不到资源（旧 ROM 缺 drawable）时返回 null，调用处用纯色 */
+    private android.graphics.drawable.Drawable safeDrawable(int id) {
+        try {
+            return getResources().getDrawable(id);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /**
+     * 页面可往溢出菜单追加条目
+     */
+    protected int onAppendOverflowItems(int[] ids, String[] titles, int n) {
+        return n;
     }
 
     /**
@@ -574,6 +733,8 @@ public abstract class BaseActivity extends FragmentActivity {
         SharedPreferencesUtil.removeValue("mid");
         SharedPreferencesUtil.removeValue("csrf");
         SharedPreferencesUtil.removeValue("refresh_token");
+        // 内存里的旧 SESSDATA 必须清掉，否则退出后仍带着失效登录态发请求
+        NetWorkUtil.setCookieString("");
         Toast.makeText(this, getString(R.string.logged_out_message),
                 Toast.LENGTH_SHORT).show();
         Intent intent = getIntent();
@@ -642,7 +803,7 @@ public abstract class BaseActivity extends FragmentActivity {
                     syncPress(title, new View[]{region});
                 }
             } else {
-                // 兜底：拿不到标题栏时只亮返回键本身
+                // 拿不到标题栏时只亮返回键本身
                 back.setBackgroundResource(R.drawable.titlebar_pink_item_bg);
             }
         } catch (Throwable t) {
@@ -949,11 +1110,8 @@ public abstract class BaseActivity extends FragmentActivity {
      * 是否应该开启横屏模式？
      */
     protected boolean shouldEnableLandscape() {
-        boolean landscapeEnabled = SharedPreferencesUtil.getBoolean(KEY_LANDSCAPE_ENABLED, true);
-        if (!landscapeEnabled) {
-            return false;
-        }
-        return isLandscapeDevice();
+        // 识别的横屏老设备默认开启（可手动关闭）；其余设备默认关闭
+        return SharedPreferencesUtil.getBoolean(KEY_LANDSCAPE_ENABLED, isLandscapeDevice());
     }
 
     /**

@@ -15,9 +15,8 @@
             android:layout_width="wrap_content"
             android:layout_height="32dp"
             android:layout_centerVertical="true"
-            android:layout_marginLeft="0dp"
+            android:layout_marginLeft="12dp"
             android:layout_marginRight="8dp"
-            android:layout_toRightOf="@+id/btn_home_back"
             android:adjustViewBounds="true"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_home" />
@@ -36,24 +35,42 @@
             android:src="@drawable/ic_action_back"
             android:visibility="gone" />
 
-        <ImageView
-            android:id="@+id/btn_search"
-            android:layout_width="56dp"
-            android:layout_height="48dp"
-            android:layout_centerVertical="true"
-            android:layout_toLeftOf="@id/btn_title_more"
-            android:background="@drawable/titlebar_pink_item_bg"
-            android:clickable="true"
-            android:focusable="true"
-            android:scaleType="centerInside"
-            android:src="@drawable/ic_action_search" />
+        <LinearLayout
+            android:id="@+id/title_actions"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_alignParentRight="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/btn_search"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/titlebar_pink_item_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:scaleType="centerInside"
+                android:src="@drawable/abs__ic_search_api_holo_light" />
+
+            <ImageView
+                android:id="@id/btn_title_more"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/titlebar_pink_item_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:scaleType="centerInside"
+                android:src="@drawable/abs__ic_menu_moreoverflow_holo_light" />
+
+        </LinearLayout>
 
         <!-- 内联 Holo 搜索框（点搜索图标才显示，模仿 1.8.4 的 iconified SearchView） -->
         <LinearLayout
             android:id="@+id/title_search_container"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_toLeftOf="@id/btn_title_more"
+            android:layout_toLeftOf="@id/title_actions"
             android:layout_toRightOf="@+id/logo"
             android:orientation="horizontal"
             android:gravity="center_vertical"
@@ -103,18 +120,6 @@
                     android:src="@drawable/abs__ic_clear_search_api_holo_light" />
             </LinearLayout>
         </LinearLayout>
-
-        <ImageView
-            android:id="@id/btn_title_more"
-            android:layout_width="56dp"
-            android:layout_height="48dp"
-            android:layout_alignParentRight="true"
-            android:layout_centerVertical="true"
-            android:background="@drawable/titlebar_pink_item_bg"
-            android:clickable="true"
-            android:focusable="true"
-            android:scaleType="centerInside"
-            android:src="@drawable/abs__ic_menu_moreoverflow_holo_light" />
 
     </RelativeLayout>
 
@@ -169,14 +174,13 @@
             android:orientation="vertical" />
     </LinearLayout>
 
-    <!-- 粉色分割线（与 1.8.4 顶栏底部一致：细的浅粉线 #FCA3C5） -->
+    <!-- 分割线 -->
     <View
         android:layout_width="match_parent"
         android:layout_height="1.5dp"
         android:background="#FCA3C5" />
 
-    <!-- ViewPager + 顶部阴影叠加（仿 1.8.4 的 bili_fragment_activity：阴影覆盖在内容顶部，
-         不会在分割线与 Tab 之间留出空白） -->
+    <!-- ViewPager + 顶部阴影叠加 -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"

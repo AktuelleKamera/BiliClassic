@@ -18,7 +18,10 @@ public class AboutActivity extends BaseActivity {
 
         TextView appBrief = (TextView) findViewById(R.id.app_brief);
         String versionName = getVersionName();
-        appBrief.setText("哔哩经典 " + versionName);
+        appBrief.setText("哔哩经典 " + versionName + "\n安卓1也要看B站！");
+
+        // 连点版本号：星战字幕彩蛋
+        tv.biliclassic.util.VersionEggUtil.attach(this, appBrief);
 
         // 长按版本号：切换性能日志开关
         appBrief.setOnLongClickListener(new android.view.View.OnLongClickListener() {
@@ -44,7 +47,7 @@ public class AboutActivity extends BaseActivity {
             PackageInfo packageInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
             return packageInfo.versionName;
         } catch (PackageManager.NameNotFoundException e) {
-            return "0.4.10";
+            return "0.5.0";
         }
     }
 }

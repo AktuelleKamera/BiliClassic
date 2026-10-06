@@ -65,6 +65,7 @@ public class DynamicAdapter extends BaseObservableAdapter<Dynamic> {
             h.forwardContent = (TextView) view.findViewById(R.id.dyn_forward_content);
             h.forwardTitle = (TextView) view.findViewById(R.id.dyn_forward_title);
             h.like = (TextView) view.findViewById(R.id.dyn_like);
+            h.likeIcon = (ImageView) view.findViewById(R.id.dyn_like_icon);
             h.delete = (TextView) view.findViewById(R.id.dyn_delete);
             view.setTag(h);
         }
@@ -75,9 +76,32 @@ public class DynamicAdapter extends BaseObservableAdapter<Dynamic> {
     private void bind(final View root, final Holder h, final Dynamic d) {
         if (d == null) return;
 
+        // 夜间：列表项是滚动时动态创建的，UiSkin 的遍历覆盖不到，这里显式套色
+        final boolean night = tv.biliclassic.metro.MetroTheme.isNight();
+        root.setBackgroundResource(night
+                ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white);
+        h.name.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
+        h.time.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
+        h.content.setTextColor(night ? 0xFFB0B0B0 : 0xFF555555);
+        if (h.cardBox != null) h.cardBox.setBackgroundColor(night ? 0xFF2A2A2A : 0xFFE8E8E8);
+        if (h.forwardBox != null) h.forwardBox.setBackgroundColor(night ? 0xFF2A2A2A : 0xFFE8E8E8);
+        if (h.cardTitle != null) h.cardTitle.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
+        if (h.cardInfo != null) h.cardInfo.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
+        if (h.forwardContent != null) h.forwardContent.setTextColor(night ? 0xFFB0B0B0 : 0xFF666666);
+        if (h.forwardTitle != null) h.forwardTitle.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
+
         h.name.setText(d.uname == null || d.uname.length() == 0 ? "哔哩哔哩用户" : d.uname);
         h.time.setText(d.pubTime == null ? "" : d.pubTime);
         loadBitmap(h.avatar, d.avatar, DeviceUtil.dpToPx(42), DeviceUtil.dpToPx(42), R.drawable.bili_default_avatar);
+        addAvatarBorder(h.avatar);
+        View.OnClickListener userClick = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openProfile(d.mid);
+            }
+        };
+        h.avatar.setOnClickListener(userClick);
+        h.name.setOnClickListener(userClick);
 
         setTextAndVisibility(h.content, d.content);
 
@@ -134,7 +158,7 @@ public class DynamicAdapter extends BaseObservableAdapter<Dynamic> {
             String info = d.cardLabel == null ? "" : d.cardLabel;
             if (d.videoCard.view != null && d.videoCard.view.length() > 0
                     && !"0".equals(d.videoCard.view)) {
-                info += " · " + d.videoCard.view + "播放";
+                info += " " + d.videoCard.view + "播放";
             }
             h.cardInfo.setText(info);
             loadBitmap(h.cardCover, d.videoCard.cover, DeviceUtil.dpToPx(96), DeviceUtil.dpToPx(60),
@@ -180,15 +204,24 @@ public class DynamicAdapter extends BaseObservableAdapter<Dynamic> {
             h.forwardBox.setOnClickListener(null);
         }
 
-        // 操作行
-        h.like.setText(d.liked ? "已赞 " + d.likeCount
-                : (d.likeCount > 0 ? "赞 " + d.likeCount : "赞"));
-        h.like.setOnClickListener(new View.OnClickListener() {
+        // 操作行（评论风格：图标 + 数字 + 文字按钮）
+        h.like.setText(String.valueOf(d.likeCount));
+        h.like.setTextColor(d.liked ? 0xFFD86DA5 : (night ? 0xFFB0B0B0 : 0xFF999999));
+        final View.OnClickListener likeClick = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (listener != null) listener.onLike(d);
             }
-        });
+        };
+        if (h.likeIcon != null) {
+            if (d.liked) {
+                h.likeIcon.setColorFilter(0xFFD86DA5, android.graphics.PorterDuff.Mode.SRC_ATOP);
+            } else {
+                h.likeIcon.setColorFilter((android.graphics.ColorFilter) null);
+            }
+            h.likeIcon.setOnClickListener(likeClick);
+        }
+        h.like.setOnClickListener(likeClick);
         if (d.canDelete) {
             h.delete.setVisibility(View.VISIBLE);
             h.delete.setOnClickListener(new View.OnClickListener() {
@@ -298,7 +331,8 @@ public class DynamicAdapter extends BaseObservableAdapter<Dynamic> {
     private void ensurePicHeight() {
         if (picHeight <= 0) {
             int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
-            int rowWidth = screenWidth - DeviceUtil.dpToPx(52) - DeviceUtil.dpToPx(20);
+            // 与评论一致：外层左右各 10dp + 头像 40dp + 内容列左内边距 10dp
+            int rowWidth = screenWidth - DeviceUtil.dpToPx(70);
             picHeight = Math.max(DeviceUtil.dpToPx(70), rowWidth / MAX_PICS_SHOWN);
         }
     }
@@ -314,6 +348,28 @@ public class DynamicAdapter extends BaseObservableAdapter<Dynamic> {
     public void clearCache() {
     }
 
+    /** 评论同款头像描边框 */
+    private void addAvatarBorder(ImageView imageView) {
+        if (imageView == null) return;
+        try {
+            android.graphics.drawable.Drawable borderDrawable =
+                    context.getResources().getDrawable(R.drawable.image_border_overlay);
+            imageView.setBackgroundDrawable(borderDrawable);
+            int paddingPx = DeviceUtil.dpToPx(2);
+            imageView.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
+        } catch (Exception e) {
+        }
+    }
+
+    private void openProfile(long mid) {
+        if (mid == 0 || context == null) return;
+        try {
+            Intent intent = new Intent(context, UserProfileActivity.class);
+            intent.putExtra("mid", mid);
+            context.startActivity(intent);
+        } catch (Throwable ignored) {
+        }
+    }
 
     static class Holder {
         ImageView avatar;
@@ -332,6 +388,7 @@ public class DynamicAdapter extends BaseObservableAdapter<Dynamic> {
         TextView forwardContent;
         TextView forwardTitle;
         TextView like;
+        ImageView likeIcon;
         TextView delete;
     }
 }

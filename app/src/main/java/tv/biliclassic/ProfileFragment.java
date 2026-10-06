@@ -513,6 +513,11 @@ public class ProfileFragment extends Fragment {
         }
     }
 
+    /** 供 MainActivity 判断光标是否已在最顶部（再按上键进入顶栏）。 */
+    public boolean isNavAtTop() {
+        return mKeyNavIndex == 0;
+    }
+
     /**
      * 供 MainActivity.dispatchKeyEvent 调用：
      * 方向键上下移动光标，确认键触发选中条目点击。

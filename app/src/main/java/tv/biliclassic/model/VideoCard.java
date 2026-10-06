@@ -14,6 +14,8 @@ public class VideoCard implements Serializable {
     public String bvid;
     public long cid = 0;
     public int danmaku = 0;
+    /** 专栏文章 cvid（type 为 article 时有效） */
+    public long articleId = 0;
 
     public VideoCard(String title, String upName, String view, String cover, long aid, String bvid, String type) {
         this.title = title;

@@ -37,6 +37,7 @@
                 android:orientation="horizontal">
 
                 <ImageView
+                    android:id="@+id/day_bubble"
                     android:layout_width="26dp"
                     android:layout_height="18dp"
                     android:src="@drawable/bili_timeline_group_background"
@@ -44,6 +45,7 @@
                     android:contentDescription="@string/bubble_start" />
 
                 <View
+                    android:id="@+id/day_bar"
                     android:layout_width="0dp"
                     android:layout_height="18dp"
                     android:layout_weight="1"

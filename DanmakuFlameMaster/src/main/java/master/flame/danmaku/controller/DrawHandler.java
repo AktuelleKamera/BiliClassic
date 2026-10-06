@@ -49,6 +49,15 @@ public class DrawHandler extends Handler {
         public void updateTimer(DanmakuTimer timer);
     }
 
+    /**
+     * 外部时钟（由 App 注入）：返回弹幕时间轴当前时间（ms）。
+     * 注入后弹幕时间轴直接跟随该时钟（通常是视频播放位置），从而跟随倍速 / 暂停 / 拖动；
+     * 未注入时退回内部墙钟（1x）。
+     */
+    public interface Clock {
+        long getCurrentTime();
+    }
+
     public static final int START = 1;
 
     public static final int UPDATE = 2;
@@ -84,6 +93,8 @@ public class DrawHandler extends Handler {
     private boolean quitFlag = true;
 
     private long mTimeBase;
+
+    private Clock mClock;
 
     private boolean mReady;
 
@@ -188,6 +199,10 @@ public class DrawHandler extends Handler {
 
     public void setCallback(Callback cb) {
         mCallback = cb;
+    }
+
+    public void setClock(Clock clock) {
+        mClock = clock;
     }
 
     public void quit() {
@@ -449,7 +464,9 @@ public class DrawHandler extends Handler {
         }
         mInSyncAction = true;
         long d = 0;
-        long time = startMS - mTimeBase;
+        // 时钟存在时用视频位置，否则用内部墙钟；下方平滑推进逻辑照旧，
+        // 这样既跟随倍速（视频位置的推进速率），又不会因位置粒度粗而抖动
+        long time = (mClock != null) ? mClock.getCurrentTime() : (startMS - mTimeBase);
         if (!mDanmakusVisible || mRenderingState.nothingRendered || mInWaitingState) {
             timer.update(time);
             mRemainingTime = 0;
@@ -721,7 +738,7 @@ public class DrawHandler extends Handler {
         if (quitFlag || !mInWaitingState) {
             return timer.currMillisecond - mRemainingTime;
         }
-        return System.currentTimeMillis() - mTimeBase;
+        return (mClock != null) ? mClock.getCurrentTime() : (System.currentTimeMillis() - mTimeBase);
     }
 
     public void clearDanmakusOnScreen() {

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:background="@color/videoplay__control_panel_bkgd_new"
+    android:layout_width="280dp"
+    android:layout_height="match_parent">
+    <include layout="@layout/bili_view_closeable_bar"/>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbarStyle="outsideOverlay">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="10dp"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <include
+                android:id="@+id/option_player_speed"
+                layout="@layout/bili_widget_label_seekbar" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

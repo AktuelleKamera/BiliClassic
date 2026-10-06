@@ -72,20 +72,32 @@ public class FavoriteFolderAdapter extends BaseObservableAdapter<FavoriteFolder>
             holder = (ViewHolder) convertView.getTag();
         }
 
-        // 遥控器光标高亮（选中：半透明粉色；未选中：恢复原点击效果背景）
+        // 遥控器光标高亮（选中：半透明粉色；未选中：夜间灰 / 白天白底）
+        boolean night = tv.biliclassic.metro.MetroTheme.isNight();
         if (position == selectedPosition && !mHideHighlight) {
             convertView.setBackgroundColor(0x66D86DA5);
         } else {
-            try {
-                convertView.setBackgroundDrawable(
-                        convertView.getResources().getDrawable(R.drawable.item_click_effect_white));
-            } catch (Exception e) {
-                convertView.setBackgroundColor(0xFFFFFFFF);
+            convertView.setBackgroundResource(night
+                    ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white);
+        }
+        holder.name.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
+        holder.count.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
+        View coverBox = (View) holder.cover.getParent();
+        if (coverBox != null) {
+            if (night) {
+                coverBox.setBackgroundColor(0xFF484848);
+            } else {
+                coverBox.setBackgroundResource(R.drawable.bili_thumb_boarder);
             }
         }
 
         holder.name.setText(item.name != null ? item.name : "");
         holder.count.setText((item.videoCount >= 0 ? item.videoCount : 0) + "个视频");
+
+        View badge = convertView.findViewById(R.id.badge_private);
+        if (badge != null) {
+            badge.setVisibility(item.isPrivate ? View.VISIBLE : View.GONE);
+        }
 
         ImageLoader.bind(holder.cover, item.cover, R.drawable.bili_default_image_tv_with_bg, 86, 56);
 
@@ -123,6 +135,7 @@ public class FavoriteFolderAdapter extends BaseObservableAdapter<FavoriteFolder>
             }
         });
 
+        tv.biliclassic.util.UiSkin.recolorItem(convertView);
         return convertView;
     }
 

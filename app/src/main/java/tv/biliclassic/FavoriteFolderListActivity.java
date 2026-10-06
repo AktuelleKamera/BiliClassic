@@ -16,11 +16,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.HashMap;
 
+import tv.biliclassic.api.BangumiApi;
 import tv.biliclassic.api.FavoriteApi;
+import tv.biliclassic.api.WatchLaterApi;
 import tv.biliclassic.model.FavoriteFolder;
+import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.BroadcastConstants;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 public class FavoriteFolderListActivity extends BaseActivity {
 
@@ -38,6 +42,14 @@ public class FavoriteFolderListActivity extends BaseActivity {
 
     private static final int MAX_RETRY = 1;
     private int retryCount = 0;
+
+    // 0=收藏夹 1=稍后再看 2=追番
+    private int mTab = 0;
+    private RelatedVideosAdapter videoAdapter;   // 稍后再看
+    private RelatedVideosAdapter bangumiAdapter; // 追番
+    private RelatedVideosAdapter activeVideoAdapter;
+    private final List<VideoCard> videoList = new ArrayList<VideoCard>();
+    private boolean videoEnd = false;
 
     // 广播接收器
     private BroadcastReceiver favoriteChangeReceiver = new BroadcastReceiver() {
@@ -73,11 +85,21 @@ public class FavoriteFolderListActivity extends BaseActivity {
             public void onScrollStateChanged(AbsListView view, int scrollState) {
                 if (scrollState == AbsListView.OnScrollListener.SCROLL_STATE_IDLE) {
                     adapter.setScrolling(false);
+                    if (videoAdapter != null) videoAdapter.setScrolling(false);
+                    if (bangumiAdapter != null) bangumiAdapter.setScrolling(false);
                     // 滚动结束：保持高亮隐藏，等待再次按键恢复
                 } else {
                     adapter.setScrolling(true);
-                    // 开始触摸滚动/甩动：隐藏光标高亮
                     adapter.setHideHighlight(true);
+                    if (videoAdapter != null) {
+                        videoAdapter.setScrolling(true);
+                        videoAdapter.setHideHighlight(true);
+                    }
+                    if (bangumiAdapter != null) {
+                        bangumiAdapter.setScrolling(true);
+                        bangumiAdapter.setHideHighlight(true);
+                    }
+                    // 开始触摸滚动/甩动：隐藏光标高亮
                 }
             }
         });
@@ -100,7 +122,128 @@ public class FavoriteFolderListActivity extends BaseActivity {
             });
         }
 
-        loadFolders(false);
+        RelatedVideosAdapter.OnVideoClickListener click = new RelatedVideosAdapter.OnVideoClickListener() {
+            @Override
+            public void onVideoClick(VideoCard video, int position) {
+                openCard(video);
+            }
+        };
+        videoAdapter = new RelatedVideosAdapter(this, videoList, R.layout.item_history);
+        videoAdapter.setOnVideoClickListener(click);
+        bangumiAdapter = new RelatedVideosAdapter(this, videoList, R.layout.item_bangumi_follow);
+        bangumiAdapter.setOnVideoClickListener(click);
+
+        selectTab(0);
+    }
+
+    /** 顶栏「更多」= 切换 收藏视频/稍后再看/我的追番 */
+    @Override
+    protected boolean includeDefaultOverflowMenu() {
+        return false;
+    }
+
+    @Override
+    protected int onAppendOverflowItems(int[] ids, String[] titles, int n) {
+        if (n < ids.length) { ids[n] = R.id.menu_fav_video; titles[n] = getString(R.string.fav_tab_videos); n++; }
+        if (n < ids.length) { ids[n] = R.id.menu_fav_later; titles[n] = getString(R.string.fav_tab_watch_later); n++; }
+        if (n < ids.length) { ids[n] = R.id.menu_fav_bangumi; titles[n] = getString(R.string.fav_tab_bangumi); n++; }
+        return n;
+    }
+
+    @Override
+    protected void onMenuAction(int id) {
+        if (id == R.id.menu_fav_video) { selectTab(0); return; }
+        if (id == R.id.menu_fav_later) { selectTab(1); return; }
+        if (id == R.id.menu_fav_bangumi) { selectTab(2); return; }
+        super.onMenuAction(id);
+    }
+
+    private void selectTab(int idx) {
+        mTab = idx;
+        selectedPosition = -1;
+        if (idx == 0) {
+            activeVideoAdapter = null;
+            listView.setAdapter(adapter);
+            loadFolders(false);
+        } else {
+            activeVideoAdapter = (idx == 1) ? videoAdapter : bangumiAdapter;
+            videoList.clear();
+            activeVideoAdapter.notifyDataSetChanged();
+            listView.setAdapter(activeVideoAdapter);
+            loadVideoTab();
+        }
+    }
+
+    private void loadVideoTab() {
+        videoList.clear();
+        if (activeVideoAdapter != null) activeVideoAdapter.notifyDataSetChanged();
+        videoEnd = false;
+        showLoading();
+        final int tab = mTab;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final List<VideoCard> got = new ArrayList<VideoCard>();
+                try {
+                    if (tab == 1) {
+                        WatchLaterApi.getWatchLaterList(got);
+                    } else {
+                        int rc = BangumiApi.getFollowingList(1, got);
+                        if (rc == -1) throw new java.io.IOException("未登录");
+                    }
+                } catch (final Exception e) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (mTab != tab) return;
+                            hideAllLoading();
+                            emptyView.setText(getString(R.string.emoticon__failed_need_retry));
+                            emptyView.setVisibility(View.VISIBLE);
+                            listView.setVisibility(View.GONE);
+                        }
+                    });
+                    return;
+                }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (mTab != tab) return;
+                        hideAllLoading();
+                        videoEnd = got.size() < 15;
+                        if (tab == 2) {
+                            for (VideoCard c : got) {
+                                if (c != null) c.upName = "番剧";
+                            }
+                        }
+                        videoList.addAll(got);
+                        if (activeVideoAdapter != null) activeVideoAdapter.notifyDataSetChanged();
+                        if (videoList.size() == 0) {
+                            emptyView.setText(getString(R.string.no_data));
+                            emptyView.setVisibility(View.VISIBLE);
+                            listView.setVisibility(View.GONE);
+                        } else {
+                            emptyView.setVisibility(View.GONE);
+                            listView.setVisibility(View.VISIBLE);
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void openCard(VideoCard card) {
+        if (card == null) return;
+        Intent intent = new Intent(this, VideoDetailActivity.class);
+        if ("media_bangumi".equals(card.type)) {
+            intent.putExtra("bangumi_media_id", card.aid);
+        } else if (card.aid != 0) {
+            intent.putExtra("aid", card.aid);
+        } else if (card.bvid != null && card.bvid.length() > 0) {
+            intent.putExtra("bvid", card.bvid);
+        } else {
+            return;
+        }
+        startActivity(intent);
     }
 
     @Override
@@ -134,7 +277,8 @@ public class FavoriteFolderListActivity extends BaseActivity {
 
     @Override
     public boolean dispatchKeyEvent(android.view.KeyEvent event) {
-        if (folderList == null || folderList.size() == 0 || listView == null) {
+        int count = (mTab == 0) ? folderList.size() : videoList.size();
+        if (count == 0 || listView == null) {
             return super.dispatchKeyEvent(event);
         }
         if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) {
@@ -152,24 +296,29 @@ public class FavoriteFolderListActivity extends BaseActivity {
             selectedPosition = 0;
         }
         // 按键恢复：取消触摸滑动时的隐藏，重新显示光标
-        if (adapter != null) {
-            adapter.setHideHighlight(false);
+        if (mTab == 0) {
+            if (adapter != null) adapter.setHideHighlight(false);
+        } else {
+            if (activeVideoAdapter != null) activeVideoAdapter.setHideHighlight(false);
         }
         // 首次按下才移动光标；长按 repeat 只消费不移动
         if (event.getRepeatCount() == 0) {
-            int count = folderList.size();
             if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP) {
                 selectedPosition = Math.max(0, selectedPosition - 1);
             } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
                 selectedPosition = Math.min(count - 1, selectedPosition + 1);
             } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP) {
-                selectedPosition = pageMove(-1);
+                selectedPosition = pageMove(-1, count);
             } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
-                selectedPosition = pageMove(1);
+                selectedPosition = pageMove(1, count);
             } else if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
-                FavoriteFolder folder = folderList.get(selectedPosition);
-                if (folder != null) {
-                    onFolderClick(folder, selectedPosition);
+                if (mTab == 0) {
+                    FavoriteFolder folder = folderList.get(selectedPosition);
+                    if (folder != null) {
+                        onFolderClick(folder, selectedPosition);
+                    }
+                } else {
+                    openCard(videoList.get(selectedPosition));
                 }
                 return true;
             }
@@ -178,7 +327,7 @@ public class FavoriteFolderListActivity extends BaseActivity {
         return true;
     }
 
-    private int pageMove(int direction) {
+    private int pageMove(int direction, int count) {
         if (listView == null) {
             return selectedPosition;
         }
@@ -186,7 +335,6 @@ public class FavoriteFolderListActivity extends BaseActivity {
         int last = listView.getLastVisiblePosition();
         int visibleCount = Math.max(1, last - first + 1);
         int newPos = selectedPosition + direction * visibleCount;
-        int count = folderList.size();
         if (newPos < 0) {
             newPos = 0;
         } else if (newPos >= count) {
@@ -196,8 +344,10 @@ public class FavoriteFolderListActivity extends BaseActivity {
     }
 
     private void applySelection() {
-        if (adapter != null) {
-            adapter.setSelectedPosition(selectedPosition);
+        if (mTab == 0) {
+            if (adapter != null) adapter.setSelectedPosition(selectedPosition);
+        } else {
+            if (activeVideoAdapter != null) activeVideoAdapter.setSelectedPosition(selectedPosition);
         }
         if (listView != null) {
             // setSelection 为 API 1，兼容 Android 2.x；smoothScrollToPosition 需 API 8
@@ -214,11 +364,10 @@ public class FavoriteFolderListActivity extends BaseActivity {
     }
 
     private void showLoading() {
-        View headerContainer = findViewById(R.id.header_container);
-        if (headerContainer != null) {
-            headerContainer.setVisibility(View.VISIBLE);
-            headerContainer.requestLayout();
-            headerContainer.invalidate();
+        LoadingBarView bar = (LoadingBarView) findViewById(R.id.progress_bar);
+        if (bar != null) {
+            bar.bindBackground(listView);
+            bar.showLoading();
         }
         if (emptyView != null) {
             emptyView.setVisibility(View.GONE);
@@ -228,9 +377,9 @@ public class FavoriteFolderListActivity extends BaseActivity {
     }
 
     private void hideAllLoading() {
-        View headerContainer = findViewById(R.id.header_container);
-        if (headerContainer != null) {
-            headerContainer.setVisibility(View.GONE);
+        LoadingBarView bar = (LoadingBarView) findViewById(R.id.progress_bar);
+        if (bar != null) {
+            bar.hide();
         }
     }
 

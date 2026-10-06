@@ -5,19 +5,44 @@ import android.graphics.Rect;
 import android.util.AttributeSet;
 import android.widget.TextView;
 
+/**
+ * 跑马灯 TextView
+ *
+ * 原实现每个 UI 帧 scrollXPos++ 并 postInvalidate，60fps 持续重绘整窗，
+ * 老设备上会拖垮 GPU。现在改为按设定帧率（取播放器「限制帧数」max-fps）
+ * 用 ticker 驱动，滚动位移按时间计算（60px/秒），视觉效果不变，重绘次数
+ * 降到 max-fps 次/秒
+ */
 public class MarqueeTextView extends TextView {
     private static final int STATE_PAUSE_START = 0;
     private static final int STATE_SCROLL = 1;
     private static final int STATE_PAUSE_END = 2;
+
+    // 滚动速度，原实现为 60fps 下每帧 1px，即 60px/秒
+    private static final int SCROLL_PX_PER_SEC = 60;
 
     private float maxScrollX;
     private int scrollXPos;
     private boolean marqueeEnabled;
     private int state;
     private long stateStartTime;
+    private long lastTickTime;
 
-    // 新增：控制是否自动启动滚动
+    private int fps = 60;
+
+    // 是否自动开始跑马灯
     private boolean autoStartMarquee = true;
+
+    private final Runnable mTicker = new Runnable() {
+        @Override
+        public void run() {
+            if (!marqueeEnabled) return;
+            tick();
+            if (marqueeEnabled) {
+                postDelayed(mTicker, Math.max(1, 1000 / fps));
+            }
+        }
+    };
 
     public MarqueeTextView(Context context) {
         super(context);
@@ -29,6 +54,11 @@ public class MarqueeTextView extends TextView {
 
     public MarqueeTextView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
+    }
+
+    /** 设置跑马灯帧率，来自播放器「限制帧数」设置 */
+    public void setFps(int fps) {
+        if (fps >= 1 && fps <= 120) this.fps = fps;
     }
 
     @Override
@@ -68,9 +98,14 @@ public class MarqueeTextView extends TextView {
 
     @Override
     public void computeScroll() {
-        if (!marqueeEnabled) return;
+        // 滚动由 mTicker 按帧率驱动，这里不再每帧 postInvalidate
+    }
 
+    private void tick() {
         long now = System.currentTimeMillis();
+        long dt = now - lastTickTime;
+        if (dt < 0) dt = 0;
+        lastTickTime = now;
         long elapsed = now - stateStartTime;
 
         switch (state) {
@@ -81,7 +116,7 @@ public class MarqueeTextView extends TextView {
                 }
                 break;
             case STATE_SCROLL:
-                scrollXPos++;
+                scrollXPos += (int) (dt * SCROLL_PX_PER_SEC / 1000);
                 if (scrollXPos >= maxScrollX) {
                     scrollXPos = (int) maxScrollX;
                     scrollTo(scrollXPos, 0);
@@ -100,11 +135,11 @@ public class MarqueeTextView extends TextView {
                 }
                 break;
         }
-        postInvalidate();
+        invalidate();
     }
 
     /**
-     * 初始化滚动（公开方法，可外部调用）
+     * 开始跑马灯，外部调用
      */
     public void initMarquee() {
         if (marqueeEnabled) return;
@@ -116,7 +151,7 @@ public class MarqueeTextView extends TextView {
         float extra = getResources().getDisplayMetrics().density * 80;
         maxScrollX = textWidth - (getWidth() - getPaddingLeft() - getPaddingRight()) + extra;
         if (maxScrollX <= 0) {
-            // 文字没有超出，不启动滚动
+            // 文字未超出可视宽度，无需滚动
             marqueeEnabled = false;
             scrollTo(0, 0);
             return;
@@ -126,21 +161,24 @@ public class MarqueeTextView extends TextView {
         scrollXPos = 0;
         state = STATE_PAUSE_START;
         stateStartTime = System.currentTimeMillis();
+        lastTickTime = stateStartTime;
         scrollTo(0, 0);
-        postInvalidate();
+        removeCallbacks(mTicker);
+        postDelayed(mTicker, Math.max(1, 1000 / fps));
     }
 
     /**
-     * 停止滚动（公开方法，可外部调用）
+     * 停止跑马灯，外部调用
      */
     public void stopMarquee() {
         marqueeEnabled = false;
+        removeCallbacks(mTicker);
         scrollTo(0, 0);
     }
 
     /**
-     * 设置是否自动启动滚动
-     * @param auto true 自动启动（默认），false 需要手动调用 initMarquee()
+     * 设置是否自动开始跑马灯
+     * @param auto true 自动开始（默认），false 需要手动调用 initMarquee()
      */
     public void setAutoStartMarquee(boolean auto) {
         this.autoStartMarquee = auto;

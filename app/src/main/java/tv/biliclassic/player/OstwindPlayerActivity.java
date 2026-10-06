@@ -50,6 +50,28 @@ public class OstwindPlayerActivity extends Activity
         MediaPlayer.OnErrorListener,
         MediaPlayer.OnCompletionListener {
 
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        // 播放器不走 BaseActivity，需自己套 Locale，否则跟随系统语言
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 17) {
+            super.attachBaseContext(tv.biliclassic.util.LocaleHelper.wrapContext(newBase));
+        } else {
+            super.attachBaseContext(newBase);
+        }
+    }
+
+    @Override
+    public android.content.res.Resources getResources() {
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 17) {
+            return super.getResources();
+        }
+        android.content.res.Resources res = super.getResources();
+        android.content.res.Configuration config = res.getConfiguration();
+        config.locale = tv.biliclassic.util.LocaleHelper.getLocale();
+        res.updateConfiguration(config, res.getDisplayMetrics());
+        return res;
+    }
+
     private static final String TAG = "Ostwind";
 
     private SurfaceView mSurfaceView;
@@ -68,6 +90,8 @@ public class OstwindPlayerActivity extends Activity
     // 顶部控制栏（返回 + 标题）
     private View mTopBar;
     private TextView mTitle;
+    // 隐藏控制栏（彩蛋播放用）：顶/底栏始终不显示，点按也不弹出
+    private boolean mHideControls;
 
     // 弹幕开关/设置
     private Button mToggleDanmaku;
@@ -199,6 +223,10 @@ public class OstwindPlayerActivity extends Activity
     private com.clov4r.android.nil.CMPlayer mSoftPlayer;
     private boolean mUseSoftDecode = false;
     private boolean mSoftFallbackTried = false;
+    // 强制硬解（彩蛋播放 MPEG-4 用）：不软解、失败也不降级软解，避免弹「下载解码包」后卡死
+    private boolean mForceHwDecode = false;
+    // 隐藏加载动画（彩蛋播放用）
+    private boolean mHideLoading = false;
     private boolean mHardRetryTried = false;
     private boolean mSoftPlaying = false;
     // nativeOpen 成功后才为 true；失败时 native 内部状态未正确建立，
@@ -245,7 +273,8 @@ public class OstwindPlayerActivity extends Activity
         //  - 硬解(msm7x30 overlay)：必须 push 模式，避免 QComHardwareOverlayRenderer UAF 崩溃
         //  - 软解(ffmpeg 直写)：必须 NORMAL，native 端用 Surface.lock/unlockAndPost 画帧，
         //    PUSH_BUFFERS 下 lock 会失败（requestBuffer null handle / w:0,h:0）
-        mUseSoftDecode = SettingsActivity.getDecoderType() == DECODER_IJK_SOFT;
+        mForceHwDecode = getIntent().getBooleanExtra("force_hw_decode", false);
+        mUseSoftDecode = !mForceHwDecode && SettingsActivity.getDecoderType() == DECODER_IJK_SOFT;
         mHolder.setType(mUseSoftDecode
                 ? SurfaceHolder.SURFACE_TYPE_NORMAL
                 : SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
@@ -307,6 +336,12 @@ public class OstwindPlayerActivity extends Activity
 
         // 加载动画（preloading 外观）
         mLoadingOverlay = findViewById(R.id.ostwind_loading);
+        // 隐藏加载动画（彩蛋播放）：覆盖层始终不显示
+        mHideLoading = getIntent().getBooleanExtra("hide_loading", false);
+        if (mHideLoading && mLoadingOverlay != null) {
+            mLoadingOverlay.setVisibility(View.GONE);
+            stopLoadingAnimation();
+        }
         if (mLoadingOverlay != null) {
             mLoadingIcon = (ImageView) mLoadingOverlay.findViewById(R.id.tv_chan_animation);
             // preloading 布局里用不到的杂项元素（重试/随机提示等）一律隐藏
@@ -360,6 +395,14 @@ public class OstwindPlayerActivity extends Activity
             mTitle.setSelected(true); // 触发标题跑马灯
         }
 
+        // 隐藏控制栏（彩蛋用）：顶/底栏从一开始就不显示，且点按/MENU 也不再弹出
+        mHideControls = intent.getBooleanExtra("hide_controls", false);
+        if (mHideControls) {
+            mUiHandler.removeCallbacks(mHideControllerRunnable);
+            if (mBottomBar != null) mBottomBar.setVisibility(View.GONE);
+            if (mTopBar != null) mTopBar.setVisibility(View.GONE);
+        }
+
         if (mVideoUrl == null || mVideoUrl.length() == 0) {
             Toast.makeText(this, getString(R.string.ostwind_error), Toast.LENGTH_SHORT).show();
             finish();
@@ -371,8 +414,9 @@ public class OstwindPlayerActivity extends Activity
         // 本地文件（非 http/https）直接播，无需代理，也不显示网络加载动画
         mIsLocalFile = !(mVideoUrl.startsWith("http://") || mVideoUrl.startsWith("https://"));
 
-        // 解码方式：设置里选了"软解"则直接软解；否则 MediaPlayer 硬解，失败自动降级软解
-        mUseSoftDecode = SettingsActivity.getDecoderType() == DECODER_IJK_SOFT;
+        // 解码方式：设置里选了"软解"则直接软解；否则 MediaPlayer 硬解，失败自动降级软解。
+        // force_hw_decode=true 时强制硬解且不降级（彩蛋视频，软解会弹解码包提示并卡死）
+        mUseSoftDecode = !mForceHwDecode && SettingsActivity.getDecoderType() == DECODER_IJK_SOFT;
         android.util.Log.d(TAG, "decoder=" + SettingsActivity.getDecoderType()
                 + " useSoftDecode=" + mUseSoftDecode);
 
@@ -445,7 +489,6 @@ public class OstwindPlayerActivity extends Activity
             if (mPrepared) {
                 try {
                     mPlayer.setDisplay(mHolder);
-                    // 息屏恢复后仅 setDisplay 有时不刷新画面（老 ROM overlay bug），
                     // seek 到当前进度强制解码器输出一帧（同位置 seek，无感）。
                     try {
                         int pos = mPlayer.getCurrentPosition();
@@ -543,6 +586,7 @@ public class OstwindPlayerActivity extends Activity
     }
 
     private void showLoadingOverlay() {
+        if (mHideLoading) return;
         if (mLoadingOverlay != null) {
             mLoadingOverlay.setVisibility(View.VISIBLE);
             startLoadingAnimation();
@@ -702,8 +746,14 @@ public class OstwindPlayerActivity extends Activity
             mPreparing = false;
             mFailed = true;
             hideStatus();
-            // 未找到软解解码器：提示安装 MoboPlayer 软解包（可加群下载）
-            showNoDecoderDialog();
+            // 只有用户主动选"软解"才提示装 MoboPlayer 解码包；
+            // 硬解/系统解码失败回退软解又缺包时按普通播放失败处理，不打扰用户
+            if (mUseSoftDecode) {
+                showNoDecoderDialog();
+            } else {
+                Toast.makeText(this, getString(R.string.ostwind_error), Toast.LENGTH_SHORT).show();
+                finishPlayer();
+            }
             return;
         }
         // 本地代理复用同一逻辑：软解 native 端 ffmpeg 需要走 http/file 本地路径
@@ -1129,7 +1179,9 @@ public class OstwindPlayerActivity extends Activity
         }
     }
 
-    private void toggleController() {        boolean show = mBottomBar.getVisibility() != View.VISIBLE;
+    private void toggleController() {
+        if (mHideControls) return;
+        boolean show = mBottomBar.getVisibility() != View.VISIBLE;
         mBottomBar.setVisibility(show ? View.VISIBLE : View.GONE);
         mTopBar.setVisibility(show ? View.VISIBLE : View.GONE);
         mUiHandler.removeCallbacks(mHideControllerRunnable);
@@ -1260,8 +1312,9 @@ public class OstwindPlayerActivity extends Activity
             }
             return true;
         }
-        // 自动降级：MediaPlayer 硬解（重试后）仍失败 → 切换软解重试一次
-        if (!mSoftFallbackTried) {
+        // 自动降级：MediaPlayer 硬解（重试后）仍失败 → 切换软解重试一次。
+        // 强制硬解（彩蛋）时跳过——软解会弹「下载解码包」并卡死
+        if (!mSoftFallbackTried && !mForceHwDecode) {
             android.util.Log.e(TAG, "hard decode failed, falling back to soft decode");
             mSoftFallbackTried = true;
             releaseHardPlayer();
@@ -1433,6 +1486,7 @@ public class OstwindPlayerActivity extends Activity
     }
 
     private void showControllerBars() {
+        if (mHideControls) return;
         mBottomBar.setVisibility(View.VISIBLE);
         mTopBar.setVisibility(View.VISIBLE);
         mUiHandler.removeCallbacks(mHideControllerRunnable);

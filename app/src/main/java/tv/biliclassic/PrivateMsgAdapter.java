@@ -61,6 +61,7 @@ public class PrivateMsgAdapter extends BaseObservableAdapter<PrivateMessage> {
         }
 
         text.setText(messageText(msg));
+        tv.biliclassic.util.UiSkin.recolorItem(convertView);
         return convertView;
     }
 

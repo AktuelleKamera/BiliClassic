@@ -113,15 +113,16 @@ public class UpdateUtil {
             if (versions == null) {
                 return null;
             }
-            JSONObject branch = versions.optJSONObject("0.4");
-            if (branch == null) {
-                return null;
+            JSONObject branch = versions.optJSONObject(getCurrentMajor());
+            JSONArray arr = branch != null ? branch.optJSONArray("changelog") : null;
+            if (arr == null || arr.length() == 0) {
+                // 当前大版本服务端可能还没有独立分支（如 app 0.5、服务端只到 0.4），回退顶层 changelog
+                arr = root.optJSONArray("changelog");
             }
-            JSONArray arr = branch.optJSONArray("changelog");
             if (arr != null && arr.length() > 0) {
                 return arr;
             }
-        } catch (Exception e) {
+        } catch (Throwable e) {
         }
         return null;
     }
@@ -283,6 +284,11 @@ public class UpdateUtil {
             return parts[0] + "." + parts[1];
         }
         return version;
+    }
+
+    /** 当前软件版本前缀（如 0.5），用于取对应分支的更新日志 */
+    public static String getCurrentMajor() {
+        return parseMajorVersion(tv.biliclassic.BuildConfig.VERSION_NAME);
     }
 
     private static List getBranches(JSONObject versions) {

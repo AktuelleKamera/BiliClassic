@@ -54,15 +54,11 @@
 
     </LinearLayout>
 
-    <!-- 加载/状态提示：在整屏居中显示（加载中/为空/失败，点击可重试） -->
-    <TextView
-        android:id="@+id/tv_loading"
+    <!-- 加载/状态提示：加载中是统一加载条，为空/失败只留文字（点击可重试） -->
+    <tv.biliclassic.widget.LoadingBarView
+        android:id="@+id/progress_bar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:gravity="center"
-        android:text="正在加载…"
-        android:textSize="16sp"
-        android:textColor="#999999" />
+        android:layout_gravity="center" />
 
 </FrameLayout>

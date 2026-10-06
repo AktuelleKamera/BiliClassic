@@ -12,7 +12,7 @@
  * 修改者：一只毛子球 (BiliClassic)
  * 修改时间：2026年6月19日
  *
- * 安卓2也要看B站！
+ * 安卓1也要看B站！
  */
 package tv.biliclassic.util;
 
@@ -28,7 +28,7 @@ import android.view.KeyEvent;
  */
 public final class KeyBindingUtil {
 
-    // ===== 逻辑动作常量 =====
+    // 逻辑动作常量
     public static final int ACTION_MENU = 0;
     public static final int ACTION_RETURN = 1;
     public static final int ACTION_UP = 2;
@@ -42,7 +42,7 @@ public final class KeyBindingUtil {
 
     public static final int ACTION_COUNT = 10;
 
-    // ===== SharedPreferences key 常量（前缀 key_，沿用旧名以兼容存量绑定） =====
+    // SharedPreferences key 常量（前缀 key_）
     private static final String[] PREFS_KEYS = {
         "key_soft_left",     // 0 菜单键
         "key_soft_right",    // 1 返回键

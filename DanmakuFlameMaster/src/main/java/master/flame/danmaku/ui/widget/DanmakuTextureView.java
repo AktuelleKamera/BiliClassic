@@ -81,11 +81,15 @@ public class DanmakuTextureView extends TextureView implements IDanmakuView, IDa
 
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     private void init() {
-        setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        // TextureView 的画面来自 SurfaceTexture、由 View.draw() 合成，因此：
+        //  - 不能 setWillNotDraw(true)：PFLAG_SKIP_DRAW 会让 framework 跳过 draw()、
+        //    改走空的 dispatchDraw，SurfaceTexture 不再合成 → 弹幕整帧不显示。
+        //    （对照：能正常显示的 DanmakuView 走 onDraw，也未设该标志）
+        //  - 不能 setLayerType(LAYER_TYPE_HARDWARE)：SurfaceTexture 无法合进 RenderNode。
+        // TextureView 本身已要求窗口硬件加速，这里保持默认 layer 即可
         setOpaque(false);
         setWillNotCacheDrawing(true);
         setDrawingCacheEnabled(false);
-        setWillNotDraw(true);
         setSurfaceTextureListener(this);
         DrawHelper.useDrawColorToClearCanvas(true, true);
 		mTouchHelper = DanmakuTouchHelper.instance(this);    
@@ -137,6 +141,16 @@ public class DanmakuTextureView extends TextureView implements IDanmakuView, IDa
         }
     }
 
+    private DrawHandler.Clock mClock;
+
+    @Override
+    public void setClock(DrawHandler.Clock clock) {
+        mClock = clock;
+        if (handler != null) {
+            handler.setClock(clock);
+        }
+    }
+
     @Override
     public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
         isSurfaceCreated = true;
@@ -182,7 +196,6 @@ public class DanmakuTextureView extends TextureView implements IDanmakuView, IDa
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            // HandlerThread.quit() 是 API 18+，改用 Looper.quit()（API 1）
             try {
                 mHandlerThread.getLooper().quit();
             } catch (Throwable t) {
@@ -224,6 +237,7 @@ public class DanmakuTextureView extends TextureView implements IDanmakuView, IDa
     private void prepare() {
         if (handler == null)
             handler = new DrawHandler(getLooper(mDrawingThreadType), this, mDanmakuVisible);
+        handler.setClock(mClock);
     }
 
     @Override

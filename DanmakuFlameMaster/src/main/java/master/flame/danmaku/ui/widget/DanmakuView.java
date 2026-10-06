@@ -148,6 +148,16 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
         }
     }
 
+    private DrawHandler.Clock mClock;
+
+    @Override
+    public void setClock(DrawHandler.Clock clock) {
+        mClock = clock;
+        if (handler != null) {
+            handler.setClock(clock);
+        }
+    }
+
     @Override
     public void release() {
         stop();
@@ -219,6 +229,7 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
     private void prepare() {
         if (handler == null)
             handler = new DrawHandler(getLooper(mDrawingThreadType), this, mDanmakuVisible);
+        handler.setClock(mClock);
     }
 
     @Override
@@ -267,7 +278,7 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
     @SuppressLint("NewApi")
     private void postInvalidateCompat() {
         mRequestRender = true;
-        // 必须走 postInvalidateOnAnimation（0.4.11-dev4 行为，勿改回 postInvalidate）：
+        // 必须走 postInvalidateOnAnimation：
         // - postInvalidateOnAnimation 经 ViewRootImpl → Choreographer.postCallback，
         //   在更新线程调用时就会立刻请求 VSYNC，请求频率 = 更新线程帧率（约 16ms 一次），
         //   vsync 流水线始终处于热态，每帧 16ms 内完成。
@@ -572,14 +583,6 @@ public class DanmakuView extends View implements IDanmakuView, IDanmakuViewContr
     @Override
     @SuppressLint("NewApi")
     public boolean isHardwareAccelerated() {
-        // 不能用 View.class.getMethod("isHardwareAccelerated").invoke(this)：
-        // Method.invoke 是动态分派，本类又重写了 isHardwareAccelerated，invoke(this)
-        // 会递归调回本方法 → StackOverflowError 被 catch(Throwable) 吞掉 → 恒返回 false
-        // → DFM 以为自己跑在"无硬件加速"环境 → 走软件渲染老路 → 老设备每帧 0.6~1.1s。
-        // 改为读 View.mAttachInfo.mHardwareAccelerated（窗口级硬件加速标志）：
-        // 与 View.isHardwareAccelerated()（mAttachInfo != null && mAttachInfo.mHardwareAccelerated）
-        // 语义完全一致；只用到 Field（API 1），不触发方法分派，也不会在 API<11 上因引用
-        // 不存在的 View.isHardwareAccelerated 触发 VerifyError。
         if (getSdkInt() < 11) {
             return false;
         }

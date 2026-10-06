@@ -12,7 +12,7 @@
  * 修改者：一只毛子球 (BiliClassic)
  * 修改时间：2026年6月19日
  *
- * 安卓2也要看B站！
+ * 安卓1也要看B站！
  *
  * 这是清朝版本的StringUtil QwQ
  */
@@ -45,6 +45,9 @@ public class StringUtil {
      * 单位转换
      */
     public static String toWan(long num) {
+        if (num < 0) {
+            num = 0;
+        }
         if (num >= 100000000) {
             float value = (float) num / 100000000;
             String result = formatFloat(value);

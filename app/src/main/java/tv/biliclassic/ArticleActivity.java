@@ -36,6 +36,7 @@ public class ArticleActivity extends BaseActivity {
     private LinearLayout mContent;
     private ScrollView mScroll;
     private View mLoading;
+    private boolean mNight;
     private final List<String> mImageUrls = new ArrayList<String>();
 
     @Override
@@ -59,6 +60,17 @@ public class ArticleActivity extends BaseActivity {
         mContent = (LinearLayout) findViewById(R.id.article_content);
         mScroll = (ScrollView) findViewById(R.id.article_scroll);
         mLoading = findViewById(R.id.loading_container);
+
+        // 夜间：根布局是纹理图，UiSkin 不改，这里整页换深色
+        mNight = tv.biliclassic.util.UiSkin.isNight();
+        View articleRoot = findViewById(R.id.article_root);
+        if (articleRoot != null) {
+            if (mNight) {
+                articleRoot.setBackgroundColor(0xFF171717);
+            } else {
+                articleRoot.setBackgroundResource(R.drawable.bili_texture_background);
+            }
+        }
 
         findViewById(R.id.btn_back).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -117,8 +129,13 @@ public class ArticleActivity extends BaseActivity {
         int contentWidthDp = (int) (getResources().getDisplayMetrics().widthPixels
                 / getResources().getDisplayMetrics().density) - 24;
 
-        // 头图
-        if (info.banner != null && info.banner.length() > 0) {
+        // 头图（banner 为空时退回正文第一张图）
+        String banner = info.banner;
+        if ((banner == null || banner.length() == 0) && info.content != null) {
+            Matcher bm = IMG_PATTERN.matcher(info.content);
+            if (bm.find()) banner = bm.group(1);
+        }
+        if (banner != null && banner.length() > 0) {
             ImageView cover = new ImageView(this);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -126,7 +143,7 @@ public class ArticleActivity extends BaseActivity {
             cover.setLayoutParams(lp);
             cover.setAdjustViewBounds(true);
             cover.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            ImageLoader.bind(cover, normalizeUrl(info.banner),
+            ImageLoader.bind(cover, normalizeUrl(banner),
                     R.drawable.bili_default_image_tv_with_bg, contentWidthDp, contentWidthDp);
             mContent.addView(cover);
         }
@@ -135,7 +152,7 @@ public class ArticleActivity extends BaseActivity {
         TextView title = new TextView(this);
         title.setText(info.title != null ? info.title : "");
         title.setTextSize(20);
-        title.setTextColor(0xFF333333);
+        title.setTextColor(mNight ? 0xFFE6E6E6 : 0xFF333333);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -149,7 +166,7 @@ public class ArticleActivity extends BaseActivity {
             meta.append(info.authorName);
         }
         if (info.ctime > 0) {
-            if (meta.length() > 0) meta.append(" · ");
+            if (meta.length() > 0) meta.append(" ");
             try {
                 meta.append(new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date(info.ctime * 1000L)));
             } catch (Exception e) {
@@ -157,14 +174,14 @@ public class ArticleActivity extends BaseActivity {
             }
         }
         if (info.view > 0) {
-            if (meta.length() > 0) meta.append(" · ");
+            if (meta.length() > 0) meta.append(" ");
             meta.append(StringUtil.toWan(info.view)).append("阅读");
         }
         if (meta.length() > 0) {
             TextView metaTv = new TextView(this);
             metaTv.setText(meta.toString());
             metaTv.setTextSize(12);
-            metaTv.setTextColor(0xFF999999);
+            metaTv.setTextColor(mNight ? 0xFFB0B0B0 : 0xFF999999);
             LinearLayout.LayoutParams metaLp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
             metaLp.bottomMargin = dp(12);
@@ -205,7 +222,7 @@ public class ArticleActivity extends BaseActivity {
         TextView tv = new TextView(this);
         tv.setText(text);
         tv.setTextSize(15);
-        tv.setTextColor(0xFF333333);
+        tv.setTextColor(mNight ? 0xFFE6E6E6 : 0xFF333333);
         tv.setLineSpacing(dp(4), 1f);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);

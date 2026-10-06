@@ -24,6 +24,7 @@ import tv.biliclassic.api.DynamicApi;
 import tv.biliclassic.model.Dynamic;
 import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 /**
  * 动态页：关注动态列表（分页/下拉刷新）、发送文字动态、点赞、删除。
@@ -31,7 +32,8 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 public class DynamicFragment extends Fragment {
 
     private ListView listView;
-    private ProgressBar progressBar;
+    // 统一加载条（公共组件）
+    private LoadingBarView progressBar;
     private TextView emptyView;
     private SwipeRefreshLayout swipeRefresh;
 
@@ -64,7 +66,8 @@ public class DynamicFragment extends Fragment {
         }
 
         listView = (ListView) view.findViewById(R.id.dynamic_list);
-        progressBar = (ProgressBar) view.findViewById(R.id.dynamic_progress);
+        progressBar = (LoadingBarView) view.findViewById(R.id.dynamic_progress);
+        progressBar.bindBackground(listView);
         emptyView = (TextView) view.findViewById(R.id.dynamic_empty);
 
         if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 4) {
@@ -141,7 +144,7 @@ public class DynamicFragment extends Fragment {
     private void showLoading() {
         if (emptyView != null) emptyView.setVisibility(View.GONE);
         if (progressBar != null && feedList.size() == 0) {
-            progressBar.setVisibility(View.VISIBLE);
+            progressBar.showLoading();
         }
         if (listView != null && feedList.size() == 0) {
             listView.setVisibility(View.GONE);
@@ -149,7 +152,7 @@ public class DynamicFragment extends Fragment {
     }
 
     private void hideLoading() {
-        if (progressBar != null) progressBar.setVisibility(View.GONE);
+        if (progressBar != null) progressBar.hide();
         stopRefreshing();
     }
 
@@ -206,6 +209,15 @@ public class DynamicFragment extends Fragment {
                         isLoading = false;
                         if (getActivity() == null || getView() == null) return;
                         if (fError != null) {
+                            android.util.Log.w("NetDiag", "dynamic feed error: " + fError);
+                            // 服务端返回「账号未登录」（本地登录态过期）：显示登录提示而不是「失败」
+                            if (fError.contains("未登录") || fError.contains("登录")) {
+                                feedList.clear();
+                                if (adapter != null) adapter.notifyDataSetChanged();
+                                if (listView != null) listView.setVisibility(View.GONE);
+                                showEmpty(getString(R.string.dynamicfragment_settext_login));
+                                return;
+                            }
                             if (feedList.size() == 0) {
                                 showEmpty(getString(R.string.emoticon__failed_need_retry));
                             } else {

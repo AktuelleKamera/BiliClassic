@@ -213,6 +213,15 @@ public class LocalStreamProxy {
         this.requestHeaders = headers;
     }
 
+    /**
+     * 让代理直接走远端原协议（HTTPS），跳过「先试明文 HTTP 再回退」的探测。
+     * IJK 自带 TLS 栈，无需回退到明文；该探测在只支持 HTTPS 的直播 CDN 上可能挂到超时，
+     * 导致起播长时间停在「正在加载视频」。
+     */
+    public void setPreferHttpsDirect() {
+        remotePreferHttps = Boolean.TRUE;
+    }
+
     public String start() throws IOException {
         // 监听所有接口（0.0.0.0），URL 用本机局域网 IP 而非 127.0.0.1：
         // Android 4.x 上系统 MediaPlayer 的 native 层（mediaserver 进程）连 loopback
@@ -379,8 +388,12 @@ public class LocalStreamProxy {
                     .append(" minBufferTime=\"PT1S\">");
             manifest.append("<Period id=\"0\">");
             String base = localUrl.substring(0, localUrl.lastIndexOf('/'));
-            appendRepresentation(manifest, "video", "video", base + "/video");
-            appendRepresentation(manifest, "audio", "audio", base + "/audio");
+            // 探文件头解析 sidx 的字节范围，补进 SegmentBase：让 ffmpeg 只读索引+需要的采样，
+            // 而不是把整个 on-demand 段当文件读（长视频首帧曾因此很慢）
+            String vidIndex = probeIndexRange(remoteUrl);
+            String audIndex = probeIndexRange(audioUrl);
+            appendRepresentation(manifest, "video", "video", base + "/video", vidIndex);
+            appendRepresentation(manifest, "audio", "audio", base + "/audio", audIndex);
             manifest.append("</Period></MPD>");
             byte[] body = manifest.toString().getBytes("UTF-8");
             Log.e(TAG, "manifest response bytes=" + body.length);
@@ -395,12 +408,86 @@ public class LocalStreamProxy {
         }
     }
 
-    private static void appendRepresentation(StringBuilder manifest, String id, String type, String url) {
+    private static void appendRepresentation(StringBuilder manifest, String id, String type, String url, String indexRange) {
         manifest.append("<AdaptationSet contentType=\"").append(type).append("\" mimeType=\"")
                 .append(type).append("/mp4\">");
         manifest.append("<Representation id=\"").append(id).append("\" bandwidth=\"1000000\">");
         manifest.append("<BaseURL>").append(escapeXml(url)).append("</BaseURL>");
+        if (indexRange != null && indexRange.length() > 0) {
+            manifest.append("<SegmentBase indexRange=\"").append(indexRange).append("\">");
+            int dash = indexRange.indexOf('-');
+            if (dash > 0) {
+                try {
+                    long s = Long.parseLong(indexRange.substring(0, dash));
+                    if (s > 0) {
+                        manifest.append("<Initialization range=\"0-").append(s - 1).append("\"/>");
+                    }
+                } catch (Exception e) {
+                }
+            }
+            manifest.append("</SegmentBase>");
+        }
         manifest.append("</Representation></AdaptationSet>");
+    }
+
+    /** 按 MP4 盒结构"跳着读"找 sidx 盒，返回其字节范围 "start-end"。失败返回 null。 */
+    private String probeIndexRange(String targetUrl) {
+        if (targetUrl == null || targetUrl.length() == 0) return null;
+        String result = null;
+        try {
+        long off = 0;
+        for (int i = 0; i < 16; i++) {
+            byte[] hdr = readRange(targetUrl, off, off + 15);
+            if (hdr == null || hdr.length < 8) break;
+            long size = ((long) (hdr[0] & 0xFF) << 24) | ((long) (hdr[1] & 0xFF) << 16)
+                    | ((long) (hdr[2] & 0xFF) << 8) | (long) (hdr[3] & 0xFF);
+            String type = new String(hdr, 4, 4, "US-ASCII");
+            long header = 8;
+            if (size == 1) {
+                if (hdr.length < 16) break;
+                size = 0;
+                for (int k = 0; k < 8; k++) size = (size << 8) | (hdr[8 + k] & 0xFF);
+                header = 16;
+            } else if (size == 0) {
+                break;
+            }
+            if ("sidx".equals(type)) {
+                result = off + "-" + (off + size - 1);
+                break;
+            }
+            if (size < header) break;
+            off += size;
+        }
+        } catch (Throwable t) {
+        }
+        Log.e(TAG, "probeIndexRange " + targetUrl + " -> " + result);
+        return result;
+    }
+
+    /** 读远端的 [start,end] 字节区间并全部返回；失败返回 null。 */
+    private byte[] readRange(String targetUrl, long start, long end) {
+        HttpURLConnection conn = null;
+        InputStream is = null;
+        try {
+            conn = openRemoteConnection(targetUrl, "bytes=" + start + "-" + end);
+            if (conn.getResponseCode() < 200 || conn.getResponseCode() >= 300) return null;
+            is = conn.getInputStream();
+            int want = (int) (end - start + 1);
+            byte[] b = new byte[want];
+            int n = 0, r;
+            while (n < want && (r = is.read(b, n, want - n)) > 0) n += r;
+            if (n < want) {
+                byte[] c = new byte[n];
+                System.arraycopy(b, 0, c, 0, n);
+                return c;
+            }
+            return b;
+        } catch (Throwable t) {
+            return null;
+        } finally {
+            try { if (is != null) is.close(); } catch (Throwable t) {}
+            if (conn != null) { try { conn.disconnect(); } catch (Throwable t) {} }
+        }
     }
 
     private static String escapeXml(String value) {

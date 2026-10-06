@@ -12,7 +12,7 @@
  * 修改者：一只毛子球 (BiliClassic)
  * 修改时间：2026年6月19日
  *
- * 安卓2也要看B站！
+ * 安卓1也要看B站！
  */
 package tv.biliclassic.api;
 
@@ -46,7 +46,7 @@ public class DanmakuApi {
     public static final int COLOR_PINK = 0xFFC0CB;    // 粉色
     public static final int COLOR_PURPLE = 0x800080;  // 紫色
 
-    // ========== 弹幕模式常量 ==========
+    // 弹幕模式常量
     public static final int MODE_SCROLL = 1;      // 滚动弹幕
     public static final int MODE_TOP = 5;         // 顶部弹幕
     public static final int MODE_BOTTOM = 4;      // 底部弹幕
@@ -96,7 +96,7 @@ public class DanmakuApi {
             String cookie = SharedPreferencesUtil.getString("cookies", "");
             String csrf = NetWorkUtil.getInfoFromCookie("bili_jct", cookie);
 
-            android.util.Log.e("DanmakuApi", "========== 发送弹幕开始 ==========");
+            android.util.Log.e("DanmakuApi", "发送弹幕开始");
             android.util.Log.e("DanmakuApi", "cookie: " + cookie);
             android.util.Log.e("DanmakuApi", "csrf: " + csrf);
 
@@ -128,7 +128,7 @@ public class DanmakuApi {
                 JSONObject result = new JSONObject(resultStr);
                 int code = result.optInt("code", -1);
                 android.util.Log.e("DanmakuApi", "返回码: " + code);
-                android.util.Log.e("DanmakuApi", "========== 发送弹幕结束 ==========");
+                android.util.Log.e("DanmakuApi", "发送弹幕结束");
                 return code;
             }
             return -1;
