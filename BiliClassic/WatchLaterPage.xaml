@@ -7,7 +7,7 @@
     xmlns:toolkit="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls.Toolkit"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="768"
+    mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="696"
     FontFamily="{StaticResource PhoneFontFamilyNormal}"
     FontSize="{StaticResource PhoneFontSizeNormal}"
     Foreground="{StaticResource PhoneForegroundBrush}"
@@ -50,7 +50,7 @@
         </StackPanel>
 
         <Grid Grid.Row="1" Margin="12,0,12,0">
-            <ListBox x:Name="WatchList" SelectionChanged="WatchList_SelectionChanged">
+            <ListBox x:Name="WatchList" SelectionChanged="WatchList_SelectionChanged" toolkit:TiltEffect.IsTiltEnabled="True">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>

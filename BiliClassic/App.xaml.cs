@@ -42,6 +42,9 @@ namespace BiliClassic
 
         private void Application_Launching(object sender, LaunchingEventArgs e)
         {
+            //TiltEffect.TiltableItems.Add(typeof(WrapPanel));
+            TiltEffect.TiltableItems.Add(typeof(Border));//有点bug先暂时不加了
+
             System.Threading.Thread.Sleep(SplashDelayMilliseconds);
 
             ThemeHelper.AutoApply();

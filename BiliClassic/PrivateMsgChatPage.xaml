@@ -50,8 +50,10 @@
                        Style="{StaticResource PhoneTextTitle2Style}"/>
         </StackPanel>
 
+        
+        
         <Grid Grid.Row="1" Margin="12,0,12,0">
-            <ListBox x:Name="MessageList" IsTabStop="False">
+            <ListBox x:Name="MessageList" IsTabStop="False" toolkit:TiltEffect.IsTiltEnabled="True">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -60,6 +62,7 @@
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
+                        <!--
                         <StackPanel Margin="0,0,0,10"
                                     HorizontalAlignment="{Binding Align}">
                             <TextBlock Text="{Binding TimeText}" Margin="0,0,0,2"
@@ -71,6 +74,14 @@
                                 <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
                                            Foreground="{Binding TextBrush}"/>
                             </Border>
+                        </StackPanel>
+                        -->
+                        <StackPanel HorizontalAlignment="{Binding Align}" Margin="0,0,0,10" VerticalAlignment="Top" Width="300">
+                            <StackPanel Width="300" Background="{Binding Bubble}" HorizontalAlignment="{Binding Align}" VerticalAlignment="Top">
+                                <TextBlock Text="{Binding Text}" Width="270" Margin="0,15" TextWrapping="Wrap" Foreground="{Binding TextBrush}"/>
+                                <TextBlock Height="30" Text="{Binding TimeText}" Width="270" Margin="0,0,0,15" HorizontalAlignment="Stretch" Foreground="{Binding TimeTextBrush}" TextAlignment="Right" />
+                            </StackPanel>
+                            <Polygon Fill="{Binding Bubble}" Stroke="{x:Null}" StrokeThickness="0" Points="{Binding Points}" Width="45" Height="15" HorizontalAlignment="{Binding Align}" VerticalAlignment="Top" />
                         </StackPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
@@ -89,16 +100,16 @@
 
         <Grid Grid.Row="3" Margin="12,0,12,8">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="340*"/>
+                <ColumnDefinition Width="116"/>
             </Grid.ColumnDefinitions>
 
-            <TextBox x:Name="InputBox" Grid.Column="0" TextWrapping="Wrap"
-                     MaxHeight="120" KeyDown="InputBox_KeyDown"/>
-            <Button x:Name="SendButton" Grid.Column="1" Content="发送"
-                    Margin="8,0,0,0" MinWidth="0" Padding="20,4"
-                    Click="SendButton_Click"/>
+            <TextBox x:Name="InputBox" TextWrapping="Wrap"
+                     MaxHeight="300" KeyDown="InputBox_KeyDown" HorizontalAlignment="Left" Width="340" VerticalAlignment="Bottom" AcceptsReturn="True" Background="LightGray" />
+            <Button x:Name="SendButton" Grid.Column="1" MinWidth="0" Padding="0" Click="SendButton_Click" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Content="发送" HorizontalAlignment="Center" VerticalAlignment="Bottom" Width="116" Height="72" Background="#D86DA5" Foreground="White" BorderThickness="0">
+            </Button>
         </Grid>
+        
     </Grid>
 
 </phone:PhoneApplicationPage>

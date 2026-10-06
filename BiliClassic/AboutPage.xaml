@@ -66,6 +66,7 @@
                 <TextBlock x:Name="PrivacyText" Margin="12,24,0,0" TextWrapping="Wrap"
                            Style="{StaticResource PhoneTextSubtleStyle}"
                            Text="你是那1%的用户吗？"/>
+                <TextBlock Name="textBlock1" Margin="12,24,0,0" Style="{StaticResource PhoneTextSubtleStyle}" Text="开发者：一只毛子球、WindowsVistaSP" TextWrapping="Wrap" />
             </StackPanel>
         </ScrollViewer>
     </Grid>

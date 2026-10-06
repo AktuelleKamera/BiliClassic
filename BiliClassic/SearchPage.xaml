@@ -53,14 +53,9 @@
                 </Grid.ColumnDefinitions>
                 <TextBox x:Name="KeywordBox" Height="72"
                          KeyDown="KeywordBox_KeyDown" GotFocus="KeywordBox_GotFocus"
-                         Margin="-12,0,44,0" />
-                <Button x:Name="SearchButton" Click="SearchButton_Click" Margin="395,1,-4,6" BorderThickness="0" Height="65" HorizontalContentAlignment="Left" VerticalContentAlignment="Top" Padding="0" Grid.ColumnSpan="2">
-                    <Rectangle x:Name="DanmakuIcon" Width="45" Height="45" Fill="White" Grid.Column="1" Margin="0" HorizontalAlignment="Left" VerticalAlignment="Top">
-                        <Rectangle.OpacityMask>
-                            <ImageBrush x:Name="DanmakuMask" ImageSource="/Res/Icon/search.png" />
-                        </Rectangle.OpacityMask>
-                    </Rectangle>
-                </Button>
+                         Margin="-12,0,171,0" LostFocus="KeywordBox_LostFocus" Background="LightGray" />
+                <Button x:Name="SearchButton" Click="SearchButton_Click" Margin="345,4,0,3" BorderThickness="0" Height="65" HorizontalContentAlignment="Center" VerticalContentAlignment="Top" Padding="0" Background="#D86DA5" Foreground="White" Content="搜索" />
+                <Button BorderThickness="0" Height="65" HorizontalContentAlignment="Center" Margin="277,4,101,3" Name="InfoButton" Padding="0" VerticalContentAlignment="Top" Click="InfoButton_Click" Background="Gray" Foreground="White" Content="展开" />
             </Grid>
         </StackPanel>
 

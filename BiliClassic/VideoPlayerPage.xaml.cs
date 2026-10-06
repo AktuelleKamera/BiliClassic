@@ -1353,7 +1353,7 @@ namespace BiliClassic
 
                 int quality = (int)button.Tag;
                 //修改一下~
-                //button.BorderBrush = new SolidColorBrush(Colors.Transparent);
+                button.Foreground = new SolidColorBrush(Colors.White);
                 button.BorderThickness = new Thickness(0);
                 button.FontSize = 20;
 
