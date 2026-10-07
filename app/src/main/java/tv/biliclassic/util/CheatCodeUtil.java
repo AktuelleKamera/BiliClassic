@@ -25,6 +25,39 @@ public final class CheatCodeUtil {
     /**
      * 命中作弊码则执行彩蛋并返回 true。
      */
+    /** 命中 av号/BV号 时直接打开视频详情并返回 true（不打开搜索页，避免返回时残留空搜索页）。 */
+    public static boolean tryOpenVideoById(Activity activity, String keyword) {
+        if (activity == null || keyword == null) return false;
+        String k = keyword.trim();
+        java.util.regex.Matcher av = java.util.regex.Pattern
+                .compile("av(\\d+)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(k);
+        if (av.find()) {
+            try {
+                Intent intent = new Intent(activity, tv.biliclassic.VideoDetailActivity.class);
+                intent.putExtra("aid", Long.parseLong(av.group(1)));
+                activity.startActivity(intent);
+                return true;
+            } catch (Throwable t) {
+            }
+        }
+        java.util.regex.Matcher bv = java.util.regex.Pattern
+                .compile("bv([a-zA-Z0-9]{10})", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(k);
+        if (bv.find()) {
+            try {
+                String bvid = bv.group(1);
+                if (!bvid.startsWith("BV") && !bvid.startsWith("bv")) {
+                    bvid = "BV" + bvid;
+                }
+                Intent intent = new Intent(activity, tv.biliclassic.VideoDetailActivity.class);
+                intent.putExtra("bvid", bvid);
+                activity.startActivity(intent);
+                return true;
+            } catch (Throwable t) {
+            }
+        }
+        return false;
+    }
+
     public static boolean tryTrigger(final Activity activity, String keyword) {
         if (activity == null || keyword == null || keyword.length() == 0) {
             return false;

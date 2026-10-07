@@ -30,7 +30,6 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -57,6 +56,7 @@ import tv.biliclassic.util.ReplyHelper;
 import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 public class ReplyListActivity extends BaseActivity {
 
@@ -93,8 +93,7 @@ public class ReplyListActivity extends BaseActivity {
     private boolean isLoading = false;
     private boolean isEnd = false;
     private View footerView;
-    private ProgressBar footerProgress;
-    private TextView footerText;
+    private LoadingBarView footerBar;
 
     private String pendingImageDataJson = null;
     private static final int REQUEST_PICK_COMMENT_IMAGE = 2001;
@@ -580,13 +579,9 @@ public class ReplyListActivity extends BaseActivity {
 
         // ====== Footer ======
         footerView = getLayoutInflater().inflate(R.layout.list_footer, null);
-        footerProgress = (ProgressBar) footerView.findViewById(R.id.footer_progress);
-        footerText = (TextView) footerView.findViewById(R.id.footer_text);
-        if (footerProgress != null) {
-            footerProgress.setVisibility(View.GONE);
-        }
+        footerBar = (LoadingBarView) footerView;
         lv.addFooterView(footerView);
-        footerView.setVisibility(View.GONE);
+        footerBar.hide();
 
         adapter = new ReplyListAdapter(this, allReplies);
         adapter.setOid(aid);
@@ -754,14 +749,7 @@ public class ReplyListActivity extends BaseActivity {
         }
 
         tvEmpty.setVisibility(View.GONE);
-        footerView.setVisibility(View.VISIBLE);
-        if (footerProgress != null) {
-            footerProgress.setVisibility(View.VISIBLE);
-        }
-        if (footerText != null) {
-            footerText.setText(getString(R.string.login_working_hard));
-            footerText.setVisibility(View.VISIBLE);
-        }
+        footerBar.showLoading();
 
         new Thread(new Runnable() {
             @Override
@@ -819,9 +807,6 @@ public class ReplyListActivity extends BaseActivity {
                         @Override
                         public void run() {
                             isLoading = false;
-                            if (footerProgress != null) {
-                                footerProgress.setVisibility(View.GONE);
-                            }
 
                             if (newCount == 0 && allReplies.size() == 0) {
                                 showEmpty("暂无回复");
@@ -847,19 +832,12 @@ public class ReplyListActivity extends BaseActivity {
                             }
 
                             if (isEnd || newCount == 0) {
-                                footerView.setVisibility(View.GONE);
+                                footerBar.hide();
                                 if (isEnd && allReplies.size() > 0) {
                                     showLoadEndTip();
                                 }
                             } else {
-                                footerView.setVisibility(View.VISIBLE);
-                                if (footerProgress != null) {
-                                    footerProgress.setVisibility(View.GONE);
-                                }
-                                if (footerText != null) {
-                                    footerText.setText(getString(R.string.login_working_hard));
-                                    footerText.setVisibility(View.VISIBLE);
-                                }
+                                footerBar.show();
                             }
                         }
                     });
@@ -869,10 +847,7 @@ public class ReplyListActivity extends BaseActivity {
                         @Override
                         public void run() {
                             isLoading = false;
-                            if (footerProgress != null) {
-                                footerProgress.setVisibility(View.GONE);
-                            }
-                            footerView.setVisibility(View.GONE);
+                            footerBar.hide();
                             tvEmpty.setVisibility(View.VISIBLE);
                             tvEmpty.setText("加载失败: " + e.getMessage());
                             Toast.makeText(ReplyListActivity.this, "加载失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -886,14 +861,7 @@ public class ReplyListActivity extends BaseActivity {
 
     private void showLoadEndTip() {
         if (footerView == null) return;
-        footerView.setVisibility(View.VISIBLE);
-        if (footerProgress != null) {
-            footerProgress.setVisibility(View.GONE);
-        }
-        if (footerText != null) {
-            footerText.setText(getString(R.string.emoticon__no_more_data));
-            footerText.setVisibility(View.VISIBLE);
-        }
+        footerBar.showStatus(getString(R.string.emoticon__no_more_data));
     }
 
     private void showError(final String msg) {
@@ -901,10 +869,7 @@ public class ReplyListActivity extends BaseActivity {
             @Override
             public void run() {
                 isLoading = false;
-                if (footerProgress != null) {
-                    footerProgress.setVisibility(View.GONE);
-                }
-                footerView.setVisibility(View.GONE);
+                footerBar.hide();
                 tvEmpty.setVisibility(View.VISIBLE);
                 tvEmpty.setText(msg);
                 Toast.makeText(ReplyListActivity.this, msg, Toast.LENGTH_SHORT).show();
@@ -917,10 +882,7 @@ public class ReplyListActivity extends BaseActivity {
             @Override
             public void run() {
                 isLoading = false;
-                if (footerProgress != null) {
-                    footerProgress.setVisibility(View.GONE);
-                }
-                footerView.setVisibility(View.GONE);
+                footerBar.hide();
                 tvEmpty.setVisibility(View.VISIBLE);
                 tvEmpty.setText(msg);
             }

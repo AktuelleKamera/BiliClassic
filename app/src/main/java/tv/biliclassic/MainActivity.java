@@ -971,7 +971,8 @@ public class MainActivity extends BaseActivity {
         // 返回键插到 logo 左边，logo 换成应用图标；同时把 logo 右移，避免和返回键重叠
         if (logo != null) {
             logo.setImageResource(R.drawable.ic_launcher);
-            setLogoLeftMargin(DeviceUtil.dpToPx(52));
+            // 返回键宽 40dp，logo 紧贴其右侧（和二级页顶栏内容贴返回键一致），不再留 12dp 空
+            setLogoLeftMargin(DeviceUtil.dpToPx(40));
             fitLogoWidth(logo);
         }
         if (back != null) back.setVisibility(View.VISIBLE);
@@ -1041,6 +1042,11 @@ public class MainActivity extends BaseActivity {
         // 作弊码：命中直接执行彩蛋并收起搜索框，不打开搜索页
         //（否则会先闪一下搜索界面，返回还停在一个空搜索页）
         if (tv.biliclassic.util.CheatCodeUtil.tryTrigger(this, keyword)) {
+            collapseTitleSearch();
+            return;
+        }
+        // av号/BV号：直接跳视频，不打开搜索页（否则从视频返回会停在空搜索页）
+        if (tv.biliclassic.util.CheatCodeUtil.tryOpenVideoById(this, keyword)) {
             collapseTitleSearch();
             return;
         }
@@ -1118,8 +1124,14 @@ public class MainActivity extends BaseActivity {
     }
 
     /** 保存搜索历史（JSON 数组，最多 10 条，去重，最新在前） */
+    private static final int MAX_SEARCH_KEYWORD_LEN = 100;
+
     private void saveMainSearchHistory(String keyword) {
         if (keyword == null || keyword.length() == 0) {
+            return;
+        }
+        // 防御：个别情况搜索框会被塞进超长文本，原样存历史会把 prefs 撑爆（曾达 14MB → 启动 OOM）
+        if (keyword.length() > MAX_SEARCH_KEYWORD_LEN) {
             return;
         }
         java.util.List<String> historyList = new java.util.ArrayList<String>();
@@ -1129,7 +1141,8 @@ public class MainActivity extends BaseActivity {
                 org.json.JSONArray arr = new org.json.JSONArray(json);
                 for (int i = 0; i < arr.length(); i++) {
                     String item = arr.getString(i);
-                    if (!item.equals(keyword)) {
+                    if (item != null && item.length() <= MAX_SEARCH_KEYWORD_LEN
+                            && !item.equals(keyword)) {
                         historyList.add(item);
                     }
                 }
@@ -1272,6 +1285,30 @@ public class MainActivity extends BaseActivity {
                 && isTitleSearchExpanded()) {
             collapseTitleSearch();
             return true;
+        }
+        // 遥控器「搜索」键：展开标题搜索框
+        if (event.getAction() == android.view.KeyEvent.ACTION_DOWN
+                && event.getKeyCode() == android.view.KeyEvent.KEYCODE_SEARCH
+                && event.getRepeatCount() == 0) {
+            if (isTitleSearchExpanded()) {
+                collapseTitleSearch();
+            } else {
+                expandTitleSearch();
+            }
+            return true;
+        }
+        // 兜底：顶栏「搜索」已获焦点时按 OK/回车 → 直接展开（防某些机型焦点对不上）
+        if (event.getAction() == android.view.KeyEvent.ACTION_DOWN
+                && event.getRepeatCount() == 0
+                && (event.getKeyCode() == android.view.KeyEvent.KEYCODE_DPAD_CENTER
+                        || event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER
+                        || event.getKeyCode() == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER)) {
+            if (mTopNavSearch == null) mTopNavSearch = findViewById(R.id.btn_search);
+            if (mTopNavSearch != null && getCurrentFocus() == mTopNavSearch) {
+                clearTopBarHighlight();
+                expandTitleSearch();
+                return true;
+            }
         }
         if (!mOptionsMenuOpen) {
             if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {

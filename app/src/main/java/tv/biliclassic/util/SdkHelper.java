@@ -31,15 +31,31 @@ public class SdkHelper {
     }
 
     /**
-     * 图片加载线程数：优先用户设置值（IMAGE_LOAD_THREADS，>0 时用设置）；
-     * 未设置时按设备内存给默认值（低内存 1，否则 2）
+     * 列表行绘制缓存（软件渲染下滚动/滑页少重画）：堆 >= 16MB 才开；
+     * < 32MB 用 LOW 质量省内存，>= 32MB 用 AUTO；更小的堆不开，避免 OOM。
+     */
+    public static void enableListDrawingCache(android.view.View list) {
+        if (list == null) return;
+        // Android 1.5（API 3）：ListView 的整表绘制缓存 + 系统逐行缓存两层叠加，
+        // 会让绘制调用栈过深，滚动时直接 StackOverflow 闪退。1.6(API 4) 起正常。
+        if (getSdkInt() < 4) return;
+        int heapKB = getMaxMemoryKB();
+        if (heapKB < 16384) return;
+        list.setDrawingCacheEnabled(true);
+        list.setDrawingCacheQuality(heapKB >= 32768
+                ? android.view.View.DRAWING_CACHE_QUALITY_AUTO
+                : android.view.View.DRAWING_CACHE_QUALITY_LOW);
+    }
+
+    /**
+     * 图片加载线程数：优先用户设置值（IMAGE_LOAD_THREADS，>0 时用设置）；未设置时默认 8
      */
     public static int getImageLoadThreads() {
         int saved = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 0);
         if (saved > 0) {
             return saved;
         }
-        return isLowMemoryDevice() ? 1 : 2;
+        return 8;
     }
 
     /**

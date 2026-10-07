@@ -62,4 +62,11 @@ public class WatchLaterApi {
         return new JSONObject(NetWorkUtil.post("https://api.bilibili.com/x/v2/history/toview/del", arg,
                 NetWorkUtil.webHeaders)).optInt("code", -1);
     }
+
+    /** 加入稍后再看 */
+    public static int add(long aid) throws IOException, JSONException {
+        String arg = "aid=" + aid + "&csrf=" + NetWorkUtil.getCsrf();
+        return new JSONObject(NetWorkUtil.post("https://api.bilibili.com/x/v2/history/toview/add", arg,
+                NetWorkUtil.webHeaders)).optInt("code", -1);
+    }
 }

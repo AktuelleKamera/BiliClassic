@@ -123,15 +123,15 @@ public final class BgUtil {
         }
     }
 
-    /** 缩小后做盒式模糊，再放大并叠遮罩，得到柔和的背景 */
-    private static Bitmap prepare(Bitmap src, int sw, int sh, boolean night) {
+    /** 缩小后做盒式模糊，再放大并叠遮罩，得到柔和的背景。public：Metro 主页复用同一套毛玻璃 */
+    public static Bitmap prepare(Bitmap src, int sw, int sh, boolean night) {
         try {
-            int bw = Math.max(1, sw / 10);
-            int bh = Math.max(1, sh / 10);
+            int bw = Math.max(1, sw / 2);
+            int bh = Math.max(1, sh / 2);
             Bitmap small = Bitmap.createScaledBitmap(src, bw, bh, true);
             int[] pix = new int[bw * bh];
             small.getPixels(pix, 0, bw, 0, 0, bw, bh);
-            boxBlur(pix, bw, bh, 3);
+            boxBlur(pix, bw, bh, 2);
             small.setPixels(pix, 0, bw, 0, 0, bw, bh);
 
             Bitmap out = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888);

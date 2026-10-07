@@ -11,7 +11,6 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -35,10 +34,9 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 public class DynamicDetailActivity extends BaseActivity {
 
     private ListView list;
-    private ProgressBar loading;
+    private tv.biliclassic.widget.LoadingBarView loading;
     private View footer;
-    private ProgressBar footerProgress;
-    private TextView footerText;
+    private tv.biliclassic.widget.LoadingBarView footerBar;
 
     private View header;
     private ImageView avatar;
@@ -83,7 +81,7 @@ public class DynamicDetailActivity extends BaseActivity {
         }
 
         list = (ListView) findViewById(R.id.dd_list);
-        loading = (ProgressBar) findViewById(R.id.dd_loading);
+        loading = (tv.biliclassic.widget.LoadingBarView) findViewById(R.id.dd_loading);
 
         header = LayoutInflater.from(this).inflate(R.layout.dd_header, list, false);
         avatar = (ImageView) header.findViewById(R.id.dd_avatar);
@@ -104,10 +102,9 @@ public class DynamicDetailActivity extends BaseActivity {
         list.addHeaderView(header);
 
         footer = LayoutInflater.from(this).inflate(R.layout.list_footer, list, false);
-        footerProgress = (ProgressBar) footer.findViewById(R.id.footer_progress);
-        footerText = (TextView) footer.findViewById(R.id.footer_text);
+        footerBar = (tv.biliclassic.widget.LoadingBarView) footer;
         list.addFooterView(footer);
-        footer.setVisibility(View.GONE);
+        footerBar.hide();
 
         list.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
@@ -175,17 +172,17 @@ public class DynamicDetailActivity extends BaseActivity {
     }
 
     private void render(Dynamic d) {
-        loading.setVisibility(View.GONE);
+        loading.hide();
 
         // 夜间：头部/卡片/转发/正文显式套色（列表项/头部动态创建，UiSkin 覆盖不到）
         final boolean night = tv.biliclassic.metro.MetroTheme.isNight();
         View headerRow = header.findViewById(R.id.dd_header_row);
         if (headerRow != null) {
-            headerRow.setBackgroundResource(night
+            tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(headerRow, night
                     ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white);
         }
-        if (cardBox != null) cardBox.setBackgroundColor(night ? 0xFF2A2A2A : 0xFFE8E8E8);
-        if (forwardBox != null) forwardBox.setBackgroundColor(night ? 0xFF2A2A2A : 0xFFE8E8E8);
+        if (cardBox != null) tv.biliclassic.util.UiSkin.setBgColorKeepPadding(cardBox, night ? 0xFF2A2A2A : 0xFFE8E8E8);
+        if (forwardBox != null) tv.biliclassic.util.UiSkin.setBgColorKeepPadding(forwardBox, night ? 0xFF2A2A2A : 0xFFE8E8E8);
         if (cardTitle != null) cardTitle.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
         if (cardLabel != null) cardLabel.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
         if (forwardContent != null) forwardContent.setTextColor(night ? 0xFFB0B0B0 : 0xFF666666);
@@ -293,9 +290,7 @@ public class DynamicDetailActivity extends BaseActivity {
     private void loadReplies() {
         if (mDynamic == null || mLoading || mEnd) return;
         mLoading = true;
-        footer.setVisibility(View.VISIBLE);
-        footerProgress.setVisibility(View.VISIBLE);
-        footerText.setText("加载中...");
+        footerBar.showLoading();
 
         final long oid = mDynamic.commentId;
         final int type = mDynamic.commentType != 0 ? mDynamic.commentType : ReplyApi.REPLY_TYPE_DYNAMIC;
@@ -316,8 +311,7 @@ public class DynamicDetailActivity extends BaseActivity {
                         public void run() {
                             if (isFinishing() || isDestroyedCompat()) return;
                             mLoading = false;
-                            footerProgress.setVisibility(View.GONE);
-                            footerText.setText("加载失败，点击重试");
+                            footerBar.showStatus("加载失败，点击重试");
                         }
                     });
                     return;
@@ -329,8 +323,7 @@ public class DynamicDetailActivity extends BaseActivity {
                         if (isFinishing() || isDestroyedCompat()) return;
                         if (!ok) {
                             mLoading = false;
-                            footerProgress.setVisibility(View.GONE);
-                            footerText.setText("加载失败，点击重试");
+                            footerBar.showStatus("加载失败，点击重试");
                             return;
                         }
                         replies.addAll(mapped);
@@ -356,15 +349,11 @@ public class DynamicDetailActivity extends BaseActivity {
 
     private void updateFooter() {
         if (replies.size() == 0) {
-            footer.setVisibility(View.VISIBLE);
-            footerProgress.setVisibility(View.GONE);
-            footerText.setText("还没有评论，快来抢沙发吧~");
+            footerBar.showStatus("还没有评论，快来抢沙发吧~");
         } else if (mEnd) {
-            footer.setVisibility(View.VISIBLE);
-            footerProgress.setVisibility(View.GONE);
-            footerText.setText(getString(R.string.emoticon__no_more_data));
+            footerBar.showStatus(getString(R.string.emoticon__no_more_data));
         } else {
-            footer.setVisibility(View.GONE);
+            footerBar.hide();
         }
     }
 
@@ -469,7 +458,9 @@ public class DynamicDetailActivity extends BaseActivity {
         if (d.articleId != 0) {
             openArticle(d.articleId, d.videoCard != null ? d.videoCard.title : "专栏文章");
         } else if (d.roomId != 0) {
-            openWeb("https://live.bilibili.com/" + d.roomId, "直播间");
+            Intent live = new Intent(this, LiveInfoActivity.class);
+            live.putExtra("room_id", d.roomId);
+            startActivity(live);
         } else if (d.epid != 0) {
             openWeb("https://www.bilibili.com/bangumi/play/ep" + d.epid, "番剧");
         }

@@ -21,4 +21,13 @@
 
     <!-- 皮肤标记（记录已套用的夜间/半透明状态，防止重复刷新） -->
     <item name="skin_mark" type="id" />
+
+    <!-- 首页分区 section 当前已套用的日夜状态（避免每次绑定都重设 4 个缩略图衬底背景） -->
+    <item name="section_night_state" type="id" />
+
+    <!-- 收藏夹列表溢出菜单：创建收藏夹 -->
+    <item name="menu_fav_create_folder" type="id" />
+
+    <!-- 视频详情溢出菜单：稍后再看（插在「播放历史」下面） -->
+    <item name="menu_watch_later" type="id" />
 </resources>

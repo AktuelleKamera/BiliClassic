@@ -1,6 +1,6 @@
 ﻿# BiliClassic - 安卓1也要看B站！
 
-<img width="1366" height="768" alt="Android 1" src="https://github.com/user-attachments/assets/884b9db5-3411-491e-98cb-5c5eabc17724" />
+<img width="1366" height="768" alt="Android 1" src="https://github.com/user-attachments/assets/0dc69bce-f9e5-4bb6-8d15-d66c3044d342" />
 
 一个面向各种旧设备的第三方哔哩哔哩客户端项目，支持Android 1.0+、Windows Mobile 5.0+、Windows Phone 7.0+、Mymobile 0.9.3+和webOS 3.0+。致力于还原2013年前后的经典界面与交互体验，让那些在抽屉里吃灰的老设备能重新看上B站的说~
 
@@ -37,6 +37,7 @@
 - 拉黑用户
 - 关注用户
 - 回复私信
+- 稍后再看
 - 分P下载
 - 夜间模式支持
 - 番剧播放
@@ -48,7 +49,7 @@
 - MediaPlayer内核的Ostwind播放器和完整IJK V3播放器
 - 视频播放（内置播放器 / MX Player / VLC / MoboPlayer / QQ影音等）
 - 弹幕引擎切换（完整版DanmakuFlameMaster / BT-5简易版）
-- 弹幕渲染方式自动跟随视频渲染方式（View / SurfaceView / TextureView）
+- 弹幕渲染方式切换（View / SurfaceView / TextureView）
 - 发布评论和弹幕
 - 内置解码方式选择（系统硬解 / IJK软解 / IJK硬解）
 - 检查更新（多分支版本管理）
@@ -199,6 +200,7 @@ BT-5弹幕引擎为本项目原创，为armeabi设备设计。通过预渲染Bit
 - 哔哩终端 (BiliClient)
 - BiliBili TV 1.6.6-repair
 - WearBili
+- PiliPlus
 - WristBili
 - DanmakuFlameMaster
 - IJKPlayer

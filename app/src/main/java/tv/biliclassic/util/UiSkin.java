@@ -46,9 +46,39 @@ public final class UiSkin {
      */
     public static void recolorItem(View v) {
         if (v == null) return;
+        final boolean night = isNight();
+        final boolean trans = BgUtil.hasImage();
+        // 白天且无自定义背景图、又没有已涂过色需要还原的视图时直接返回，避免整树遍历（软件渲染下换页/滚动的大头）
+        if (!night && !trans && BG_ORIG.isEmpty() && TEXT_ORIG.isEmpty()) {
+            return;
+        }
         try {
-            recolor(v, isNight(), BgUtil.hasImage(), false);
+            recolor(v, night, trans, false);
         } catch (Throwable t) {
+        }
+    }
+
+    /** 设置背景资源但保留 View 的 padding：旧 ROM（如 1.5）setBackgroundDrawable 会把 XML padding 重置为 0 */
+    public static void setBgResourceKeepPadding(View v, int res) {
+        if (v == null) return;
+        int l = v.getPaddingLeft(), t = v.getPaddingTop();
+        int r = v.getPaddingRight(), b = v.getPaddingBottom();
+        v.setBackgroundResource(res);
+        if (v.getPaddingLeft() != l || v.getPaddingTop() != t
+                || v.getPaddingRight() != r || v.getPaddingBottom() != b) {
+            v.setPadding(l, t, r, b);
+        }
+    }
+
+    /** 同上，纯色背景 */
+    public static void setBgColorKeepPadding(View v, int color) {
+        if (v == null) return;
+        int l = v.getPaddingLeft(), t = v.getPaddingTop();
+        int r = v.getPaddingRight(), b = v.getPaddingBottom();
+        v.setBackgroundColor(color);
+        if (v.getPaddingLeft() != l || v.getPaddingTop() != t
+                || v.getPaddingRight() != r || v.getPaddingBottom() != b) {
+            v.setPadding(l, t, r, b);
         }
     }
 
@@ -264,7 +294,10 @@ public final class UiSkin {
                         Object o = BG_ORIG.get(v);
                         int orig = (o instanceof Integer)
                                 ? ((Integer) o).intValue() : drawableColor(d);
-                        int nc = mapColor(orig, night, trans);
+                        // 细线（分割线）单独映射成线色，否则 #E0E0E0 这类浅灰会被当面板→夜间看不见
+                        int nc = isThinDivider(v)
+                                ? (night ? 0x33FFFFFF : 0x66D9D9D9)
+                                : mapColor(orig, night, trans);
                         if (drawableColor(v.getBackground()) != nc) {
                             setBgColor(v, nc);
                         }
@@ -339,6 +372,16 @@ public final class UiSkin {
         } catch (Throwable t) {
             return 0;
         }
+    }
+
+    /** 是否是细线分割线（高度 ≤ 2dp） */
+    private static boolean isThinDivider(View v) {
+        android.view.ViewGroup.LayoutParams lp = v.getLayoutParams();
+        if (lp == null || lp.height <= 0) {
+            return false;
+        }
+        float dens = v.getResources().getDisplayMetrics().density;
+        return lp.height <= (int) (2 * dens + 0.5f);
     }
 
     private static int mapColor(int c, boolean night, boolean trans) {

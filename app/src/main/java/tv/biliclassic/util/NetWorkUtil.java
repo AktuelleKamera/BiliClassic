@@ -533,6 +533,81 @@ public class NetWorkUtil {
         }
     }
 
+    /**
+     * 带重试/重定向的二进制下载到文件（彩蛋音频等，走和 get() 同一套重试与 Connection 配置）。
+     * 成功返回 true。
+     */
+    public static boolean downloadToFile(String url, java.io.File out) {
+        if (url == null || out == null) return false;
+        return downloadToFileInternal(url, out, 0);
+    }
+
+    private static boolean downloadToFileInternal(String url, java.io.File out, int redirectCount) {
+        for (int attempt = 0; attempt <= MAX_RETRY_COUNT; attempt++) {
+            if (attempt > 0) {
+                sleepBeforeRetry(attempt);
+            }
+            HttpURLConnection conn = null;
+            InputStream in = null;
+            java.io.FileOutputStream fos = null;
+            try {
+                long t0 = System.currentTimeMillis();
+                conn = createConnection(url, "GET", null);
+                // 二进制下载：不要 json 的 Accept，也避免 keep-alive 被老 HttpURLConnection 误处理正文
+                conn.setRequestProperty("Accept", "*/*");
+                conn.setRequestProperty("Connection", "close");
+                conn.connect();
+                int responseCode = conn.getResponseCode();
+                Log.d("NetDiag", "下载响应码=" + responseCode + " " + hostOf(url)
+                        + " 耗时=" + (System.currentTimeMillis() - t0) + "ms");
+
+                if (isRedirectCode(responseCode)) {
+                    if (redirectCount >= MAX_REDIRECT_COUNT) {
+                        throw new IOException("重定向次数超过上限");
+                    }
+                    String location = resolveRedirect(conn, url);
+                    return downloadToFileInternal(location, out, redirectCount + 1);
+                }
+                if (responseCode != 200) {
+                    throw new IOException("HTTP " + responseCode);
+                }
+
+                in = conn.getInputStream();
+                fos = new java.io.FileOutputStream(out);
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = in.read(buf)) != -1) {
+                    fos.write(buf, 0, n);
+                }
+                fos.flush();
+                long cl = conn.getContentLength();
+                if (cl > 0 && out.length() != cl) {
+                    throw new IOException("下载长度不符: " + out.length() + " != " + cl);
+                }
+                return out.length() > 0;
+            } catch (IOException e) {
+                Log.e("NetDiag", "下载异常 " + hostOf(url) + " " + e.getClass().getName() + ": " + e.getMessage());
+                if (attempt >= MAX_RETRY_COUNT || !isRetryable(e)) {
+                    return false;
+                }
+                Log.w("NetDiag", "下载重试 " + hostOf(url) + " " + e.getClass().getSimpleName() + " (attempt=" + attempt + ")");
+            } finally {
+                try {
+                    if (in != null) in.close();
+                } catch (Throwable t) {
+                }
+                try {
+                    if (fos != null) fos.close();
+                } catch (Throwable t) {
+                }
+                if (conn != null) {
+                    conn.disconnect();
+                }
+            }
+        }
+        return false;
+    }
+
     // POST 请求
 
     public static String post(String url, String data, List headers) throws IOException {
@@ -836,6 +911,15 @@ public class NetWorkUtil {
         return current;
     }
 
+    /** 响应体字节上限：老/低内存设备按 Java 堆大小收紧，避免读大 JSON 直接 OOM */
+    private static int maxResponseBytes() {
+        long max = Runtime.getRuntime().maxMemory();
+        long cap = max / 8;
+        if (cap < 512 * 1024) cap = 512 * 1024;
+        if (cap > 8 * 1024 * 1024) cap = 8 * 1024 * 1024;
+        return (int) cap;
+    }
+
     private static String readResponse(HttpURLConnection conn, int responseCode) throws IOException {
         InputStream is;
         if (responseCode >= 400) {
@@ -853,7 +937,7 @@ public class NetWorkUtil {
         java.util.ArrayList chunks = new java.util.ArrayList();
         byte[] buffer = new byte[4096];
         int total = 0;
-            int maxBytes = 8 * 1024 * 1024;
+            int maxBytes = maxResponseBytes();
         int len;
         try {
             while ((len = is.read(buffer, 0, buffer.length)) != -1) {
@@ -1005,7 +1089,13 @@ public class NetWorkUtil {
                 reader.close(); is.close(); is = null;
                 String setCookie = collectSetCookies(conn);
                 if (setCookie != null && setCookie.length() > 0) saveCookieFromHeader(setCookie);
-                return new JSONObject(tokener);
+                try {
+                    return new JSONObject(tokener);
+                } catch (OutOfMemoryError oom) {
+                    throw new java.io.IOException("响应数据过大，内存不足");
+                }
+            } catch (java.io.IOException e) {
+                throw e; // OOM 转的 IOException 必须抛出，不能被下面的泛 catch 吞掉
             } catch (Exception ignored) {
                 // JSONTokener(Reader) 不存在：从已打开的连接直接读完整个响应体，
                 // 绝不重新发起请求（Android 1.6 上重连会 Read timed out）
@@ -1016,7 +1106,11 @@ public class NetWorkUtil {
             is = null;
             String setCookie = collectSetCookies(conn);
             if (setCookie != null && setCookie.length() > 0) saveCookieFromHeader(setCookie);
-            return new JSONObject(sanitizeJson(text));
+            try {
+                return new JSONObject(sanitizeJson(text));
+            } catch (OutOfMemoryError oom) {
+                throw new java.io.IOException("响应数据过大，内存不足");
+            }
         } finally {
             if (is != null) try { is.close(); } catch (Exception ignored) {}
             if (conn != null) conn.disconnect();
@@ -1027,7 +1121,7 @@ public class NetWorkUtil {
         java.util.ArrayList chunks = new java.util.ArrayList();
         byte[] buffer = new byte[4096];
         int total = 0;
-            int maxBytes = 8 * 1024 * 1024;
+            int maxBytes = maxResponseBytes();
         int len;
         while ((len = is.read(buffer, 0, buffer.length)) != -1) {
             total += len;

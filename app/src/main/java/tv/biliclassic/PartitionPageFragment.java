@@ -11,8 +11,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.ListView;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.support.v4.app.Fragment;
@@ -34,8 +32,7 @@ public class PartitionPageFragment extends Fragment {
     // 统一加载条（公共组件）
     private LoadingBarView progressBar;
     private TextView emptyView;
-    private LinearLayout footerContainer;
-    private ProgressBar footerProgressBar;
+    private LoadingBarView footerBar;
 
     private RecommendGridAdapter adapter;
     private List<VideoCard> videoList = new ArrayList<VideoCard>();
@@ -95,8 +92,7 @@ public class PartitionPageFragment extends Fragment {
 
         // footer 直接加在列表内容之后（addFooterView，随列表滚动）
         View footer = inflater.inflate(R.layout.item_recommend_footer, gridView, false);
-        footerContainer = (LinearLayout) footer;
-        footerProgressBar = (ProgressBar) footer.findViewById(R.id.footer_progress);
+        footerBar = (LoadingBarView) footer;
         gridView.addFooterView(footer);
 
         adapter = new RecommendGridAdapter(getActivity(), videoList);
@@ -159,17 +155,14 @@ public class PartitionPageFragment extends Fragment {
 
 
     private void showFooter() {
-        if (footerContainer != null) {
-            footerContainer.setVisibility(View.VISIBLE);
-            if (footerProgressBar != null) {
-                footerProgressBar.setVisibility(View.VISIBLE);
-            }
+        if (footerBar != null) {
+            footerBar.showLoading();
         }
     }
 
     private void hideFooter() {
-        if (footerContainer != null) {
-            footerContainer.setVisibility(View.GONE);
+        if (footerBar != null) {
+            footerBar.hide();
         }
     }
 

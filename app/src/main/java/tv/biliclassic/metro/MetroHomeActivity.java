@@ -250,9 +250,11 @@ public class MetroHomeActivity extends BaseActivity {
             }
             return;
         }
-        // 同一张图不重复解码（onCreate/onResume 会各调一次）
-        if (path.equals(mAppliedMetroBg)) return;
-        mAppliedMetroBg = path;
+        // 同一张图 + 同一日夜状态才不重复解码（onCreate/onResume/夜间切换都会调）
+        final boolean night = isNightMode();
+        String key = path + "|" + (night ? "n" : "d");
+        if (key.equals(mAppliedMetroBg)) return;
+        mAppliedMetroBg = key;
 
         final android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
         final int sw = dm.widthPixels;
@@ -274,8 +276,11 @@ public class MetroHomeActivity extends BaseActivity {
                     }
                     android.graphics.BitmapFactory.Options o2 = new android.graphics.BitmapFactory.Options();
                     o2.inSampleSize = sample;
-                    final android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeFile(path, o2);
-                    if (bmp == null) return;
+                    final android.graphics.Bitmap raw = android.graphics.BitmapFactory.decodeFile(path, o2);
+                    if (raw == null) return;
+                    // 毛玻璃：和经典版窗口背景用同一套（缩放 + 盒式模糊 + 夜间遮罩），不再直接上原图
+                    final android.graphics.Bitmap bmp = tv.biliclassic.util.BgUtil.prepare(raw, sw, sh, night);
+                    if (bmp != raw) raw.recycle();
                     h.post(new Runnable() {
                         @Override
                         public void run() {

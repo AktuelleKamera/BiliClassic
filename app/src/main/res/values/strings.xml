@@ -78,6 +78,7 @@
     <string name="bili_about_bbcallen">bbcallen</string>
     <string name="bili_about_os_ijkplayer">https://github.com/bilibili/ijkplayer</string>
     <string name="bili_about_os_biliclient">https://gitee.com/RobinNotBad/BiliClient</string>
+    <string name="bili_about_os_piliplus">https://github.com/bggRGjQaUbCoE/PiliPlus</string>
     <string name="bili_about_os_wristbilibili">https://github.com/luern0313/WristBilibili</string>
     <string name="bili_about_os_bilitv_repair">https://github.com/qidian55/bilibilitv1.6.6-repair</string>
     <string name="bili_about_os_danmaku">https://github.com/bilibili/DanmakuFlameMaster</string>
@@ -255,7 +256,7 @@
     <string name="activity_settings_run_log_share_fail">分享失败: %1$s</string>
     <string name="ostwind_no_decoder_title">未找到软解解码器</string>
     <string name="ostwind_no_decoder_msg">当前设备没有可用的软解解码器，请安装MoboPlayer软解包后重试。可加群754725037下载。</string>
-    <string name="ostwind_no_decoder_mobo_hint">你可以安装MoboPlayer的解码包来使用Ostwind播放器的软解</string>
+    <string name="ostwind_no_decoder_mobo_hint">你可以安装MoboPlayer的解码包来使用Ostwind播放器的软解。</string>
     <string name="ostwind_no_decoder_ok">确定</string>
     <string name="ostwind_error">播放失败，请检查网络或重新选择播放器</string>
     <string name="activity_settings_night_mode">夜间模式</string>
@@ -314,7 +315,7 @@
     <string name="copied">已复制</string>
     <string name="copy_failed">复制失败</string>
     <string name="crash_log_copied">崩溃日志已复制</string>
-    <string name="custom_thread_count">自定义线程数（1-15）</string>
+    <string name="custom_thread_count">自定义线程数（1-20）</string>
     <string name="danmaku">弹幕</string>
     <string name="decoder_ijk_hw">IJK V3硬解</string>
     <string name="decoder_software">软件解码器</string>
@@ -574,7 +575,18 @@
     <string name="my_favorites">我的收藏</string>
     <string name="fav_tab_videos">收藏视频</string>
     <string name="fav_tab_watch_later">稍后再看</string>
+    <string name="watch_later_added">已添加到稍后再看</string>
+    <string name="watch_later_removed">已从稍后再看移除</string>
     <string name="fav_tab_bangumi">我的追番</string>
+    <string name="fav_create_folder">新收藏夹</string>
+    <string name="fav_create_folder_title">创建收藏夹</string>
+    <string name="fav_folder_name_hint">收藏夹名称</string>
+    <string name="fav_delete_folder_title">删除收藏夹</string>
+    <string name="fav_delete_folder_confirm">确定删除「%1$s」吗？</string>
+    <string name="fav_folder_created">已创建</string>
+    <string name="fav_folder_deleted">已删除</string>
+    <string name="common_create">创建</string>
+    <string name="common_delete">删除</string>
     <string name="new_anime_api_hint">开启后新番专题和放送时间表将使用新版数据源，重启后生效</string>
     <string name="no_cookie_privacy_summary">不携带登录Cookie访问B站</string>
     <string name="no_data">暂无数据</string>

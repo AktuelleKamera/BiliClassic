@@ -14,6 +14,7 @@ import tv.biliclassic.api.LiveApi;
 import tv.biliclassic.model.LiveRoom;
 import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 /**
  * 生放送列表：正在直播的关注房间（需登录，带 Cookie 请求）。
@@ -24,7 +25,7 @@ public class LiveRoomListActivity extends BaseActivity {
     private ListView listView;
     private TextView emptyView;
     private View footerView;
-    private TextView footerText;
+    private LoadingBarView footerBar;
 
     private LiveRoomAdapter adapter;
     private List<LiveRoom> roomList = new ArrayList<LiveRoom>();
@@ -52,7 +53,7 @@ public class LiveRoomListActivity extends BaseActivity {
 
         // 加载更多 footer
         footerView = getLayoutInflater().inflate(R.layout.list_footer, null);
-        footerText = (TextView) footerView.findViewById(R.id.footer_text);
+        footerBar = (LoadingBarView) footerView;
         listView.addFooterView(footerView);
         setFooterVisible(false);
 
@@ -117,12 +118,11 @@ public class LiveRoomListActivity extends BaseActivity {
     }
 
     private void setFooterVisible(boolean visible) {
-        if (footerView == null) return;
-        footerView.setVisibility(visible ? View.VISIBLE : View.GONE);
-        if (footerText != null) {
-            footerText.setText(visible
-                    ? getString(R.string.login_working_hard)
-                    : "");
+        if (footerBar == null) return;
+        if (visible) {
+            footerBar.showLoading();
+        } else {
+            footerBar.hide();
         }
     }
 

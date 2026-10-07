@@ -177,10 +177,11 @@ public class ProfileFragment extends Fragment {
         }
         mInflateFailed = false;
 
-        // 绘制缓存（仅 32MB+ 堆设备）：滑页转场命中缓存，避免每帧重绘全部内容
-        if (tv.biliclassic.util.SdkHelper.isHighMemoryDevice()) {
+        // 绘制缓存（堆 >= 16MB）：个人中心用 8888（HIGH）缓存——LOW(16bpp) 会把 1dp 细分割线
+        // 在缓存位图里弄没；8888 则能保留细线，同时保缓存流畅。
+        if (tv.biliclassic.util.SdkHelper.getMaxMemoryKB() >= 16384) {
             view.setDrawingCacheEnabled(true);
-            view.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_AUTO);
+            view.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
         }
 
         // 获取当前版本信息

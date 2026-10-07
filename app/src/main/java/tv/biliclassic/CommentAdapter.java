@@ -183,7 +183,7 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
                             if (position == selectedPosition) {
                                 v.setBackgroundColor(0x66D86DA5);
                             } else {
-                                v.setBackgroundResource(night
+                                tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(v, night
                                         ? R.drawable.item_click_effect_grey
                                         : R.drawable.item_click_effect_white);
                             }
@@ -194,14 +194,14 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
             });
         } else {
             holder = (ViewHolder) convertView.getTag();
-            convertView.setBackgroundResource(night
+            tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(convertView, night
                     ? R.drawable.item_click_effect_grey
                     : R.drawable.item_click_effect_white);
         }
 
         // 键盘光标高亮（选中：半透明粉色；未选中：恢复原点击效果背景）
         if (position == selectedPosition) {
-            convertView.setBackgroundColor(0x66D86DA5);
+            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0x66D86DA5);
         } else {
             try {
                 convertView.setBackgroundDrawable(
@@ -209,7 +209,7 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
                                 ? R.drawable.item_click_effect_grey
                                 : R.drawable.item_click_effect_white));
             } catch (Exception e) {
-                convertView.setBackgroundColor(night ? 0xFF222222 : 0xFFFFFFFF);
+                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, night ? 0xFF222222 : 0xFFFFFFFF);
             }
         }
 

@@ -10,7 +10,6 @@ import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.ImageView;
 import android.widget.ListView;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -33,7 +32,7 @@ public class HistoryActivity extends BaseActivity {
     private LoadingBarView progressBar;
     private TextView emptyView;
     private ImageView backBtn;
-    private ProgressBar footerProgressBar;
+    private LoadingBarView footerBar;
     private View footerView;
 
     private HistoryAdapter adapter;
@@ -60,9 +59,9 @@ public class HistoryActivity extends BaseActivity {
         backBtn = (ImageView) findViewById(R.id.btn_back);
 
         footerView = getLayoutInflater().inflate(R.layout.list_footer, null);
-        footerProgressBar = (ProgressBar) footerView.findViewById(R.id.footer_progress);
+        footerBar = (LoadingBarView) footerView;
         historyList.addFooterView(footerView);
-        footerView.setVisibility(View.GONE);
+        footerBar.hide();
 
         adapter = new HistoryAdapter(this, videoList);
         historyList.setAdapter(adapter);
@@ -290,7 +289,7 @@ public class HistoryActivity extends BaseActivity {
 
         lastResult = new ApiResult();
         isEnd = false;
-        footerView.setVisibility(View.GONE);
+        footerBar.hide();
 
         NetWorkUtil.refreshHeaders();
 
@@ -331,9 +330,9 @@ public class HistoryActivity extends BaseActivity {
 
                                 if (result.isBottom) {
                                     isEnd = true;
-                                    footerView.setVisibility(View.GONE);
+                                    footerBar.hide();
                                 } else {
-                                    footerView.setVisibility(View.VISIBLE);
+                                    footerBar.show();
                                 }
 
                                 if (videoList.size() == 0) {
@@ -359,7 +358,7 @@ public class HistoryActivity extends BaseActivity {
                                 emptyView.setVisibility(View.VISIBLE);
                                 historyList.setVisibility(View.GONE);
                                 mHasError = true;
-                                footerView.setVisibility(View.GONE);
+                                footerBar.hide();
                             }
                         }
                     });
@@ -380,7 +379,7 @@ public class HistoryActivity extends BaseActivity {
                             emptyView.setVisibility(View.VISIBLE);
                             historyList.setVisibility(View.GONE);
                             mHasError = true;
-                            footerView.setVisibility(View.GONE);
+                            footerBar.hide();
                         }
                     });
                 }
@@ -404,8 +403,7 @@ public class HistoryActivity extends BaseActivity {
         }
 
         isLoading = true;
-        footerProgressBar.setVisibility(View.VISIBLE);
-        footerView.setVisibility(View.VISIBLE);
+        footerBar.showLoading();
 
         new Thread(new Runnable() {
             public void run() {
@@ -420,7 +418,6 @@ public class HistoryActivity extends BaseActivity {
 
                     mainHandler.post(new Runnable() {
                         public void run() {
-                            footerProgressBar.setVisibility(View.GONE);
                             isLoading = false;
 
                             if (result.code == 0) {
@@ -432,13 +429,13 @@ public class HistoryActivity extends BaseActivity {
 
                                 if (result.isBottom) {
                                     isEnd = true;
-                                    footerView.setVisibility(View.GONE);
+                                    footerBar.hide();
                                     Toast.makeText(HistoryActivity.this, getString(R.string.emoticon__no_more_data), Toast.LENGTH_SHORT).show();
                                 } else {
-                                    footerView.setVisibility(View.VISIBLE);
+                                    footerBar.show();
                                 }
                             } else {
-                                footerView.setVisibility(View.GONE);
+                                footerBar.hide();
                                 mHasError = true;
                                 String msg = result.message;
                                 if (msg == null || msg.length() == 0) {
@@ -458,9 +455,8 @@ public class HistoryActivity extends BaseActivity {
                     Log.e(TAG, "loadMoreHistory - 异常: ", e);
                     mainHandler.post(new Runnable() {
                         public void run() {
-                            footerProgressBar.setVisibility(View.GONE);
                             isLoading = false;
-                            footerView.setVisibility(View.GONE);
+                            footerBar.hide();
                             mHasError = true;
                             String errMsg = e.getMessage();
                             if (errMsg == null || errMsg.length() == 0) {

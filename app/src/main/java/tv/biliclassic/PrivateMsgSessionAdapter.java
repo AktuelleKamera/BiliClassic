@@ -93,20 +93,34 @@ public class PrivateMsgSessionAdapter extends BaseObservableAdapter<PrivateMsgSe
         }
 
         if (position == selectedPosition && !mHideHighlight) {
-            convertView.setBackgroundColor(0x66D86DA5);
+            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0x66D86DA5);
         } else {
             try {
                 convertView.setBackgroundDrawable(
                         convertView.getResources().getDrawable(R.drawable.item_click_effect_white));
             } catch (Exception e) {
-                convertView.setBackgroundColor(0xFFF5F5F5);
+                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0xFFF5F5F5);
             }
         }
 
         avatar.setImageResource(R.drawable.bili_default_avatar);
+        addAvatarBorder(avatar);
         ImageLoader.bind(avatar, avatarUrl, R.drawable.bili_default_avatar, 48, 48);
         tv.biliclassic.util.UiSkin.recolorItem(convertView);
         return convertView;
+    }
+
+    // 头像白框（和评论/动态页一致）
+    private void addAvatarBorder(ImageView imageView) {
+        if (imageView == null) return;
+        try {
+            android.graphics.drawable.Drawable borderDrawable =
+                    context.getResources().getDrawable(R.drawable.image_border_overlay);
+            imageView.setBackgroundDrawable(borderDrawable);
+            int paddingPx = tv.biliclassic.util.DeviceUtil.dpToPx(2);
+            imageView.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
+        } catch (Exception e) {
+        }
     }
 
     // 缺昵称头像时补拉用户名片

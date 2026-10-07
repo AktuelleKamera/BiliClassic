@@ -85,7 +85,7 @@ public abstract class BaseActivity extends FragmentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 夜间模式：替换窗口背景纹理（bili_texture_1 -> bili_texture_2）
+        // 夜间模式：替换窗口背景（bili_texture_1 -> bili_texture_2）
         if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NIGHT_MODE, false)) {
             setTheme(R.style.AppThemeNight);
         }
@@ -333,7 +333,7 @@ public abstract class BaseActivity extends FragmentActivity {
     protected void onResume() {
         super.onResume();
         // 夜间/自定义背景切换后不必重启：检测到状态变化就重建当前页，
-        // 否则列表/适配器仍保留旧配色（老 ROM 上不会自动重刷）
+        // 否则列表/适配器仍保留旧配色
         int themeState = (tv.biliclassic.util.UiSkin.isNight() ? 1 : 0)
                 | (tv.biliclassic.util.BgUtil.hasImage() ? 2 : 0);
         if (mThemeStateInit && mThemeState != themeState && !isFinishing()) {
@@ -537,6 +537,7 @@ public abstract class BaseActivity extends FragmentActivity {
                 }
             }
             xp.close();
+            n = onInsertOverflowItems(ids, titles, n);
             n = onAppendOverflowItems(ids, titles, n);
             if (n == 0) {
                 return;
@@ -579,7 +580,6 @@ public abstract class BaseActivity extends FragmentActivity {
                 row.setEllipsize(TextUtils.TruncateAt.END);
                 row.setGravity(Gravity.CENTER_VERTICAL);
                 row.setMinWidth(minW);
-                row.setPadding(pad, 0, pad, 0);
                 row.setClickable(true);
                 row.setFocusable(true);
                 android.graphics.drawable.Drawable rs =
@@ -589,6 +589,9 @@ public abstract class BaseActivity extends FragmentActivity {
                 } else {
                     row.setBackgroundColor(0xFFFFFFFF);
                 }
+                // 低版本（1.x）setBackgroundDrawable/setBackgroundColor 会重置 padding，
+                // 所以 padding 必须放在设置背景之后，否则左边距会消失
+                row.setPadding(pad, 0, pad, 0);
                 row.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
@@ -598,6 +601,13 @@ public abstract class BaseActivity extends FragmentActivity {
                         onMenuAction(itemId);
                     }
                 });
+                // 关掉溢出项的点击音效：老框架（Android 1.0）ViewRoot 拿不到 AudioManager，
+                // performClick 播放音效会 NPE。反射调用避免低版本 VerifyError。
+                try {
+                    android.view.View.class.getMethod("setSoundEffectsEnabled", boolean.class)
+                            .invoke(row, Boolean.FALSE);
+                } catch (Throwable t) {
+                }
                 panel.addView(row, new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, rowH));
             }
@@ -657,6 +667,14 @@ public abstract class BaseActivity extends FragmentActivity {
         } catch (Throwable t) {
             return null;
         }
+    }
+
+    /**
+     * 默认菜单项构建完成后、追加自定义项之前调用；子类可在此往默认菜单里插入条目
+     * （需自行右移后续项），返回新的条目数 n。
+     */
+    protected int onInsertOverflowItems(int[] ids, String[] titles, int n) {
+        return n;
     }
 
     /**

@@ -124,11 +124,20 @@ public class RecommendGridAdapter extends BaseObservableAdapter<VideoCard> {
                 // 触摸滑动时隐藏高亮（mHideHighlight），避免光标与手指位置混淆
                 boolean isSelected = index == selectedPosition && !mHideHighlight;
                 // 夜间模式：磁贴本体换灰色（文字保持深色不变），白天白色
-                cell.setBackgroundResource(isSelected
+                int itemBgRes = isSelected
                         ? R.drawable.recommend_item_selected
                         : (tv.biliclassic.metro.MetroTheme.isNight()
                                 ? R.drawable.item_click_effect_grey
-                                : R.drawable.item_click_effect_white));
+                                : R.drawable.item_click_effect_white);
+                // 背景没变就不重设：setBackgroundResource 会新建 drawable 并触发
+                // requestLayout/invalidate，软件渲染下每次 getView 都设会放大掉帧
+                CellHolder ch = (CellHolder) cell.getTag();
+                if (ch == null) {
+                    cell.setBackgroundResource(itemBgRes);
+                } else if (ch.itemBgRes != itemBgRes) {
+                    ch.itemBgRes = itemBgRes;
+                    cell.setBackgroundResource(itemBgRes);
+                }
             } else {
                 cell.setVisibility(View.INVISIBLE);
             }
@@ -198,11 +207,17 @@ public class RecommendGridAdapter extends BaseObservableAdapter<VideoCard> {
             public void onClick(View v) {
                 if (item == null) return;
                 Intent intent = new Intent(context, VideoDetailActivity.class);
+                boolean hasId = false;
                 if (item.aid != 0) {
                     intent.putExtra("aid", item.aid);
-                } else if (item.bvid != null && item.bvid.length() > 0) {
+                    hasId = true;
+                }
+                // BV号 也一并传（有就传），否则只传 aid 时详情页只有 av号、拿不到 BV号
+                if (item.bvid != null && item.bvid.length() > 0) {
                     intent.putExtra("bvid", item.bvid);
-                } else {
+                    hasId = true;
+                }
+                if (!hasId) {
                     Toast.makeText(context, "无法获取视频信息", Toast.LENGTH_SHORT).show();
                     return;
                 }
@@ -246,5 +261,6 @@ public class RecommendGridAdapter extends BaseObservableAdapter<VideoCard> {
         String viewText;
         String danmakuText;
         boolean nightBgApplied; // 封面衬底当前是否已应用夜间灰色
+        int itemBgRes;          // 磁贴本体当前背景资源（0=未设）
     }
 }

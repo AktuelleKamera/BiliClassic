@@ -80,6 +80,7 @@ public class VideoDetailActivity extends BaseActivity {
     private long mBangumiMediaId = 0;
     private boolean fromBangumi = false;
     private boolean mOfflineMode;
+    private BangumiPagerAdapter mBangumiAdapter;
 
     // 下载对话框数据
     private List<VideoDetailFragment.VideoPage> mPages;
@@ -249,7 +250,8 @@ public class VideoDetailActivity extends BaseActivity {
             if (fromBangumi) {
                 isBangumi = true;
 
-                // 先显示标题和底部按钮，ViewPager 等数据加载后由 fetchBangumiInfoFromAid 设置
+                // 已知是番剧：直接出番剧布局（mediaId 暂缺，先显示空壳），
+                // 拿到真实 mediaId 后由 fetchBangumiInfoFromAid 补载，避免先闪一下普通视频占位。
                 String bangumiTitle = intent.getStringExtra("bangumi_title");
                 if (bangumiTitle != null && bangumiTitle.length() > 0) {
                     tvAvid.setText(bangumiTitle);
@@ -257,12 +259,14 @@ public class VideoDetailActivity extends BaseActivity {
                     tvAvid.setText(getString(R.string.bangumi_detail));
                 }
                 initBottomButtons();
+                initBangumiView();
                 fetchBangumiInfoFromAid(aid);
                 return;
             }
-            // 无法预知是否为番剧，先显示标题和底部按钮，ViewPager 等 checkAndSetup 完成后设置
+            // 无法预知是否为番剧：先出普通布局（占位封面），checkAndSetup 完成后按结果切换适配器
             updateAvidDisplay();
             initBottomButtons();
+            initNormalVideo();
             checkAndSetup();
             return;
         }
@@ -294,7 +298,14 @@ public class VideoDetailActivity extends BaseActivity {
                                 public void run() {
                                     if (bangumi != null && bangumi.info != null) {
                                         tvAvid.setText(bangumi.info.title);
-                                        initBangumiView();
+                                        // 若已是番剧布局（from_bangumi 先建的占位），只补载；否则切换适配器
+                                        if (mBangumiAdapter != null && mBangumiAdapter.mFragment != null
+                                                && viewPager != null
+                                                && viewPager.getAdapter() == mBangumiAdapter) {
+                                            mBangumiAdapter.mFragment.setMediaIdAndLoad(mBangumiMediaId);
+                                        } else {
+                                            initBangumiView();
+                                        }
                                         return;
                                     }
                                     isBangumi = false;
@@ -399,7 +410,8 @@ public class VideoDetailActivity extends BaseActivity {
         }
 
         viewPager = (ViewPager) findViewById(R.id.viewpager);
-        safeSetAdapter(new BangumiPagerAdapter(getSupportFragmentManager()));
+        mBangumiAdapter = new BangumiPagerAdapter(getSupportFragmentManager());
+        safeSetAdapter(mBangumiAdapter);
         viewPager.setOffscreenPageLimit(1);
 
         viewPager.setOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
@@ -479,11 +491,12 @@ public class VideoDetailActivity extends BaseActivity {
     /** 页面是否已结束/销毁（异步回调里避免在已结束的页面上建 fragment/adapter 而崩溃） */
     private boolean isDead() {
         if (isFinishing()) return true;
-        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 17) {
-            try {
-                return isDestroyed();
-            } catch (Throwable t) {
-            }
+        // isDestroyed() 是 API 17+，直接引用会让 Android 1.5 的校验器拒载整类（VerifyError），
+        // 必须走反射：低版本抛 NoSuchMethodException 时按"未销毁"处理
+        try {
+            Object r = android.app.Activity.class.getMethod("isDestroyed").invoke(this);
+            return Boolean.TRUE.equals(r);
+        } catch (Throwable t) {
         }
         return false;
     }
@@ -828,6 +841,94 @@ public class VideoDetailActivity extends BaseActivity {
                 })
                 .setNegativeButton(getString(R.string.videodetail_cancel), null)
                 .show();
+    }
+
+    /**
+     * 在右上「更多」菜单的「播放历史」下面，单独插入「稍后再看」。
+     */
+    @Override
+    protected int onInsertOverflowItems(int[] ids, String[] titles, int n) {
+        for (int i = 0; i < n; i++) {
+            if (ids[i] == R.id.menu_video_history_list && n < ids.length) {
+                for (int j = n; j > i + 1; j--) {
+                    ids[j] = ids[j - 1];
+                    titles[j] = titles[j - 1];
+                }
+                ids[i + 1] = R.id.menu_watch_later;
+                titles[i + 1] = getString(R.string.fav_tab_watch_later);
+                n++;
+                break;
+            }
+        }
+        return n;
+    }
+
+    @Override
+    protected void onMenuAction(int id) {
+        if (id == R.id.menu_watch_later) {
+            toggleWatchLater();
+            return;
+        }
+        super.onMenuAction(id);
+    }
+
+    /** 稍后再看：不在列表里就加入，已在列表里就移除。 */
+    private void toggleWatchLater() {
+        final String targetBvid = bvid;
+        final long targetAid = aid != 0 ? aid : mResolvedAidFromBvid;
+        if (targetAid == 0 && (targetBvid == null || targetBvid.length() == 0)) {
+            Toast.makeText(this, getString(R.string.invalid_video_args), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                boolean removed;
+                try {
+                    long a = targetAid;
+                    if (a == 0 && targetBvid != null && targetBvid.length() > 0) {
+                        a = tv.biliclassic.api.FavoriteApi.getAidByBvid(targetBvid);
+                    }
+                    if (a == 0) {
+                        toastWatchLater(getString(R.string.invalid_video_args));
+                        return;
+                    }
+                    java.util.List<tv.biliclassic.model.VideoCard> list =
+                            new java.util.ArrayList<tv.biliclassic.model.VideoCard>();
+                    tv.biliclassic.api.WatchLaterApi.getWatchLaterList(list);
+                    boolean exists = false;
+                    for (int i = 0; i < list.size(); i++) {
+                        if (list.get(i).aid == a) {
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (exists) {
+                        tv.biliclassic.api.WatchLaterApi.delete(a);
+                        removed = true;
+                    } else {
+                        tv.biliclassic.api.WatchLaterApi.add(a);
+                        removed = false;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    toastWatchLater(getString(R.string.load_video_info_failed));
+                    return;
+                }
+                toastWatchLater(getString(removed
+                        ? R.string.watch_later_removed
+                        : R.string.watch_later_added));
+            }
+        }).start();
+    }
+
+    private void toastWatchLater(final String msg) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(VideoDetailActivity.this, msg, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     /**
@@ -2409,6 +2510,12 @@ public class VideoDetailActivity extends BaseActivity {
             return 2;
         }
 
+        // 用不同 id 段：普通/番剧/两页适配器切换时 fragment tag 不冲突（否则会复用错的 fragment）
+        @Override
+        public long getItemId(int position) {
+            return 1000 + position;
+        }
+
         @Override
         public CharSequence getPageTitle(int position) {
             if (position == 0) return getString(R.string.videodetail_tab_videodetail);
@@ -2463,6 +2570,11 @@ public class VideoDetailActivity extends BaseActivity {
         }
 
         @Override
+        public long getItemId(int position) {
+            return 2000 + position;
+        }
+
+        @Override
         public CharSequence getPageTitle(int position) {
             if (position == 0) return getString(R.string.videodetail_tab_videodetail);
             if (position == 1) return getString(R.string.videodetail_tab_related);
@@ -2472,6 +2584,9 @@ public class VideoDetailActivity extends BaseActivity {
 
     // 番剧 ViewPager 适配器（只有两个 Tab）
     private class BangumiPagerAdapter extends FragmentPagerAdapter {
+        // 占位时（mediaId 未知）先建，拿到真实 mediaId 后补载
+        BangumiDetailFragment mFragment;
+
         public BangumiPagerAdapter(FragmentManager fm) {
             super(fm);
         }
@@ -2479,7 +2594,8 @@ public class VideoDetailActivity extends BaseActivity {
         @Override
         public Fragment getItem(int position) {
             if (position == 0) {
-                return BangumiDetailFragment.newInstance(mBangumiMediaId);
+                mFragment = BangumiDetailFragment.newInstance(mBangumiMediaId);
+                return mFragment;
             } else {
                 CommentFragment fragment = new CommentFragment();
                 Bundle commentArgs = new Bundle();
@@ -2495,6 +2611,11 @@ public class VideoDetailActivity extends BaseActivity {
         @Override
         public int getCount() {
             return 2;
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return 3000 + position;
         }
 
         @Override

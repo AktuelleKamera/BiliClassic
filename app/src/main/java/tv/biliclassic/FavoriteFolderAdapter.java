@@ -35,6 +35,16 @@ public class FavoriteFolderAdapter extends BaseObservableAdapter<FavoriteFolder>
 
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
+    public interface OnFolderLongClickListener {
+        void onFolderLongClick(int position);
+    }
+
+    private OnFolderLongClickListener longClickListener;
+
+    public void setOnFolderLongClickListener(OnFolderLongClickListener l) {
+        this.longClickListener = l;
+    }
+
     public FavoriteFolderAdapter(Context context, List<FavoriteFolder> list) {
         super(context, list);
         if (this.list == null) {
@@ -75,9 +85,9 @@ public class FavoriteFolderAdapter extends BaseObservableAdapter<FavoriteFolder>
         // 遥控器光标高亮（选中：半透明粉色；未选中：夜间灰 / 白天白底）
         boolean night = tv.biliclassic.metro.MetroTheme.isNight();
         if (position == selectedPosition && !mHideHighlight) {
-            convertView.setBackgroundColor(0x66D86DA5);
+            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0x66D86DA5);
         } else {
-            convertView.setBackgroundResource(night
+            tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(convertView, night
                     ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white);
         }
         holder.name.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
@@ -132,6 +142,17 @@ public class FavoriteFolderAdapter extends BaseObservableAdapter<FavoriteFolder>
                         ((FavoriteFolderListActivity) context).onFolderClick(fallback, pos);
                     }
                 }
+            }
+        });
+
+        convertView.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                if (longClickListener != null) {
+                    longClickListener.onFolderLongClick(pos);
+                    return true;
+                }
+                return false;
             }
         });
 

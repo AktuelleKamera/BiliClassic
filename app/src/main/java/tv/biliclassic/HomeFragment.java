@@ -142,12 +142,8 @@ public class HomeFragment extends Fragment {
         homeList.setFocusable(true);
         homeList.setFocusableInTouchMode(true);
 
-        // 绘制缓存（仅 32MB+ 堆设备）：ViewPager 滑页转场时本页没有被重排，
-        // 命中缓存可避免每帧软件重绘全部行；低内存设备开不起每页 ~1.5MB 缓存
-        if (tv.biliclassic.util.SdkHelper.isHighMemoryDevice()) {
-            homeList.setDrawingCacheEnabled(true);
-            homeList.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_AUTO);
-        }
+        // 首页每行内容重（4 张缩略图 + 分区大卡叠绘），软件渲染下滚动要靠 ListView 的行绘制缓存
+        tv.biliclassic.util.SdkHelper.enableListDrawingCache(homeList);
 
         // Banner 作为列表 header；显式按"全宽 × 图片比例"设高，避免 ListView header 里 adjustViewBounds 测量异常
         View banner = inflater.inflate(R.layout.home_banner, homeList, false);
@@ -532,25 +528,39 @@ public class HomeFragment extends Fragment {
 
         // 布局参数只在值变化时才设置：滚动中重复 setLayoutParams 会触发整表重排（requestLayout），
         // 是首页滚动卡顿的主因之一
-        imageView.post(new Runnable() {
-            @Override
-            public void run() {
-                ViewGroup.LayoutParams params = imageView.getLayoutParams();
-                if (params == null) return;
-                View parent = (View) imageView.getParent();
-                if (parent != null) {
-                    int parentWidth = parent.getWidth();
-                    if (parentWidth > 0) {
-                        int h = parentWidth * 3 / 4;
-                        if (params.width != parentWidth || params.height != h) {
-                            params.width = parentWidth;
-                            params.height = h;
-                            imageView.setLayoutParams(params);
+        // 父容器宽度已知时同步修正 4:3 高，避免每张封面都 post 一个 Runnable（滚动时上百个消息）
+        {
+            ViewGroup.LayoutParams params = imageView.getLayoutParams();
+            View parent = (View) imageView.getParent();
+            int parentWidth = (params != null && parent != null) ? parent.getWidth() : 0;
+            if (params != null && parentWidth > 0) {
+                int h = parentWidth * 3 / 4;
+                if (params.width != parentWidth || params.height != h) {
+                    params.width = parentWidth;
+                    params.height = h;
+                    imageView.setLayoutParams(params);
+                }
+            } else if (params != null) {
+                imageView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        ViewGroup.LayoutParams p = imageView.getLayoutParams();
+                        if (p == null) return;
+                        View pv = (View) imageView.getParent();
+                        if (pv == null) return;
+                        int w = pv.getWidth();
+                        if (w > 0) {
+                            int h = w * 3 / 4;
+                            if (p.width != w || p.height != h) {
+                                p.width = w;
+                                p.height = h;
+                                imageView.setLayoutParams(p);
+                            }
                         }
                     }
-                }
+                });
             }
-        });
+        }
 
         if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) {
             return;
@@ -597,7 +607,9 @@ public class HomeFragment extends Fragment {
                 Intent intent = new Intent(getActivity(), VideoDetailActivity.class);
                 if (aid != 0) {
                     intent.putExtra("aid", aid);
-                } else if (bvid != null && bvid.length() > 0) {
+                }
+                // BV号 也一并传（有就传），否则详情页拿不到 BV号
+                if (bvid != null && bvid.length() > 0) {
                     intent.putExtra("bvid", bvid);
                 }
                 startActivity(intent);
@@ -620,6 +632,10 @@ public class HomeFragment extends Fragment {
         private HomeFragment fragment;
         private int[] tids;
         private String[] names;
+        // 每行已套用的日夜状态。用 WeakHashMap 而不是 setTag(int,Object)——后者是 API 4
+        // 才有的方法，Android 1.0 上引用它会让整个类 VerifyError；WeakHashMap 是 API 1 就有。
+        private final java.util.WeakHashMap<View, Integer> mNightApplied =
+                new java.util.WeakHashMap<View, Integer>();
 
         HomeSectionAdapter(Context context, HomeFragment fragment) {
             this.context = context;
@@ -671,7 +687,10 @@ public class HomeFragment extends Fragment {
 
             TextView nameView = (TextView) section.findViewById(R.id.partition_name);
             if (nameView != null) {
-                nameView.setText(name);
+                String cur = nameView.getText() == null ? null : nameView.getText().toString();
+                if (!name.equals(cur)) {
+                    nameView.setText(name);
+                }
             }
 
             ImageView cardBg = (ImageView) section.findViewById(R.id.card_background);
@@ -714,14 +733,21 @@ public class HomeFragment extends Fragment {
             int[] containerIds = {
                     R.id.video1_container, R.id.video2_container,
                     R.id.video3_container, R.id.video4_container};
-            for (int cid : containerIds) {
-                View c = section.findViewById(cid);
-                if (c == null) continue;
-                if (night) {
-                    c.setBackgroundColor(0xFF484848);
-                } else {
-                    c.setBackgroundResource(R.drawable.bili_thumb_boarder);
+            // 衬底只跟日夜相关，本行没变过就不重设（setBackgroundResource 会触发
+            // requestLayout/invalidate，每次 getView 都设会在软件渲染下放大掉帧）
+            Integer applied = mNightApplied.get(section);
+            boolean appliedNight = applied != null && applied.intValue() == 1;
+            if (applied == null || appliedNight != night) {
+                for (int cid : containerIds) {
+                    View c = section.findViewById(cid);
+                    if (c == null) continue;
+                    if (night) {
+                        c.setBackgroundColor(0xFF484848);
+                    } else {
+                        c.setBackgroundResource(R.drawable.bili_thumb_boarder);
+                    }
                 }
+                mNightApplied.put(section, Integer.valueOf(night ? 1 : 0));
             }
 
             fragment.applyTabletLayout(section);

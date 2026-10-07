@@ -16,6 +16,7 @@ import tv.biliclassic.util.QRCodeUtil;
  * 本登录API基于以下项目修改，致谢前辈：
  *   - 哔哩终端 (BiliTerminal) by RobinNotBad
  *   - 腕上哔哩 (WristBilibili) by luern0313
+ *   - PiliPlus by bggRGjQaUbCoE
  *
  * 本程序是自由软件，遵循 GNU 通用公共许可证第 3 版（或更高版本）发布。
  * 你可以重新分发或修改它，希望它能为你带来快乐。
@@ -24,7 +25,7 @@ import tv.biliclassic.util.QRCodeUtil;
  * <https://www.gnu.org/licenses/>
  *
  * 修改者：一只毛子球 (BiliClassic)
- * 修改时间：2026年6月15日
+ * 修改时间：2026年10月7日
  *
  * 安卓1也要看B站！
  */

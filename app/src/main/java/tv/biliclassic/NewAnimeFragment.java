@@ -153,11 +153,8 @@ public class NewAnimeFragment extends Fragment {
                 animeList.setClipToPadding(false);
                 animeList.setFocusable(true);
                 animeList.setFocusableInTouchMode(true);
-                // 绘制缓存（仅 32MB+ 堆设备）：滑页转场命中缓存，避免每帧重绘全部行
-                if (tv.biliclassic.util.SdkHelper.isHighMemoryDevice()) {
-                    animeList.setDrawingCacheEnabled(true);
-                    animeList.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_AUTO);
-                }
+                // 列表行绘制缓存（堆 >= 16MB 才开，低内存用 LOW）
+                tv.biliclassic.util.SdkHelper.enableListDrawingCache(animeList);
                 animeList.setVisibility(View.VISIBLE);
                 animeListAdapter = new AnimeListAdapter(getActivity(), this);
                 animeList.setAdapter(animeListAdapter);

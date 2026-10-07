@@ -63,9 +63,9 @@ public class MetroVideoRowAdapter extends BaseObservableAdapter<VideoCard> {
 
         // 光标高亮：选中（遥控器）常驻粉色；未选中用按压反馈 selector
         if (position == selectedPosition && !mHideHighlight) {
-            convertView.setBackgroundColor(0x66D86DA5);
+            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0x66D86DA5);
         } else {
-            convertView.setBackgroundResource(R.drawable.metro_row_bg);
+            tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(convertView, R.drawable.metro_row_bg);
         }
 
         holder.title.setText(item.title != null ? item.title : "");

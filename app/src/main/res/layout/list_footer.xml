@@ -1,23 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<tv.biliclassic.widget.LoadingBarView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/footer_bar"
     android:layout_width="match_parent"
-    android:layout_height="48dp"
-    android:gravity="center"
-    android:paddingTop="16dp"
-    android:paddingBottom="16dp">
-
-    <ProgressBar
-        android:id="@+id/footer_progress"
-        android:layout_width="16dp"
-        android:layout_height="16dp" />
-
-    <TextView
-        android:id="@+id/footer_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="8dp"
-        android:text="@string/login_working_hard"
-        android:textSize="12sp"
-        android:textColor="#999999" />
-
-</LinearLayout>
+    android:layout_height="wrap_content" />

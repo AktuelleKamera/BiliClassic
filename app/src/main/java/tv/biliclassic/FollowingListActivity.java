@@ -15,6 +15,7 @@ import java.util.List;
 import tv.biliclassic.api.UserInfoApi;
 import tv.biliclassic.model.UserInfo;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 /**
  * 关注的人：显示自己关注了的 UP 主列表（list 模式，带分割线，古早风格）。
@@ -25,7 +26,7 @@ public class FollowingListActivity extends BaseActivity {
     private ListView listView;
     private TextView emptyView;
     private View footerView;
-    private TextView footerText;
+    private LoadingBarView footerBar;
 
     private FollowingAdapter adapter;
     private List<UserInfo> userList = new ArrayList<UserInfo>();
@@ -63,7 +64,7 @@ public class FollowingListActivity extends BaseActivity {
 
         // 加载更多 footer
         footerView = getLayoutInflater().inflate(R.layout.list_footer, null);
-        footerText = (TextView) footerView.findViewById(R.id.footer_text);
+        footerBar = (LoadingBarView) footerView;
         listView.addFooterView(footerView);
         setFooterVisible(false);
 
@@ -120,12 +121,11 @@ public class FollowingListActivity extends BaseActivity {
     }
 
     private void setFooterVisible(boolean visible) {
-        if (footerView == null) return;
-        footerView.setVisibility(visible ? View.VISIBLE : View.GONE);
-        if (footerText != null) {
-            footerText.setText(visible
-                    ? getString(R.string.login_working_hard)
-                    : "");
+        if (footerBar == null) return;
+        if (visible) {
+            footerBar.showLoading();
+        } else {
+            footerBar.hide();
         }
     }
 

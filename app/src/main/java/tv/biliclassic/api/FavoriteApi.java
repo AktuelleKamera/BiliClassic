@@ -2,6 +2,7 @@
  * 本软件基于以下项目修改，致谢前辈：
  *   - 哔哩终端 (BiliTerminal) by RobinNotBad
  *   - 腕上哔哩 (WristBilibili) by luern0313
+ *   - PiliPlus by bggRGjQaUbCoE
  *
  * 本程序是自由软件，遵循 GNU 通用公共许可证第 3 版（或更高版本）发布。
  * 你可以重新分发或修改它，希望它能为你带来快乐。
@@ -10,7 +11,7 @@
  * <https://www.gnu.org/licenses/>
  *
  * 修改者：一只毛子球 (BiliClassic)
- * 修改时间：2026年6月30日
+ * 修改时间：2026年10月7日
  *
  * 安卓1也要看B站！
  */
@@ -99,13 +100,12 @@ public class FavoriteApi {
                 JSONObject folder = list.getJSONObject(i);
                 FavoriteFolder favoriteFolder = new FavoriteFolder();
 
+                long mlid = folder.optLong("id", 0);
                 long fid = folder.optLong("fid", 0);
-                if (fid == 0) {
-                    // 部分接口/场景只返回完整 id（mlid），fid 字段缺失时回退
-                    fid = folder.optLong("id", 0);
-                }
-                favoriteFolder.id = fid;
-                favoriteFolder.fid = fid;
+                if (fid == 0) fid = mlid; // 部分场景缺 fid 字段
+                if (mlid == 0) mlid = fid;
+                favoriteFolder.id = mlid;  // 媒体 id（mlid）：删收藏夹用的是它
+                favoriteFolder.fid = fid;  // 短 fid：取收藏夹内视频用它
                 favoriteFolder.name = folder.optString("title", "未命名收藏夹");
                 favoriteFolder.videoCount = folder.optInt("media_count", 0);
                 favoriteFolder.maxCount = 50000;
@@ -524,5 +524,47 @@ public class FavoriteApi {
 
         JSONObject result = new JSONObject(responseBody);
         return result.optInt("code", -1);
+    }
+
+    // 收藏夹相关请求共用的 headers（space 站内来源）
+    private static ArrayList spaceHeaders() {
+        ArrayList headers = new ArrayList();
+        headers.add("Referer");
+        headers.add("https://space.bilibili.com/");
+        headers.add("Cookie");
+        headers.add(NetWorkUtil.getCookieString());
+        headers.add("Origin");
+        headers.add("https://space.bilibili.com");
+        return headers;
+    }
+
+    // 删除收藏夹（PiliPlus: POST /x/v3/fav/folder/del，media_ids + platform + csrf）
+    public static int deleteFolder(long fid) throws IOException, JSONException {
+        String csrf = getCsrf();
+        if (csrf == null || csrf.length() == 0) {
+            Log.w(TAG, "csrf 无效，无法删除收藏夹");
+            return -1;
+        }
+        String url = "https://api.bilibili.com/x/v3/fav/folder/del";
+        String data = "media_ids=" + fid + "&platform=web&csrf=" + csrf;
+        Log.d(TAG, "删除收藏夹 media_ids=" + fid);
+        String responseBody = NetWorkUtil.post(url, data, spaceHeaders());
+        Log.d(TAG, "删除收藏夹响应: " + responseBody);
+        return new JSONObject(responseBody).optInt("code", -1);
+    }
+
+    // 创建收藏夹（PiliPlus: POST /x/v3/fav/folder/add，title + intro + privacy + csrf）
+    public static int createFolder(String title, int privacy) throws IOException, JSONException {
+        String csrf = getCsrf();
+        if (csrf == null || csrf.length() == 0) {
+            Log.w(TAG, "csrf 无效，无法创建收藏夹");
+            return -1;
+        }
+        String url = "https://api.bilibili.com/x/v3/fav/folder/add";
+        String data = "title=" + java.net.URLEncoder.encode(title, "UTF-8")
+                + "&intro=&privacy=" + privacy + "&csrf=" + csrf;
+        String responseBody = NetWorkUtil.post(url, data, spaceHeaders());
+        Log.d(TAG, "创建收藏夹响应: " + responseBody);
+        return new JSONObject(responseBody).optInt("code", -1);
     }
 }

@@ -410,11 +410,11 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
         boolean night = tv.biliclassic.metro.MetroTheme.isNight();
         int itemBg = night ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white;
         if (hideHighlight) {
-            convertView.setBackgroundResource(itemBg);
+            tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(convertView, itemBg);
         } else if (position == selectedPosition) {
-            convertView.setBackgroundColor(0x66D86DA5);
+            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0x66D86DA5);
         } else {
-            convertView.setBackgroundResource(itemBg);
+            tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(convertView, itemBg);
         }
         holder.userName.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
         holder.message.setTextColor(night ? 0xFFB0B0B0 : 0xFF555555);

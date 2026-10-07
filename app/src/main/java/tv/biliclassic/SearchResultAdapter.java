@@ -306,13 +306,13 @@ public class SearchResultAdapter extends BaseObservableAdapter<SearchActivity.Se
 
     private void applyHighlight(View convertView, int position) {
         if (position == selectedPosition && !mHideHighlight) {
-            convertView.setBackgroundColor(0x66D86DA5);
+            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0x66D86DA5);
         } else {
             try {
                 convertView.setBackgroundDrawable(
                         convertView.getResources().getDrawable(R.drawable.item_click_effect_white));
             } catch (Exception e) {
-                convertView.setBackgroundColor(0xFFFFFFFF);
+                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0xFFFFFFFF);
             }
         }
     }

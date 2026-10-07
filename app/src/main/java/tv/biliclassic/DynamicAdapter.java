@@ -76,15 +76,20 @@ public class DynamicAdapter extends BaseObservableAdapter<Dynamic> {
     private void bind(final View root, final Holder h, final Dynamic d) {
         if (d == null) return;
 
-        // 夜间：列表项是滚动时动态创建的，UiSkin 的遍历覆盖不到，这里显式套色
+        // 列表项是滚动时动态创建的，UiSkin 的遍历覆盖不到，这里显式套色（夜间 + 自定义背景图时的透明）
         final boolean night = tv.biliclassic.metro.MetroTheme.isNight();
-        root.setBackgroundResource(night
-                ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white);
+        final boolean trans = tv.biliclassic.util.BgUtil.hasImage();
+        // 旧 ROM 上 setBackgroundResource 会把 XML padding 重置为 0（内容全挤到左边），用保留 padding 的版本
+        tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(root, trans
+                ? R.drawable.item_click_effect_translucent
+                : (night ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white));
         h.name.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
         h.time.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
         h.content.setTextColor(night ? 0xFFB0B0B0 : 0xFF555555);
-        if (h.cardBox != null) h.cardBox.setBackgroundColor(night ? 0xFF2A2A2A : 0xFFE8E8E8);
-        if (h.forwardBox != null) h.forwardBox.setBackgroundColor(night ? 0xFF2A2A2A : 0xFFE8E8E8);
+        int boxBg = trans ? (night ? 0xB3101010 : 0xB3E8E8E8)
+                : (night ? 0xFF2A2A2A : 0xFFE8E8E8);
+        if (h.cardBox != null) tv.biliclassic.util.UiSkin.setBgColorKeepPadding(h.cardBox, boxBg);
+        if (h.forwardBox != null) tv.biliclassic.util.UiSkin.setBgColorKeepPadding(h.forwardBox, boxBg);
         if (h.cardTitle != null) h.cardTitle.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
         if (h.cardInfo != null) h.cardInfo.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
         if (h.forwardContent != null) h.forwardContent.setTextColor(night ? 0xFFB0B0B0 : 0xFF666666);
@@ -284,7 +289,7 @@ public class DynamicAdapter extends BaseObservableAdapter<Dynamic> {
             return;
         }
         if (d.roomId != 0) {
-            openWeb("https://live.bilibili.com/" + d.roomId, "直播间");
+            openLive(d.roomId);
             return;
         }
         if (d.epid != 0) {
@@ -313,6 +318,16 @@ public class DynamicAdapter extends BaseObservableAdapter<Dynamic> {
             Intent intent = new Intent(context, ArticleActivity.class);
             intent.putExtra("cvid", cvid);
             intent.putExtra("title", title);
+            context.startActivity(intent);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void openLive(long roomId) {
+        if (context == null || roomId == 0) return;
+        try {
+            Intent intent = new Intent(context, LiveInfoActivity.class);
+            intent.putExtra("room_id", roomId);
             context.startActivity(intent);
         } catch (Throwable ignored) {
         }

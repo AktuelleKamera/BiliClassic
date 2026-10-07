@@ -11,10 +11,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.widget.StarWarsCrawlView;
@@ -30,6 +26,7 @@ public class EasterEggActivity extends Activity {
 
     private StarWarsCrawlView mCrawl;
     private MediaPlayer mPlayer;
+    private java.io.FileInputStream mMusicFis;
 
     private String mEchoText = "";
     private File mMusicFile;
@@ -117,7 +114,10 @@ public class EasterEggActivity extends Activity {
                 File out = null;
                 try {
                     out = new File(getCacheDir(), "echo_egg.mp3");
-                    download(ECHO_MP3, out);
+                    boolean ok = NetWorkUtil.downloadToFile(ECHO_MP3, out);
+                    long len = (out != null && out.exists()) ? out.length() : -1;
+                    android.util.Log.d("EasterEgg", "echo.mp3 ok=" + ok
+                            + " len=" + len + " head=" + headHex(out));
                 } catch (Throwable t) {
                     out = null;
                 }
@@ -132,55 +132,59 @@ public class EasterEggActivity extends Activity {
         }).start();
     }
 
+    private static String headHex(File f) {
+        if (f == null || !f.exists()) {
+            return "-";
+        }
+        java.io.FileInputStream fis = null;
+        try {
+            fis = new java.io.FileInputStream(f);
+            byte[] b = new byte[4];
+            int n = fis.read(b);
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < n; i++) {
+                sb.append(b[i] & 0xFF).append(' ');
+            }
+            return sb.toString().trim();
+        } catch (Throwable t) {
+            return "err";
+        } finally {
+            try {
+                if (fis != null) fis.close();
+            } catch (Throwable t) {
+            }
+        }
+    }
+
     private void startMusic() {
         if (mMusicFile == null) {
             return;
         }
+        java.io.FileInputStream fis = null;
         try {
+            // 用 FileDescriptor 而不是路径：Froyo 的 MediaPlayerService(media_server) 读不到
+            // 应用私有目录，必须由本进程打开文件、把 fd 交给它，才能解码私有缓存里的音频。
+            fis = new java.io.FileInputStream(mMusicFile);
             mPlayer = new MediaPlayer();
             mPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            mPlayer.setDataSource(mMusicFile.getAbsolutePath());
+            mPlayer.setDataSource(fis.getFD());
             // 放完自动重放，直到退出页面（onDestroy 里 release）
             mPlayer.setLooping(true);
             mPlayer.prepare();
             mPlayer.start();
+            mMusicFis = fis; // 保持 fd 有效直到 release
         } catch (Throwable t) {
+            android.util.Log.w("EasterEgg", "startMusic failed: " + t);
+            if (mPlayer != null) {
+                try {
+                    mPlayer.release();
+                } catch (Throwable t2) {
+                }
+            }
             mPlayer = null;
-        }
-    }
-
-    private void download(String urlStr, File out) throws Exception {
-        HttpURLConnection conn = null;
-        InputStream in = null;
-        FileOutputStream fos = null;
-        try {
-            URL url = new URL(urlStr);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(15000);
-            conn.setReadTimeout(20000);
-            conn.setInstanceFollowRedirects(true);
-            // 服务器没 UA 会 403
-            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
-            conn.setRequestProperty("Referer", "https://www.biliclassic.cn/");
-            in = conn.getInputStream();
-            fos = new FileOutputStream(out);
-            byte[] buf = new byte[8192];
-            int n;
-            while ((n = in.read(buf)) > 0) {
-                fos.write(buf, 0, n);
-            }
-            fos.flush();
-        } finally {
             try {
-                if (fos != null) fos.close();
-            } catch (Throwable t) {
-            }
-            try {
-                if (in != null) in.close();
-            } catch (Throwable t) {
-            }
-            if (conn != null) {
-                conn.disconnect();
+                if (fis != null) fis.close();
+            } catch (Throwable t2) {
             }
         }
     }
@@ -207,6 +211,13 @@ public class EasterEggActivity extends Activity {
             } catch (Throwable t) {
             }
             mPlayer = null;
+        }
+        if (mMusicFis != null) {
+            try {
+                mMusicFis.close();
+            } catch (Throwable t) {
+            }
+            mMusicFis = null;
         }
         super.onDestroy();
     }

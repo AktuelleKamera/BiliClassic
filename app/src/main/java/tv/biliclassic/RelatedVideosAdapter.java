@@ -69,13 +69,13 @@ public class RelatedVideosAdapter extends BaseObservableAdapter<VideoCard> {
         // 触摸滑动时隐藏高亮（mHideHighlight），避免光标与手指位置混淆
         final boolean night = tv.biliclassic.metro.MetroTheme.isNight();
         if (position == selectedPosition && !mHideHighlight) {
-            convertView.setBackgroundColor(0x66D86DA5);
+            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0x66D86DA5);
         } else {
             try {
                 convertView.setBackgroundDrawable(convertView.getResources().getDrawable(
                         night ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white));
             } catch (Exception e) {
-                convertView.setBackgroundColor(night ? 0xFF222222 : 0xFFFFFFFF);
+                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, night ? 0xFF222222 : 0xFFFFFFFF);
             }
         }
         // 夜间：封面框换深灰、文字调亮
@@ -96,7 +96,17 @@ public class RelatedVideosAdapter extends BaseObservableAdapter<VideoCard> {
         holder.upName.setText(item.upName);
         holder.progress.setText(item.view);
 
-        ImageLoader.bind(holder.cover, item.cover, R.drawable.bili_default_image_tv_with_bg, 76, 56);
+        // 按封面框实际尺寸解码（横版 item_history / 竖版 item_bangumi_follow 自适应）
+        int dpW = 76, dpH = 56;
+        if (holder.coverContainer != null) {
+            android.view.ViewGroup.LayoutParams lp = holder.coverContainer.getLayoutParams();
+            if (lp != null && lp.width > 0 && lp.height > 0) {
+                float dens = context.getResources().getDisplayMetrics().density;
+                dpW = Math.round(lp.width / dens);
+                dpH = Math.round(lp.height / dens);
+            }
+        }
+        ImageLoader.bind(holder.cover, item.cover, R.drawable.bili_default_image_tv_with_bg, dpW, dpH);
 
         final VideoCard clickItem = item;
         final int pos = position;

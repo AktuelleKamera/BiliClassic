@@ -42,29 +42,27 @@
         android:layout_height="48dp"
         android:visibility="gone" />
 
-    <FrameLayout
+    <!-- 空提示：与列表同级放置，不再包一层 FrameLayout。
+         Android 1.5 主线程栈很小，ViewPager→Fragment→列表项本就深，
+         多一层 ViewGroup 会让列表项里带 span 的 TextView 在绘制时 StackOverflow。 -->
+    <TextView
+        android:id="@+id/empty_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="50dp"
+        android:text="@string/no_comments"
+        android:textSize="14sp"
+        android:textColor="#999999"
+        android:visibility="gone" />
+
+    <ListView
+        android:id="@+id/list_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <ListView
-            android:id="@+id/list_view"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="#F5F5F5"
-            android:divider="#E0E0E0"
-            android:dividerHeight="1dp" />
-
-        <TextView
-            android:id="@+id/empty_view"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="50dp"
-            android:text="@string/no_comments"
-            android:textSize="14sp"
-            android:textColor="#999999"
-            android:visibility="gone" />
-    </FrameLayout>
+        android:layout_weight="1"
+        android:background="#F5F5F5"
+        android:divider="#E0E0E0"
+        android:dividerHeight="1dp" />
 
 </LinearLayout>

@@ -14,8 +14,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.ListView;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -35,8 +33,7 @@ public class RecommendFragment extends Fragment {
     // 统一加载条（公共组件）
     private LoadingBarView progressBar;
     private TextView emptyView;
-    private LinearLayout footerContainer;
-    private ProgressBar footerProgressBar;
+    private LoadingBarView footerBar;
 
     private RecommendGridAdapter adapter;
     private List<VideoCard> videoList = new ArrayList<VideoCard>();
@@ -112,16 +109,12 @@ public class RecommendFragment extends Fragment {
         if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
             tv.biliclassic.util.SdkHelper.setOverScrollNever(gridView);
         }
-        // 绘制缓存（仅 32MB+ 堆设备）：滑页转场命中缓存，避免每帧重绘全部行
-        if (tv.biliclassic.util.SdkHelper.isHighMemoryDevice()) {
-            gridView.setDrawingCacheEnabled(true);
-            gridView.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_AUTO);
-        }
+        // 列表行绘制缓存（堆 >= 16MB 才开，低内存用 LOW）
+        tv.biliclassic.util.SdkHelper.enableListDrawingCache(gridView);
 
         // footer 直接加在列表内容之后（addFooterView，随列表滚动）
         View footer = inflater.inflate(R.layout.item_recommend_footer, gridView, false);
-        footerContainer = (LinearLayout) footer;
-        footerProgressBar = (ProgressBar) footer.findViewById(R.id.footer_progress);
+        footerBar = (LoadingBarView) footer;
         gridView.addFooterView(footer);
 
         adapter = new RecommendGridAdapter(getActivity(), videoList);
@@ -274,17 +267,14 @@ public class RecommendFragment extends Fragment {
     }
 
     private void showFooter() {
-        if (footerContainer != null) {
-            footerContainer.setVisibility(View.VISIBLE);
-            if (footerProgressBar != null) {
-                footerProgressBar.setVisibility(View.VISIBLE);
-            }
+        if (footerBar != null) {
+            footerBar.showLoading();
         }
     }
 
     private void hideFooter() {
-        if (footerContainer != null) {
-            footerContainer.setVisibility(View.GONE);
+        if (footerBar != null) {
+            footerBar.hide();
         }
     }
 
@@ -731,11 +721,17 @@ public class RecommendFragment extends Fragment {
         VideoCard item = videoList.get(position);
         if (item == null || getActivity() == null) return;
         Intent intent = new Intent(getActivity(), VideoDetailActivity.class);
+        boolean hasId = false;
         if (item.aid != 0) {
             intent.putExtra("aid", item.aid);
-        } else if (item.bvid != null && item.bvid.length() > 0) {
+            hasId = true;
+        }
+        // BV号 也一并传（有就传），否则只传 aid 时详情页只有 av号、拿不到 BV号
+        if (item.bvid != null && item.bvid.length() > 0) {
             intent.putExtra("bvid", item.bvid);
-        } else {
+            hasId = true;
+        }
+        if (!hasId) {
             showToast("无法获取视频信息");
             return;
         }

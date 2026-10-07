@@ -20,7 +20,6 @@ import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -63,8 +62,7 @@ public class UserProfileActivity extends BaseActivity {
     private LoadingBarView videoProgressBar;
     private TextView videoEmptyView;
     private View footerView;
-    private ProgressBar footerProgressBar;
-    private TextView footerText;
+    private LoadingBarView footerBar;
 
     private long mid;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -208,15 +206,8 @@ public class UserProfileActivity extends BaseActivity {
         videoEmptyView = (TextView) findViewById(R.id.video_empty_view);
 
         footerView = getLayoutInflater().inflate(R.layout.list_footer, null);
-        footerProgressBar = (ProgressBar) footerView.findViewById(R.id.footer_progress);
-        footerText = (TextView) footerView.findViewById(R.id.footer_text);
-        if (footerProgressBar != null) {
-            footerProgressBar.setVisibility(View.GONE);
-        }
-        if (footerText != null) {
-            footerText.setText(getString(R.string.login_working_hard));
-        }
-        footerView.setVisibility(View.GONE);
+        footerBar = (LoadingBarView) footerView;
+        footerBar.hide();
         listView.addFooterView(footerView);
 
         listView.setDivider(null);
@@ -325,35 +316,28 @@ public class UserProfileActivity extends BaseActivity {
         if (mode == MODE_VIDEO) {
             listView.setAdapter(videoAdapter);
             videoEmptyView.setText(getString(R.string.user_has_no_videos));
-            footerView.setVisibility(
-                    (videoList.size() > 0 && !isVideoEnd) ? View.VISIBLE : View.GONE);
+            if (videoList.size() > 0 && !isVideoEnd) {
+                footerBar.show();
+            } else {
+                footerBar.hide();
+            }
         } else if (mode == MODE_DYNAMIC) {
             listView.setAdapter(dynamicAdapter);
             videoEmptyView.setText(getString(R.string.no_dynamics));
-            footerView.setVisibility(View.GONE);
+            footerBar.hide();
             if (!mDynamicLoaded) {
                 loadSpaceDynamics();
             } else if (dynamicList.size() > 0 && !isDynamicEnd) {
-                footerView.setVisibility(View.VISIBLE);
-                if (footerProgressBar != null) footerProgressBar.setVisibility(View.GONE);
-                if (footerText != null) {
-                    footerText.setText(getString(R.string.login_working_hard));
-                    footerText.setVisibility(View.VISIBLE);
-                }
+                footerBar.show();
             }
         } else {
             listView.setAdapter(articleAdapter);
             videoEmptyView.setText(getString(R.string.no_articles));
-            footerView.setVisibility(View.GONE);
+            footerBar.hide();
             if (!mArticleLoaded) {
                 loadUserArticles();
             } else if (articleList.size() > 0 && !isArticleEnd) {
-                footerView.setVisibility(View.VISIBLE);
-                if (footerProgressBar != null) footerProgressBar.setVisibility(View.GONE);
-                if (footerText != null) {
-                    footerText.setText(getString(R.string.login_working_hard));
-                    footerText.setVisibility(View.VISIBLE);
-                }
+                footerBar.show();
             }
         }
         listView.setEmptyView(videoEmptyView);
@@ -711,7 +695,7 @@ public class UserProfileActivity extends BaseActivity {
         isVideoEnd = false;
         isLoadingMore = false;
         videoProgressBar.showLoading();
-        footerView.setVisibility(View.GONE);
+        footerBar.hide();
 
         Log.d("UserProfile", "开始加载视频列表，mid=" + mid);
 
@@ -733,7 +717,7 @@ public class UserProfileActivity extends BaseActivity {
 
                             if (items == null || items.size() == 0) {
                                 videoEmptyView.setText(getString(R.string.user_has_no_videos));
-                                footerView.setVisibility(View.GONE);
+                                footerBar.hide();
                                 Log.d("UserProfile", "视频列表为空，显示空视图");
                                 return;
                             }
@@ -753,19 +737,12 @@ public class UserProfileActivity extends BaseActivity {
                                 videoAdapter.notifyDataSetChanged();
                                 currentPage = 2;
                                 if (!isVideoEnd) {
-                                    footerView.setVisibility(View.VISIBLE);
-                                    if (footerProgressBar != null) {
-                                        footerProgressBar.setVisibility(View.GONE);
-                                    }
-                                    if (footerText != null) {
-                                        footerText.setText(getString(R.string.login_working_hard));
-                                        footerText.setVisibility(View.VISIBLE);
-                                    }
+                                    footerBar.show();
                                 }
                                 Log.d("UserProfile", "视频列表更新成功，当前页=" + currentPage);
                             } else {
                                 videoEmptyView.setText(getString(R.string.no_videos));
-                                footerView.setVisibility(View.GONE);
+                                footerBar.hide();
                                 Log.d("UserProfile", "无可添加的视频");
                             }
                         }
@@ -778,7 +755,7 @@ public class UserProfileActivity extends BaseActivity {
                             if (isDestroyed) return;
                             videoProgressBar.hide();
                             videoEmptyView.setText("加载失败: " + e.getMessage());
-                            footerView.setVisibility(View.GONE);
+                            footerBar.hide();
                             Log.e("UserProfile", "UI 显示错误: " + e.getMessage());
                         }
                     });
@@ -789,29 +766,15 @@ public class UserProfileActivity extends BaseActivity {
     }
 
     private void showLoadEndTip() {
-        if (footerView == null) return;
-        footerView.setVisibility(View.VISIBLE);
-        if (footerProgressBar != null) {
-            footerProgressBar.setVisibility(View.GONE);
-        }
-        if (footerText != null) {
-            footerText.setText(getString(R.string.emoticon__no_more_data));
-            footerText.setVisibility(View.VISIBLE);
-        }
+        if (footerBar == null) return;
+        footerBar.showStatus(getString(R.string.emoticon__no_more_data));
     }
 
     private void loadMoreVideos() {
         if (isLoadingVideos || isVideoEnd || isDestroyed) return;
         isLoadingVideos = true;
 
-        if (footerProgressBar != null) {
-            footerProgressBar.setVisibility(View.VISIBLE);
-        }
-        if (footerText != null) {
-            footerText.setText(getString(R.string.login_working_hard));
-            footerText.setVisibility(View.VISIBLE);
-        }
-        footerView.setVisibility(View.VISIBLE);
+        footerBar.showLoading();
 
         final int page = currentPage;
         Log.d("UserProfile", "加载更多视频，页码=" + page);
@@ -829,7 +792,6 @@ public class UserProfileActivity extends BaseActivity {
                         @Override
                         public void run() {
                             if (isDestroyed) return;
-                            footerProgressBar.setVisibility(View.GONE);
                             isLoadingVideos = false;
                             isLoadingMore = false;
 
@@ -854,13 +816,7 @@ public class UserProfileActivity extends BaseActivity {
                             if (added > 0) {
                                 videoAdapter.notifyDataSetChanged();
                                 currentPage = page + 1;
-                                footerView.setVisibility(View.VISIBLE);
-                                if (footerProgressBar != null) {
-                                    footerProgressBar.setVisibility(View.GONE);
-                                }
-                                if (footerText != null) {
-                                    footerText.setVisibility(View.GONE);
-                                }
+                                footerBar.show();
                                 Log.d("UserProfile", "加载更多成功，当前页=" + currentPage);
                             } else {
                                 if (items.size() > 0 && !isVideoEnd) {
@@ -881,10 +837,9 @@ public class UserProfileActivity extends BaseActivity {
                         @Override
                         public void run() {
                             if (isDestroyed) return;
-                            footerProgressBar.setVisibility(View.GONE);
                             isLoadingVideos = false;
                             isLoadingMore = false;
-                            footerView.setVisibility(View.GONE);
+                            footerBar.hide();
                             Toast.makeText(UserProfileActivity.this, "加载更多失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                             Log.e("UserProfile", "加载更多 UI 错误: " + e.getMessage());
                         }
@@ -904,7 +859,7 @@ public class UserProfileActivity extends BaseActivity {
         isLoadingArticles = false;
         mArticleLoaded = true;
         videoProgressBar.showLoading();
-        footerView.setVisibility(View.GONE);
+        footerBar.hide();
 
         new Thread(new Runnable() {
             @Override
@@ -927,25 +882,20 @@ public class UserProfileActivity extends BaseActivity {
                         if (fError != null) {
                             mArticleLoaded = false;
                             videoEmptyView.setText("加载失败: " + fError);
-                            footerView.setVisibility(View.GONE);
+                            footerBar.hide();
                             return;
                         }
                         articleList.addAll(items);
                         articleAdapter.notifyDataSetChanged();
                         if (articleList.size() == 0) {
                             videoEmptyView.setText(getString(R.string.no_articles));
-                            footerView.setVisibility(View.GONE);
+                            footerBar.hide();
                         } else if (fResult == 1) {
                             isArticleEnd = true;
                             showLoadEndTip();
                         } else {
                             articlePage = 2;
-                            footerView.setVisibility(View.VISIBLE);
-                            if (footerProgressBar != null) footerProgressBar.setVisibility(View.GONE);
-                            if (footerText != null) {
-                                footerText.setText(getString(R.string.login_working_hard));
-                                footerText.setVisibility(View.VISIBLE);
-                            }
+                            footerBar.show();
                         }
                     }
                 });
@@ -956,12 +906,7 @@ public class UserProfileActivity extends BaseActivity {
     private void loadMoreArticles() {
         if (isLoadingArticles || isArticleEnd || isDestroyed) return;
         isLoadingArticles = true;
-        if (footerProgressBar != null) footerProgressBar.setVisibility(View.VISIBLE);
-        if (footerText != null) {
-            footerText.setText(getString(R.string.login_working_hard));
-            footerText.setVisibility(View.VISIBLE);
-        }
-        footerView.setVisibility(View.VISIBLE);
+        footerBar.showLoading();
 
         final int page = articlePage;
         new Thread(new Runnable() {
@@ -982,7 +927,6 @@ public class UserProfileActivity extends BaseActivity {
                     public void run() {
                         if (isDestroyed) return;
                         isLoadingArticles = false;
-                        if (footerProgressBar != null) footerProgressBar.setVisibility(View.GONE);
                         if (fError != null) {
                             Toast.makeText(UserProfileActivity.this,
                                     "加载更多失败: " + fError, Toast.LENGTH_SHORT).show();
@@ -995,8 +939,7 @@ public class UserProfileActivity extends BaseActivity {
                             showLoadEndTip();
                         } else {
                             articlePage = page + 1;
-                            footerView.setVisibility(View.VISIBLE);
-                            if (footerText != null) footerText.setVisibility(View.GONE);
+                            footerBar.show();
                         }
                     }
                 });
@@ -1023,7 +966,7 @@ public class UserProfileActivity extends BaseActivity {
         dynamicList.clear();
         dynamicAdapter.notifyDataSetChanged();
         videoProgressBar.showLoading();
-        footerView.setVisibility(View.GONE);
+        footerBar.hide();
 
         new Thread(new Runnable() {
             @Override
@@ -1047,7 +990,7 @@ public class UserProfileActivity extends BaseActivity {
                         if (fError != null) {
                             mDynamicLoaded = false;
                             videoEmptyView.setText("加载失败: " + fError);
-                            footerView.setVisibility(View.GONE);
+                            footerBar.hide();
                             return;
                         }
                         dynamicOffset = fNext;
@@ -1055,18 +998,13 @@ public class UserProfileActivity extends BaseActivity {
                         dynamicAdapter.notifyDataSetChanged();
                         if (dynamicList.size() == 0) {
                             videoEmptyView.setText(getString(R.string.no_dynamics));
-                            footerView.setVisibility(View.GONE);
+                            footerBar.hide();
                         } else if (fNext == null || fNext.length() == 0) {
                             isDynamicEnd = true;
                             showLoadEndTip();
                         } else {
                             isDynamicEnd = false;
-                            footerView.setVisibility(View.VISIBLE);
-                            if (footerProgressBar != null) footerProgressBar.setVisibility(View.GONE);
-                            if (footerText != null) {
-                                footerText.setText(getString(R.string.login_working_hard));
-                                footerText.setVisibility(View.VISIBLE);
-                            }
+                            footerBar.show();
                         }
                     }
                 });
@@ -1080,12 +1018,7 @@ public class UserProfileActivity extends BaseActivity {
         if (dynamicOffset == null || dynamicOffset.length() == 0) return;
         isLoadingDynamics = true;
 
-        if (footerProgressBar != null) footerProgressBar.setVisibility(View.VISIBLE);
-        if (footerText != null) {
-            footerText.setText(getString(R.string.login_working_hard));
-            footerText.setVisibility(View.VISIBLE);
-        }
-        footerView.setVisibility(View.VISIBLE);
+        footerBar.showLoading();
 
         final String pageOffset = dynamicOffset;
         new Thread(new Runnable() {
@@ -1106,7 +1039,6 @@ public class UserProfileActivity extends BaseActivity {
                     public void run() {
                         if (isDestroyed) return;
                         isLoadingDynamics = false;
-                        if (footerProgressBar != null) footerProgressBar.setVisibility(View.GONE);
                         if (fError != null) {
                             Toast.makeText(UserProfileActivity.this,
                                     "加载更多失败: " + fError, Toast.LENGTH_SHORT).show();
@@ -1119,8 +1051,7 @@ public class UserProfileActivity extends BaseActivity {
                             isDynamicEnd = true;
                             showLoadEndTip();
                         } else {
-                            footerView.setVisibility(View.VISIBLE);
-                            if (footerText != null) footerText.setVisibility(View.GONE);
+                            footerBar.show();
                         }
                     }
                 });
@@ -1203,7 +1134,7 @@ public class UserProfileActivity extends BaseActivity {
                             dynamicAdapter.notifyDataSetChanged();
                             if (dynamicList.size() == 0) {
                                 videoEmptyView.setText(getString(R.string.no_dynamics));
-                                footerView.setVisibility(View.GONE);
+                                footerBar.hide();
                             }
                             Toast.makeText(UserProfileActivity.this,
                                     getString(R.string.dynamicfragment_toast_op_success),
@@ -1287,7 +1218,7 @@ public class UserProfileActivity extends BaseActivity {
 
             // 夜间：白底换灰底、封面框深灰、标题调亮
             boolean night = tv.biliclassic.metro.MetroTheme.isNight();
-            convertView.setBackgroundResource(night
+            tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(convertView, night
                     ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white);
             holder.title.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
             View coverBox = (View) holder.cover.getParent();

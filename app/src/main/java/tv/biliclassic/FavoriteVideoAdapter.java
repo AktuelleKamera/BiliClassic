@@ -95,11 +95,11 @@ public class FavoriteVideoAdapter extends BaseObservableAdapter<VideoCard> {
         // 遥控器光标高亮（选中：半透明粉色；未选中：夜间灰 / 白天白底；Metro 保持透明）
         boolean night = tv.biliclassic.metro.MetroTheme.isNight();
         if (position == selectedPosition && !mHideHighlight) {
-            convertView.setBackgroundColor(0x66D86DA5);
+            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0x66D86DA5);
         } else if (mMetro) {
             convertView.setBackgroundDrawable(null);
         } else {
-            convertView.setBackgroundResource(night
+            tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(convertView, night
                     ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white);
         }
         holder.title.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);

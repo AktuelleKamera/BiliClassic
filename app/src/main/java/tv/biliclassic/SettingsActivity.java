@@ -1901,27 +1901,26 @@ public class SettingsActivity extends BaseActivity {
     // 图片加载线程
     private void updateImageThreadDisplay(TextView textView) {
         if (textView == null) return;
-        int threads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 1);
+        int threads = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 8);
         textView.setText(threads + "线程");
     }
 
     private void showImageThreadDialog(final TextView textView) {
-        final String[] items = {"单线程", "三线程", "自定线程"};
-        final int[] values = {1, 3, -1};
-        int current = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 1);
+        final String[] items = {"单线程", "四线程", "八线程", "自定义线程"};
+        final int[] values = {1, 4, 8, -1};
+        int current = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 8);
 
-        int checkedIndex = 1;
+        int checkedIndex = 3;
         for (int i = 0; i < values.length; i++) {
             if (values[i] == current) { checkedIndex = i; break; }
         }
-        if (checkedIndex == 1 && current != 3) checkedIndex = 2;
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.image_load_threads))
                 .setSingleChoiceItems(items, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        if (which == 2) {
+                        if (which == 3) {
                             showCustomThreadDialog(textView);
                         } else {
                             SharedPreferencesUtil.putInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, values[which]);
@@ -1939,8 +1938,8 @@ public class SettingsActivity extends BaseActivity {
     private void showCustomThreadDialog(final TextView textView) {
         final android.widget.EditText input = new android.widget.EditText(this);
         tv.biliclassic.util.SdkHelper.setInputType(input, android.text.InputType.TYPE_CLASS_NUMBER);
-        int current = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 3);
-        input.setText(String.valueOf(current == -1 ? 3 : current));
+        int current = SharedPreferencesUtil.getInt(SharedPreferencesUtil.IMAGE_LOAD_THREADS, 8);
+        input.setText(String.valueOf(current == -1 ? 8 : current));
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.custom_thread_count))
@@ -1952,14 +1951,14 @@ public class SettingsActivity extends BaseActivity {
                         if (s.length() == 0) return;
                         try {
                             final int val = Integer.parseInt(s);
-                            if (val < 1 || val > 15) {
+                            if (val < 1 || val > 20) {
                                 Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_8bf7_1), Toast.LENGTH_SHORT).show();
                                 return;
                             }
-                            if (val > 5) {
+                            if (val > 15) {
                                 new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(SettingsActivity.this)))
                                         .setTitle(getString(R.string.thread_count_warning))
-                                        .setMessage("当前设置 " + val + " 个线程，超过安全建议值（5）。部分手机可能出现频繁卡顿甚至闪退的问题。若遇到此类问题，建议回到此处重新调低。\n\n确定继续吗？")
+                                        .setMessage("当前设置 " + val + " 个线程，超过安全建议值（15）。部分手机可能出现频繁卡顿甚至闪退的问题。若遇到此类问题，建议回到此处重新调低。\n\n确定继续吗？")
                                         .setPositiveButton("仍然设置", new DialogInterface.OnClickListener() {
                                             @Override
                                             public void onClick(DialogInterface d, int w) {

@@ -53,8 +53,7 @@ public class CommentFragment extends Fragment {
     private LoadingBarView progressBar;
     private TextView emptyView;
     private View footerView;
-    private ProgressBar footerProgressBar;
-    private TextView footerText;
+    private tv.biliclassic.widget.LoadingBarView footerBar;
 
     private CommentAdapter adapter;
     private List<CommentItem> commentList = new ArrayList<CommentItem>();
@@ -172,8 +171,7 @@ public class CommentFragment extends Fragment {
         listView.setSelector(new android.graphics.drawable.ColorDrawable(0x00000000));
 
         footerView = LayoutInflater.from(getActivity()).inflate(R.layout.list_footer, null);
-        footerProgressBar = (ProgressBar) footerView.findViewById(R.id.footer_progress);
-        footerText = (TextView) footerView.findViewById(R.id.footer_text);
+        footerBar = (tv.biliclassic.widget.LoadingBarView) footerView.findViewById(R.id.footer_bar);
         listView.addFooterView(footerView);
         footerView.setVisibility(View.GONE);
 
@@ -854,8 +852,7 @@ public class CommentFragment extends Fragment {
 
         isLoading = true;
 
-        footerProgressBar.setVisibility(View.VISIBLE);
-        footerView.setVisibility(View.VISIBLE);
+        footerBar.showLoading();
 
         final String oidParam = (aid != 0) ? String.valueOf(aid) : bvid;
         final String cursor = nextCursor;
@@ -1014,20 +1011,12 @@ public class CommentFragment extends Fragment {
                 adapter.updateData(commentList);
                 saveCommentCache(commentList);
 
-                footerProgressBar.setVisibility(View.GONE);
                 isLoading = false;
 
                 if (isEnd) {
-                    if (footerProgressBar != null) {
-                        footerProgressBar.setVisibility(View.GONE);
-                    }
-                    if (footerText != null) {
-                        footerText.setText(getString(R.string.emoticon__no_more_data));
-                        footerText.setVisibility(View.VISIBLE);
-                    }
-                    footerView.setVisibility(View.VISIBLE);
+                    footerBar.showStatus(getString(R.string.emoticon__no_more_data));
                 } else {
-                    footerView.setVisibility(View.VISIBLE);
+                    footerBar.hide();
                 }
             }
         });
@@ -1307,14 +1296,7 @@ public class CommentFragment extends Fragment {
         runUi(new Runnable() {
             @Override
             public void run() {
-                if (footerProgressBar != null) {
-                    footerProgressBar.setVisibility(View.GONE);
-                }
-                if (footerText != null) {
-                    footerText.setText(getString(R.string.emoticon__no_more_data));
-                    footerText.setVisibility(View.VISIBLE);
-                }
-                footerView.setVisibility(View.VISIBLE);
+                footerBar.showStatus(getString(R.string.emoticon__no_more_data));
                 isLoading = false;
             }
         });
@@ -1325,15 +1307,9 @@ public class CommentFragment extends Fragment {
         runUi(new Runnable() {
             @Override
             public void run() {
-                footerProgressBar.setVisibility(View.GONE);
                 isLoading = false;
-                footerView.setVisibility(View.VISIBLE);
-                if ("没有更多评论".equals(msg)) {
-                    footerText.setText(getString(R.string.emoticon__no_more_data));
-                } else {
-                    footerText.setText(msg);
-                }
-                footerText.setVisibility(View.VISIBLE);
+                footerBar.showStatus("没有更多评论".equals(msg)
+                        ? getString(R.string.emoticon__no_more_data) : msg);
             }
         });
     }

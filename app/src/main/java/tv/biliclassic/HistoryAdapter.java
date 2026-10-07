@@ -42,13 +42,13 @@ public class HistoryAdapter extends BaseObservableAdapter<VideoCard> {
         // 触摸滑动时隐藏高亮（mHideHighlight），避免光标与手指位置混淆
         final boolean night = tv.biliclassic.metro.MetroTheme.isNight();
         if (position == selectedPosition && !mHideHighlight) {
-            convertView.setBackgroundColor(0x66D86DA5);
+            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0x66D86DA5);
         } else {
             try {
                 convertView.setBackgroundDrawable(convertView.getResources().getDrawable(
                         night ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white));
             } catch (Exception e) {
-                convertView.setBackgroundColor(night ? 0xFF222222 : 0xFFFFFFFF);
+                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, night ? 0xFF222222 : 0xFFFFFFFF);
             }
         }
         // 夜间：封面框换深灰、文字调亮

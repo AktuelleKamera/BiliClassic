@@ -67,6 +67,17 @@ public class BangumiDetailFragment extends Fragment {
         }
     }
 
+    /** 占位创建（mediaId 未知、先出番剧布局）后补：设置真实 mediaId 并加载详情。 */
+    public void setMediaIdAndLoad(long id) {
+        if (id <= 0) {
+            return;
+        }
+        this.mediaId = id;
+        if (getView() != null) {
+            loadBangumiDetail();
+        }
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {

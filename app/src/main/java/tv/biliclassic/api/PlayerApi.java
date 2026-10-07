@@ -2,6 +2,7 @@
  * 本软件基于以下项目修改，致谢前辈：
  *   - 哔哩终端 (BiliTerminal) by RobinNotBad
  *   - 腕上哔哩 (WristBilibili) by luern0313
+ *   - PiliPlus by bggRGjQaUbCoE
  *
  * 本程序是自由软件，遵循 GNU 通用公共许可证第 3 版（或更高版本）发布。
  * 你可以重新分发或修改它，希望它能为你带来快乐。
@@ -10,7 +11,7 @@
  * <https://www.gnu.org/licenses/>
  *
  * 修改者：一只毛子球 (BiliClassic)
- * 修改时间：2026年10月5日
+ * 修改时间：2026年10月7日
  *
  * 安卓1也要看B站！
  */
@@ -41,10 +42,7 @@ public class PlayerApi {
         final long timestamp;
         final String[] qnStrList;
         final int[] qnValueList;
-        // 必须一起缓存：DASH 的极简 MPD 不带时长，靠它生成 mediaPresentationDuration，
-        // 漏掉会导致缓存命中时 getDuration()==0（进度显示 00:00、seek 偏移）
         final long durationMs;
-        // 续播位置同样只在真请求里赋值，缓存命中时必须恢复，否则重进会从 0 开始
         final long cidHistory;
         final int progress;
         CachedUrl(String videoUrl, String audioUrl, int actualQn, long timestamp,
@@ -104,23 +102,6 @@ public class PlayerApi {
         return fallback;
     }
 
-/*
- * 本软件基于以下项目修改，致谢前辈：
- *   - 哔哩终端 (BiliTerminal) by RobinNotBad
- *   - 腕上哔哩 (WristBilibili) by luern0313
- *
- * 本程序是自由软件，遵循 GNU 通用公共许可证第 3 版（或更高版本）发布。
- * 你可以重新分发或修改它，希望它能为你带来快乐。
- *
- * 详情请参阅 GNU 通用公共许可证：
- * <https://www.gnu.org/licenses/>
- *
- * 修改者：一只毛子球 (BiliClassic)
- * 修改时间：2026年6月19日
- *
- * 安卓1也要看B站！
- */
-
     /**
      * 获取视频播放地址
      * @param playerData 传入 aid、cid、qn 等必要数据
@@ -137,7 +118,6 @@ public class PlayerApi {
             return;
         }
 
-        // 静态缓存：同一 aid+cid+qn 十分钟内复用，避免每次点播放都重新请求
         String cacheKey = buildCacheKey(playerData);
         if (!download) {
             CachedUrl cached;
@@ -149,7 +129,6 @@ public class PlayerApi {
                 android.util.Log.e("PlayerApi", "命中静态缓存: " + cached.videoUrl);
                 playerData.videoUrl = cached.videoUrl;
                 playerData.audioUrl = cached.audioUrl;
-                // DASH 下实际画质可能与请求不同（被降级），恢复真实值
                 if (cached.actualQn > 0) {
                     playerData.qn = cached.actualQn;
                 }

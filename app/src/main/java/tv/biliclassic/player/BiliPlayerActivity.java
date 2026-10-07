@@ -275,8 +275,7 @@ public class BiliPlayerActivity extends Activity implements
     private boolean commentIsLoading = false;
     private boolean commentIsEnd = false;
     private boolean commentIsLoadingMore = false;
-    private View commentFooterView;
-    private ProgressBar commentFooterProgress;
+    private tv.biliclassic.widget.LoadingBarView commentFooterBar;
     private float commentTouchStartX = 0;
     private float commentTouchStartY = 0;
     private boolean commentIsSwiping = false;
@@ -1288,13 +1287,10 @@ public class BiliPlayerActivity extends Activity implements
             commentEmpty = (TextView) commentOverlay.findViewById(R.id.comment_overlay_empty);
 
             // 添加底部加载Footer
-            commentFooterView = LayoutInflater.from(this).inflate(R.layout.list_footer, null);
-            commentFooterProgress = (ProgressBar) commentFooterView.findViewById(R.id.footer_progress);
-            if (commentFooterProgress != null) {
-                commentFooterProgress.setVisibility(View.GONE);
-            }
-            commentFooterView.setVisibility(View.GONE);
-            commentList.addFooterView(commentFooterView);
+            commentFooterBar = (tv.biliclassic.widget.LoadingBarView)
+                    LayoutInflater.from(this).inflate(R.layout.list_footer, null);
+            commentFooterBar.hide();
+            commentList.addFooterView(commentFooterBar);
 
             commentItems = new ArrayList<CommentFragment.CommentItem>();
             commentAdapter = new CommentAdapter(this, commentItems, mAid, null);
@@ -1713,10 +1709,7 @@ public class BiliPlayerActivity extends Activity implements
             commentEmpty.setText(getString(R.string.login_working_hard));
         }
 
-        commentFooterView.setVisibility(View.GONE);
-        if (commentFooterProgress != null) {
-            commentFooterProgress.setVisibility(View.GONE);
-        }
+        commentFooterBar.hide();
 
         final String oidParam = String.valueOf(mAid);
 
@@ -1787,15 +1780,12 @@ public class BiliPlayerActivity extends Activity implements
         if (commentIsLoadingMore || commentIsEnd || commentIsLoading) return;
         if (commentNextCursor == null || commentNextCursor.length() == 0) {
             commentIsEnd = true;
-            commentFooterView.setVisibility(View.GONE);
+            commentFooterBar.hide();
             return;
         }
 
         commentIsLoadingMore = true;
-        commentFooterView.setVisibility(View.VISIBLE);
-        if (commentFooterProgress != null) {
-            commentFooterProgress.setVisibility(View.VISIBLE);
-        }
+        commentFooterBar.showLoading();
 
         final String oidParam = String.valueOf(mAid);
         final String cursor = commentNextCursor;
@@ -1930,21 +1920,11 @@ public class BiliPlayerActivity extends Activity implements
                     commentItems.addAll(newItems);
                     commentAdapter.updateData(commentItems);
 
-                    commentFooterView.setVisibility(View.GONE);
-                    if (commentFooterProgress != null) {
-                        commentFooterProgress.setVisibility(View.GONE);
-                    }
+                    commentFooterBar.hide();
                     commentIsLoadingMore = false;
 
                     if (commentIsEnd) {
-                        commentFooterView.setVisibility(View.VISIBLE);
-                        if (commentFooterProgress != null) {
-                            commentFooterProgress.setVisibility(View.GONE);
-                        }
-                        TextView ft = (TextView) commentFooterView.findViewById(R.id.footer_text);
-                        if (ft != null) {
-                            ft.setText(getString(R.string.emoticon__no_more_data));
-                        }
+                        commentFooterBar.showStatus(getString(R.string.emoticon__no_more_data));
                     }
                 } else {
                     commentItems.clear();
@@ -1957,7 +1937,7 @@ public class BiliPlayerActivity extends Activity implements
                     } else {
                         commentEmpty.setVisibility(View.GONE);
                         if (!commentIsEnd && commentNextCursor != null && commentNextCursor.length() > 0) {
-                            commentFooterView.setVisibility(View.VISIBLE);
+                            commentFooterBar.show();
                         }
                     }
                 }
@@ -1992,19 +1972,9 @@ public class BiliPlayerActivity extends Activity implements
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                if (commentFooterProgress != null) {
-                    commentFooterProgress.setVisibility(View.GONE);
-                }
                 commentIsLoadingMore = false;
-                commentFooterView.setVisibility(View.VISIBLE);
-                TextView ft = (TextView) commentFooterView.findViewById(R.id.footer_text);
-                if (ft != null) {
-                    if ("没有更多评论".equals(msg)) {
-                        ft.setText(getString(R.string.emoticon__no_more_data));
-                    } else {
-                        ft.setText(msg);
-                    }
-                }
+                commentFooterBar.showStatus("没有更多评论".equals(msg)
+                        ? getString(R.string.emoticon__no_more_data) : msg);
             }
         });
     }

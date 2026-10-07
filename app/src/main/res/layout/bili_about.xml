@@ -154,6 +154,11 @@
             android:text="@string/bili_about_os_wristbilibili" />
 
         <TextView
+            android:id="@+id/tv_open_source_piliplus"
+            style="@style/AboutBodyText"
+            android:text="@string/bili_about_os_piliplus" />
+
+        <TextView
             android:id="@+id/tv_open_source_3"
             style="@style/AboutBodyText"
             android:text="@string/bili_about_os_bilitv_repair" />

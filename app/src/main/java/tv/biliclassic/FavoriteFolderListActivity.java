@@ -43,6 +43,10 @@ public class FavoriteFolderListActivity extends BaseActivity {
     private static final int MAX_RETRY = 1;
     private int retryCount = 0;
 
+    // OK 键按住到该 repeat 次数视为长按 → 删除收藏夹（模仿 FollowingListActivity）
+    private static final int OK_LONG_PRESS_REPEAT = 20;
+    private boolean mOkLongPressed = false;
+
     // 0=收藏夹 1=稍后再看 2=追番
     private int mTab = 0;
     private RelatedVideosAdapter videoAdapter;   // 稍后再看
@@ -70,6 +74,14 @@ public class FavoriteFolderListActivity extends BaseActivity {
         emptyView = (TextView) findViewById(R.id.empty_view);
 
         adapter = new FavoriteFolderAdapter(this, folderList);
+        adapter.setOnFolderLongClickListener(new FavoriteFolderAdapter.OnFolderLongClickListener() {
+            @Override
+            public void onFolderLongClick(int position) {
+                if (position >= 0 && position < folderList.size()) {
+                    confirmDeleteFolder(folderList.get(position));
+                }
+            }
+        });
         listView.setAdapter(adapter);
 
         // 隐藏原生 selector，避免覆盖自定义光标高亮（粉色）
@@ -144,6 +156,7 @@ public class FavoriteFolderListActivity extends BaseActivity {
 
     @Override
     protected int onAppendOverflowItems(int[] ids, String[] titles, int n) {
+        if (n < ids.length) { ids[n] = R.id.menu_fav_create_folder; titles[n] = getString(R.string.fav_create_folder); n++; }
         if (n < ids.length) { ids[n] = R.id.menu_fav_video; titles[n] = getString(R.string.fav_tab_videos); n++; }
         if (n < ids.length) { ids[n] = R.id.menu_fav_later; titles[n] = getString(R.string.fav_tab_watch_later); n++; }
         if (n < ids.length) { ids[n] = R.id.menu_fav_bangumi; titles[n] = getString(R.string.fav_tab_bangumi); n++; }
@@ -152,10 +165,117 @@ public class FavoriteFolderListActivity extends BaseActivity {
 
     @Override
     protected void onMenuAction(int id) {
+        if (id == R.id.menu_fav_create_folder) { showCreateFolderDialog(); return; }
         if (id == R.id.menu_fav_video) { selectTab(0); return; }
         if (id == R.id.menu_fav_later) { selectTab(1); return; }
         if (id == R.id.menu_fav_bangumi) { selectTab(2); return; }
         super.onMenuAction(id);
+    }
+
+    // ===== 长按删除收藏夹 =====
+    private void confirmDeleteFolder(final FavoriteFolder folder) {
+        if (folder == null) return;
+        new android.app.AlertDialog.Builder(
+                tv.biliclassic.util.SdkHelper.dialogContext(tv.biliclassic.util.DialogUtil.wrap(this)))
+                .setTitle(getString(R.string.fav_delete_folder_title))
+                .setMessage(getString(R.string.fav_delete_folder_confirm, folder.name))
+                .setPositiveButton(getString(R.string.common_delete), new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        doDeleteFolder(folder);
+                    }
+                })
+                .setNegativeButton(getString(R.string.videodetail_cancel), null)
+                .show();
+    }
+
+    private void doDeleteFolder(final FavoriteFolder folder) {
+        // 删收藏夹用媒体 id（mlid）：短 fid 会被接口当成无效、返回 code:0 但什么都不删
+        final long fid = folder.id != 0 ? folder.id : folder.fid;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final int code;
+                try {
+                    code = FavoriteApi.deleteFolder(fid);
+                } catch (final Exception e) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(FavoriteFolderListActivity.this,
+                                    "删除失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                    return;
+                }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (code == 0) {
+                            Toast.makeText(FavoriteFolderListActivity.this, getString(R.string.fav_folder_deleted), Toast.LENGTH_SHORT).show();
+                            loadFolders(true);
+                        } else {
+                            Toast.makeText(FavoriteFolderListActivity.this,
+                                    "删除失败，错误码: " + code, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    // ===== 创建收藏夹 =====
+    private void showCreateFolderDialog() {
+        final android.widget.EditText input = new android.widget.EditText(this);
+        input.setHint(getString(R.string.fav_folder_name_hint));
+        input.setSingleLine(true);
+        new android.app.AlertDialog.Builder(
+                tv.biliclassic.util.SdkHelper.dialogContext(tv.biliclassic.util.DialogUtil.wrap(this)))
+                .setTitle(getString(R.string.fav_create_folder_title))
+                .setView(input)
+                .setPositiveButton(getString(R.string.common_create), new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        String name = input.getText().toString().trim();
+                        if (name.length() == 0) return;
+                        doCreateFolder(name);
+                    }
+                })
+                .setNegativeButton(getString(R.string.videodetail_cancel), null)
+                .show();
+    }
+
+    private void doCreateFolder(final String name) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final int code;
+                try {
+                    code = FavoriteApi.createFolder(name, 0);
+                } catch (final Exception e) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(FavoriteFolderListActivity.this,
+                                    "创建失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                    return;
+                }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (code == 0) {
+                            Toast.makeText(FavoriteFolderListActivity.this, getString(R.string.fav_folder_created), Toast.LENGTH_SHORT).show();
+                            loadFolders(true);
+                        } else {
+                            Toast.makeText(FavoriteFolderListActivity.this,
+                                    "创建失败，错误码: " + code, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+            }
+        }).start();
     }
 
     private void selectTab(int idx) {
@@ -277,6 +397,9 @@ public class FavoriteFolderListActivity extends BaseActivity {
 
     @Override
     public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        if (event.getAction() == android.view.KeyEvent.ACTION_UP) {
+            mOkLongPressed = false;
+        }
         int count = (mTab == 0) ? folderList.size() : videoList.size();
         if (count == 0 || listView == null) {
             return super.dispatchKeyEvent(event);
@@ -300,6 +423,20 @@ public class FavoriteFolderListActivity extends BaseActivity {
             if (adapter != null) adapter.setHideHighlight(false);
         } else {
             if (activeVideoAdapter != null) activeVideoAdapter.setHideHighlight(false);
+        }
+        // OK 键长按（收藏夹 Tab）：删除选中收藏夹；只触发一次
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM
+                && event.getRepeatCount() >= OK_LONG_PRESS_REPEAT) {
+            if (!mOkLongPressed) {
+                mOkLongPressed = true;
+                if (mTab == 0 && selectedPosition >= 0 && selectedPosition < folderList.size()) {
+                    FavoriteFolder folder = folderList.get(selectedPosition);
+                    if (folder != null) {
+                        confirmDeleteFolder(folder);
+                    }
+                }
+            }
+            return true;
         }
         // 首次按下才移动光标；长按 repeat 只消费不移动
         if (event.getRepeatCount() == 0) {

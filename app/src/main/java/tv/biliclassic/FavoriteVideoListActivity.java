@@ -31,7 +31,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
     private TextView emptyView;
     private TextView titleText;
     private View footerView;
-    private android.widget.ProgressBar footerProgressBar;
+    private LoadingBarView footerBar;
 
     private FavoriteVideoAdapter adapter;
     private ArrayList<VideoCard> videoList = new ArrayList<VideoCard>();
@@ -73,9 +73,9 @@ public class FavoriteVideoListActivity extends BaseActivity {
         emptyView = (TextView) findViewById(R.id.empty_view);
 
         footerView = getLayoutInflater().inflate(R.layout.list_footer, null);
-        footerProgressBar = (android.widget.ProgressBar) footerView.findViewById(R.id.footer_progress);
+        footerBar = (LoadingBarView) footerView;
         listView.addFooterView(footerView);
-        footerView.setVisibility(View.GONE);
+        footerBar.hide();
 
         adapter = new FavoriteVideoAdapter(this, videoList);
         adapter.setOnDeleteClickListener(new FavoriteVideoAdapter.OnDeleteClickListener() {
@@ -234,7 +234,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
             emptyView.setVisibility(View.GONE);
         }
         if (footerView != null) {
-            footerView.setVisibility(View.GONE);
+            footerBar.hide();
         }
         listView.setVisibility(View.VISIBLE);
     }
@@ -300,7 +300,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
                                 if (videoList.size() == 0) {
                                     emptyView.setText(getString(R.string.no_favorite_videos));
                                     emptyView.setVisibility(View.VISIBLE);
-                                    footerView.setVisibility(View.GONE);
+                                    footerBar.hide();
                                     setResult(RESULT_OK);
                                     finish();
                                 } else {
@@ -336,7 +336,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
         if (mid == 0L) {
             emptyView.setText(getString(R.string.please_login_first));
             emptyView.setVisibility(View.VISIBLE);
-            footerView.setVisibility(View.GONE);
+            footerBar.hide();
             listView.setVisibility(View.GONE);
             return;
         }
@@ -351,8 +351,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
         isLoading = true;
         showLoading();
         emptyView.setVisibility(View.GONE);
-        footerView.setVisibility(View.GONE);
-        footerProgressBar.setVisibility(View.GONE);
+        footerBar.hide();
         currentPage = 1;
         isEnd = false;
         videoList.clear();
@@ -366,12 +365,11 @@ public class FavoriteVideoListActivity extends BaseActivity {
                         public void run() {
                             isLoading = false;
                             hideAllLoading();
-                            footerProgressBar.setVisibility(View.GONE);
 
                             if (videoList.size() == 0) {
                                 emptyView.setText(getString(R.string.no_favorite_videos));
                                 emptyView.setVisibility(View.VISIBLE);
-                                footerView.setVisibility(View.GONE);
+                                footerBar.hide();
                                 isEnd = true;
                                 listView.setVisibility(View.GONE);
                             } else {
@@ -385,13 +383,13 @@ public class FavoriteVideoListActivity extends BaseActivity {
 
                                 if (videoList.size() < 30) {
                                     isEnd = true;
-                                    footerView.setVisibility(View.GONE);
+                                    footerBar.hide();
                                 } else {
                                     if (result == 1) {
                                         isEnd = true;
-                                        footerView.setVisibility(View.GONE);
+                                        footerBar.hide();
                                     } else {
-                                        footerView.setVisibility(View.VISIBLE);
+                                        footerBar.show();
                                         currentPage++;
                                     }
                                 }
@@ -403,7 +401,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
                         public void run() {
                             isLoading = false;
                             hideAllLoading();
-                            footerView.setVisibility(View.GONE);
+                            footerBar.hide();
                             if (retryCount < MAX_RETRY && NetWorkUtil.isNetworkAvailable(FavoriteVideoListActivity.this)) {
                                 retryCount++;
                                 doLoadVideos();
@@ -427,8 +425,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
         }
 
         isLoading = true;
-        footerProgressBar.setVisibility(View.VISIBLE);
-        footerView.setVisibility(View.VISIBLE);
+        footerBar.showLoading();
 
         final long mid = SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0L);
 
@@ -439,21 +436,20 @@ public class FavoriteVideoListActivity extends BaseActivity {
 
                     mainHandler.post(new Runnable() {
                         public void run() {
-                            footerProgressBar.setVisibility(View.GONE);
                             isLoading = false;
 
                             if (result == 1) {
                                 isEnd = true;
-                                footerView.setVisibility(View.GONE);
+                                footerBar.hide();
                                 if (videoList.size() > 0) {
                                     Toast.makeText(FavoriteVideoListActivity.this, getString(R.string.emoticon__no_more_data), Toast.LENGTH_SHORT).show();
                                 }
                             } else if (result == 0) {
                                 adapter.notifyDataSetChanged();
                                 currentPage++;
-                                footerView.setVisibility(View.VISIBLE);
+                                footerBar.show();
                             } else {
-                                footerView.setVisibility(View.GONE);
+                                footerBar.hide();
                                 Toast.makeText(FavoriteVideoListActivity.this, FavoriteVideoListActivity.this.getString(R.string.load_more_failed), Toast.LENGTH_SHORT).show();
                             }
                         }
@@ -461,9 +457,8 @@ public class FavoriteVideoListActivity extends BaseActivity {
                 } catch (final Exception e) {
                     mainHandler.post(new Runnable() {
                         public void run() {
-                            footerProgressBar.setVisibility(View.GONE);
                             isLoading = false;
-                            footerView.setVisibility(View.GONE);
+                            footerBar.hide();
                             Toast.makeText(FavoriteVideoListActivity.this, "加载更多失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         }
                     });

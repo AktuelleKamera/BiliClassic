@@ -35,6 +35,7 @@ import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.StringUtil;
+import tv.biliclassic.widget.LoadingBarView;
 
 public class SearchActivity extends BaseActivity {
 
@@ -46,8 +47,7 @@ public class SearchActivity extends BaseActivity {
     private LinearLayout topLoading;
     private ProgressBar topProgress;
     private View footerView;
-    private ProgressBar footerProgressBar;
-    private TextView footerText;
+    private LoadingBarView footerBar;
 
     // 搜索历史
     private static final String KEY_SEARCH_HISTORY = "search_history";
@@ -139,9 +139,8 @@ public class SearchActivity extends BaseActivity {
         }
 
         footerView = getLayoutInflater().inflate(R.layout.list_footer, null);
-        footerProgressBar = (ProgressBar) footerView.findViewById(R.id.footer_progress);
-        footerText = (TextView) footerView.findViewById(R.id.footer_text);
-        footerView.setVisibility(View.GONE);
+        footerBar = (LoadingBarView) footerView;
+        footerBar.hide();
 
         resultList.addFooterView(footerView, null, false);
 
@@ -301,8 +300,14 @@ public class SearchActivity extends BaseActivity {
     }
 
     // 保存搜索历史
+    private static final int MAX_SEARCH_KEYWORD_LEN = 100;
+
     private void saveSearchHistory(String keyword) {
         if (keyword == null || keyword.length() == 0) {
+            return;
+        }
+        // 防御：超长关键词会撑爆 prefs（曾达 14MB → 启动 OOM）
+        if (keyword.length() > MAX_SEARCH_KEYWORD_LEN) {
             return;
         }
 
@@ -314,7 +319,8 @@ public class SearchActivity extends BaseActivity {
                 JSONArray arr = new JSONArray(historyJson);
                 for (int i = 0; i < arr.length(); i++) {
                     String item = arr.getString(i);
-                    if (!item.equals(keyword)) {
+                    if (item != null && item.length() <= MAX_SEARCH_KEYWORD_LEN
+                            && !item.equals(keyword)) {
                         historyList.add(item);
                     }
                 }
@@ -348,7 +354,7 @@ public class SearchActivity extends BaseActivity {
         if (topProgress != null) {
             topProgress.setVisibility(View.VISIBLE);
         }
-        footerView.setVisibility(View.GONE);
+        footerBar.hide();
     }
 
     private void hideFirstLoadingAndShowList() {
@@ -359,7 +365,7 @@ public class SearchActivity extends BaseActivity {
 
     private void showEmptyResult() {
         topLoading.setVisibility(View.GONE);
-        footerView.setVisibility(View.GONE);
+        footerBar.hide();
         resultList.setVisibility(View.GONE);
         emptyView.setVisibility(View.VISIBLE);
     }
@@ -378,6 +384,7 @@ public class SearchActivity extends BaseActivity {
                 Intent intent = new Intent(SearchActivity.this, VideoDetailActivity.class);
                 intent.putExtra("aid", aid);
                 startActivity(intent);
+                finish();
                 return true;
             } catch (NumberFormatException e) {
             }
@@ -393,6 +400,7 @@ public class SearchActivity extends BaseActivity {
             Intent intent = new Intent(SearchActivity.this, VideoDetailActivity.class);
             intent.putExtra("bvid", bvid);
             startActivity(intent);
+            finish();
             return true;
         }
 
@@ -1002,13 +1010,13 @@ public class SearchActivity extends BaseActivity {
 
             if (sp.hasMore) {
                 currentPage = page + 1;
-                footerView.setVisibility(View.VISIBLE);
+                footerBar.show();
             } else {
                 showNoMore();
             }
         } catch (Exception e) {
             e.printStackTrace();
-            footerView.setVisibility(View.GONE);
+            footerBar.hide();
             isLoading = false;
             Toast.makeText(this, "解析失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
@@ -1051,7 +1059,7 @@ public class SearchActivity extends BaseActivity {
             }, 1500);
         } else {
             if (loadMore) {
-                footerView.setVisibility(View.GONE);
+                footerBar.hide();
                 MsgUtil.showMsg(this, "搜索繁忙，请稍后再试");
             } else {
                 showBusyResult();
@@ -1123,14 +1131,7 @@ public class SearchActivity extends BaseActivity {
         if (resultListData.size() == 0) return;
 
         isLoading = true;
-        footerView.setVisibility(View.VISIBLE);
-        if (footerProgressBar != null) {
-            footerProgressBar.setVisibility(View.VISIBLE);
-        }
-        if (footerText != null) {
-            footerText.setText(getString(R.string.login_working_hard));
-            footerText.setVisibility(View.VISIBLE);
-        }
+        footerBar.showLoading();
 
         doSearchRequest(currentKeyword, currentPage, 2);
     }
@@ -1142,15 +1143,8 @@ public class SearchActivity extends BaseActivity {
 
     /** 列表到底：隐藏转圈、底部固定显示"没有更多"（与关注/评论/个人主页等列表一致） */
     private void showNoMoreFooter() {
-        if (footerView != null) {
-            footerView.setVisibility(View.VISIBLE);
-        }
-        if (footerProgressBar != null) {
-            footerProgressBar.setVisibility(View.GONE);
-        }
-        if (footerText != null) {
-            footerText.setText(getString(R.string.emoticon__no_more_data));
-            footerText.setVisibility(View.VISIBLE);
+        if (footerBar != null) {
+            footerBar.showStatus(getString(R.string.emoticon__no_more_data));
         }
     }
 

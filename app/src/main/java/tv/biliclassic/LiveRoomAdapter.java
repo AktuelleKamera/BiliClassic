@@ -44,13 +44,13 @@ public class LiveRoomAdapter extends BaseObservableAdapter<LiveRoom> {
 
         // 键盘光标高亮（选中：半透明粉色；未选中：恢复原点击效果背景）
         if (position == selectedPosition && !mHideHighlight) {
-            convertView.setBackgroundColor(0x66D86DA5);
+            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0x66D86DA5);
         } else {
             try {
                 convertView.setBackgroundDrawable(
                         convertView.getResources().getDrawable(R.drawable.item_click_effect_white));
             } catch (Exception e) {
-                convertView.setBackgroundColor(0xFFFFFFFF);
+                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0xFFFFFFFF);
             }
         }
 
