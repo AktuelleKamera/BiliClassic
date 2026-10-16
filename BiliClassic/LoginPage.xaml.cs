@@ -6,6 +6,7 @@ using System.Windows.Navigation;
 using System.Windows.Threading;
 using BiliClassic.Api;
 using Microsoft.Phone.Controls;
+using System.Threading;
 
 namespace BiliClassic
 {
@@ -114,7 +115,7 @@ namespace BiliClassic
         private void RefreshQrCode()
         {
             StopPolling();
-            QrFrame.Visibility = Visibility.Collapsed;
+            //QrFrame.Visibility = Visibility.Collapsed;
             ShowStatus("正在获取二维码…");
 
             LoginService.RequestQrCode(delegate(string content, string error)
@@ -131,7 +132,8 @@ namespace BiliClassic
                     {
                         bool[,] matrix = QrEncoder.Encode(content);
                         QrImage.Source = Render(matrix, QrScale);
-                        QrFrame.Visibility = Visibility.Visible;
+
+                        //QrFrame.Visibility = Visibility.Visible;
                         ShowStatus("请用 B站手机客户端扫码登录");
                         StartPolling();
                     }
@@ -252,6 +254,7 @@ namespace BiliClassic
                 return;
             }
 
+            SendButton.Content = "发送中";
             SendButton.IsEnabled = false;
             ShowStatus("正在发送验证码…");
 
@@ -259,7 +262,7 @@ namespace BiliClassic
             {
                 Dispatcher.BeginInvoke(new Action(delegate
                 {
-                    SendButton.IsEnabled = true;
+                    SmsLoginButton_60s();//等待60s
                     if (result.Ok)
                     {
                         _captchaKey = result.CaptchaKey;
@@ -273,6 +276,26 @@ namespace BiliClassic
                             + (result.RawBody.Length > 0 ? " ｜ " + result.RawBody : ""));
                     }
                 }));
+            });
+        }
+
+        private void SmsLoginButton_60s()
+        {
+            System.Threading.ThreadPool.QueueUserWorkItem((state) =>
+            {
+                for (int i = 60; i > 0; i--)
+                {
+                    Thread.Sleep(1000);
+                    Deployment.Current.Dispatcher.BeginInvoke(() =>
+                    {
+                        SendButton.Content = i + "s后重发";
+                    });
+                }
+                Deployment.Current.Dispatcher.BeginInvoke(() =>
+                {
+                    SendButton.Content = "发送验证码";
+                    SendButton.IsEnabled = true;
+                });
             });
         }
 
@@ -320,6 +343,9 @@ namespace BiliClassic
             int total = (modules + Quiet * 2) * scale;
 
             WriteableBitmap bitmap = new WriteableBitmap(total, total);
+
+            //System.Diagnostics.Debug.WriteLine(bitmap.PixelWidth + " " + bitmap.PixelHeight);
+
             int[] pixels = bitmap.Pixels;
 
             for (int y = 0; y < total; y++)

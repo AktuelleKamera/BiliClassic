@@ -32,6 +32,7 @@ namespace BiliClassic
         private string _cid = "";
         private bool _loaded;
         private bool _directMode;
+        private bool _is_first_play = true;
 
         private bool _offlineForced;
 
@@ -164,6 +165,10 @@ namespace BiliClassic
             base.OnNavigatedTo(e);
 
             HideQBars.Begin();
+            HideVBar.Begin();
+
+            slider1.Value = AppSettings.YinLiangValue * 10;
+            change_yinliang(AppSettings.YinLiangValue);
 
             string direct;
             if (NavigationContext.QueryString.TryGetValue("src", out direct) && direct.Length > 0)
@@ -277,6 +282,9 @@ namespace BiliClassic
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             base.OnNavigatedFrom(e);
+
+            double yinliang = slider1.Value / 10;
+            AppSettings.YinLiangValue = yinliang;
 
             DisarmWatchdog();
             if (_statusTimer != null)
@@ -415,10 +423,44 @@ namespace BiliClassic
 
             Player.Stop();
 
-            Player.AutoPlay = true;
+            //Player.AutoPlay = true;
 
             Player.Source = uri;
-            Player.Play();
+            Player_Play();
+        }
+
+        private void Player_Play()
+        {
+            if ((Player.CurrentState != System.Windows.Media.MediaElementState.Playing) && ((_is_first_play && AppSettings.ZiDongEnabled) || (!_is_first_play && AppSettings.XiNaoEnabled)))
+            {
+                Player.AutoPlay = true;
+                Player.Play();
+                _is_first_play = false;
+            }
+        }
+
+        private void AudioPlayer_Play()
+        {
+            if ((AudioPlayer.CurrentState != System.Windows.Media.MediaElementState.Playing) && ((_is_first_play && AppSettings.ZiDongEnabled) || (!_is_first_play && AppSettings.XiNaoEnabled)))
+            {
+                AudioPlayer.AutoPlay = true;
+                AudioPlayer.Play();
+                _is_first_play = false;
+            }
+        }
+
+        private void Player_MediaEnded(object sender, RoutedEventArgs e)
+        {
+            if (Player.CanSeek)
+            {
+                Player.Position = TimeSpan.FromSeconds(0);
+                Player_Play();
+                if (_dashMode && AudioPlayer.CanSeek)
+                {
+                    AudioPlayer.Position = TimeSpan.FromSeconds(0);
+                    AudioPlayer_Play();
+                }
+            }
         }
 
         private void Player_MediaOpened(object sender, RoutedEventArgs e)
@@ -448,11 +490,11 @@ namespace BiliClassic
                 TransportText.Text = _dashNote.Length > 0 ? "MP4（DASH" + _dashNote + "）" : "MP4";
             }
 
-            if (Player.CurrentState != System.Windows.Media.MediaElementState.Playing)
-            {
-                Player.Play();
-            }
 
+
+            Player_Play();
+            _is_first_play = false;
+           
             HideLoading();
             StatusPanel.Visibility = Visibility.Collapsed;
             UpdatePlayPauseIcon();
@@ -715,9 +757,9 @@ namespace BiliClassic
             Player.Stop();
             AudioPlayer.Stop();
 
-            Player.AutoPlay = true;
+            //Player.AutoPlay = true;
             Player.SetSource(source);
-            Player.Play();
+            Player_Play();
         }
 
         // 【重要】DASH 起不来会按计划回退普通 MP4，别在这上面死磕，喵
@@ -816,8 +858,8 @@ namespace BiliClassic
             Player.Stop();
             AudioPlayer.Stop();
 
-            Player.AutoPlay = true;
-            AudioPlayer.AutoPlay = true;
+            //Player.AutoPlay = true;
+            //AudioPlayer.AutoPlay = true;
 
             try
             {
@@ -830,8 +872,8 @@ namespace BiliClassic
                 return;
             }
 
-            Player.Play();
-            AudioPlayer.Play();
+            Player_Play();
+            AudioPlayer_Play();
         }
 
         private void TryFinishDashOpen()
@@ -844,14 +886,9 @@ namespace BiliClassic
             _opened = true;
             _lastBufferProgress = -1;
 
-            if (Player.CurrentState != System.Windows.Media.MediaElementState.Playing)
-            {
-                Player.Play();
-            }
-            if (AudioPlayer.CurrentState != System.Windows.Media.MediaElementState.Playing)
-            {
-                AudioPlayer.Play();
-            }
+
+            Player_Play();
+            AudioPlayer_Play();
 
             HideLoading();
             StatusPanel.Visibility = Visibility.Collapsed;
@@ -1195,9 +1232,10 @@ namespace BiliClassic
 
         private void TapLayer_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (_qualityMenuOpen)
+            if (_qualityMenuOpen || _soundMenuOpen)
             {
                 CloseQualityMenu();
+                CloseSoundMenu();
             }
             else
             {
@@ -1277,6 +1315,39 @@ namespace BiliClassic
                     : "/Res/Icon/play.png", UriKind.Relative));
         }
 
+
+        private void slider1_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)//音量条
+        {
+            double yinliang = slider1.Value / 10;
+            change_yinliang(yinliang);
+        }
+
+        private void change_yinliang(double yinliang)
+        {
+            if (yinliang == 0)
+            {
+                YinLiangMask.ImageSource = null;
+                YinLiangMask.ImageSource = new BitmapImage(new Uri("/BiliClassic;component/Res/Icon/sound0.png", UriKind.Relative));
+            }
+            else if (yinliang < 0.33)
+            {
+                YinLiangMask.ImageSource = null;
+                YinLiangMask.ImageSource = new BitmapImage(new Uri("/BiliClassic;component/Res/Icon/sound1.png", UriKind.Relative));
+            }
+            else if (yinliang < 0.66)
+            {
+                YinLiangMask.ImageSource = null;
+                YinLiangMask.ImageSource = new BitmapImage(new Uri("/BiliClassic;component/Res/Icon/sound2.png", UriKind.Relative));
+            }
+            else
+            {
+                YinLiangMask.ImageSource = null;
+                YinLiangMask.ImageSource = new BitmapImage(new Uri("/BiliClassic;component/Res/Icon/sound3.png", UriKind.Relative));
+            }
+            AudioPlayer.Volume = yinliang * 10;
+            Player.Volume = yinliang;
+        }
+
         private void DanmakuButton_Click(object sender, RoutedEventArgs e)
         {
             bool enabled = !_danmakuContext.Enabled;
@@ -1295,7 +1366,7 @@ namespace BiliClassic
         {
             bool on = _danmakuContext.Enabled;
             DanmakuMask.ImageSource = new BitmapImage(new Uri(
-                on ? "/Res/Icon/danmuon.png" : "/Res/Icon/danmuoff.png",
+                on ? "/BiliClassic;component/Res/Icon/danmuon.png" : "/BiliClassic;component/Res/Icon/danmuoff.png",
                 UriKind.Relative));
             DanmakuIcon.Fill = on
                 ? new SolidColorBrush(Colors.White)
@@ -1307,6 +1378,7 @@ namespace BiliClassic
         private readonly List<int> _availableQualities = new List<int>();
 
         private bool _qualityMenuOpen;
+        private bool _soundMenuOpen;
 
         private void BuildQualityMenu()
         {
@@ -1366,9 +1438,12 @@ namespace BiliClassic
 
         private void CloseQualityMenu()
         {
+            if (_qualityMenuOpen)
+            {
+                HideQBars.Begin();
+            }
             _qualityMenuOpen = false;
             //QualityPanel.Visibility = Visibility.Collapsed;
-            HideQBars.Begin();
         }
 
         private void QualityButton_Click(object sender, RoutedEventArgs e)
@@ -1383,6 +1458,27 @@ namespace BiliClassic
             }
             HideQBars.Begin();
             //QualityPanel.Visibility = Visibility.Collapsed;
+        }
+
+        private void CloseSoundMenu()
+        {
+            if (_soundMenuOpen)
+            {
+                HideVBar.Begin();
+            }
+            _soundMenuOpen = false;
+            //QualityPanel.Visibility = Visibility.Collapsed;
+        }
+
+        private void SoundButton_Click(object sender, RoutedEventArgs e)
+        {
+            _soundMenuOpen = !_soundMenuOpen;
+            if (_soundMenuOpen)
+            {
+                ShowVBar.Begin();
+                return;
+            }
+            HideVBar.Begin();
         }
 
         private void QualityOption_Click(object sender, RoutedEventArgs e)
@@ -1565,12 +1661,12 @@ namespace BiliClassic
 
             Player.Source = null;
 
-            Player.AutoPlay = true;
+            //Player.AutoPlay = true;
 
             try
             {
                 Player.SetSource(_playbackStream);
-                Player.Play();
+                Player_Play();
             }
             catch (Exception ex)
             {

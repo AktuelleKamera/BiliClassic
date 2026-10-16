@@ -68,7 +68,31 @@
 		</Storyboard>
 		<Storyboard x:Name="ShowQBars">
 			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="QualityPanel">
-				<EasingDoubleKeyFrame KeyTime="0" Value="128">
+				<EasingDoubleKeyFrame KeyTime="0" Value="0"/>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<QuarticEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="QualityPanel">
+				<EasingDoubleKeyFrame KeyTime="0" Value="434"/>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="0"/>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="HideQBars">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="QualityPanel">
+				<EasingDoubleKeyFrame KeyTime="0" Value="0"/>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="0"/>
+			</DoubleAnimationUsingKeyFrames>
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="QualityPanel">
+				<EasingDoubleKeyFrame KeyTime="0" Value="0"/>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="444.497"/>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="ShowVBar">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="grid2">
+				<EasingDoubleKeyFrame KeyTime="0" Value="318">
 					<EasingDoubleKeyFrame.EasingFunction>
 						<QuarticEase EasingMode="EaseOut"/>
 					</EasingDoubleKeyFrame.EasingFunction>
@@ -80,10 +104,26 @@
 				</EasingDoubleKeyFrame>
 			</DoubleAnimationUsingKeyFrames>
 		</Storyboard>
-		<Storyboard x:Name="HideQBars">
-			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="QualityPanel">
-				<EasingDoubleKeyFrame KeyTime="0" Value="0"/>
-				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="147">
+		<Storyboard x:Name="HideVBar">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="grid2">
+				<EasingDoubleKeyFrame KeyTime="0" Value="3">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<QuinticEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="3">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<QuinticEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="grid2">
+				<EasingDoubleKeyFrame KeyTime="0" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<QuinticEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="318">
 					<EasingDoubleKeyFrame.EasingFunction>
 						<QuinticEase EasingMode="EaseIn"/>
 					</EasingDoubleKeyFrame.EasingFunction>
@@ -125,7 +165,7 @@
         <MediaElement x:Name="Player" Stretch="Uniform" AutoPlay="False"
                       MediaOpened="Player_MediaOpened"
                       MediaFailed="Player_MediaFailed"
-                      CurrentStateChanged="Player_CurrentStateChanged"/>
+                      CurrentStateChanged="Player_CurrentStateChanged" MediaEnded="Player_MediaEnded" />
 
         <!-- 弹幕层 -->
         <Canvas x:Name="DanmakuLayer" IsHitTestVisible="False"/>
@@ -140,8 +180,8 @@
         		<CompositeTransform/>
         	</Grid.RenderTransform>
             <Rectangle Height="90" HorizontalAlignment="Left" Name="rectangle1" Stroke="{x:Null}" StrokeThickness="1" VerticalAlignment="Top" Width="800" Fill="#CC000000" />
-            <TextBlock x:Name="TitleText" VerticalAlignment="Top" Margin="12,12,12,0"
-                   Foreground="White" TextWrapping="Wrap" MaxHeight="60" RenderTransformOrigin="0.5,0.5" Text="">
+            <TextBlock x:Name="TitleText" VerticalAlignment="Top" Margin="12,12,13,0"
+                   Foreground="White" TextWrapping="Wrap" MaxHeight="50" RenderTransformOrigin="0.5,0.5" Text="" Width="775">
         	<TextBlock.RenderTransform>
         		<CompositeTransform/>
         	</TextBlock.RenderTransform>
@@ -153,20 +193,28 @@
         	<StackPanel.RenderTransform>
         		<CompositeTransform/>
         	</StackPanel.RenderTransform>
-            <!-- 清晰度选单：点右下角按钮才展开 -->
-            <Border x:Name="QualityPanel"
-                    HorizontalAlignment="Right" Margin="0,0,0,0"
-                    Background="#CC000000" Padding="8,6" RenderTransformOrigin="0.5,0.5">
-            	<Border.RenderTransform>
-            		<CompositeTransform/>
-            	</Border.RenderTransform>
-                <StackPanel x:Name="QualityList" RenderTransformOrigin="0.5,0.5">
-                	<StackPanel.RenderTransform>
-                		<CompositeTransform/>
-                	</StackPanel.RenderTransform>
-                </StackPanel>
-            </Border>
+            <Grid Height="111" Name="grid1" Width="800" HorizontalAlignment="Left" VerticalAlignment="Bottom">
 
+                <!-- 清晰度选单：点右下角按钮才展开 -->
+                <Border x:Name="QualityPanel" HorizontalAlignment="Right" Background="#CC000000" Padding="8,6" RenderTransformOrigin="0.5,0.5" VerticalAlignment="Bottom">
+                    <Border.RenderTransform>
+                        <CompositeTransform />
+                    </Border.RenderTransform>
+                    <StackPanel x:Name="QualityList" RenderTransformOrigin="0.5,0.5">
+                        <StackPanel.RenderTransform>
+                            <CompositeTransform />
+                        </StackPanel.RenderTransform>
+                    </StackPanel>
+                </Border>
+                <!-- 音量条 -->
+                <Grid HorizontalAlignment="Left" Margin="540,0,0,0" Name="grid2" VerticalAlignment="Bottom" RenderTransformOrigin="0.5,0.5">
+                	<Grid.RenderTransform>
+                		<CompositeTransform/>
+                	</Grid.RenderTransform>
+                    <Rectangle Height="106" HorizontalAlignment="Left" Margin="0" Name="rectangle4" Stroke="{x:Null}" StrokeThickness="1" VerticalAlignment="Top" Width="48" Fill="#CC000000" />
+                    <Slider Height="106" HorizontalAlignment="Left" Margin="0" Name="slider1" VerticalAlignment="Bottom" Width="48" Orientation="Vertical" ValueChanged="slider1_ValueChanged" Value="0" />
+                </Grid>
+            </Grid>
             <!-- 播放控制条 -->
             <Border x:Name="ControlPanel" Background="#CC000000" Padding="12,4" RenderTransformOrigin="0.5,0.5">
             	<Border.RenderTransform>
@@ -177,18 +225,10 @@
                             ValueChanged="SeekBar_ValueChanged"/>
                     <!-- 负上边距盖掉Slider模板自带的空白 -->
                     <Grid Margin="0,-28,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
                         <!-- 图标用白色蒙版，原图的颜色不影响 -->
-                        <Button x:Name="PlayPauseButton" Grid.Column="0"
-                                MinWidth="0" Padding="8,4"
+                        <Button x:Name="PlayPauseButton" MinWidth="0" Padding="8,4"
                                 Background="Transparent" BorderThickness="0"
-                                Click="PlayPauseButton_Click">
+                                Click="PlayPauseButton_Click" Margin="0,0,694,0" Width="80">
                             <Rectangle Width="40" Height="40" Fill="White">
                                 <Rectangle.OpacityMask>
                                     <ImageBrush x:Name="PlayPauseMask"
@@ -196,28 +236,37 @@
                                 </Rectangle.OpacityMask>
                             </Rectangle>
                         </Button>
-                        <TextBlock x:Name="PositionText" Grid.Column="1"
-                                   Foreground="White" VerticalAlignment="Center"
-                                   TextAlignment="Center" Text="00:00 / --:--"/>
+                        <TextBlock x:Name="PositionText" Foreground="White" VerticalAlignment="Center"
+                                   TextAlignment="Left" Text="00:00 / --:--" Margin="80,22,0,22" Width="142" HorizontalAlignment="Left" />
                         <!-- 实际走的是哪条路，开播前为空 -->
-                        <TextBlock x:Name="TransportText" Grid.Column="2" Text=""
-                                   Foreground="White" VerticalAlignment="Center"
-                                   FontSize="16" Margin="0,0,8,0"/>
-                        <Button x:Name="DanmakuButton" Grid.Column="3"
-                                MinWidth="0" Padding="8,4"
+                        <Button x:Name="DanmakuButton" MinWidth="0" Padding="8,4"
                                 Background="Transparent" BorderThickness="0"
-                                Click="DanmakuButton_Click">
+                                Click="DanmakuButton_Click" Margin="0,0,100,0" BorderBrush="{x:Null}" Foreground="{x:Null}" HorizontalAlignment="Right" Width="80">
                             <Rectangle x:Name="DanmakuIcon" Width="40" Height="40" Fill="White">
                                 <Rectangle.OpacityMask>
-                                    <ImageBrush x:Name="DanmakuMask"
-                                                ImageSource="/Res/Icon/danmuon.png"/>
+                                    <ImageBrush x:Name="DanmakuMask" ImageSource="/BiliClassic;component/Res/Icon/danmuon.png"/>
                                 </Rectangle.OpacityMask>
                             </Rectangle>
                         </Button>
                         <!-- 右下角：点开清晰度选单 -->
-                        <Button x:Name="QualityButton" Grid.Column="4" Content="720P"
+                        <Button x:Name="QualityButton" Content="720P"
                                 MinWidth="0" Padding="12,2"
-                                Click="QualityButton_Click" BorderBrush="Transparent" FontSize="20" Foreground="White" />
+                                Click="QualityButton_Click" BorderBrush="Transparent" FontSize="20" Foreground="White" HorizontalAlignment="Right" Width="100" />
+                        <Button Background="Transparent" BorderThickness="0" MinWidth="0" Name="SoundButton" Padding="8,4" HorizontalAlignment="Right" Width="80" Margin="0,0,180,0" BorderBrush="{x:Null}" Foreground="{x:Null}" HorizontalContentAlignment="Left" VerticalContentAlignment="Top" Click="SoundButton_Click">
+                            <Rectangle Fill="White" Height="40" Name="rectangle2" Width="40">
+                                <Rectangle.OpacityMask>
+                                    <ImageBrush x:Name="YinLiangMask" ImageSource="/BiliClassic;component/Res/Icon/sound3.png" />
+                                </Rectangle.OpacityMask>
+                            </Rectangle>
+                        </Button>
+                        <Button Background="Transparent" BorderThickness="0" HorizontalAlignment="Right" Margin="0,0,260,0" MinWidth="0" Name="button2" Padding="8,4" Width="80" BorderBrush="{x:Null}" Foreground="{x:Null}" Visibility="Collapsed">
+                            <Rectangle Fill="White" Height="40" Name="rectangle3" Width="40">
+                                <Rectangle.OpacityMask>
+                                    <ImageBrush ImageSource="Res/Icon/setting_l.png" />
+                                </Rectangle.OpacityMask>
+                            </Rectangle>
+                        </Button>
+                        <TextBlock x:Name="TransportText" Text="MP4" Foreground="White" VerticalAlignment="Center" FontSize="20" Margin="235,25,0,25" HorizontalAlignment="Left" />
                     </Grid>
                 </StackPanel>
             </Border>

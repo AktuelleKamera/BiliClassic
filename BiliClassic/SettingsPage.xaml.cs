@@ -25,6 +25,8 @@ namespace BiliClassic
             OfflinePlaybackCheck.IsChecked = AppSettings.OfflinePlayback;
             DashPlaybackCheck.IsChecked = AppSettings.DashPlayback;
             DanmakuCheck.IsChecked = AppSettings.DanmakuEnabled;
+            XiNaoCheck.IsChecked = AppSettings.XiNaoEnabled;
+            ZiDongCheck.IsChecked = AppSettings.ZiDongEnabled;
             AutoCheckUpdateCheck.IsChecked = AppSettings.AutoCheckUpdate;
             LoadQuality(AppSettings.PlayQuality);
             _loading = false;
@@ -94,6 +96,26 @@ namespace BiliClassic
             }
 
             AppSettings.DanmakuEnabled = DanmakuCheck.IsChecked == true;
+        }
+
+        private void XiNaoCheck_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            AppSettings.XiNaoEnabled = XiNaoCheck.IsChecked == true;
+        }
+
+        private void ZiDongCheck_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            AppSettings.ZiDongEnabled = ZiDongCheck.IsChecked == true;
         }
 
         private void AutoCheckUpdate_Changed(object sender, RoutedEventArgs e)

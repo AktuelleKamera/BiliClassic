@@ -73,13 +73,13 @@
                                 <TextBox.InputScope>
                                     <InputScope>
                                         <InputScope.Names>
-                                            <InputScopeName NameValue="Digits"/>
+                                            <InputScopeName NameValue="TelephoneNumber"/>
                                         </InputScope.Names>
                                     </InputScope>
                                 </TextBox.InputScope>
                             </TextBox>
                             <Button x:Name="SendButton" Grid.Column="1" Content="发送验证码"
-                                    Margin="8,0,0,0" Click="SendButton_Click" Background="#D86DA5" Foreground="White" BorderThickness="0"/>
+                                    Margin="8,0,0,0" Click="SendButton_Click" Background="#D86DA5" Foreground="White" BorderThickness="0" IsEnabled="True" />
                         </Grid>
 
                         <Button x:Name="SmsLoginButton" Content="登录" Click="SmsLoginButton_Click" Background="#D86DA5" Foreground="White" BorderThickness="0"/>
@@ -97,39 +97,39 @@
                     <StackPanel Margin="0,0,0,24">
                         <Border x:Name="QrFrame" Background="White" Padding="6"
                                 HorizontalAlignment="Center"
-                                Visibility="Collapsed">
-                            <Image x:Name="QrImage"/>
+                                Visibility="Visible">
+                            <Image x:Name="QrImage" Source="/BiliClassic;component/Res/qrcode_loading.png" />
                         </Border>
 
                         <Button x:Name="RefreshButton" Content="刷新二维码"
-                                Margin="0,12,0,0" Click="RefreshButton_Click" Background="#D86DA5" Foreground="White" BorderThickness="0"/>
+                                Margin="0" Click="RefreshButton_Click" Background="#D86DA5" Foreground="White" BorderThickness="0"/>
 
                         <TextBlock Text="用B站官方客户端扫码，然后在手机上确认登录~"
-                                   Margin="0,12,0,0" TextWrapping="Wrap"
+                                   Margin="0" TextWrapping="Wrap"
                                    Style="{StaticResource PhoneTextSubtleStyle}"/>
                     </StackPanel>
                 </ScrollViewer>
             </controls:PivotItem>
 
-            <!-- 信息 -->
-            <controls:PivotItem Header="信息">
+            <!-- Cookie -->
+            <controls:PivotItem Header="Cookie">
                 <ScrollViewer>
                     <StackPanel Margin="0,0,0,24">
                         <TextBlock Text="当前登录状态" Margin="12,0,0,0"
-                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                   Style="{StaticResource PhoneTextSubtleStyle}" Visibility="Collapsed" />
                         <TextBlock x:Name="AccountText" Text="未登录" TextWrapping="Wrap"
                                    Margin="12,6,0,0"
-                                   Style="{StaticResource PhoneTextNormalStyle}"/>
+                                   Style="{StaticResource PhoneTextNormalStyle}" Visibility="Collapsed" />
 
                         <TextBlock Text="手动粘贴 Cookie（哔哩经典安卓客户端可导出）"
-                                   Margin="12,28,0,6" TextWrapping="Wrap"
+                                   Margin="0,0,0,6" TextWrapping="Wrap"
                                    Style="{StaticResource PhoneTextSubtleStyle}"/>
-                        <TextBox x:Name="CookieBox" Height="72"/>
+                        <TextBox x:Name="CookieBox" Height="400" TextWrapping="Wrap" />
                         <Button x:Name="CookieButton" Content="使用 Cookie 登录"
                                 Click="CookieButton_Click" Background="#D86DA5" Foreground="White" BorderThickness="0"/>
 
                         <Button x:Name="LogoutButton" Content="退出登录"
-                                Margin="0,12,0,0" Click="LogoutButton_Click" Background="#D86DA5" Foreground="White" BorderThickness="0"/>
+                                Margin="0,12,0,0" Click="LogoutButton_Click" Background="#D86DA5" Foreground="White" BorderThickness="0" Visibility="Collapsed" />
                     </StackPanel>
                 </ScrollViewer>
             </controls:PivotItem>
