@@ -300,6 +300,7 @@
     <Content Include="Res\Icon\danmuon.png" />
     <Content Include="Res\Icon\danmuoff.png" />
     <Content Include="Res\Icon\comment_icon.png" />
+    <Resource Include="Res\qrcode_loading.png" />
     <Content Include="Res\Icon\share.png" />
     <!-- 缓存 / 收藏：详情页底部按钮和「我的」磁贴都要用 -->
     <Content Include="Res\Icon\download_icon.png" />
