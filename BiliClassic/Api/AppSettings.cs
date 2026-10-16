@@ -10,6 +10,11 @@ namespace BiliClassic.Api
         private const string PlayQualityKey = "play_quality";
         private const string DashPlaybackKey = "dash_playback";
         private const string WhiteThemeKey = "white_theme";
+        //这仨是我加的——WinVistaSP
+        private const string XiNaoEnabledKey = "xinao_enabled";//洗脑循环
+        private const string ZiDongEnabledKey = "zidong_enabled";//自动播放
+        private const string YinLiangValueKey = "yinliang_value";//音量
+
 
         public static int PlayQuality
         {
@@ -60,6 +65,40 @@ namespace BiliClassic.Api
         {
             get { return LocalStore.Get(DanmakuEnabledKey) != "0"; }
             set { LocalStore.Set(DanmakuEnabledKey, value ? "1" : "0"); }
+        }
+
+        public static bool XiNaoEnabled
+        {
+            get { return LocalStore.Get(XiNaoEnabledKey) != "0"; }
+            set { LocalStore.Set(XiNaoEnabledKey, value ? "1" : "0"); }
+        }
+
+        public static bool ZiDongEnabled
+        {
+            get { return LocalStore.Get(ZiDongEnabledKey) != "0"; }
+            set { LocalStore.Set(ZiDongEnabledKey, value ? "1" : "0"); }
+        }
+
+        public static double YinLiangValue
+        {
+            get
+            {
+                double readtemp_;
+                if (double.TryParse(LocalStore.Get(YinLiangValueKey), out readtemp_))
+                {
+                    if (readtemp_ < 0 && readtemp_ > 1)
+                    {
+                        readtemp_ = 0.5;
+                    }
+                }
+                else
+                {
+                    readtemp_ = 0.5;
+                }
+                return readtemp_;
+
+            }
+            set { LocalStore.Set(YinLiangValueKey, value.ToString()); }
         }
     }
 }
