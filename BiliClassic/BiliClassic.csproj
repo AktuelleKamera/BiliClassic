@@ -297,10 +297,14 @@
     <!-- 播放控制与发评论 -->
     <Content Include="Res\Icon\play.png" />
     <Content Include="Res\Icon\pause.png" />
-    <Content Include="Res\Icon\danmuon.png" />
-    <Content Include="Res\Icon\danmuoff.png" />
+    <Resource Include="Res\Icon\danmuon.png" />
+    <Resource Include="Res\Icon\danmuoff.png" />
     <Content Include="Res\Icon\comment_icon.png" />
     <Resource Include="Res\qrcode_loading.png" />
+    <Resource Include="Res\Icon\sound0.png" />
+    <Resource Include="Res\Icon\sound1.png" />
+    <Resource Include="Res\Icon\sound2.png" />
+    <Resource Include="Res\Icon\sound3.png" />
     <Content Include="Res\Icon\share.png" />
     <!-- 缓存 / 收藏：详情页底部按钮和「我的」磁贴都要用 -->
     <Content Include="Res\Icon\download_icon.png" />
