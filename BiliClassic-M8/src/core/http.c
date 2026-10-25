@@ -1435,3 +1435,276 @@ int http_get_url_to_file(const char *url, const char *extra_headers,
     return HTTP_ERR_REDIR;
 }
 
+/* =====================================================================
+ * 本地 IPv4 HTTP 中转（给播放器拉流用）
+ * ---------------------------------------------------------------------
+ * M8 的 WinInet（PlayerCore 拉流）会先试 IPv6；Cloudflare 的 AAAA 在设备上
+ * 没有路由 -> 卡 30 秒 -> INET_E_DOWNLOAD_FAILURE(0x800C0008)。
+ * 这里在 127.0.0.1 起一个小中转：播放器只连本机（不可能走 IPv6），中转用
+ * ws2 按 IPv4 连目标，并补上正确的 Host 头（Cloudflare 靠它路由）。
+ * ===================================================================== */
+static SOCKET        s_relay_listen = INVALID_SOCKET;
+static HANDLE        s_relay_thread = NULL;
+static volatile int  s_relay_stop = 0;
+static unsigned long s_relay_ip = 0;          /* network order */
+static int           s_relay_port = 80;
+static char          s_relay_host[160];
+
+static int relay_read_headers(SOCKET c, char *buf, int cap)
+{
+    int n = 0;
+
+    while (n < cap - 1) {
+        int r = recv(c, buf + n, cap - 1 - n, 0);
+
+        if (r <= 0) {
+            return -1;
+        }
+        n += r;
+        buf[n] = '\0';
+        if (strstr(buf, "\r\n\r\n") != NULL) {
+            return n;
+        }
+    }
+    return n;
+}
+
+static void relay_one(SOCKET c)
+{
+    char req[8192];
+    char out[8192];
+    char hostline[512];
+    char method[16];
+    char path[2048];
+    SOCKET u;
+    struct sockaddr_in sa;
+    const char *sp1;
+    const char *sp2;
+    int ml;
+    int pl;
+    int n;
+
+    n = relay_read_headers(c, req, (int)sizeof(req));
+    if (n <= 0) {
+        return;
+    }
+    sp1 = strchr(req, ' ');
+    if (sp1 == NULL) {
+        return;
+    }
+    ml = (int)(sp1 - req);
+    if (ml <= 0 || ml >= (int)sizeof(method)) {
+        return;
+    }
+    memcpy(method, req, (size_t)ml);
+    method[ml] = '\0';
+    sp2 = strchr(sp1 + 1, ' ');
+    if (sp2 == NULL) {
+        return;
+    }
+    pl = (int)(sp2 - (sp1 + 1));
+    if (pl <= 0 || pl >= (int)sizeof(path)) {
+        return;
+    }
+    memcpy(path, sp1 + 1, (size_t)pl);
+    path[pl] = '\0';
+
+    u = socket(AF_INET, SOCK_STREAM, 0);
+    if (u == INVALID_SOCKET) {
+        return;
+    }
+    memset(&sa, 0, sizeof(sa));
+    sa.sin_family = AF_INET;
+    sa.sin_addr.s_addr = s_relay_ip;
+    sa.sin_port = htons((unsigned short)s_relay_port);
+    if (connect(u, (struct sockaddr *)&sa, sizeof(sa)) != 0) {
+        closesocket(u);
+        return;
+    }
+
+    _snprintf(hostline, sizeof(hostline) - 1,
+              "%s %s HTTP/1.1\r\nHost: %s\r\n",
+              method, path, s_relay_host);
+    hostline[sizeof(hostline) - 1] = '\0';
+    str_copy(out, (int)sizeof(out), hostline);
+    /* 透传 Range（播放器会分段取） */
+    {
+        const char *r = strstr(req, "\r\nRange:");
+
+        if (r == NULL) {
+            r = strstr(req, "\r\nrange:");
+        }
+        if (r != NULL) {
+            const char *e = strstr(r + 2, "\r\n");
+
+            if (e != NULL && (e - (r + 2)) < 160) {
+                strncat(out, r + 2, (size_t)(e - (r + 2)));
+                strncat(out, "\r\n", 2);
+            }
+        }
+    }
+    strncat(out, "Connection: close\r\n\r\n",
+            (size_t)sizeof(out) - strlen(out) - 1);
+    send(u, out, (int)strlen(out), 0);
+
+    /* 双向转发 */
+    for (;;) {
+        fd_set rf;
+        struct timeval tv;
+        int r;
+
+        if (s_relay_stop) {
+            break;
+        }
+        FD_ZERO(&rf);
+        FD_SET(c, &rf);
+        FD_SET(u, &rf);
+        tv.tv_sec = 1;
+        tv.tv_usec = 0;
+        r = select(0, &rf, NULL, NULL, &tv);
+        if (r <= 0) {
+            continue;
+        }
+        if (FD_ISSET(u, &rf)) {
+            char buf[4096];
+            int k = recv(u, buf, (int)sizeof(buf), 0);
+
+            if (k <= 0) {
+                break;
+            }
+            if (send(c, buf, k, 0) != k) {
+                break;
+            }
+        }
+        if (FD_ISSET(c, &rf)) {
+            char buf[1024];
+            int k = recv(c, buf, (int)sizeof(buf), 0);
+
+            if (k <= 0) {
+                break;
+            }
+            if (send(u, buf, k, 0) != k) {
+                break;
+            }
+        }
+    }
+    closesocket(u);
+}
+
+static DWORD WINAPI relay_conn_thread(void *arg)
+{
+    SOCKET c = *(SOCKET *)arg;
+
+    free(arg);
+    relay_one(c);
+    closesocket(c);
+    return 0;
+}
+
+static DWORD WINAPI relay_accept_thread(void *arg)
+{
+    (void)arg;
+    while (!s_relay_stop) {
+        fd_set rf;
+        struct timeval tv;
+        SOCKET c;
+        struct sockaddr_in ca;
+        int clen = sizeof(ca);
+        SOCKET *p;
+        int r;
+
+        if (s_relay_listen == INVALID_SOCKET) {
+            break;
+        }
+        FD_ZERO(&rf);
+        FD_SET(s_relay_listen, &rf);
+        tv.tv_sec = 0;
+        tv.tv_usec = 300000;
+        r = select(0, &rf, NULL, NULL, &tv);
+        if (r <= 0) {
+            continue;
+        }
+        c = accept(s_relay_listen, (struct sockaddr *)&ca, &clen);
+        if (c == INVALID_SOCKET) {
+            continue;
+        }
+        p = (SOCKET *)malloc(sizeof(SOCKET));
+        if (p == NULL) {
+            closesocket(c);
+            continue;
+        }
+        *p = c;
+        if (CreateThread(NULL, 128 * 1024, relay_conn_thread, p, 0, NULL) == NULL) {
+            closesocket(c);
+            free(p);
+        }
+    }
+    return 0;
+}
+
+int http_relay_start(const char *host, int port, char *out_prefix, int cap)
+{
+    struct sockaddr_in la;
+    struct hostent *he;
+    int llen;
+
+    http_relay_stop();
+    if (host == NULL || host[0] == '\0' || out_prefix == NULL || cap <= 0) {
+        return -1;
+    }
+    out_prefix[0] = '\0';
+    he = gethostbyname(host);   /* 只取 IPv4 */
+    if (he == NULL || he->h_addr_list == NULL || he->h_addr_list[0] == NULL) {
+        return -1;
+    }
+    memcpy(&s_relay_ip, he->h_addr_list[0], 4);
+    s_relay_port = (port > 0) ? port : 80;
+    str_copy(s_relay_host, (int)sizeof(s_relay_host), host);
+
+    s_relay_listen = socket(AF_INET, SOCK_STREAM, 0);
+    if (s_relay_listen == INVALID_SOCKET) {
+        return -1;
+    }
+    memset(&la, 0, sizeof(la));
+    la.sin_family = AF_INET;
+    la.sin_addr.s_addr = inet_addr("127.0.0.1");
+    la.sin_port = 0;
+    if (bind(s_relay_listen, (struct sockaddr *)&la, sizeof(la)) != 0 ||
+        listen(s_relay_listen, 8) != 0) {
+        closesocket(s_relay_listen);
+        s_relay_listen = INVALID_SOCKET;
+        return -1;
+    }
+    llen = sizeof(la);
+    if (getsockname(s_relay_listen, (struct sockaddr *)&la, &llen) != 0) {
+        closesocket(s_relay_listen);
+        s_relay_listen = INVALID_SOCKET;
+        return -1;
+    }
+    s_relay_stop = 0;
+    s_relay_thread = CreateThread(NULL, 64 * 1024, relay_accept_thread, NULL, 0, NULL);
+    if (s_relay_thread == NULL) {
+        closesocket(s_relay_listen);
+        s_relay_listen = INVALID_SOCKET;
+        return -1;
+    }
+    _snprintf(out_prefix, cap - 1, "http://127.0.0.1:%d",
+              (int)ntohs(la.sin_port));
+    out_prefix[cap - 1] = '\0';
+    return 0;
+}
+
+void http_relay_stop(void)
+{
+    s_relay_stop = 1;
+    if (s_relay_listen != INVALID_SOCKET) {
+        closesocket(s_relay_listen);
+        s_relay_listen = INVALID_SOCKET;
+    }
+    if (s_relay_thread != NULL) {
+        WaitForSingleObject(s_relay_thread, 3000);
+        CloseHandle(s_relay_thread);
+        s_relay_thread = NULL;
+    }
+}
+

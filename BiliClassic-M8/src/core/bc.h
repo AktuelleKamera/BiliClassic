@@ -20,11 +20,11 @@
 
 #define BC_APP_NAME     "哔哩经典"
 #define BC_APP_TITLE    "哔哩经典 for Mymobile"
-/* 界面上显示的短版本（三段）。exe 的 VERSIONINFO 资源用四段 0.2.0.0 */
-#define BC_APP_VER      "0.2.0"
-#define BC_APP_VER_FULL 0,2,0,0
-/* 更新接口 version.json 里的 version_code（0.2.0.0 -> 200） */
-#define BC_APP_VER_CODE 200
+/* 界面上显示的短版本（三段）。exe 的 VERSIONINFO 资源用四段 0.2.1.0 */
+#define BC_APP_VER      "0.2.1"
+#define BC_APP_VER_FULL 0,2,1,0
+/* 更新接口 version.json 里的 version_code（0.2.1.0 -> 201） */
+#define BC_APP_VER_CODE 201
 #define BC_MAX_ITEMS    300
 #define BC_TITLE_LEN    220
 #define BC_AUTHOR_LEN   80
@@ -34,12 +34,13 @@
 #define BC_PATH_LEN     512
 #define BC_LOG_LEN      1024
 
-/* 转码服务器（腾讯云 SCF）：只用于 /health /register /transcode，
- * 不再做 API 代理（API 全走 wolfSSL 直连）。仍保留是因为转码在这里。 */
-#define BC_RELAY_DEFAULT_HOST "1303002254-dja6s2xtn7.ap-hongkong.tencentscf.com"
+/* 转码服务器（原生新接口）：/health /register /transcode 都在 convert.biliclassic.cn，
+ * 转码产物统一走 cdn.biliclassic.cn（CNAME 到存储桶）。 */
+#define BC_RELAY_DEFAULT_HOST "convert.biliclassic.cn"
 #define BC_RELAY_DEFAULT_PORT 80
-#define BC_REG_BUCKET   "video-storage-1303002254"
-#define BC_REG_REGION   "ap-hongkong"
+#define BC_CDN_HOST      "cdn.biliclassic.cn"
+#define BC_REG_BUCKET   "video-storage-biliclassic"
+#define BC_REG_REGION   "us-east-005"
 #define BC_AUTH_SECRET  "da2e0efd51c3d601f629e9e878aa5c3218419d5aeb459c6355c4f1674b3bb2de"
 
 /* 转码格式：wmv / h264 */

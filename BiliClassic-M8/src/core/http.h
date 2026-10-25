@@ -79,6 +79,12 @@ int http_get_url_to_file(const char *url, const char *extra_headers,
                          void (*progress)(long done, long total),
                          long *out_total, char *err, int errcap);
 
+/* 本地 IPv4 HTTP 中转：绕过 CE WinInet 拉流走 IPv6 卡死的问题。
+ * 在 127.0.0.1 起监听，把请求按 IPv4 转发到 host:port（并补 Host 头）。
+ * 成功返回 0，out_prefix 得到 "http://127.0.0.1:<port>"。 */
+int  http_relay_start(const char *host, int port, char *out_prefix, int cap);
+void http_relay_stop(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -105,6 +105,18 @@ void PlayService::PlayFile(const char *path)
     wchar_t wpath[BC_PATH_LEN + 4];
     BOOL ok;
 
+    if (path == NULL || path[0] == '\0') {
+        return;
+    }
+    /* 在线地址只走内置播放器：交给系统/浏览器会弹"文件下载"框，很烦 */
+    if (strncmp(path, "http://", 7) == 0 ||
+        strncmp(path, "https://", 8) == 0) {
+        g_app.GetLogger().Log("内置播放器打不开该在线地址，不再交给系统/浏览器：%.120s",
+                              path);
+        g_app.GetLogger().Status("在线播放失败");
+        return;
+    }
+
     wpath[0] = L'\0';
     MultiByteToWideChar(CP_ACP, 0, path, -1, wpath,
                         (int)(sizeof(wpath) / sizeof(wpath[0])));
@@ -179,7 +191,7 @@ void PlayService::PlayFile(const char *path)
         };
         static const wchar_t *kKey[] = {
             L"play", L"media", L"video", L"movie", L"player",
-            L"wmp", L"music", L"sound", L"mci", L"mz", NULL
+            L"wmp", L"mz", NULL
         };
         int d;
 
@@ -493,6 +505,26 @@ void PlayService::PlayJob(void *arg)
             return;
         }
         g_app.SetBusy(0);
+        /* 诊断：用我们自己的 HTTP 栈（IPv4）取前 1KB。
+         * 成功但播放器仍 0x800C0008 => WinInet 走了 IPv6。 */
+        {
+            char *pb = NULL;
+            int pl = 0;
+            int st = 0;
+            char pe[128];
+
+            pe[0] = '\0';
+            if (http_get_url(dl_url, "Range: bytes=0-1023\r\n",
+                             &pb, &pl, &st, pe, (int)sizeof(pe)) == HTTP_OK &&
+                (st == 200 || st == 206)) {
+                g_app.GetLogger().Log("CDN 探测 ok：HTTP %d，%d 字节", st, pl);
+            } else {
+                g_app.GetLogger().Log("CDN 探测失败：status=%d %s", st, pe);
+            }
+            if (pb != NULL) {
+                free(pb);
+            }
+        }
         if (g_app.Sink() != NULL) {
             g_app.Sink()->OnPlayMedia(dl_url);
         } else {
@@ -526,7 +558,9 @@ void PlayService::PlayJob(void *arg)
         s_stream_url[0] = '\0';
     }
     s_stream_started = 0;
-    s_stream_on = 1;
+    /* 只有拿到明文 http 地址才能边下边播；否则播放器打开正在写的本地文件会
+     * 报 0x80070020（共享冲突），等下载完再放 */
+    s_stream_on = (s_stream_url[0] != '\0') ? 1 : 0;
     g_app.SetVideoOpened(0);
     http_set_conns(1);
     err[0] = '\0';

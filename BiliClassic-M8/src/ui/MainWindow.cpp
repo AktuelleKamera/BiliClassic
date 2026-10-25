@@ -933,7 +933,7 @@ BOOL MainWindow::OnInitDialog()
     SetBgColor(RGB(236, 236, 236));
 
     m_caption.SetPos(0, 0, GetWidth(), MZM_HEIGHT_CAPTION);
-    m_caption.SetText(L"哔哩经典 for Mymobile  v" L"0.2.0");
+    m_caption.SetText(L"哔哩经典 for Mymobile  v" L"0.2.1");
     AddUiWin(&m_caption);
 
     /* 关键词输入（原生单行 EDIT：GetWindowTextW 读取 100% 可靠；

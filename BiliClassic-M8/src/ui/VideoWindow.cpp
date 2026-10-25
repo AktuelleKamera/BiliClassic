@@ -4,6 +4,7 @@
 #include "VideoWindow.h"
 #include "../app/AppContext.h"
 #include "../core/bili.h"
+#include "../core/http.h"
 #include "../core/login.h"
 #include "LoadingWnd.h"
 #include "ScreenRot.h"
@@ -192,6 +193,9 @@ bool VideoWindow::PlayModal(HWND hwndParent, const char *pathGbk)
     PostMessage(MZ_WM_OPEN_PLAYER, 0, 0);
     DoModal();
 
+    /* 关掉本地拉流中转 */
+    http_relay_stop();
+
     /* 结束观看历史上报线程（终值在它退出前补报） */
     if (m_histThread != NULL) {
         m_histStop = 1;
@@ -254,8 +258,47 @@ void VideoWindow::OpenPlayer()
     int x;
     int y;
     RECT rc;
+    std::string playPath = m_path;
 
-    if (!m_player.Prepare(m_hWnd, m_path.c_str())) {
+    /* M8 的 WinInet 拉 http 流会先试 IPv6，Cloudflare 的 AAAA 在设备上没路由
+     * -> 卡 30 秒 (0x800C0008)。改成走本机 127.0.0.1 中转：中转按 IPv4 连
+     * 目标并补 Host 头。 */
+    if (strncmp(m_path.c_str(), "http://", 7) == 0) {
+        const char *h = m_path.c_str() + 7;
+        const char *slash = strchr(h, '/');
+
+        if (slash != NULL) {
+            char host[160];
+            char prefix[64];
+            int hl = (int)(slash - h);
+            int port = 80;
+
+            if (hl > 0 && hl < (int)sizeof(host)) {
+                char *colon;
+
+                memcpy(host, h, (size_t)hl);
+                host[hl] = '\0';
+                colon = strchr(host, ':');
+                if (colon != NULL) {
+                    *colon = '\0';
+                    port = atoi(colon + 1);
+                    if (port <= 0) {
+                        port = 80;
+                    }
+                }
+                if (http_relay_start(host, port, prefix, (int)sizeof(prefix)) == 0) {
+                    playPath = prefix;
+                    playPath += slash;
+                    g_app.GetLogger().Log("VideoWindow: 本地中转 %s -> %s",
+                                          m_path.c_str(), playPath.c_str());
+                } else {
+                    g_app.GetLogger().Log("VideoWindow: 本地中转启动失败，直接用原地址");
+                }
+            }
+        }
+    }
+
+    if (!m_player.Prepare(m_hWnd, playPath.c_str())) {
         g_app.GetLogger().Log("VideoWindow: 播放器打开失败 hr=0x%08lX",
                               (unsigned long)m_player.LastError());
         LoadingWnd::Hide(false);
