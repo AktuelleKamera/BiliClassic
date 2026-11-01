@@ -721,8 +721,10 @@
     <string name="offline_dash_need_ijk">离线DASH播放需要IJK内置播放器，当前仅播放画面</string>
     <string name="settings_mp4_high_quality_warning">您确定要在MP4格式下使用1080P以上的画质吗？B站的接口将不会提供的说~</string>
     <string name="settings_no_more_hint">不再提示</string>
-    <string name="recommend_columns_title">&#25512;&#33616;&#39029;&#21333;&#25490;&#25968;&#37327;</string>
-    <string name="recommend_columns_desc">&#35843;&#25972;&#25512;&#33616;&#39029;&#27599;&#34892;&#26174;&#31034;&#30340;&#35270;&#39057;&#25968;&#37327;</string>
-    <string name="recommend_columns_auto">&#33258;&#21160;</string>
-    <string name="recommend_columns_value">%1$d &#21015;</string>
+    <string name="recommend_columns_title">推荐页单排数量</string>
+    <string name="recommend_columns_desc">调整推荐页每行显示的视频数量</string>
+    <string name="recommend_columns_auto">自动</string>
+    <string name="recommend_columns_value">%1$d 列</string>
+    <string name="player_resume_tip_fmt">已定位到 %1$s</string>
+    <string name="player_resume_from_start">从头播放</string>
 </resources>
