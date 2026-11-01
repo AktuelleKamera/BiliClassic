@@ -113,7 +113,10 @@ public class FavoriteApi {
                 // attr 属性位（bit0：0 公开 / 1 私有；bit1：0 默认收藏夹 / 1 其他收藏夹）
                 int attr = folder.optInt("attr", 0);
                 favoriteFolder.isPrivate = (attr & 1) != 0;
-                favoriteFolder.cover = "";
+                favoriteFolder.cover = folder.optString("cover", "");
+                if (favoriteFolder.cover.length() == 0) {
+                    favoriteFolder.cover = folder.optString("cover_url", "");
+                }
 
                 folderList.add(favoriteFolder);
             }
@@ -130,7 +133,7 @@ public class FavoriteApi {
         String oldUrl = "https://space.bilibili.com/ajax/fav/getBoxList?mid=" + mid;
         String oldResponse = NetWorkUtil.get(oldUrl);
 
-        if (oldResponse != null && oldResponse.length() > 0) {
+        if (oldResponse != null && oldResponse.trim().startsWith("{")) {
             try {
                 JSONObject oldResult = new JSONObject(oldResponse);
                 if (oldResult.optBoolean("status", false)) {
@@ -174,13 +177,13 @@ public class FavoriteApi {
                                 JSONObject folder = newList.getJSONObject(i);
                                 long fid = folder.optLong("fid", 0);
                                 // attr 属性位（bit0：0 公开 / 1 私有；bit1：0 默认收藏夹 / 1 其他收藏夹）
-                                int attr = folder.optInt("attr", 0);
-                                boolean isPrivate = (attr & 1) != 0;
-
-                                if (isPrivate && !coverMap.containsKey(Long.valueOf(fid))) {
-                                    String cover = getFirstVideoCover(mid, fid);
-                                    if (cover != null && cover.length() > 0) {
-                                        coverMap.put(Long.valueOf(fid), cover);
+                                if (!coverMap.containsKey(Long.valueOf(fid))) {
+                                    String folderCover = folder.optString("cover", "");
+                                    if (folderCover == null || folderCover.length() == 0) {
+                                        folderCover = getFirstVideoCover(mid, fid);
+                                    }
+                                    if (folderCover != null && folderCover.length() > 0) {
+                                        coverMap.put(Long.valueOf(fid), folderCover);
                                     }
                                 }
                             }
@@ -198,38 +201,44 @@ public class FavoriteApi {
     // 获取收藏夹内第一个视频作为封面
     private static String getFirstVideoCover(long mid, long fid) {
         try {
+            String url = "https://api.bilibili.com/x/v3/fav/resource/list"
+                    + "?media_id=" + fid + "&pn=1&ps=1&keyword=&order=mtime"
+                    + "&type=0&tid=0&platform=web";
+            String response = NetWorkUtil.get(url);
+            if (response != null && response.length() > 0) {
+                JSONObject result = new JSONObject(response);
+                if (result.optInt("code", -1) == 0) {
+                    JSONObject data = result.optJSONObject("data");
+                    JSONArray medias = data != null ? data.optJSONArray("medias") : null;
+                    if (medias != null && medias.length() > 0) {
+                        String cover = medias.optJSONObject(0).optString("cover", "");
+                        if (cover.length() > 0) return cover;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "get folder cover failed: " + e.getMessage());
+        }
+        try {
             String url = "https://api.bilibili.com/x/space/fav/arc?vmid=" + mid
                     + "&ps=1&fid=" + fid + "&tid=0&keyword=&pn=1&order=fav_time";
             String response = NetWorkUtil.get(url);
-
-            if (response == null || response.length() == 0) {
-                return "";
-            }
-
-            JSONObject result = new JSONObject(response);
-            int code = result.optInt("code", -1);
-            if (code != 0) {
-                return "";
-            }
-
-            JSONObject data = result.optJSONObject("data");
-            if (data == null) {
-                return "";
-            }
-
-            JSONArray archives = data.optJSONArray("archives");
-            if (archives != null && archives.length() > 0) {
-                JSONObject firstVideo = archives.getJSONObject(0);
-                return firstVideo.optString("pic", "");
+            if (response != null && response.length() > 0) {
+                JSONObject result = new JSONObject(response);
+                if (result.optInt("code", -1) == 0) {
+                    JSONObject data = result.optJSONObject("data");
+                    JSONArray archives = data != null ? data.optJSONArray("archives") : null;
+                    if (archives != null && archives.length() > 0) {
+                        return archives.optJSONObject(0).optString("pic", "");
+                    }
+                }
             }
         } catch (Exception e) {
-            Log.w(TAG, "获取第一个视频封面失败: " + e.getMessage());
+            Log.w(TAG, "get folder cover fallback failed: " + e.getMessage());
         }
         return "";
     }
 
-    // 获取收藏夹内的视频列表
-    // 返回 0=成功, 1=无更多数据, -1=失败
     public static int getFolderVideos(long mid, long fid, int page, ArrayList videoList) throws IOException, JSONException {
         // 如果是第一页，清空列表，防止重复
         if (page == 1) {

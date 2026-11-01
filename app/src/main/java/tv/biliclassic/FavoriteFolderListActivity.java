@@ -156,7 +156,7 @@ public class FavoriteFolderListActivity extends BaseActivity {
 
     @Override
     protected int onAppendOverflowItems(int[] ids, String[] titles, int n) {
-        if (n < ids.length) { ids[n] = R.id.menu_fav_create_folder; titles[n] = getString(R.string.fav_create_folder); n++; }
+            if (n < ids.length) { ids[n] = R.id.menu_fav_create_folder; titles[n] = getString(R.string.fav_create_folder); n++; }
         if (n < ids.length) { ids[n] = R.id.menu_fav_video; titles[n] = getString(R.string.fav_tab_videos); n++; }
         if (n < ids.length) { ids[n] = R.id.menu_fav_later; titles[n] = getString(R.string.fav_tab_watch_later); n++; }
         if (n < ids.length) { ids[n] = R.id.menu_fav_bangumi; titles[n] = getString(R.string.fav_tab_bangumi); n++; }
