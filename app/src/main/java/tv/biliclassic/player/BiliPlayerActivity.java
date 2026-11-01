@@ -141,11 +141,12 @@ public class BiliPlayerActivity extends Activity implements
     private static final int COMPLETION_ACTION_EXIT = 4;
 
     private static final int ASPECT_RATIO_ADJUST_CONTENT = 0;
-    private static final int ASPECT_RATIO_ADJUST_SCREEN = 1;
-    private static final int ASPECT_RATIO_4_3_INSIDE = 2;
-    private static final int ASPECT_RATIO_16_9_INSIDE = 3;
-    private static final int ASPECT_RATIO_9_16_INSIDE = 4;
-    private static final int ASPECT_RATIO_COUNT = 5;
+    private static final int ASPECT_RATIO_FILL = 1;
+    private static final int ASPECT_RATIO_ADJUST_SCREEN = 2;
+    private static final int ASPECT_RATIO_4_3_INSIDE = 3;
+    private static final int ASPECT_RATIO_16_9_INSIDE = 4;
+    private static final int ASPECT_RATIO_9_16_INSIDE = 5;
+    private static final int ASPECT_RATIO_COUNT = 6;
 
     private static final int RENDERER_SURFACEVIEW = 0;
     private static final int RENDERER_TEXTUREVIEW = 1;
@@ -920,6 +921,9 @@ public class BiliPlayerActivity extends Activity implements
             case ASPECT_RATIO_9_16_INSIDE:
                 targetRatio = 9f / 16f;
                 break;
+            case ASPECT_RATIO_FILL:
+                targetRatio = videoRatio;
+                break;
             default:
                 targetRatio = videoRatio;
                 break;
@@ -929,7 +933,9 @@ public class BiliPlayerActivity extends Activity implements
         float baseScaleY = (float) containerHeight / videoHeight;
 
         float adjustedScale;
-        if (targetRatio > containerRatio) {
+        if (currentAspectRatio == ASPECT_RATIO_FILL) {
+            adjustedScale = Math.max(baseScaleX, baseScaleY);
+        } else if (targetRatio > containerRatio) {
             adjustedScale = (float) containerWidth / videoWidth;
         } else {
             adjustedScale = (float) containerHeight / videoHeight;
@@ -995,6 +1001,9 @@ public class BiliPlayerActivity extends Activity implements
                         case ASPECT_RATIO_9_16_INSIDE:
                             targetRatio = 9f / 16f;
                             break;
+                        case ASPECT_RATIO_FILL:
+                            targetRatio = videoRatio;
+                            break;
                         default:
                             targetRatio = videoRatio;
                             break;
@@ -1029,6 +1038,10 @@ public class BiliPlayerActivity extends Activity implements
 
                     // 缩放/平移走 View 变换层（不改变布局尺寸、不触发 surface 重建）
                     float userScale = fScale;
+                    if (currentAspectRatio == ASPECT_RATIO_FILL) {
+                        userScale *= Math.max((float) containerWidth / baseWidth,
+                                (float) containerHeight / baseHeight);
+                    }
                     if (userScale < 1.0f) userScale = 1.0f;
 
                     float maxTranslateX = Math.max(0, (baseWidth * userScale - containerWidth) / 2.0f);
@@ -1095,6 +1108,9 @@ public class BiliPlayerActivity extends Activity implements
                 case ASPECT_RATIO_9_16_INSIDE:
                     svTargetRatio = 9f / 16f;
                     break;
+                case ASPECT_RATIO_FILL:
+                    svTargetRatio = svVideoRatio;
+                    break;
                 default:
                     svTargetRatio = svVideoRatio;
                     break;
@@ -1113,6 +1129,10 @@ public class BiliPlayerActivity extends Activity implements
 
             // 按用户缩放倍率放大目标尺寸
             float svUserScale = scale;
+            if (currentAspectRatio == ASPECT_RATIO_FILL) {
+                svUserScale *= Math.max((float) containerWidth / svTargetWidth,
+                        (float) containerHeight / svTargetHeight);
+            }
             if (svUserScale < 1.0f) svUserScale = 1.0f;
             int svFinalW = (int) (svTargetWidth * svUserScale);
             int svFinalH = (int) (svTargetHeight * svUserScale);
@@ -2926,6 +2946,17 @@ public class BiliPlayerActivity extends Activity implements
         } else {
             mLastKnownPosition = 0;
         }
+        if (resumeTipPosition > 0 && mGestureController != null) {
+            mGestureController.showResumeTip(
+                    getString(R.string.player_resume_tip_fmt, formatTime(resumeTipPosition)),
+                    getString(R.string.player_resume_from_start),
+                    new Runnable() {
+                        public void run() {
+                            cancelAutoResume();
+                        }
+                    });
+        }
+
         aspectRatioFixed = false;
 
         if (mGestureController != null) {
@@ -3342,13 +3373,24 @@ public class BiliPlayerActivity extends Activity implements
             case ASPECT_RATIO_9_16_INSIDE:
                 targetRatio = 9f / 16f;
                 break;
+            case ASPECT_RATIO_FILL:
+                targetRatio = videoRatio;
+                break;
             default:
                 targetRatio = videoRatio;
                 break;
         }
 
         int targetWidth, targetHeight;
-        if (targetRatio > containerRatio) {
+        if (mode == ASPECT_RATIO_FILL) {
+            if (videoRatio > containerRatio) {
+                targetHeight = containerHeight;
+                targetWidth = (int) (containerHeight * videoRatio);
+            } else {
+                targetWidth = containerWidth;
+                targetHeight = (int) (containerWidth / videoRatio);
+            }
+        } else if (targetRatio > containerRatio) {
             targetWidth = containerWidth;
             targetHeight = (int) (containerWidth / targetRatio);
         } else {
