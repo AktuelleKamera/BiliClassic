@@ -82,6 +82,8 @@ public class VideoDetailActivity extends BaseActivity {
     private long mBangumiMediaId = 0;
     private boolean fromBangumi = false;
     private boolean mOfflineMode;
+    private int mStartPart = 0;
+    private boolean mAutoPlay = false;
     private BangumiPagerAdapter mBangumiAdapter;
 
     // 下载对话框数据
@@ -151,6 +153,8 @@ public class VideoDetailActivity extends BaseActivity {
 
         mOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
         fromBangumi = getIntent().getBooleanExtra("from_bangumi", false);
+        mStartPart = getIntent().getIntExtra("p", 0);
+        mAutoPlay = getIntent().getBooleanExtra("autoplay", false);
 
         PagerTabStrip tabStrip = (PagerTabStrip) findViewById(R.id.pager_tab_strip);
         if (tabStrip != null) {
@@ -2566,6 +2570,8 @@ public class VideoDetailActivity extends BaseActivity {
                 if (bvid != null) {
                     args.putString("bvid", bvid);
                 }
+                args.putInt("start_part", mStartPart);
+                args.putBoolean("autoplay", mAutoPlay);
                 fragment.setArguments(args);
                 return fragment;
             } else {
@@ -2616,6 +2622,8 @@ public class VideoDetailActivity extends BaseActivity {
                 if (mOfflineMode) {
                     fragmentArgs.putBoolean("offline_mode", true);
                 }
+                fragmentArgs.putInt("start_part", mStartPart);
+                fragmentArgs.putBoolean("autoplay", mAutoPlay);
                 fragment.setArguments(fragmentArgs);
                 return fragment;
             } else if (position == 1) {

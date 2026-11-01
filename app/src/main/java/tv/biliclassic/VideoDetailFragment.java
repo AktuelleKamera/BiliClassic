@@ -88,6 +88,9 @@ public class VideoDetailFragment extends Fragment {
     private ArrayList<String> mValidTags = new ArrayList<String>();
 
     private boolean mOfflineMode;
+    private int mStartPart = 0;
+    private boolean mAutoPlay = false;
+    private boolean mAutoPlayConsumed = false;
 
     // 防连点
     private boolean isPlayButtonClicked = false;
@@ -137,6 +140,8 @@ public class VideoDetailFragment extends Fragment {
             aid = args.getLong("aid", 0);
             bvid = args.getString("bvid");
             mOfflineMode = args.getBoolean("offline_mode", false);
+            mStartPart = args.getInt("start_part", 0);
+            mAutoPlay = args.getBoolean("autoplay", false);
         }
 
         partAdapter = new VideoPartAdapter(getActivity(), partList);
@@ -823,6 +828,14 @@ public class VideoDetailFragment extends Fragment {
             page.title = videoInfo.title;
             page.page = 1;
             videoPages.add(page);
+        }
+
+        if (mAutoPlay && !mAutoPlayConsumed && !mOfflineMode && partList.size() > 0) {
+            mAutoPlayConsumed = true;
+            int target = mStartPart > 0 ? mStartPart - 1 : 0;
+            if (target < 0) target = 0;
+            if (target >= partList.size()) target = 0;
+            playPart(target);
         }
 
         loadCoverImage(videoInfo.cover);

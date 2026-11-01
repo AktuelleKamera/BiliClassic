@@ -467,23 +467,60 @@ public class AnnouncementUtil {
         if (videoUrl == null) return null;
         String v = videoUrl.trim();
         if (v.length() < 2) return null;
-        String lower = v.toLowerCase(Locale.US);
-        if (lower.startsWith("bv")) {
-            Intent intent = new Intent(context, VideoDetailActivity.class);
-            intent.putExtra("bvid", v);
-            return intent;
-        }
-        if (lower.startsWith("av")) {
+
+        java.util.regex.Matcher av = java.util.regex.Pattern
+                .compile("av(\\d+)", java.util.regex.Pattern.CASE_INSENSITIVE)
+                .matcher(v);
+        if (av.find()) {
             try {
-                long aid = Long.parseLong(v.substring(2).trim());
                 Intent intent = new Intent(context, VideoDetailActivity.class);
-                intent.putExtra("aid", aid);
+                intent.putExtra("aid", Long.parseLong(av.group(1)));
+                applyVideoPlayExtras(intent, v);
                 return intent;
             } catch (NumberFormatException ignored) {
-                return null;
             }
         }
+
+        java.util.regex.Matcher bv = java.util.regex.Pattern
+                .compile("bv([a-zA-Z0-9]{10})", java.util.regex.Pattern.CASE_INSENSITIVE)
+                .matcher(v);
+        if (bv.find()) {
+            String bvid = bv.group(1);
+            if (!bvid.startsWith("BV") && !bvid.startsWith("bv")) {
+                bvid = "BV" + bvid;
+            }
+            Intent intent = new Intent(context, VideoDetailActivity.class);
+            intent.putExtra("bvid", bvid);
+            applyVideoPlayExtras(intent, v);
+            return intent;
+        }
         return null;
+    }
+
+    private static void applyVideoPlayExtras(Intent intent, String value) {
+        int page = 0;
+        java.util.regex.Matcher p = java.util.regex.Pattern
+                .compile("[?&]p=(\\d+)", java.util.regex.Pattern.CASE_INSENSITIVE)
+                .matcher(value);
+        if (p.find()) {
+            try {
+                page = Integer.parseInt(p.group(1));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        if (page <= 0) {
+            java.util.regex.Matcher slashP = java.util.regex.Pattern
+                    .compile("/p(\\d+)(?:[/?#]|$)", java.util.regex.Pattern.CASE_INSENSITIVE)
+                    .matcher(value);
+            if (slashP.find()) {
+                try {
+                    page = Integer.parseInt(slashP.group(1));
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+        intent.putExtra("p", page);
+        intent.putExtra("autoplay", true);
     }
 
     private static int dp(Context context, int value) {
