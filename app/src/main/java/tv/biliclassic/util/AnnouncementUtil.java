@@ -78,6 +78,10 @@ public class AnnouncementUtil {
         public String audioDisText = "";
         public String linkUrl = "";
         public String linkText = "";
+        public String activityClass = "";
+        public String activityText = "";
+        public JSONObject activityExtras;
+        public int activityFlags;
 
         public boolean isExpired(Context context) {
             if (version == null || version.length() == 0) {
@@ -304,6 +308,23 @@ public class AnnouncementUtil {
                     });
         }
 
+        if (a.activityClass != null && a.activityClass.length() > 0) {
+            String text = a.activityText != null && a.activityText.length() > 0
+                    ? a.activityText
+                    : (a.linkText != null && a.linkText.length() > 0 ? a.linkText : "打开");
+            addAnnouncementButton(root, dialogContext, text,
+                    new View.OnClickListener() {
+                        public void onClick(View v) {
+                            dismissDialog(dialogHolder);
+                            markAnnouncementShown(context, a.id);
+                            Intent intent = buildActivityIntent(context, a);
+                            if (intent != null) {
+                                startActivitySafely(context, intent);
+                            }
+                        }
+                    });
+        }
+
         if (a.linkUrl != null && a.linkUrl.length() > 0) {
             addAnnouncementButton(root, dialogContext,
                     (a.linkText != null && a.linkText.length() > 0) ? a.linkText : "查看链接",
@@ -380,9 +401,67 @@ public class AnnouncementUtil {
         }
     }
 
+    private static boolean isActivityUri(String uri) {
+        if (uri == null) return false;
+        String value = uri.trim();
+        return value.startsWith("activity://") || value.startsWith("activity:");
+    }
+
+    private static String activityNameFromUri(String uri) {
+        if (uri == null) return "";
+        String value = uri.trim();
+        if (value.startsWith("activity://")) {
+            return value.substring("activity://".length());
+        }
+        if (value.startsWith("activity:")) {
+            return value.substring("activity:".length());
+        }
+        return value;
+    }
+
+    private static Intent buildActivityIntent(Context context, Announcement a) {
+        String name = a.activityClass == null ? "" : a.activityClass.trim();
+        if (name.length() == 0) return null;
+        String packageName = context.getPackageName();
+        if (name.startsWith(".")) {
+            name = packageName + name;
+        } else if (name.indexOf('.') < 0) {
+            name = packageName + "." + name;
+        }
+        try {
+            Class<?> clazz = Class.forName(name);
+            if (!android.app.Activity.class.isAssignableFrom(clazz)) return null;
+            if (!clazz.getName().startsWith(packageName)) return null;
+            Intent intent = new Intent(context, clazz);
+            if (a.activityFlags != 0) intent.addFlags(a.activityFlags);
+            if (a.activityExtras != null) {
+                java.util.Iterator<String> keys = a.activityExtras.keys();
+                while (keys.hasNext()) {
+                    String key = keys.next();
+                    Object value = a.activityExtras.opt(key);
+                    if (value == null || JSONObject.NULL.equals(value)) continue;
+                    if (value instanceof Boolean) {
+                        intent.putExtra(key, ((Boolean) value).booleanValue());
+                    } else if (value instanceof Integer) {
+                        intent.putExtra(key, ((Integer) value).intValue());
+                    } else if (value instanceof Long) {
+                        intent.putExtra(key, ((Long) value).longValue());
+                    } else if (value instanceof Double) {
+                        intent.putExtra(key, ((Double) value).doubleValue());
+                    } else {
+                        intent.putExtra(key, String.valueOf(value));
+                    }
+                }
+            }
+            return intent;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     /**
-     * video_url 若填写 BV 号（BVxxxx）或 AV 号（av123）则返回跳转视频详情的 Intent，
-     * 否则返回 null（按视频直链处理）。
+     * video_url 支持写 BV 号（BVxxxx）或 AV 号（av123），返回跳转视频详情
+     * 的 Intent；否则返回 null，按视频直链处理。
      */
     private static Intent buildVideoDetailIntent(Context context, String videoUrl) {
         if (videoUrl == null) return null;
@@ -521,6 +600,27 @@ public class AnnouncementUtil {
         announcement.audioDisText = obj.optString("audio_dis_text", "");
         announcement.linkUrl = obj.optString("link_url", "");
         announcement.linkText = obj.optString("link_text", "");
+        announcement.activityClass = obj.optString("activity",
+                obj.optString("activity_class",
+                        obj.optString("activity_name", obj.optString("target_activity", ""))));
+        announcement.activityText = obj.optString("activity_text", "");
+        announcement.activityExtras = obj.optJSONObject("activity_extras");
+        if (announcement.activityExtras == null) {
+            announcement.activityExtras = obj.optJSONObject("extras");
+        }
+        announcement.activityFlags = obj.optInt("activity_flags", 0);
+
+        if (isActivityUri(announcement.linkUrl) && announcement.activityClass.length() == 0) {
+            announcement.activityClass = activityNameFromUri(announcement.linkUrl);
+            announcement.linkUrl = "";
+        }
+        if (isActivityUri(announcement.url) && announcement.activityClass.length() == 0) {
+            announcement.activityClass = activityNameFromUri(announcement.url);
+            announcement.url = "";
+        }
+        if (isActivityUri(announcement.activityClass)) {
+            announcement.activityClass = activityNameFromUri(announcement.activityClass);
+        }
 
         if (announcement.id == null || announcement.id.length() == 0) {
             announcement.id = "announcement_" + System.currentTimeMillis();

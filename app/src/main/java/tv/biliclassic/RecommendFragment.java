@@ -101,7 +101,7 @@ public class RecommendFragment extends Fragment {
 
         hideFooter();
 
-        int numColumns = isTablet() ? (isLandscape() ? 4 : 3) : 2;
+        int numColumns = RecommendGridAdapter.resolveColumns(getActivity());
         gridView.setPadding(DeviceUtil.dpToPx(4), DeviceUtil.dpToPx(4), DeviceUtil.dpToPx(4), DeviceUtil.dpToPx(4));
         gridView.setClipToPadding(false);
         gridView.setVerticalFadingEdgeEnabled(false);
@@ -170,6 +170,16 @@ public class RecommendFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        if (adapter != null && getActivity() != null) {
+            int columns = RecommendGridAdapter.resolveColumns(getActivity());
+            if (columns != adapter.getNumColumns()) {
+                adapter.setNumColumns(columns);
+                selectedPosition = 0;
+                if (gridView != null) {
+                    gridView.setSelection(0);
+                }
+            }
+        }
         // 切回该界面时，让方向键选中态与焦点恢复（仅遥控器用户，触屏用户不显示光标）
         if (mKeyNavActive && videoList != null && videoList.size() > 0 && gridView != null && adapter != null) {
             if (mAtTabStrip) {
@@ -195,7 +205,7 @@ public class RecommendFragment extends Fragment {
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         if (getActivity() == null) return;
-        int numColumns = isTablet() ? (isLandscape() ? 4 : 3) : 2;
+        int numColumns = RecommendGridAdapter.resolveColumns(getActivity());
         adapter.setNumColumns(numColumns);
         int remainder = videoList.size() % numColumns;
         if (remainder > 0) {
@@ -288,10 +298,6 @@ public class RecommendFragment extends Fragment {
         if (isLoading) return;
         isLoading = true;
 
-        android.util.Log.d("RecommendDiag", "loadRecommend 开始, sdk=" + tv.biliclassic.util.SdkHelper.getSdkInt()
-                + ", networkAvailable=" + NetWorkUtil.isNetworkAvailable(getActivity())
-                + ", cookieLen=" + (SharedPreferencesUtil.getString(SharedPreferencesUtil.cookies, "") == null ? -1 : SharedPreferencesUtil.getString(SharedPreferencesUtil.cookies, "").length()));
-
         if (!NetWorkUtil.isNetworkAvailable(getActivity())) {
             android.util.Log.e("RecommendDiag", "loadRecommend: isNetworkAvailable()==false, 显示无网络");
             isLoading = false;
@@ -312,10 +318,8 @@ public class RecommendFragment extends Fragment {
             public void run() {
                 try {
                     final List<VideoCard> items = new ArrayList<VideoCard>();
-                    android.util.Log.d("RecommendDiag", "开始调用 RecommendApi.getRecommend");
                     long t0 = System.currentTimeMillis();
                     RecommendApi.getRecommend(items, currentPage, 0);
-                    android.util.Log.d("RecommendDiag", "RecommendApi.getRecommend 返回, 耗时=" + (System.currentTimeMillis() - t0) + "ms, items=" + (items == null ? -1 : items.size()));
 
                     if (getActivity() == null) {
                         isLoading = false;
@@ -333,9 +337,6 @@ public class RecommendFragment extends Fragment {
 
                             if (items == null || items.size() == 0) {
                                 if (loadRetryCount < MAX_LOAD_RETRY) {
-                                    loadRetryCount++;
-                                    android.util.Log.e("RecommendDiag", "推荐结果为空, 第 "
-                                            + loadRetryCount + "/" + MAX_LOAD_RETRY + " 次重试");
                                     retryLoad();
                                     return;
                                 }
@@ -397,10 +398,6 @@ public class RecommendFragment extends Fragment {
                         }
                     });
                 } catch (final Exception e) {
-                    android.util.Log.e("RecommendDiag", "推荐加载异常, 类型=" + e.getClass().getName()
-                            + ", msg=" + e.getMessage()
-                            + ", sdk=" + tv.biliclassic.util.SdkHelper.getSdkInt()
-                            + ", networkAvailable=" + NetWorkUtil.isNetworkAvailable(getActivity()), e);
                     if (getActivity() == null) {
                         isLoading = false;
                         return;
@@ -414,10 +411,6 @@ public class RecommendFragment extends Fragment {
                             }
                             isLoading = false;
                             if (loadRetryCount < MAX_LOAD_RETRY) {
-                                loadRetryCount++;
-                                android.util.Log.e("RecommendDiag", "推荐加载异常, 第 "
-                                        + loadRetryCount + "/" + MAX_LOAD_RETRY + " 次重试: "
-                                        + (e.getMessage() == null ? e.getClass().getName() : e.getMessage()));
                                 retryLoad();
                                 return;
                             }
@@ -685,6 +678,14 @@ public class RecommendFragment extends Fragment {
      */
     public boolean isAtTabStrip() {
         return mAtTabStrip;
+    }
+
+    public void clearKeyHighlight() {
+        mKeyNavActive = false;
+        mAtTabStrip = true;
+        if (adapter != null) {
+            adapter.setSelectedPosition(-1);
+        }
     }
 
     /**

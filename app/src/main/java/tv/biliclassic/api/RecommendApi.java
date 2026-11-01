@@ -58,21 +58,16 @@ public class RecommendApi {
         String cookies = SharedPreferencesUtil.getString("cookies", "");
 
         String signedUrl = ConfInfoApi.signWBI(url);
-        android.util.Log.d("RecommendDiag", "推荐请求URL: " + signedUrl + ", cookieLen=" + (cookies == null ? -1 : cookies.length()));
         long t0 = System.currentTimeMillis();
         JSONObject result = NetWorkUtil.getJson(signedUrl);
-        android.util.Log.d("RecommendDiag", "推荐响应耗时=" + (System.currentTimeMillis() - t0) + "ms, code="
-                + result.optInt("code", -1) + ", message=" + result.optString("message", ""));
 
         JSONObject data = result.getJSONObject("data");
         JSONArray item = data.getJSONArray("item");
-        android.util.Log.d("RecommendDiag", "推荐解析: data.item.length=" + item.length());
 
         for (int i = 0; i < item.length(); i++) {
             JSONObject card = item.getJSONObject(i);
             String bvid = card.getString("bvid");
             if (bvid == null || bvid.length() == 0) {
-                Log.d("BiliClient", "RecommendApi getRecommend: isAd");
                 continue;
             }
             String cover = card.getString("pic");
@@ -84,7 +79,6 @@ public class RecommendApi {
             // 直接使用 API 返回的 aid（不要用 BV 转换）
             long aid = card.optLong("aid", 0);
 
-            android.util.Log.e("RecommendApi", "视频: " + title + ", aid=" + aid + ", bvid=" + bvid);
 
             videoCardList.add(new VideoCard(title, upName, view, cover, aid, bvid, danmaku));
         }

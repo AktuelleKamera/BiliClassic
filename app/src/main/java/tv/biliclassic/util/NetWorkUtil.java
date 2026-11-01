@@ -202,7 +202,6 @@ public class NetWorkUtil {
         if (cookie == null || cookie.length() <= MAX_COOKIE_HEADER_LEN) {
             return cookie;
         }
-        Log.w("NetDiag", "Cookie 过长(" + cookie.length() + ") 已裁剪");
         StringBuffer sb = new StringBuffer(MAX_COOKIE_HEADER_LEN + 16);
         String[] pairs = cookie.split("; ");
         for (int i = 0; i < pairs.length; i++) {
@@ -481,7 +480,6 @@ public class NetWorkUtil {
                 if (result == null || result.length() == 0) {
                     // 空响应：非最终次则重试（可能是代理/连接池残留问题）
                     if (attempt < MAX_RETRY_COUNT) {
-                        Log.w("NetDiag", "GET 空响应 " + hostOf(url) + " 将重试 (attempt=" + attempt + ")");
                         continue;
                     }
                 }
@@ -489,7 +487,6 @@ public class NetWorkUtil {
             } catch (IOException e) {
                 lastException = e;
                 if (attempt < MAX_RETRY_COUNT && isRetryable(e)) {
-                    Log.w("NetDiag", "GET 重试 " + hostOf(url) + " " + e.getClass().getSimpleName() + " (attempt=" + attempt + ")");
                     continue;
                 }
                 throw e;
@@ -503,14 +500,11 @@ public class NetWorkUtil {
         BufferedReader reader = null;
         java.io.CharArrayWriter caw = null;
         try {
-            Log.d("NetDiag", "GET 开始 " + hostOf(url) + " (retry=" + retryCount + ")");
             long t0 = System.currentTimeMillis();
             conn = createConnection(url, "GET", headers);
             conn.connect();
-            Log.d("NetDiag", "GET connect 完成 " + hostOf(url) + " 耗时=" + (System.currentTimeMillis() - t0) + "ms");
 
             int responseCode = conn.getResponseCode();
-            Log.d("NetDiag", "GET 响应码=" + responseCode + " " + hostOf(url) + " 总耗时=" + (System.currentTimeMillis() - t0) + "ms");
 
             if (isRedirectCode(responseCode)) {
                 return handleRedirect(conn, url, headers, "GET", null, null, responseCode, retryCount + 1);
@@ -558,8 +552,6 @@ public class NetWorkUtil {
                 conn.setRequestProperty("Connection", "close");
                 conn.connect();
                 int responseCode = conn.getResponseCode();
-                Log.d("NetDiag", "下载响应码=" + responseCode + " " + hostOf(url)
-                        + " 耗时=" + (System.currentTimeMillis() - t0) + "ms");
 
                 if (isRedirectCode(responseCode)) {
                     if (redirectCount >= MAX_REDIRECT_COUNT) {
@@ -590,7 +582,6 @@ public class NetWorkUtil {
                 if (attempt >= MAX_RETRY_COUNT || !isRetryable(e)) {
                     return false;
                 }
-                Log.w("NetDiag", "下载重试 " + hostOf(url) + " " + e.getClass().getSimpleName() + " (attempt=" + attempt + ")");
             } finally {
                 try {
                     if (in != null) in.close();
@@ -636,7 +627,6 @@ public class NetWorkUtil {
                 String result = doPostOnce(url, data, headers, contentType, retryCount);
                 if (result == null || result.length() == 0) {
                     if (attempt < MAX_RETRY_COUNT) {
-                        Log.w("NetDiag", "POST 空响应 " + hostOf(url) + " 将重试 (attempt=" + attempt + ")");
                         continue;
                     }
                 }
@@ -644,7 +634,6 @@ public class NetWorkUtil {
             } catch (IOException e) {
                 lastException = e;
                 if (attempt < MAX_RETRY_COUNT && isRetryable(e)) {
-                    Log.w("NetDiag", "POST 重试 " + hostOf(url) + " " + e.getClass().getSimpleName() + " (attempt=" + attempt + ")");
                     continue;
                 }
                 throw e;
@@ -658,7 +647,6 @@ public class NetWorkUtil {
         BufferedReader reader = null;
         java.io.CharArrayWriter caw = null;
         try {
-            Log.d("NetDiag", "POST 开始 " + hostOf(url) + " (retry=" + retryCount + ")");
             long t0 = System.currentTimeMillis();
             conn = createConnection(url, "POST", headers);
             conn.setRequestProperty("Content-Type", contentType + "; charset=utf-8");
@@ -667,10 +655,8 @@ public class NetWorkUtil {
             os.write(data.getBytes("UTF-8"));
             os.flush();
             os.close();
-            Log.d("NetDiag", "POST 写入完成 " + hostOf(url) + " 耗时=" + (System.currentTimeMillis() - t0) + "ms");
 
             int responseCode = conn.getResponseCode();
-            Log.d("NetDiag", "POST 响应码=" + responseCode + " " + hostOf(url) + " 总耗时=" + (System.currentTimeMillis() - t0) + "ms");
 
             if (isRedirectCode(responseCode)) {
                 return handleRedirect(conn, url, headers, "POST", data, contentType, responseCode, retryCount + 1);
@@ -1037,14 +1023,12 @@ public class NetWorkUtil {
                 return doGetJsonStreamOnce(url, headers);
             } catch (JSONException e) {
                 if (attempt < MAX_RETRY_COUNT) {
-                    Log.w("NetDiag", "getJsonStream 空/异常响应 " + hostOf(url) + " 将重试 (attempt=" + attempt + ")");
                     continue;
                 }
                 throw e;
             } catch (IOException e) {
                 lastException = e;
                 if (attempt < MAX_RETRY_COUNT && isRetryable(e)) {
-                    Log.w("NetDiag", "getJsonStream 重试 " + hostOf(url) + " " + e.getClass().getSimpleName() + " (attempt=" + attempt + ")");
                     continue;
                 }
                 throw e;
@@ -1061,11 +1045,9 @@ public class NetWorkUtil {
         HttpURLConnection conn = null;
         InputStream is = null;
         try {
-            Log.d("NetDiag", "getJsonStream 开始 " + hostOf(url));
             conn = createConnection(url, "GET", headers);
             conn.connect();
             int responseCode = conn.getResponseCode();
-            Log.d("NetDiag", "getJsonStream 响应码=" + responseCode + " " + hostOf(url));
             if (isRedirectCode(responseCode)) {
                 // 原实现忽略 3xx，读到空 body 必然 JSONException；这里跟随重定向
                 if (redirectCount >= MAX_REDIRECT_COUNT) {
