@@ -139,39 +139,36 @@
             android:layout_marginTop="12dp" />
 
         <TextView
-            android:id="@+id/tv_open_source_0"
             style="@style/AboutBodyText"
-            android:text="@string/bili_about_os_ijkplayer" />
+            android:text="https://github.com/wolfSSL/wolfssl" />
 
         <TextView
-            android:id="@+id/tv_open_source_1"
             style="@style/AboutBodyText"
-            android:text="@string/bili_about_os_biliclient" />
+            android:text="https://github.com/bilibili/ijkplayer" />
 
         <TextView
-            android:id="@+id/tv_open_source_2"
             style="@style/AboutBodyText"
-            android:text="@string/bili_about_os_wristbilibili" />
+            android:text="https://gitee.com/RobinNotBad/BiliClient" />
 
         <TextView
-            android:id="@+id/tv_open_source_piliplus"
             style="@style/AboutBodyText"
-            android:text="@string/bili_about_os_piliplus" />
+            android:text="https://github.com/bggRGjQaUbCoE/PiliPlus" />
 
         <TextView
-            android:id="@+id/tv_open_source_3"
             style="@style/AboutBodyText"
-            android:text="@string/bili_about_os_bilitv_repair" />
+            android:text="https://github.com/luern0313/WristBilibili" />
 
         <TextView
-            android:id="@+id/tv_open_source_4"
             style="@style/AboutBodyText"
-            android:text="@string/bili_about_os_danmaku" />
+            android:text="https://github.com/bilibili/DanmakuFlameMaster" />
 
         <TextView
-            android:id="@+id/tv_open_source_5"
             style="@style/AboutBodyText"
-            android:text="@string/bili_about_os_api_collect" />
+            android:text="https://github.com/qidian55/bilibilitv1.6.6-repair" />
+
+        <TextView
+            style="@style/AboutBodyText"
+            android:text="https://github.com/bilibili-plugins/bilibili-api-collect" />
 
         <!-- 特别鸣谢 -->
         <TextView
@@ -188,23 +185,15 @@
                     android:text="@string/bili_about_xiaosuyang" />
                 <TextView
                     style="@style/AboutTableText"
-                    android:text="@string/bili_about_cctyl" />
-            </TableRow>
-            <TableRow>
-                <TextView
-                    style="@style/AboutTableText"
                     android:text="@string/credit_zhumeng3" />
-                <TextView
-                    style="@style/AboutTableText"
-                    android:text="@string/bili_about_wcxawa" />
             </TableRow>
             <TableRow>
-                <TextView
-                    style="@style/AboutTableText"
-                    android:text="@string/bili_about_moreixima" />
                 <TextView
                     style="@style/AboutTableText"
                     android:text="@string/bili_about_liumu" />
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_cctyl" />
             </TableRow>
             <TableRow>
                 <TextView
@@ -217,27 +206,26 @@
             <TableRow>
                 <TextView
                     style="@style/AboutTableText"
-                    android:text="@string/bili_about_nullnanerror" />
+                    android:text="@string/bili_about_wcxawa" />
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_not_shikieimaru" />
+            </TableRow>
+            <TableRow>
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/credit_shizhenchan" />
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_moreixima" />
+            </TableRow>
+            <TableRow>
                 <TextView
                     style="@style/AboutTableText"
                     android:text="@string/bili_about_mongou666" />
-            </TableRow>
-            <TableRow>
                 <TextView
                     style="@style/AboutTableText"
                     android:text="@string/bili_about_biribili_user" />
-                <TextView
-                    style="@style/AboutTableText"
-                    android:text="@string/credit_shuiqu" />
-            </TableRow>
-            <TableRow>
-                <TextView
-                    style="@style/AboutTableText"
-                    android:text="@string/bili_about_mc_windows" />
-                <TextView
-                    android:id="@+id/textView4"
-                    style="@style/AboutTableText"
-                    android:text="@string/bili_about_steven_rong" />
             </TableRow>
             <TableRow>
                 <TextView
@@ -245,7 +233,23 @@
                     android:text="@string/bili_about_budong" />
                 <TextView
                     style="@style/AboutTableText"
-                    android:text="@string/credit_shizhenchan" />
+                    android:text="@string/credit_shuiqu" />
+            </TableRow>
+            <TableRow>
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_steven_rong" />
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_nullnanerror" />
+            </TableRow>
+            <TableRow>
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_marible_hearn" />
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_mc_windows" />
             </TableRow>
         </TableLayout>
 
@@ -263,15 +267,7 @@
             <TableRow>
                 <TextView
                     style="@style/AboutTableText"
-                    android:text="@string/bili_about_wcxawa" />
-                <TextView
-                    style="@style/AboutTableText"
                     android:text="@string/bili_about_gunmu" />
-            </TableRow>
-            <TableRow>
-                <TextView
-                    style="@style/AboutTableText"
-                    android:text="@string/bili_about_steven" />
                 <TextView
                     style="@style/AboutTableText"
                     android:text="@string/credit_klaoyu" />
@@ -279,12 +275,27 @@
             <TableRow>
                 <TextView
                     style="@style/AboutTableText"
+                    android:text="@string/bili_about_steven" />
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_wcxawa" />
+            </TableRow>
+            <TableRow>
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_not_shikieimaru" />
+                <TextView
+                    style="@style/AboutTableText"
                     android:text="@string/bili_about_greybro" />
+            </TableRow>
+            <TableRow>
                 <TextView
                     style="@style/AboutTableText"
                     android:text="@string/bili_about_skyler1n" />
+                <TextView
+                    style="@style/AboutTableText"
+                    android:text="@string/bili_about_marible_hearn" />
             </TableRow>
-            <TableRow></TableRow>
         </TableLayout>
 
         <!-- 监督区域 -->

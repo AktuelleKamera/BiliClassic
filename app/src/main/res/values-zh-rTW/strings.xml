@@ -91,13 +91,6 @@
     <string name="bili_about_9bishi">⑨bishi</string>
     <string name="bili_about_skyler1n">Skyler1n</string>
     <string name="bili_about_bbcallen">bbcallen</string>
-    <string name="bili_about_os_ijkplayer">https://github.com/bilibili/ijkplayer</string>
-    <string name="bili_about_os_biliclient">https://gitee.com/RobinNotBad/BiliClient</string>
-    <string name="bili_about_os_piliplus">https://github.com/bggRGjQaUbCoE/PiliPlus</string>
-    <string name="bili_about_os_wristbilibili">https://github.com/luern0313/WristBilibili</string>
-    <string name="bili_about_os_bilitv_repair">https://github.com/qidian55/bilibilitv1.6.6-repair</string>
-    <string name="bili_about_os_danmaku">https://github.com/bilibili/DanmakuFlameMaster</string>
-    <string name="bili_about_os_api_collect">https://github.com/bilibili-plugins/bilibili-api-collect</string>
     <string name="bili_about_cctyl">cctyl</string>
     <string name="bili_about_xiaosuyang">小蘇陽</string>
     <string name="bili_about_wcxawa">wcxawa</string>
@@ -110,6 +103,8 @@
     <string name="bili_about_mc_windows">MC-Windows1145</string>
     <string name="bili_about_steven_rong">Steven-Rong</string>
     <string name="bili_about_budong">不懂普通话的科技控</string>
+    <string name="bili_about_marible_hearn">Marible_Hearn</string>
+    <string name="bili_about_not_shikieimaru">不是射命丸文</string>
     <string name="biliplayeractivity_toast_65e0_1">無影片源</string>
     <string name="following_list_empty">還沒有關注任何人</string>
     <string name="following_list_not_login">請先登入</string>
