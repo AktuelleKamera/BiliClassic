@@ -133,6 +133,7 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
                                     } else {
                                         tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(rowView, R.drawable.item_click_effect_white);
                                     }
+                                    vibrateLongPress();
                                     final long itemMid = h.mid;
                                     final String text = h.copyText;
                                     if (itemMid == mMid && mMid != 0) {
@@ -462,6 +463,14 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
             imageView.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
         } catch (Exception e) {}
     }
+    private void vibrateLongPress() {
+        try {
+            Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null) vibrator.vibrate(40);
+        } catch (Throwable ignored) {
+        }
+    }
+
     private void copyToClipboard(String text) {
         if (text != null && text.length() > 0) {
             ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);

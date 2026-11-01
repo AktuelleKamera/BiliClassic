@@ -403,6 +403,11 @@ public class ReplyListActivity extends BaseActivity {
                                 @Override
                                 public void run() {
                                     mIsLongPress = true;
+                                    try {
+                                        Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+                                        if (vibrator != null) vibrator.vibrate(40);
+                                    } catch (Throwable ignored) {
+                                    }
                                     // 长按已触发：立即恢复背景。手指抬起的事件可能被
                                     // 对话框窗口吃掉（UP/CANCEL 丢失），根评论是静态 View
                                     // 永不重绑，不恢复会高亮永久卡死

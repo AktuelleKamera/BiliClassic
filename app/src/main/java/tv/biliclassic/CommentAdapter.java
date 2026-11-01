@@ -150,6 +150,7 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
                                 @Override
                                 public void run() {
                                     h.longPressFired = true;
+                                    vibrateLongPress();
                                     final long itemMid = h.mid;
                                     final String text = h.copyText;
                                     if (itemMid == mMid && mMid != 0) {
@@ -623,6 +624,14 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
                         }
                     }
                 });
+    }
+
+    private void vibrateLongPress() {
+        try {
+            Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null) vibrator.vibrate(40);
+        } catch (Throwable ignored) {
+        }
     }
 
     private void copyToClipboard(String text) {
