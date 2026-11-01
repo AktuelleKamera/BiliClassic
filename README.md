@@ -18,7 +18,7 @@
 
 ## 当前版本
 
-### 0.5.0 (Tiger E) 更新
+### 0.5.1 (VK30.02DB) 更新
 
 一次巨大的更新……顺便消灭了legacy版233
 
@@ -41,7 +41,7 @@
 - 分P下载
 - 夜间模式支持
 - 番剧播放
-- 不明的WebView
+- 迫真WebView
 - Metro/Classic主题切换
 - 更换你喜欢的不明背景图片
 - 自选清朝格式转码播放
@@ -59,12 +59,13 @@
 
 ## 技术路线
 
-- 最低支持API 1 (Android 1.0)，目标API 29
+- 使用Android Studio 2.3.2
 - Java层代码使用Java 7实现，NDK r10e编译
+- 最低支持API 1 (Android 1.0)，目标API 29
 - 二维码生成使用SwetakeQRCode魔改
-- 参考bilibili-api-collect实现数据获取
+- 参考bilibili-api-collect和PiliPlus实现数据获取
 - 独家魔改support-v4库，支持安卓1.0
-- WBI 签名算法已迫真适配
+- WBI签名算法已迫真适配
 
 ## 弹幕引擎
 
@@ -131,6 +132,12 @@ BT-5弹幕引擎为本项目原创，为armeabi设备设计。通过预渲染Bit
 - 处理器: ARM-v7A
 - 物理内存: 256 MB
 
+#### Windows Phone 版推荐配置
+- 系统: Windows Phone 7.0 及以上
+- 处理器: ARM-v7A
+- 物理内存: 512 MB
+（都用Windows Phone了，我想配置差不到哪去233）
+
 #### Mymobile 版推荐配置
 - 系统: Mymobile 0.9.3.7 及以上
 - 处理器: ARM11 667MHz（三星S3C6410）
@@ -143,7 +150,7 @@ BT-5弹幕引擎为本项目原创，为armeabi设备设计。通过预渲染Bit
 - 处理器: ARMv5TE
 - 物理内存: 64 MB
 
-以及其他搭载 ARMv5TE / ARMv6 / ARMv7-A / ARMv8-A / x86 / MIPS 处理器、运行 Android 1.5+ 系统的设备。
+以及其他搭载ARMv5TE / ARMv6 / ARMv7-A / ARMv8-A / x86 / x86_64 / MIPS / MIPS64 / RISCV64处理器、运行Android 1.0+系统的设备。
 
 #### Android 版推荐配置
 - 系统: Android 2.2 (Froyo) 及以上
@@ -156,7 +163,7 @@ BT-5弹幕引擎为本项目原创，为armeabi设备设计。通过预渲染Bit
 - 高通 MSM7227A — 1GHz Cortex-A5单核
 - 高通骁龙 S1 (QSD8250/QSD8650) — 1GHz Scorpion单核
 - 三星蜂鸟 (S5PC110) — 1GHz Cortex-A8单核
-- 德州仪器 OMAP 3430 — 600MHz Cortex-A8单核
+- 德州仪器 OMAP 3630 — 1GHz Cortex-A8单核
 - 英伟达 Tegra 2 (T20/T25) — 1GHz Cortex-A9双核
 - 联发科 MT6575 — 1GHz Cortex-A9单核
 - 英特尔 Atom Z2460 — 1.6GHz Saltwell单核 (x86)
@@ -165,13 +172,13 @@ BT-5弹幕引擎为本项目原创，为armeabi设备设计。通过预渲染Bit
 - 展讯 SC6820 — 1GHz Cortex-A5单核
 
 平板/盒子/其他平台
-- 瑞芯微 RK2816 — 600Mhz ARM11单核
+- 瑞芯微 RK2816 — 600Mhz ARM9单核
 - 晶晨 AML8726-M — 800MHz Cortex-A9双核
 - MIPS 1074Kc — 1GHz MIPS32 双核
 - 飞思卡尔 i.MX51 — 800MHz Cortex-A8单核
 - 全志 A10 — 1GHz Cortex-A8单核
 
-（瑞芯微RK28系列较为特殊，是自带了解码单元的armeabi，比其他ARM11手机流畅）
+（瑞芯微RK28系列较为特殊，是自带了解码单元的armeabi，比其他ARM9设备流畅）
 只要你的设备不是古老的纯armeabi架构，我想……呃，大约都能跑的比较流畅吧hhh
 如果你是自带硬解单元的ARM11甚至ARM9，那就真可能看了（
 
