@@ -73,6 +73,65 @@ public class PlayerApi {
      *  2. 同画质组内编码优先级 AVC > HEVC > 其他（本 app 目标设备靠软解，
      *     AVC 性能最好；AV1 老设备只能赤石英雄了）
      */
+    private static void appendDashQuality(PlayerData playerData, JSONObject data, int qn, String label) {
+        if (playerData == null || data == null || playerData.qnValueList == null || playerData.qnStrList == null) {
+            return;
+        }
+        for (int i = 0; i < playerData.qnValueList.length; i++) {
+            if (playerData.qnValueList[i] == qn) return;
+        }
+        JSONObject dash = data.optJSONObject("dash");
+        JSONArray video = dash == null ? null : dash.optJSONArray("video");
+        if (video == null) return;
+        boolean available = false;
+        for (int i = 0; i < video.length(); i++) {
+            JSONObject item = video.optJSONObject(i);
+            if (item != null && item.optInt("id", -1) == qn) {
+                available = true;
+                break;
+            }
+        }
+        if (!available) return;
+        int oldLen = playerData.qnValueList.length;
+        String[] names = new String[oldLen + 1];
+        int[] values = new int[oldLen + 1];
+        System.arraycopy(playerData.qnStrList, 0, names, 0, oldLen);
+        System.arraycopy(playerData.qnValueList, 0, values, 0, oldLen);
+        names[oldLen] = label;
+        values[oldLen] = qn;
+        playerData.qnStrList = names;
+        playerData.qnValueList = values;
+    }
+
+    private static String dashUrl(JSONObject item) {
+        if (item == null) return "";
+        String url = item.optString("baseUrl", "");
+        if (url.length() == 0) url = item.optString("base_url", "");
+        if (url.length() == 0) {
+            JSONArray backup = item.optJSONArray("backupUrl");
+            if (backup == null || backup.length() == 0) {
+                backup = item.optJSONArray("backup_url");
+            }
+            if (backup != null && backup.length() > 0) {
+                url = backup.optString(0, "");
+            }
+        }
+        return url;
+    }
+
+    private static String directUrl(JSONObject item) {
+        if (item == null) return "";
+        String url = item.optString("url", "");
+        if (url.length() == 0) url = item.optString("base_url", "");
+        if (url.length() == 0) url = item.optString("baseUrl", "");
+        if (url.length() == 0) {
+            JSONArray backup = item.optJSONArray("backup_url");
+            if (backup == null || backup.length() == 0) backup = item.optJSONArray("backupUrl");
+            if (backup != null && backup.length() > 0) url = backup.optString(0, "");
+        }
+        return url;
+    }
+
     private static JSONObject selectDashVideoEntry(JSONArray video, int targetQn) throws JSONException {
         int n = video.length();
         int bestId = -1;
@@ -213,7 +272,7 @@ public class PlayerApi {
             if (videoEntry != null) {
                 android.util.Log.e("PlayerApi", "dash video codecs=" + videoEntry.optString("codecs", "?")
                         + " id=" + videoEntry.optString("id", "?"));
-                videoUrl = videoEntry.optString("baseUrl", "");
+                videoUrl = dashUrl(videoEntry);
                 JSONArray backupUrl = videoEntry.optJSONArray("backupUrl");
                 if ((videoUrl == null || videoUrl.length() == 0) && backupUrl != null && backupUrl.length() > 0) {
                     videoUrl = backupUrl.getString(0);
@@ -225,7 +284,7 @@ public class PlayerApi {
             if (audio != null && audio.length() > 0) {
                 JSONObject firstAudio = audio.getJSONObject(0);
                 android.util.Log.e("PlayerApi", "dash audio codecs=" + firstAudio.optString("codecs", "?"));
-                audioUrl = firstAudio.optString("baseUrl", "");
+                audioUrl = dashUrl(firstAudio);
                 JSONArray backupUrl = firstAudio.optJSONArray("backupUrl");
                 if ((audioUrl == null || audioUrl.length() == 0) && backupUrl != null && backupUrl.length() > 0) {
                     audioUrl = backupUrl.getString(0);
@@ -240,7 +299,7 @@ public class PlayerApi {
             android.util.Log.e("PlayerApi", "durl 数组长度: " + durl.length());
             if (durl.length() > 0) {
                 JSONObject videoUrlObj = durl.getJSONObject(0);
-                videoUrl = videoUrlObj.getString("url");
+                videoUrl = directUrl(videoUrlObj);
                 android.util.Log.e("PlayerApi", "使用 durl 格式, codec=" + videoUrlObj.optString("codecs", "?"));
             }
         }
@@ -272,9 +331,11 @@ public class PlayerApi {
         }
 
         // 解析可用画质列表
-        JSONArray acceptDescription = data.getJSONArray("accept_description");
-        JSONArray acceptQuality = data.getJSONArray("accept_quality");
-        int len = acceptDescription.length();
+        JSONArray acceptDescription = data.optJSONArray("accept_description");
+        JSONArray acceptQuality = data.optJSONArray("accept_quality");
+        int len = acceptDescription == null ? 0
+                : (acceptQuality == null ? 0 : Math.min(acceptDescription.length(),
+                        acceptQuality.length()));
         android.util.Log.e("PlayerApi", "可用画质数量: " + len);
 
         String[] qnStrList = new String[len];
@@ -286,6 +347,9 @@ public class PlayerApi {
         }
         playerData.qnStrList = qnStrList;
         playerData.qnValueList = qnValueList;
+        appendDashQuality(playerData, data, 127, "8K 超高清");
+        appendDashQuality(playerData, data, 126, "杜比视界");
+        appendDashQuality(playerData, data, 125, "HDR 真彩");
 
         // 写入静态缓存
         if (!download && videoUrl.length() > 0) {
@@ -331,7 +395,7 @@ public class PlayerApi {
             JSONArray durl = data.getJSONArray("durl");
             if (durl.length() > 0) {
                 JSONObject videoUrlObj = durl.getJSONObject(0);
-                videoUrl = videoUrlObj.getString("url");
+                videoUrl = directUrl(videoUrlObj);
             }
         }
         if (videoUrl == null || videoUrl.length() == 0) {
@@ -390,7 +454,7 @@ public class PlayerApi {
             if (videoEntry != null) {
                 android.util.Log.e("PlayerApi", "dash video codecs=" + videoEntry.optString("codecs", "?")
                         + " id=" + videoEntry.optString("id", "?"));
-                videoUrl = videoEntry.optString("baseUrl", "");
+                videoUrl = dashUrl(videoEntry);
                 JSONArray backupUrl = videoEntry.optJSONArray("backupUrl");
                 if ((videoUrl == null || videoUrl.length() == 0) && backupUrl != null && backupUrl.length() > 0) {
                     videoUrl = backupUrl.getString(0);
@@ -401,7 +465,7 @@ public class PlayerApi {
             if (audio != null && audio.length() > 0) {
                 JSONObject firstAudio = audio.getJSONObject(0);
                 android.util.Log.e("PlayerApi", "dash audio codecs=" + firstAudio.optString("codecs", "?"));
-                audioUrl = firstAudio.optString("baseUrl", "");
+                audioUrl = dashUrl(firstAudio);
                 JSONArray backupUrl = firstAudio.optJSONArray("backupUrl");
                 if ((audioUrl == null || audioUrl.length() == 0) && backupUrl != null && backupUrl.length() > 0) {
                     audioUrl = backupUrl.getString(0);
@@ -415,7 +479,7 @@ public class PlayerApi {
             JSONArray durl = data.getJSONArray("durl");
             if (durl.length() > 0) {
                 JSONObject videoUrlObj = durl.getJSONObject(0);
-                videoUrl = videoUrlObj.getString("url");
+                videoUrl = directUrl(videoUrlObj);
                 android.util.Log.e("PlayerApi", "番剧使用 durl 格式, codec=" + videoUrlObj.optString("codecs", "?"));
             }
         }
@@ -438,9 +502,11 @@ public class PlayerApi {
 
         playerData.danmakuUrl = "https://comment.bilibili.com/" + playerData.cid + ".xml";
 
-        JSONArray acceptDescription = data.getJSONArray("accept_description");
-        JSONArray acceptQuality = data.getJSONArray("accept_quality");
-        int len = acceptDescription.length();
+        JSONArray acceptDescription = data.optJSONArray("accept_description");
+        JSONArray acceptQuality = data.optJSONArray("accept_quality");
+        int len = acceptDescription == null ? 0
+                : (acceptQuality == null ? 0 : Math.min(acceptDescription.length(),
+                        acceptQuality.length()));
         String[] qnStrList = new String[len];
         int[] qnValueList = new int[len];
         for (int i = 0; i < len; i++) {
@@ -449,6 +515,9 @@ public class PlayerApi {
         }
         playerData.qnStrList = qnStrList;
         playerData.qnValueList = qnValueList;
+        appendDashQuality(playerData, data, 127, "8K 超高清");
+        appendDashQuality(playerData, data, 126, "杜比视界");
+        appendDashQuality(playerData, data, 125, "HDR 真彩");
 
         android.util.Log.e("PlayerApi", "getBangumi 结束");
     }

@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="agreement_default_lines">
+        <item>歡迎使用嗶哩經典！</item>
+        <item>本應用是第三方非官方嗶哩嗶哩客戶端，與嗶哩嗶哩官方沒有任何隸屬關係。</item>
+        <item />
+        <item>使用須知</item>
+        <item>- 本應用本體完全免費，且永久免費於http://www.biliclassic.cn。如果你是花錢買到的，說明你被倒賣的神祕人物坑了，請立即退款！</item>
+        <item>- 軟體內含部分未經審查的AI生成程式碼，如你認為這很有問題，請勿使用的說~</item>
+        <item>- 請使用自己的帳號登入，妥善保管Cookie和登入憑證，不要分享給他人。</item>
+        <item>- 應用會存取嗶哩嗶哩介面並處理你主動提供的內容；播放歷史、Cookie等資料按應用設定僅保存在本機。</item>
+        <item>- 應用按現狀提供，不對第三方介面的可用性、內容準確性作保證，也不提供任何破解或繞過官方付費內容的功能。</item>
+        <item>- 開發團隊不對使用者在不恰當時間（如上課、上班摸魚等）使用本應用造成的任何損失（包括但不限於裝置被沒收、扣學分、扣工資等）負責喵~</item>
+        <item>- 請遵守當地法律法規和嗶哩嗶哩社群規則。</item>
+        <item>繼續使用即表示你已閱讀並同意以上條款。</item>
+    </string-array>
     <!-- skip_loop_filter 檔位 -->
     <string-array name="decoder_skip_loop_filter_entries">
         <item>None: 畫質最平滑</item>

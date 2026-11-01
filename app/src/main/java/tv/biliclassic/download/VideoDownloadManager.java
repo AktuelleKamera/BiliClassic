@@ -17,6 +17,8 @@ import java.util.Queue;
 import java.util.List;
 import java.util.ArrayList;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.util.WolfTls;
+import tv.biliclassic.util.WolfTlsConnection;
 
 /**
  * 视频下载管理器
@@ -322,18 +324,29 @@ public class VideoDownloadManager {
         File tmpFile = new File(videoFile.getAbsolutePath() + ".tmp");
 
         HttpURLConnection conn = null;
+        WolfTlsConnection wolf = null;
         InputStream is = null;
         FileOutputStream fos = null;
         try {
-            conn = (HttpURLConnection) new URL(task.videoUrl).openConnection();
-            conn.setRequestProperty("Referer", "https://www.bilibili.com/");
-            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
-            conn.setConnectTimeout(15000);
-            conn.setReadTimeout(15000);
-            conn.connect();
-
-            entry.totalBytes = conn.getContentLength();
-            is = conn.getInputStream();
+            if (task.videoUrl.startsWith("https://") && WolfTls.isAvailable()) {
+                wolf = new WolfTlsConnection(task.videoUrl, null);
+                wolf.setRequestProperty("Referer", "https://www.bilibili.com/");
+                wolf.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
+                wolf.setConnectTimeout(15000);
+                wolf.setReadTimeout(15000);
+                wolf.connect();
+                entry.totalBytes = wolf.getContentLength();
+                is = wolf.getInputStream();
+            } else {
+                conn = (HttpURLConnection) new URL(task.videoUrl).openConnection();
+                conn.setRequestProperty("Referer", "https://www.bilibili.com/");
+                conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(15000);
+                conn.connect();
+                entry.totalBytes = conn.getContentLength();
+                is = conn.getInputStream();
+            }
             fos = new FileOutputStream(tmpFile);
             byte[] buffer = new byte[8192];
             int len;
@@ -364,6 +377,7 @@ public class VideoDownloadManager {
         } finally {
             if (fos != null) { try { fos.close(); } catch (Exception e) {} }
             if (is != null) { try { is.close(); } catch (Exception e) {} }
+            if (wolf != null) { try { wolf.disconnect(); } catch (Exception e) {} }
             if (conn != null) { conn.disconnect(); }
         }
 

@@ -56,8 +56,7 @@ import tv.biliclassic.util.SdkHelper;
 public class DanmakuManager {
 
     private static String getCpuAbi() {
-        try { return (String) android.os.Build.class.getField("CPU_ABI").get(null); }
-        catch (Exception e) { return ""; }
+        return tv.biliclassic.util.CpuAbi.getCpuAbi();
     }
 
     private static final String KEY_TEXT_SIZE = "danmaku_text_size";
@@ -96,6 +95,8 @@ public class DanmakuManager {
     private IMediaPlayer mMediaPlayer;
     private PositionProvider mPosProvider;
     private boolean mVideoPrepared;
+    private boolean mVideoStarted;
+    private boolean mDanmakuStarted;
     private boolean mSeekPending;
     private long mSeekTarget;
     private boolean mReleased;
@@ -138,17 +139,28 @@ public class DanmakuManager {
 
     public static boolean isSimpleEngineEnabled() {
         int mode = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, -1);
+        String abi = getCpuAbi();
+        boolean isLegacyCpu = tv.biliclassic.util.CpuAbi.isLegacyArm();
+        boolean hasDsp = tv.biliclassic.util.DeviceUtils.hasHardwareVideoDsp();
+        String migratedKey = "danmaku_engine_dsp_migrated";
         if (mode < 0) {
-            String abi = getCpuAbi();
-            boolean isLegacyCpu = abi != null && abi.startsWith("armeabi") && !abi.contains("v7");
-            mode = isLegacyCpu ? 1 : 0;
+            mode = (!isLegacyCpu || hasDsp) ? 0 : 1;
             SharedPreferencesUtil.putInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, mode);
+        } else if (mode == 1 && hasDsp
+                && !SharedPreferencesUtil.getBoolean(migratedKey, false)) {
+            mode = 0;
+            SharedPreferencesUtil.putInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, mode);
+        }
+        if (hasDsp && !SharedPreferencesUtil.getBoolean(migratedKey, false)) {
+            SharedPreferencesUtil.putBoolean(migratedKey, true);
         }
         return mode == 1;
     }
 
     public void init() {
         mReleased = false;
+        mDanmakuStarted = false;
+        mVideoStarted = false;
         mUseSimpleEngine = isSimpleEngineEnabled();
 
         // 应用内诊断日志（无需 adb，开关默认关）：记录引擎选择与设备关键信息，供卡顿/崩溃排查
@@ -508,6 +520,8 @@ public class DanmakuManager {
             mDanmakuView = null;
         }
         mLoaded = false;
+        mDanmakuStarted = false;
+        mVideoStarted = false;
     }
 
     private void stopLivePolling() {
@@ -556,6 +570,17 @@ public class DanmakuManager {
     }
 
     // 当前弹幕时钟（ms）：全引擎返回视图时钟，简易引擎直接跟随视频位置
+    public void onVideoStarted() {
+        mVideoStarted = true;
+        if (!mUseSimpleEngine && mLoaded && mEnabled && mDanmakuView != null
+                && !mDanmakuStarted && !mReleased) {
+            long pos = getCurrentVideoPosition();
+            if (pos > 0) mDanmakuView.seekTo(pos);
+            mDanmakuView.start();
+            mDanmakuStarted = true;
+        }
+    }
+
     public long getCurrentTime() {
         if (mSimpleEngine != null) {
             return mVideoPrepared ? getCurrentVideoPosition() : 0;
@@ -984,6 +1009,9 @@ public class DanmakuManager {
             if (decompressed != null) {
                 rawData = decompressed;
             }
+            if (rawData == null || rawData.length == 0) {
+                throw new java.io.IOException("empty danmaku file");
+            }
             if (mDanmakuCacheFile != null) {
                 FileOutputStream fos = new FileOutputStream(mDanmakuCacheFile);
                 fos.write(rawData);
@@ -1054,12 +1082,11 @@ public class DanmakuManager {
                     } catch (Throwable t) {
                     }
                     mLoaded = true;
-                    if (mEnabled) {
-                        if (mVideoPrepared) {
-                            long pos = getCurrentVideoPosition();
-                            if (pos > 0) mDanmakuView.seekTo(pos);
-                        }
+                    if (mEnabled && mVideoStarted) {
+                        long pos = getCurrentVideoPosition();
+                        if (pos > 0) mDanmakuView.seekTo(pos);
                         mDanmakuView.start();
+                        mDanmakuStarted = true;
                     }
                 }
 

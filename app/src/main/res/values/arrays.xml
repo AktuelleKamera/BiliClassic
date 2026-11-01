@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="agreement_default_lines">
+        <item>欢迎使用哔哩经典！</item>
+        <item>本应用是第三方非官方哔哩哔哩客户端，与哔哩哔哩官方没有任何隶属关系。</item>
+        <item></item>
+        <item>使用须知</item>
+        <item>- 本应用本体完全免费，且永久免费于http://www.biliclassic.cn。如果你是花钱买到的，说明你被倒卖的神秘人物坑了，请立即退款！</item>
+        <item>- 软件内含部分未经过审查的AI生成代码，如你认为这很有问题，请勿使用的说~</item>
+        <item>- 请使用自己的账号登录，妥善保管Cookie和登录凭证，不要分享给他人。</item>
+        <item>- 应用会访问哔哩哔哩接口并处理你主动提供的内容；播放历史、Cookie等数据按应用设置仅保存在本地。</item>
+        <item>- 应用按现状提供，不对第三方接口的可用性、内容准确性作保证，也不提供任何破解或绕过官方付费内容的功能。</item>
+        <item>- 开发团队不对用户在不恰当时间（如上课、上班摸鱼等）使用本应用造成的任何损失（包括但不限于设备被没收、扣学分、扣工资等）负责喵~</item>
+        <item>- 请遵守当地法律法规和哔哩哔哩社区规则。</item>
+        <item>继续使用即表示你已阅读并同意以上条款。</item>
+    </string-array>
     <!-- skip_loop_filter 档位 -->
     <string-array name="decoder_skip_loop_filter_entries">
         <item>None: 画质最平滑</item>

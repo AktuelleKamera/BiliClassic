@@ -18,6 +18,12 @@
         style="@style/PlayerOptionsMenuItem"/>
     <View style="@style/CommonUnderline"/>
     <TextView
+        android:id="@+id/options_menu_item_subtitle"
+        android:focusable="true"
+        android:text="@string/player_subtitle_menu"
+        style="@style/PlayerOptionsMenuItem"/>
+    <View style="@style/CommonUnderline"/>
+    <TextView
         android:id="@+id/options_menu_item_block"
         android:focusable="true"
         android:text="@string/Player_option_menu_title_block"
@@ -25,13 +31,6 @@
     <View
         android:visibility="gone"
         style="@style/CommonUnderline"/>
-    <TextView
-        android:id="@+id/options_menu_item_orientation"
-        android:focusable="true"
-        android:visibility="gone"
-        android:text="@string/Player_option_menu_change_screen_orientation"
-        style="@style/PlayerOptionsMenuItem"/>
-    <View style="@style/CommonUnderline"/>
     <TextView
         android:id="@+id/options_menu_item_speed"
         android:focusable="true"

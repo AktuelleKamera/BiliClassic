@@ -41,6 +41,7 @@ import android.widget.PopupWindow;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import java.io.File;
@@ -50,6 +51,8 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -65,7 +68,10 @@ import tv.biliclassic.R;
 import tv.biliclassic.SettingsActivity;
 import tv.biliclassic.UserProfileActivity;
 import tv.biliclassic.api.PlayerApi;
+import tv.biliclassic.api.SubtitleApi;
 import tv.biliclassic.model.PlayerData;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import tv.biliclassic.player.danmaku.DanmakuManager;
 import tv.biliclassic.subsettings.DecoderSettingsActivity;
 import tv.biliclassic.util.CookieGenerator;
@@ -77,7 +83,7 @@ import tv.danmaku.ijk.media.player.AndroidMediaPlayer;
 import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import tv.biliclassic.widget.BatteryView2;
-import tv.biliclassic.util.DeviceInfoUtil;
+import tv.biliclassic.util.DeviceUtils;
 import tv.biliclassic.util.FileProviderCompat;
 import tv.biliclassic.util.MediaSessionHelper;
 import util.LocalStreamProxy;
@@ -197,6 +203,7 @@ public class BiliPlayerActivity extends Activity implements
     private boolean surfaceReady = false;
     private boolean pendingPrepare = false;
     private int mSeekWhenPrepared = 0;
+    private boolean mStartAfterSeek = false;
     private boolean mTextureViewConfigured = false;
     private static int sPendingSeekPosition = 0;
     private boolean playerLocked = false;
@@ -214,6 +221,9 @@ public class BiliPlayerActivity extends Activity implements
     };
     private boolean mAllowDecoderFallback = true;
     private int mLastReportProgress = -1;
+    private int mLastKnownPosition = 0;
+    private int mPrematureCompletionRetries = 0;
+    private int mLastPrematureCompletionPosition = -1;
     private FileInputStream mFileInputStream;
 
     private final DanmakuManager.PlayControl mPlayControl = new DanmakuManager.PlayControl() {
@@ -249,8 +259,8 @@ public class BiliPlayerActivity extends Activity implements
     private ViewGroup optionsMenuItems;
     private View optionsMenuItemPlayer;
     private View optionsMenuItemDanmaku;
+    private View optionsMenuItemSubtitle;
     private View optionsMenuItemBlock;
-    private View optionsMenuItemOrientation;
     private View optionsMenuItemInfo;
     private View optionsMenuItemSpeed;
     private ViewStub lockOverlayStub;
@@ -318,6 +328,21 @@ public class BiliPlayerActivity extends Activity implements
     private long[] mCids;
     private String[] mPartNames;
     private int mCurrentPartIndex;
+
+    private TextView mSubtitleView;
+    private JSONArray mSubtitleList;
+    private final ArrayList<SubtitleCue> mSubtitleCues = new ArrayList<SubtitleCue>();
+    private String mSubtitleLan = "auto";
+    private long mSubtitleCid = -1;
+    private int mSubtitleCueIndex = -1;
+    private boolean mSubtitleLoading;
+    private boolean mPendingSubtitleMenu;
+
+    private static class SubtitleCue {
+        long from;
+        long to;
+        String text;
+    }
 
     private Handler handler = new Handler(new Handler.Callback() {
         public boolean handleMessage(Message msg) {
@@ -429,6 +454,7 @@ public class BiliPlayerActivity extends Activity implements
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         setContentView(R.layout.bili_app_player_view_new);
+        initSubtitleView();
         // 表冠滚动：播放器内控制音量（向下转=增大），复用手势音量 HUD（API<12 内部自动跳过）
         tv.biliclassic.util.CrownScrollHelper.attachVolume(this,
                 new tv.biliclassic.util.CrownScrollHelper.CrownVolumeListener() {
@@ -509,6 +535,7 @@ public class BiliPlayerActivity extends Activity implements
         mQualityValues = getIntent().getIntArrayExtra("qn_value_array");
         mCurrentQn = getIntent().getIntExtra("current_qn", 0);
         mOfflineMode = getIntent().getBooleanExtra("offline_mode", false);
+        loadSubtitles();
 
         // 非内置播放器且在线模式 → 自动关闭在线播放，交给外部播放器
         if (!mOfflineMode && !getIntent().getBooleanExtra("_from_external_redirect", false)) {
@@ -622,7 +649,7 @@ public class BiliPlayerActivity extends Activity implements
 
         // 老 CPU（ARMv5 / 无 VFP 的 ARMv6）不再拦截播放：
         // 带硬件视频 DSP 的设备默认走转码硬解，没有的软解也可能放得动。
-        if (DeviceInfoUtil.isUnsupportedCpu()) {
+        if (DeviceUtils.isUnsupportedCpu()) {
             Toast.makeText(this, getString(R.string.legacy_cpu_play_hint), Toast.LENGTH_LONG).show();
         }
 
@@ -729,6 +756,12 @@ public class BiliPlayerActivity extends Activity implements
         // 加载失败由本 Activity 自己的逻辑处理
         hidePreloadingExtraViews(mLoadingOverlay);
         // 底部状态栏文字：默认"正在加载视频……"，转码/准备阶段再逐行覆盖
+        String mode = SettingsActivity.getDecoderType() == DECODER_SYSTEM
+                ? getString(R.string.player_loading_mode_system)
+                : getString(R.string.player_loading_mode_ijk);
+        setLoadingStep1(getString(R.string.player_loading_device_info,
+                Build.MANUFACTURER, Build.MODEL, Build.VERSION.RELEASE,
+                String.valueOf(Build.VERSION.SDK_INT), mode));
         setLoadingStep2(getString(R.string.player_loading_step_loading_video));
         root.addView(mLoadingOverlay);
         startLoadingAnimation();
@@ -2192,6 +2225,11 @@ public class BiliPlayerActivity extends Activity implements
                                     mediaSessionHelper.setMetadata(videoTitle, "");
                                 }
                                 mCid = newCid;
+        mSubtitleCid = -1;
+        mSubtitleCueIndex = -1;
+        mSubtitleCues.clear();
+        mSubtitleList = null;
+        loadSubtitles();
                                 mCurrentPartIndex = newPartIndex;
                                 if (newQnStrs != null && newQnVals != null) {
                                     mQualityNames = newQnStrs;
@@ -2313,7 +2351,7 @@ public class BiliPlayerActivity extends Activity implements
         try {
             // 无 VFP 的 ARMv5/ARMv6：自带 ijkffmpeg 含 VFP 指令跑不了，改从兼容包读取 legacy 版。
             // ijksdl/ijkplayer 也从自身 APK 提取后用绝对路径加载。
-            if (DeviceInfoUtil.needsNoVfpIjk()) {
+            if (DeviceUtils.needsNoVfpIjk()) {
                 if (!IjkLegacyLoader.loadIjkFfmpegLegacy(this)) {
                     return false;
                 }
@@ -2531,7 +2569,7 @@ public class BiliPlayerActivity extends Activity implements
             if (!ijkLoaded) {
                 android.util.Log.w("BiliPlayer", "IJK native 加载失败，回退到系统解码器");
                 decoderType = DECODER_SYSTEM;
-                if (DeviceInfoUtil.needsNoVfpIjk()) {
+                if (DeviceUtils.needsNoVfpIjk()) {
                     Toast.makeText(this, getString(R.string.ijk_legacy_need_pack), Toast.LENGTH_LONG).show();
                 } else {
                     Toast.makeText(this, "内置播放器加载失败，使用系统解码器", Toast.LENGTH_LONG).show();
@@ -2619,7 +2657,7 @@ public class BiliPlayerActivity extends Activity implements
 
         IjkMediaPlayer ijkPlayer;
         try {
-            if (DeviceInfoUtil.needsNoVfpIjk()) {
+            if (DeviceUtils.needsNoVfpIjk()) {
                 ijkPlayer = new IjkMediaPlayer(LEGACY_LIB_LOADER);
             } else {
                 ijkPlayer = new IjkMediaPlayer();
@@ -2858,9 +2896,13 @@ public class BiliPlayerActivity extends Activity implements
         }
         updateTopBarForOrientation();
 
+        if (mDanmakuManager != null) mDanmakuManager.onVideoPrepared(mp);
+
+        mStartAfterSeek = false;
         if (mSeekWhenPrepared > 0 && mDuration > 0) {
             // 防御：断点位置超出视频总长（如接口返回异常值）时，从 0 开始，避免被夹到结尾
             if (mSeekWhenPrepared <= mDuration) {
+                mStartAfterSeek = true;
                 mp.seekTo(mSeekWhenPrepared);
                 if (mDanmakuManager != null) mDanmakuManager.seekTo(mSeekWhenPrepared);
             } else {
@@ -2868,15 +2910,21 @@ public class BiliPlayerActivity extends Activity implements
                 if (mDanmakuManager != null) mDanmakuManager.seekTo(0L);
             }
         }
-        mp.start();
-        isPlaying = true;
+        if (!mStartAfterSeek) {
+            mp.start();
+            isPlaying = true;
+            if (mDanmakuManager != null) mDanmakuManager.onVideoStarted();
+        }
         if (mediaSessionHelper != null) {
             mediaSessionHelper.setMetadata(videoTitle, "");
         }
         updatePlayPauseButton();
         if (mSeekWhenPrepared > 0) {
-            updateTimeDisplay();
+            mLastKnownPosition = mSeekWhenPrepared;
             mSeekWhenPrepared = 0;
+            updateTimeDisplay();
+        } else {
+            mLastKnownPosition = 0;
         }
         aspectRatioFixed = false;
 
@@ -2894,10 +2942,6 @@ public class BiliPlayerActivity extends Activity implements
         }
         handler.sendEmptyMessage(MSG_UPDATE_TIME);
         updateNetworkStatus();
-
-        if (mDanmakuManager != null) {
-            mDanmakuManager.onVideoPrepared(mp);
-        }
 
         if (btnAspectRatio != null) {
             if (isPortraitLayout()) {
@@ -2930,6 +2974,23 @@ public class BiliPlayerActivity extends Activity implements
 
     @Override
     public void onSeekComplete(IMediaPlayer mp) {
+        if (mStartAfterSeek) {
+            mStartAfterSeek = false;
+            try {
+                mp.start();
+                isPlaying = true;
+            } catch (Throwable t) {
+                isPlaying = false;
+            }
+            updatePlayPauseButton();
+            if (mDanmakuManager != null) {
+                mDanmakuManager.onVideoStarted();
+                mDanmakuManager.resume();
+            }
+            updateTimeDisplay();
+            handler.sendEmptyMessage(MSG_UPDATE_PROGRESS);
+            return;
+        }
         if (!mIsDragging) {
             updateTimeDisplay();
             // 只有正在播放时才恢复弹幕
@@ -2943,6 +3004,12 @@ public class BiliPlayerActivity extends Activity implements
 
     @Override
     public void onCompletion(IMediaPlayer mp) {
+        if (recoverFromPrematureCompletion()) {
+            return;
+        }
+        mPrematureCompletionRetries = 0;
+        mLastPrematureCompletionPosition = -1;
+        mLastKnownPosition = 0;
         isPlaying = false;
         mPlaybackCompleted = true;
         updatePlayPauseButton();
@@ -3072,12 +3139,22 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     private void cleanupAndRestart() {
+        cleanupAndRestart(-1);
+    }
+
+    private void cleanupAndRestart(int resumePositionMs) {
         mHardwareDecodeRetryCount = 0;
         mRebuffering = false;
         handler.removeCallbacks(mRebufferWatchdog);
 
-        if (mediaPlayer != null && isPrepared) {
-            try { mSeekWhenPrepared = (int) mediaPlayer.getCurrentPosition(); } catch (Exception e) {}
+        if (resumePositionMs > 0) {
+            mSeekWhenPrepared = resumePositionMs;
+        } else if (mediaPlayer != null && isPrepared) {
+            try {
+                int current = (int) mediaPlayer.getCurrentPosition();
+                if (current > 0) mSeekWhenPrepared = current;
+            } catch (Exception e) {
+            }
         }
 
         if (localProxy != null) {
@@ -3112,6 +3189,49 @@ public class BiliPlayerActivity extends Activity implements
                 }
             }
         }, 300);
+    }
+
+    private boolean recoverFromPrematureCompletion() {
+        if (isFinishing() || isLiveStream || mediaPlayer == null || !isPrepared) {
+            return false;
+        }
+        long duration = mDuration;
+        if (mProxyDurationMs > duration) {
+            duration = mProxyDurationMs;
+        }
+        if (duration <= 30000) {
+            return false;
+        }
+
+        long position;
+        try {
+            position = mediaPlayer.getCurrentPosition();
+        } catch (Exception e) {
+            position = 0;
+        }
+        if (position <= 0) {
+            position = mSeekWhenPrepared > 0 ? mSeekWhenPrepared : mLastKnownPosition;
+        }
+        if (position <= 0 || position + 15000 >= duration) {
+            return false;
+        }
+        if (mPrematureCompletionRetries >= 3) {
+            return false;
+        }
+        if (mLastPrematureCompletionPosition >= 0
+                && position - mLastPrematureCompletionPosition < 3000
+                && mLastPrematureCompletionPosition - position < 3000) {
+            return false;
+        }
+
+        mPrematureCompletionRetries++;
+        mLastPrematureCompletionPosition = (int) position;
+        mPlaybackCompleted = false;
+        android.util.Log.w("BiliPlayer", "premature completion at " + position
+                + "/" + duration + "ms, resume, retry=" + mPrematureCompletionRetries);
+        showBuffering(true);
+        cleanupAndRestart((int) position);
+        return true;
     }
 
     @Override
@@ -3290,8 +3410,8 @@ public class BiliPlayerActivity extends Activity implements
             optionsMenuItems = (ViewGroup) inflated;
             optionsMenuItemPlayer = optionsMenuItems.findViewById(R.id.options_menu_item_player);
             optionsMenuItemDanmaku = optionsMenuItems.findViewById(R.id.options_menu_item_danmaku);
+            optionsMenuItemSubtitle = optionsMenuItems.findViewById(R.id.options_menu_item_subtitle);
             optionsMenuItemBlock = optionsMenuItems.findViewById(R.id.options_menu_item_block);
-            optionsMenuItemOrientation = optionsMenuItems.findViewById(R.id.options_menu_item_orientation);
             optionsMenuItemInfo = optionsMenuItems.findViewById(R.id.options_menu_item_info);
             optionsMenuItemSpeed = optionsMenuItems.findViewById(R.id.options_menu_item_speed);
 
@@ -3326,21 +3446,20 @@ public class BiliPlayerActivity extends Activity implements
                     }
                 });
             }
-            if (optionsMenuItemBlock != null) {
-                optionsMenuItemBlock.setOnClickListener(new View.OnClickListener() {
+            if (optionsMenuItemSubtitle != null) {
+                optionsMenuItemSubtitle.setOnClickListener(new View.OnClickListener() {
                     public void onClick(View v) {
                         hideOptionsMenu();
-                        Toast.makeText(BiliPlayerActivity.this, BiliPlayerActivity.this.getString(R.string.user_block_not_impl), Toast.LENGTH_SHORT).show();
+                        showSubtitleMenu();
                         showControlsWithAutoHide();
                     }
                 });
             }
-            if (optionsMenuItemOrientation != null) {
-                optionsMenuItemOrientation.setVisibility(autoRotation ? View.GONE : View.VISIBLE);
-                optionsMenuItemOrientation.setOnClickListener(new View.OnClickListener() {
+            if (optionsMenuItemBlock != null) {
+                optionsMenuItemBlock.setOnClickListener(new View.OnClickListener() {
                     public void onClick(View v) {
-                        toggleScreenOrientation();
                         hideOptionsMenu();
+                        showUserBlockDialog();
                         showControlsWithAutoHide();
                     }
                 });
@@ -3484,10 +3603,6 @@ public class BiliPlayerActivity extends Activity implements
                     SharedPreferencesUtil.putBoolean(
                             SharedPreferencesUtil.PLAYER_AUTO_ROTATION, isChecked);
                     applyAutoRotation();
-                    if (optionsMenuItemOrientation != null) {
-                        optionsMenuItemOrientation.setVisibility(
-                                isChecked ? View.GONE : View.VISIBLE);
-                    }
                     if (portraitRotationCb != null) {
                         portraitRotationCb.setVisibility(isChecked ? View.VISIBLE : View.GONE);
                     }
@@ -3731,6 +3846,39 @@ public class BiliPlayerActivity extends Activity implements
         }
     }
 
+    private void showUserBlockDialog() {
+        final EditText input = new EditText(this);
+        input.setHint("输入要屏蔽的用户 UID");
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        new AlertDialog.Builder(SdkHelper.dialogContext(DialogUtil.wrap(this)))
+                .setTitle("屏蔽用户弹幕")
+                .setView(input)
+                .setPositiveButton("屏蔽", new android.content.DialogInterface.OnClickListener() {
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        long uid;
+                        try {
+                            uid = Long.parseLong(input.getText().toString().trim());
+                        } catch (Exception e) {
+                            Toast.makeText(BiliPlayerActivity.this, "UID 无效", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        final long blockUid = uid;
+                        tv.biliclassic.util.UserBlockHelper.block(blockUid, true,
+                                new tv.biliclassic.util.UserBlockHelper.Callback() {
+                                    @Override
+                                    public void onResult(boolean success) {
+                                        if (isFinishing()) return;
+                                        Toast.makeText(BiliPlayerActivity.this,
+                                                success ? "已屏蔽该用户，重新加载弹幕后生效" : "屏蔽失败",
+                                                Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
     private void showMediaInfoDialog() {
         String decoder;
         if (decoderType == DECODER_SYSTEM) {
@@ -3914,15 +4062,229 @@ public class BiliPlayerActivity extends Activity implements
         tv.biliclassic.api.HistoryApi.report(aid, cid, progressMs);
     }
 
+    private void initSubtitleView() {
+        mSubtitleView = (TextView) findViewById(R.id.subtitle_view);
+        String saved = SharedPreferencesUtil.getString("player_subtitle_lan", "auto");
+        mSubtitleLan = saved == null ? "auto" : saved;
+    }
+
+    private void loadSubtitles() {
+        if (mSubtitleView == null || mOfflineMode || isLiveStream || mCid <= 0) {
+            return;
+        }
+        if (mSubtitleLan == null || mSubtitleLan.length() == 0) {
+            mSubtitleCues.clear();
+            mSubtitleList = null;
+            mSubtitleCid = -1;
+            mSubtitleCueIndex = -1;
+            mSubtitleView.setVisibility(View.GONE);
+            return;
+        }
+        if (mSubtitleLoading || mSubtitleCid == mCid) {
+            return;
+        }
+        mSubtitleLoading = true;
+        final long aid = mAid;
+        final long cid = mCid;
+        final String lan = mSubtitleLan;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final JSONArray list = SubtitleApi.getSubtitleList(aid, cid);
+                final ArrayList<SubtitleCue> cues = new ArrayList<SubtitleCue>();
+                if (list != null) {
+                    int index = chooseSubtitle(list, lan);
+                    if (index >= 0) {
+                        JSONObject item = list.optJSONObject(index);
+                        String url = item == null ? "" : item.optString("subtitle_url", "");
+                        if (url.length() == 0 && item != null) {
+                            url = item.optString("subtitle_url_v2", "");
+                        }
+                        JSONArray body = SubtitleApi.getSubtitleBody(url);
+                        if (body != null) {
+                            for (int i = 0; i < body.length(); i++) {
+                                JSONObject line = body.optJSONObject(i);
+                                if (line == null) continue;
+                                String text = line.optString("content", "");
+                                if (text == null || text.trim().length() == 0) continue;
+                                SubtitleCue cue = new SubtitleCue();
+                                cue.from = (long) (line.optDouble("from", 0) * 1000.0d);
+                                cue.to = (long) (line.optDouble("to", 0) * 1000.0d);
+                                cue.text = text.trim();
+                                if (cue.to > cue.from) cues.add(cue);
+                            }
+                        }
+                    }
+                }
+                Collections.sort(cues, new Comparator<SubtitleCue>() {
+                    @Override
+                    public int compare(SubtitleCue a, SubtitleCue b) {
+                        return a.from < b.from ? -1 : (a.from > b.from ? 1 : 0);
+                    }
+                });
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mSubtitleLoading = false;
+                        mSubtitleList = list;
+                        mSubtitleCid = cid;
+                        mSubtitleCues.clear();
+                        mSubtitleCues.addAll(cues);
+                        mSubtitleCueIndex = -1;
+                        if (mSubtitleView != null) {
+                            if (cues.isEmpty()) {
+                                mSubtitleView.setVisibility(View.GONE);
+                            } else {
+                                updateSubtitle(mediaPlayer == null ? 0 : mediaPlayer.getCurrentPosition());
+                            }
+                        }
+                        if (mPendingSubtitleMenu) {
+                            mPendingSubtitleMenu = false;
+                            if (list != null && list.length() > 0) {
+                                showSubtitleMenu();
+                            } else {
+                                Toast.makeText(BiliPlayerActivity.this,
+                                        getString(R.string.player_subtitle_none),
+                                        Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private int chooseSubtitle(JSONArray list, String lan) {
+        if (list == null || list.length() == 0) return -1;
+        if (lan != null && lan.length() > 0 && !"auto".equals(lan)) {
+            for (int i = 0; i < list.length(); i++) {
+                JSONObject item = list.optJSONObject(i);
+                if (item != null && lan.equals(item.optString("lan", ""))) {
+                    return i;
+                }
+            }
+        }
+        int first = -1;
+        int chinese = -1;
+        for (int i = 0; i < list.length(); i++) {
+            JSONObject item = list.optJSONObject(i);
+            if (item == null || item.optInt("type", 0) == 1) continue;
+            if (first < 0) first = i;
+            String code = item.optString("lan", "").toLowerCase(Locale.US);
+            if (chinese < 0 && code.contains("zh")) {
+                chinese = i;
+            }
+        }
+        return chinese >= 0 ? chinese : first;
+    }
+
+    private void showSubtitleMenu() {
+        if (mSubtitleView == null || mOfflineMode || isLiveStream) {
+            Toast.makeText(this, getString(R.string.player_subtitle_none), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (mSubtitleList == null) {
+            if (mSubtitleLoading) {
+                mPendingSubtitleMenu = true;
+                return;
+            }
+            if (mSubtitleCid != mCid) {
+                mPendingSubtitleMenu = true;
+                mSubtitleCid = -1;
+                loadSubtitles();
+                return;
+            }
+            Toast.makeText(this, getString(R.string.player_subtitle_none), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        int count = mSubtitleList.length();
+        String[] values = new String[count + 2];
+        String[] labels = new String[count + 2];
+        values[0] = "";
+        labels[0] = getString(R.string.player_subtitle_off);
+        values[1] = "auto";
+        labels[1] = getString(R.string.player_subtitle_auto);
+        int selected = mSubtitleLan == null || mSubtitleLan.length() == 0 ? 0 : 1;
+        for (int i = 0; i < count; i++) {
+            JSONObject item = mSubtitleList.optJSONObject(i);
+            String code = item == null ? "" : item.optString("lan", "");
+            String label = item == null ? code : item.optString("lan_doc", code);
+            if (item != null && item.optInt("type", 0) == 1) {
+                label = label + "（AI）";
+            }
+            values[i + 2] = code;
+            labels[i + 2] = label;
+            if (code.equals(mSubtitleLan)) {
+                selected = i + 2;
+            }
+        }
+        final String[] choiceValues = values;
+        new AlertDialog.Builder(SdkHelper.dialogContext(DialogUtil.wrap(this)))
+                .setTitle(getString(R.string.player_subtitle_menu))
+                .setSingleChoiceItems(labels, selected, new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                        mSubtitleLan = choiceValues[which];
+                        SharedPreferencesUtil.putString("player_subtitle_lan", mSubtitleLan);
+                        mSubtitleCues.clear();
+                        mSubtitleCueIndex = -1;
+                        mSubtitleCid = -1;
+                        if (mSubtitleView != null) mSubtitleView.setVisibility(View.GONE);
+                        loadSubtitles();
+                    }
+                })
+                .show();
+    }
+
+    private void updateSubtitle(long currentMs) {
+        if (mSubtitleView == null) return;
+        if (mSubtitleLan == null || mSubtitleLan.length() == 0 || mSubtitleCues.isEmpty()) {
+            if (mSubtitleView.getVisibility() != View.GONE) {
+                mSubtitleView.setVisibility(View.GONE);
+            }
+            mSubtitleCueIndex = -1;
+            return;
+        }
+        int index = -1;
+        for (int i = 0; i < mSubtitleCues.size(); i++) {
+            SubtitleCue cue = mSubtitleCues.get(i);
+            if (currentMs >= cue.from && currentMs < cue.to) {
+                index = i;
+                break;
+            }
+            if (cue.from > currentMs) {
+                break;
+            }
+        }
+        if (index == mSubtitleCueIndex) return;
+        mSubtitleCueIndex = index;
+        if (index >= 0) {
+            mSubtitleView.setText(mSubtitleCues.get(index).text);
+            mSubtitleView.setVisibility(View.VISIBLE);
+        } else {
+            mSubtitleView.setVisibility(View.GONE);
+        }
+    }
+
     private void updateTimeDisplay() {
         if (mediaPlayer == null || !isPrepared) return;
         if (mIsDragging || (mGestureController != null && mGestureController.isGestureSeeking())) return;
 
         try {
-            long current = mediaPlayer.getCurrentPosition();
+            long current = mStartAfterSeek
+                    ? mLastKnownPosition : mediaPlayer.getCurrentPosition();
             long duration = mediaPlayer.getDuration();
             if (duration <= 0) {
                 duration = mDuration;
+            }
+            if (current > 0) {
+                mLastKnownPosition = (int) current;
+                if (mLastPrematureCompletionPosition >= 0
+                        && current > mLastPrematureCompletionPosition + 60000) {
+                    mLastPrematureCompletionPosition = -1;
+                    mPrematureCompletionRetries = 0;
+                }
             }
             if (seekBar != null && duration > 0) {
                 int progress = (int) (1000L * current / duration);
@@ -3942,6 +4304,7 @@ public class BiliPlayerActivity extends Activity implements
             if (progressMs >= 0 && progressMs % 5000 < 250) {
                 reportHistory(progressMs);
             }
+            updateSubtitle(current);
         } catch (Exception e) {}
     }
 
@@ -4303,6 +4666,11 @@ public class BiliPlayerActivity extends Activity implements
             } catch (Exception e) {
                 sPendingSeekPosition = 0;
             }
+        }
+        if (mDanmakuManager != null && (isFinishing() || !keepBackground)) {
+            mDanmakuManager.pause();
+            mDanmakuManager.release();
+            mDanmakuManager = null;
         }
         releasePlayer();
         if (!keepBackground && !isFinishing()) {

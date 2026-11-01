@@ -1,94 +1,155 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:background="@drawable/bili_texture_background">
-
+    android:background="#ffffff"
+    android:paddingLeft="16dp"
+    android:paddingTop="8dp"
+    android:paddingRight="16dp"
+    android:paddingBottom="8dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+    <View
+        android:layout_gravity="center_horizontal"
+        android:background="#dddddd"
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:layout_marginBottom="8dp"/>
     <TextView
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="#333333"
+        android:paddingBottom="8dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/select_part_quality"/>
+    <TextView
+        android:textSize="13sp"
+        android:textColor="#666666"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/select_part"
-        android:textSize="14sp"
-        android:textColor="#666666"
-        android:layout_marginBottom="8dp" />
-
+        android:layout_marginBottom="4dp"
+        android:text="@string/select_part"/>
     <ListView
         android:id="@+id/list_view"
-        android:layout_width="match_parent"
-        android:layout_height="140dp"
+        android:background="@android:color/transparent"
         android:scrollbars="vertical"
-        android:dividerHeight="1dp"
-        android:divider="#EEEEEE"
-        android:background="@android:color/transparent" />
-
-    <!-- 分割线 -->
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:divider="#eeeeee"
+        android:dividerHeight="1dp"/>
     <View
+        android:background="#eeeeee"
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#DDDDDD"
-        android:layout_marginTop="12dp"
-        android:layout_marginBottom="12dp" />
-
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"/>
     <TextView
+        android:textSize="13sp"
+        android:textColor="#666666"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/dialog_download_choice_9009_1"
-        android:textSize="14sp"
-        android:textColor="#666666"
-        android:layout_marginBottom="8dp" />
-
-    <RadioGroup
-        android:id="@+id/quality_group"
+        android:layout_marginBottom="4dp"
+        android:text="@string/dialog_download_choice_9009_1"/>
+    <HorizontalScrollView
+        android:scrollbars="none"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-
-        <RadioButton
-            android:id="@+id/quality_360"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/quality_fluent"
-            android:textColor="#333333"
-            android:button="@drawable/ic_btn_holo_pink_radio"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp" />
-
-        <RadioButton
-            android:id="@+id/quality_480"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/quality_clear"
-            android:textColor="#333333"
-            android:button="@drawable/ic_btn_holo_pink_radio"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp" />
-
-        <RadioButton
-            android:id="@+id/quality_720"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/quality_high"
-            android:textColor="#333333"
-            android:button="@drawable/ic_btn_holo_pink_radio"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp" />
-
-        <RadioButton
-            android:id="@+id/quality_1080"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/quality_hd"
-            android:textColor="#333333"
-            android:button="@drawable/ic_btn_holo_pink_radio"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp" />
-
-    </RadioGroup>
-
+        android:layout_height="wrap_content">
+        <RadioGroup
+            android:orientation="horizontal"
+            android:id="@+id/quality_group"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+            <RadioButton
+                android:textSize="13sp"
+                android:textColor="#333333"
+                android:id="@+id/quality_360"
+                android:paddingLeft="40dp"
+                android:paddingRight="8dp"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:button="@drawable/ic_btn_holo_pink_radio"
+                android:text="@string/quality_fluent"/>
+            <RadioButton
+                android:textSize="13sp"
+                android:textColor="#333333"
+                android:id="@+id/quality_480"
+                android:paddingLeft="40dp"
+                android:paddingRight="8dp"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:button="@drawable/ic_btn_holo_pink_radio"
+                android:text="@string/quality_clear"/>
+            <RadioButton
+                android:textSize="13sp"
+                android:textColor="#333333"
+                android:id="@+id/quality_720"
+                android:paddingLeft="40dp"
+                android:paddingRight="8dp"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:button="@drawable/ic_btn_holo_pink_radio"
+                android:text="@string/quality_high"/>
+            <RadioButton
+                android:textSize="13sp"
+                android:textColor="#333333"
+                android:id="@+id/quality_1080"
+                android:paddingLeft="40dp"
+                android:paddingRight="8dp"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:button="@drawable/ic_btn_holo_pink_radio"
+                android:text="@string/quality_hd"/>
+            <RadioButton
+                android:textSize="13sp"
+                android:textColor="#333333"
+                android:id="@+id/quality_1080_plus"
+                android:paddingLeft="40dp"
+                android:paddingRight="8dp"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:button="@drawable/ic_btn_holo_pink_radio"
+                android:text="@string/quality_1080p_plus"/>
+            <RadioButton
+                android:textSize="13sp"
+                android:textColor="#333333"
+                android:id="@+id/quality_4k"
+                android:paddingLeft="40dp"
+                android:paddingRight="8dp"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:button="@drawable/ic_btn_holo_pink_radio"
+                android:text="@string/quality_4k"/>
+        </RadioGroup>
+    </HorizontalScrollView>
+    <LinearLayout
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="48dp">
+        <TextView
+            android:textSize="14sp"
+            android:textColor="#666666"
+            android:gravity="center"
+            android:id="@+id/btn_cancel"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:focusable="true"
+            android:clickable="true"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="@string/videodetail_cancel"/>
+        <TextView
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#ff6699"
+            android:gravity="center"
+            android:id="@+id/btn_download"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:focusable="true"
+            android:clickable="true"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="@string/videodetail_download"/>
+    </LinearLayout>
 </LinearLayout>
