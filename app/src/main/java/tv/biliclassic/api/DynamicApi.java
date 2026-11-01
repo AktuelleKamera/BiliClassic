@@ -239,8 +239,7 @@ public class DynamicApi {
         JSONObject mdyn = modules.optJSONObject("module_dynamic");
         if (mdyn != null) {
             JSONObject desc = mdyn.optJSONObject("desc");
-            d.content = desc != null
-                    ? analyzeRichText(desc.optJSONArray("rich_text_nodes")) : "";
+            d.content = parseRichText(desc);
             JSONObject major = mdyn.optJSONObject("major");
             if (major != null) analyzeMajor(d, major);
         }
@@ -335,7 +334,7 @@ public class DynamicApi {
                 }
                 JSONObject summary = opus.optJSONObject("summary");
                 if (summary != null) {
-                    String s = analyzeRichText(summary.optJSONArray("rich_text_nodes"));
+                    String s = parseRichText(summary);
                     if (s.length() > 0) {
                         d.content = d.content.length() > 0 ? d.content + "\n" + s : s;
                     }
@@ -376,6 +375,15 @@ public class DynamicApi {
     private static String statPlay(JSONObject json) {
         JSONObject stat = json.optJSONObject("stat");
         return stat != null ? stat.optString("play", "") : "";
+    }
+
+    private static String parseRichText(JSONObject object) {
+        if (object == null) return "";
+        String text = analyzeRichText(object.optJSONArray("rich_text_nodes"));
+        if (text.length() == 0) {
+            text = object.optString("text", "");
+        }
+        return text;
     }
 
     private static String analyzeRichText(JSONArray nodes) {
