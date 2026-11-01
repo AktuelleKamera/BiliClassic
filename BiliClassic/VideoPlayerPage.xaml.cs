@@ -88,6 +88,9 @@ namespace BiliClassic
 
         private int _dashQuality;
 
+        // 实际拿到的清晰度（qn），0 表示还不知道
+        private int _actualQuality;
+
         private string _dashNote = "";
 
         private string _dashDetail = "";
@@ -270,7 +273,7 @@ namespace BiliClassic
                 return;
             }
 
-            if (AppSettings.DashPlayback && AppSettings.DashSupported && !OfflineMode)
+            if (AppSettings.DashPlayback && !OfflineMode)
             {
                 FetchDash();
                 return;
@@ -379,7 +382,9 @@ namespace BiliClassic
                         return;
                     }
 
+                    _actualQuality = play.Quality;
                     SetAvailableQualities(play.AcceptQuality);
+                    UpdateQualityButtonText();
 
                     _candidates.Clear();
                     _candidates.AddRange(play.Urls);
@@ -695,7 +700,9 @@ namespace BiliClassic
 
             if (play.Ok)
             {
+                _actualQuality = play.Quality;
                 SetAvailableQualities(play.AcceptQuality);
+                UpdateQualityButtonText();
                 _candidates.Clear();
                 _candidates.AddRange(play.Urls);
                 _candidateIndex = 0;
@@ -738,8 +745,10 @@ namespace BiliClassic
             _dashMode = false;
             _dashActive = true;
             _dashQuality = play.Quality;
+            _actualQuality = play.Quality;
             _dashNote = "";
             SetAvailableQualities(play.AcceptQuality);
+            UpdateQualityButtonText();
 
             _dashVideo.Clear();
             _dashVideo.AddRange(play.DashVideoUrls);
@@ -1456,7 +1465,9 @@ namespace BiliClassic
 
 
 
-                button.Content = (quality == AppSettings.PlayQuality ? "● " : "    ")
+                // 勾在实际拿到的清晰度上，设置值只当"想播哪个"
+                int current = _actualQuality > 0 ? _actualQuality : AppSettings.PlayQuality;
+                button.Content = (quality == current ? "● " : "    ")
                     + PlayUrlService.Describe(quality);
             }
         }
@@ -1537,7 +1548,9 @@ namespace BiliClassic
 
         private void UpdateQualityButtonText()
         {
-            QualityButton.Content = PlayUrlService.Describe(AppSettings.PlayQuality);
+            // 显示实际播的清晰度；还没取到地址时才显示设置里的
+            int quality = _actualQuality > 0 ? _actualQuality : AppSettings.PlayQuality;
+            QualityButton.Content = PlayUrlService.Describe(quality);
         }
 
         private void ReloadForQuality()
@@ -1576,7 +1589,7 @@ namespace BiliClassic
                 return;
             }
 
-            if (AppSettings.DashPlayback && AppSettings.DashSupported)
+            if (AppSettings.DashPlayback)
             {
                 _dashMode = false;
                 _dashVideoIndex = 0;

@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace BiliClassic.Api
+﻿namespace BiliClassic.Api
 {
     public static class AppSettings
     {
@@ -41,15 +39,6 @@ namespace BiliClassic.Api
         {
             get { return LocalStore.Get(OfflinePlaybackKey) == "1"; }
             set { LocalStore.Set(OfflinePlaybackKey, value ? "1" : "0"); }
-        }
-
-        public static bool DashSupported
-        {
-            get
-            {
-                Version version = Environment.OSVersion.Version;
-                return version.Major > 7 || (version.Major == 7 && version.Minor >= 1);
-            }
         }
 
         public static bool DashPlayback

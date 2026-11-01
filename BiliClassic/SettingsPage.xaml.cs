@@ -32,12 +32,6 @@ namespace BiliClassic
             HideCiTieCheck.IsChecked = AppSettings.HideCiTieEnabled;
             LoadQuality(AppSettings.PlayQuality);
             _loading = false;
-
-            if (!AppSettings.DashSupported)
-            {
-                DashPlaybackCheck.Visibility = Visibility.Collapsed;
-                //DashHintText.Visibility = Visibility.Collapsed;
-            }
         }
 
         private void LoadQuality(int quality)
