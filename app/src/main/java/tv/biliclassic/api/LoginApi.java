@@ -26,6 +26,7 @@ import java.util.TreeMap;
 import javax.crypto.Cipher;
 
 
+import tv.biliclassic.util.DeviceUtils;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.QRCodeUtil;
@@ -402,8 +403,8 @@ public class LoginApi {
             p.put("code", code);
             p.put("device", "phone");
             p.put("device_id", deviceId);
-            p.put("device_name", "vivo");
-            p.put("device_platform", "Android14vivo");
+            p.put("device_name", deviceName());
+            p.put("device_platform", devicePlatform());
             p.put("disable_rcmd", "0");
             if (dt.length() > 0) {
                 p.put("dt", dt);
@@ -490,6 +491,24 @@ public class LoginApi {
     }
 
     /** 设备 id（PiliPlus LoginUtils.genDeviceId 同款算法） */
+    private static String deviceName() {
+        String model = DeviceUtils.getDeviceModel();
+        return model == null || model.length() == 0 ? "android" : model;
+    }
+
+    private static String devicePlatform() {
+        StringBuilder sb = new StringBuilder("Android");
+        String release = DeviceUtils.getDeviceRelease();
+        if (release != null && release.length() > 0) {
+            sb.append(release);
+        }
+        String manufacturer = DeviceUtils.getDeviceManufacturer();
+        if (manufacturer != null && manufacturer.length() > 0) {
+            sb.append(manufacturer);
+        }
+        return sb.toString();
+    }
+
     public static String deviceId() {
         try {
             String saved = SharedPreferencesUtil.getString("app_device_id", "");

@@ -12,6 +12,18 @@ public class DeviceUtils {
         catch (Exception e) { return null; }
     }
 
+    public static String getDeviceModel() {
+        return getBuildField("MODEL");
+    }
+
+    public static String getDeviceRelease() {
+        return getBuildField("RELEASE");
+    }
+
+    public static String getDeviceManufacturer() {
+        return getBuildField("MANUFACTURER");
+    }
+
     public static CpuAbi.Arch getMyCpuArch() {
         return CpuAbi.getArch();
     }
