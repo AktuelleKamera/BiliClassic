@@ -65,6 +65,21 @@
     <string name="player_loading_step_loading_video">正在載入影片……</string>
     <string name="player_loading_step_done">【完成】</string>
     <string name="player_loading_step_fail">【失敗】</string>
+    <string name="player_subtitle_auto">自動</string>
+    <string name="player_subtitle_empty">這部影片沒有字幕</string>
+    <string name="player_subtitle_menu">CC字幕</string>
+    <string name="player_subtitle_none">暫無可選字幕</string>
+    <string name="player_subtitle_off">關閉</string>
+    <string name="player_loading_device_info">裝置：%1$s %2$s，Android %3$s（API %4$s），%5$s</string>
+    <string name="player_loading_mode_ijk">檢查模式：內建IJK</string>
+    <string name="player_loading_mode_system">檢查模式：系統播放器</string>
+    <string name="player_loading_stage_buffer">開始影片緩衝</string>
+    <string name="player_loading_stage_danmaku">全艦彈幕裝填</string>
+    <string name="player_loading_stage_parse">解析影片地址</string>
+    <string name="network_settings">網路設定</string>
+    <string name="tls12_need_enable">請在設定裡面開啟TLS 1.2支援</string>
+    <string name="tls12_support">TLS 1.2支援</string>
+    <string name="tls12_support_desc">使用WolfSSL為Android 4.4以下增加TLS 1.2支援</string>
     <string name="activity_settings_theme_label">主題設定</string>
     <string name="activity_settings_metro_bg_label">背景圖片</string>
     <string name="bili_about_53cd_1">Github Issues:</string>
@@ -196,7 +211,7 @@
     <string name="videodetail_toast_image_fail">圖片上傳失敗: %s</string>
     <string name="videodetail_toast_coin_fail">投幣失敗: %s</string>
     <string name="videodetail_toast_triple_fail">三連失敗: %s</string>
-    <string name="videodetail_confirm_delete_cache">確定要刪除 "%s" 的離線快取嗎？</string>
+    <string name="videodetail_confirm_delete_cache">確定要刪除 %s 的離線快取嗎？</string>
     <string name="videodetail_toast_exists">已存在: %s</string>
     <string name="videodetail_toast_queued">已加入: %s</string>
     <string name="videodetail_toast_copied">已複製: %s</string>
@@ -254,7 +269,7 @@
     <string name="activity_settings_run_log_subject">BiliClassic 日誌</string>
     <string name="activity_settings_run_log_share_fail">分享失敗: %1$s</string>
     <string name="ostwind_no_decoder_title">未找到軟解解碼器</string>
-    <string name="ostwind_no_decoder_msg">當前裝置沒有可用的軟解解碼器，請安裝MoboPlayer軟解包後重試。可加群754725037下載。</string>
+    <string name="ostwind_no_decoder_msg">當前裝置沒有可用的軟解解碼器，請安裝MoboPlayer軟解包後重試。可加群754725037下載。\n\nAndroid 1.6+可改用IJK播放器嘗試。</string>
     <string name="ostwind_no_decoder_mobo_hint">你可以安裝MoboPlayer的解碼包來使用Ostwind播放器的軟解。</string>
     <string name="ostwind_no_decoder_ok">確定</string>
     <string name="ostwind_error">播放失敗，請檢查網路或重新選擇播放器</string>
@@ -278,11 +293,16 @@
     <string name="live_info_quality_fail">切換清晰度失敗</string>
     <string name="live_info_quality_switched">已切換清晰度</string>
     <string name="live_info_build_url_fail">獲取播放地址失敗</string>
-    <string name="live_info_player_prefix">生放送 </string>
+    <string name="live_info_player_prefix">生放送</string>
     <string name="settingsactivity_settitle_9009_6">選擇播放器</string>
     <string name="activity_settings_cast_title">投放（Miracast）</string>
     <string name="activity_settings_cast_desc">開啟後點選播放將開啟系統投放設定，連接電視後畫面自動鏡像</string>
     <string name="add_image">添加圖片</string>
+    <string name="agreement_agree">同意並繼續</string>
+    <string name="agreement_exit">退出</string>
+    <string name="agreement_load_failed">取得條款失敗，使用本機條款</string>
+    <string name="agreement_loading">正在取得條款……</string>
+    <string name="agreement_title">使用者條款</string>
     <string name="already_favorited">已收藏過該影片</string>
     <string name="args_error">參數錯誤</string>
     <string name="auto_adapt">自動相容</string>
@@ -418,6 +438,9 @@
     <string name="profile_loading">載入中……</string>
     <string name="publish_time_empty">發布時間: --</string>
     <string name="quality_1080p">1080P 超清</string>
+    <string name="quality_1080p_plus">1080P+ 超清+</string>
+    <string name="quality_4k">4K 超高清</string>
+    <string name="quality_8k">8K 超高清</string>
     <string name="quality_720p">720P 高清</string>
     <string name="really_leave_title">真的要離開了嗎…？</string>
     <string name="refresh_ok">重新整理成功</string>
@@ -476,11 +499,11 @@
     <string name="av_number">av號</string>
     <string name="back_to_home">返回主頁</string>
     <string name="bangumi_intro_placeholder">這裡顯示番劇的簡介內容</string>
-    <string name="bangumi_region_label">地區: </string>
-    <string name="bangumi_score_label">評分: </string>
-    <string name="bangumi_season_label">季度: </string>
+    <string name="bangumi_region_label">地區:</string>
+    <string name="bangumi_score_label">評分:</string>
+    <string name="bangumi_season_label">季度:</string>
     <string name="bangumi_total_episodes_fmt">共0集</string>
-    <string name="bangumi_update_label">更新: </string>
+    <string name="bangumi_update_label">更新:</string>
     <string name="bubble_start">氣泡開頭</string>
     <string name="buffering_hard">正在努力緩衝中...</string>
     <string name="cache_manager">快取管理</string>
@@ -557,6 +580,11 @@
     <string name="following_list">關注的人</string>
     <string name="full_edition">完整版</string>
     <string name="get_started">開始使用</string>
+    <string name="help_empty">暫無教學</string>
+    <string name="help_load_failed">載入失敗，輕觸重試</string>
+    <string name="help_loading">載入中…</string>
+    <string name="help_section">幫助</string>
+    <string name="help_tutorial">使用教學</string>
     <string name="history_record">歷史記錄</string>
     <string name="ijk_player">IJK播放器</string>
     <string name="image_load_settings">圖片載入設定</string>
@@ -582,7 +610,7 @@
     <string name="fav_create_folder_title">建立收藏夾</string>
     <string name="fav_folder_name_hint">收藏夾名稱</string>
     <string name="fav_delete_folder_title">刪除收藏夾</string>
-    <string name="fav_delete_folder_confirm">確定刪除「%1$s」嗎？</string>
+    <string name="fav_delete_folder_confirm">確定刪除“%1$s”嗎？</string>
     <string name="fav_folder_created">已建立</string>
     <string name="fav_folder_deleted">已刪除</string>
     <string name="common_create">建立</string>
@@ -615,7 +643,7 @@
     <string name="player_recommend_builtin">• 內建播放器（IJK V3）：推薦使用，內建軟體解碼器和系統解碼器，無須安裝第三方應用程式。可在設定中切換解碼方式（IJK軟解/系統解碼器）。</string>
     <string name="player_recommend_lightweight">• VPlayer / MoboPlayer / RockPlaye Liter：輕量級播放器，部分老裝置兼容性較好，可作為備選。</string>
     <string name="player_recommend_mx_vlc">• MX Player / VLC：自帶解碼器，支援H.264 High Profile，在老裝置上播放流暢，推薦使用。</string>
-    <string name="player_recommend_old_android">• 建議：如果你的裝置是Android 2.3以下，請優先選擇內建播放器（Ostwind）或MoboPlayer。另外Android 1.6以下推薦內建播放器（Ostwind）。</string>
+    <string name="player_recommend_old_android">• 建議：如果你的裝置是Android 1.6以下，請優先選擇內建播放器（Ostwind）或MoboPlayer。</string>
     <string name="player_recommend_system">• 系統播放器：依賴手機硬體解碼。不支援H.264 High Profile軟解，部分影片可能無法播放或只有聲音。</string>
     <string name="player_settings">播放器設定</string>
     <string name="portrait_adapted_devices">* 已自動相容裝置：HTC ChaCha / 三星Galaxy Y Pro / 三星Galaxy Pro / 索尼A5100</string>
@@ -673,7 +701,7 @@
     <string name="login_sms_tel_hint">請輸入手機號</string>
     <string name="login_sms_code_hint">請輸入簡訊驗證碼</string>
     <string name="login_sms_send">獲取驗證碼</string>
-    <string name="login_cookie_help">支援格式：\n• 瀏覽器複製的 Cookie 字串\n• JSON 格式 { "cookies": "..." }\n• 任意包含 SESSDATA 的文字</string>
+    <string name="login_cookie_help">支援格式：\n• 瀏覽器複製的Cookie字串\n• JSON 格式 { cookies: ... }\n• 任意包含SESSDATA的文字</string>
 
     <!-- 離線快取位置 -->
     <string name="download_location">離線快取位置</string>
@@ -695,4 +723,11 @@
     <string name="danmaku_render_mode_view">View</string>
     <string name="echo_submit">投稿</string>
     <string name="echo_submit_summary">寫下你的回聲</string>
-    </resources>
+    <string name="offline_dash_need_ijk">離線DASH播放需要內建IJK播放器，目前僅播放畫面</string>
+    <string name="settings_mp4_high_quality_warning">您確定要在MP4格式下使用1080P以上的畫質嗎？B站的介面將不會提供的說～</string>
+    <string name="settings_no_more_hint">不再提示</string>
+    <string name="recommend_columns_title">&#25512;&#34214;&#38913;&#21934;&#25490;&#25976;&#37327;</string>
+    <string name="recommend_columns_desc">&#35519;&#25972;&#25512;&#34214;&#38913;&#27599;&#34892;&#39023;&#31034;&#30340;&#24433;&#29255;&#25976;&#37327;</string>
+    <string name="recommend_columns_auto">&#33258;&#21205;</string>
+    <string name="recommend_columns_value">%1$d &#21015;</string>
+</resources>

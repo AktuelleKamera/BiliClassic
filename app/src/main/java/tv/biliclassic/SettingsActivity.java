@@ -1,6 +1,7 @@
 package tv.biliclassic;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
@@ -40,7 +41,7 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.UpdateUtil;
 
 import tv.biliclassic.util.SdkHelper;
-import tv.biliclassic.util.DeviceInfoUtil;
+import tv.biliclassic.util.DeviceUtils;
 import tv.biliclassic.util.DialogUtil;
 public class SettingsActivity extends BaseActivity {
 
@@ -56,18 +57,23 @@ public class SettingsActivity extends BaseActivity {
     private static final String KEY_ONLINE_PLAY = "online_play";
     private static final String KEY_CONVERT_PLAY = "convert_play";
 
-    // 转码播放服务（SCF Web 函数，暂时直接使用默认地址，后续换自定义域名）
+    // 转码播放服务（自定义域名）
     // 注意：必须用 http（非 https）——HTC G1 的 Android 1.6 证书库太老，
     // 无法校验现代 HTTPS 证书链，https 会报 "Not trusted server certificate"
-    private static final String CONVERT_API_BASE = "http://1303002254-dja6s2xtn7.ap-hongkong.tencentscf.com";
-    private static final String CONVERT_BUCKET = "video-storage-1303002254";
-    private static final String CONVERT_REGION = "ap-hongkong";
+    private static final String CONVERT_API_BASE = "http://convert.awmc233.cn";
+    // 主服务器（新）失败时回退到旧服务器
+    private static final String CONVERT_API_BASE_FALLBACK = "http://convert.biliclassic.cn";
+    private static final String CONVERT_BUCKET = "video-storage-biliclassic";
+    private static final String CONVERT_REGION = "us-east-005";
 
     // 视频画质（B站 API 标准值）
     private static final int QUALITY_360P = 16;
     private static final int QUALITY_480P = 32;
     private static final int QUALITY_720P = 64;
     private static final int QUALITY_1080P = 80;
+    private static final int QUALITY_1080P_PLUS = 112;
+    private static final int QUALITY_4K = 120;
+    private static final int QUALITY_8K = 127;
 
     // 播放器偏好值
     private static final int PLAYER_AUTO = -1;
@@ -389,7 +395,7 @@ public class SettingsActivity extends BaseActivity {
         // 转码播放开关 - 安卓5.0及以上、或有NEON的设备隐藏（仅老旧无NEON低配置设备可用）
         LinearLayout convertPlayItem = (LinearLayout) findViewById(R.id.convert_play_item);
         if (convertPlayItem != null) {
-            if (SdkHelper.getSdkInt() >= 21 || DeviceInfoUtil.hasNeon()) {
+            if (!DeviceUtils.isTranscodePlaySupported()) {
                 convertPlayItem.setVisibility(View.GONE);
                 SharedPreferencesUtil.putBoolean(KEY_CONVERT_PLAY, false);
             } else {
@@ -420,7 +426,7 @@ public class SettingsActivity extends BaseActivity {
         convertFormatItem = (LinearLayout) findViewById(R.id.convert_format_item);
         convertFormatText = (TextView) findViewById(R.id.convert_format_text);
         if (convertFormatItem != null) {
-            if (SdkHelper.getSdkInt() >= 21 || DeviceInfoUtil.hasNeon()) {
+            if (!DeviceUtils.isTranscodePlaySupported()) {
                 convertFormatItem.setVisibility(View.GONE);
             } else {
                 updateConvertFormatDisplay();
@@ -716,6 +722,20 @@ public class SettingsActivity extends BaseActivity {
         }
 
         // 语言选择
+        LinearLayout recommendColumnsItem =
+                (LinearLayout) findViewById(R.id.recommend_columns_item);
+        final TextView recommendColumnsText =
+                (TextView) findViewById(R.id.recommend_columns_text);
+        if (recommendColumnsItem != null && recommendColumnsText != null) {
+            updateRecommendColumnsDisplay(recommendColumnsText);
+            recommendColumnsItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showRecommendColumnsDialog(recommendColumnsText);
+                }
+            });
+        }
+
         LinearLayout localeItem = (LinearLayout) findViewById(R.id.locale_item);
         final TextView localeText = (TextView) findViewById(R.id.locale_text);
 
@@ -744,6 +764,32 @@ public class SettingsActivity extends BaseActivity {
         }
 
         // 设备信息入口
+        LinearLayout tls12Item = (LinearLayout) findViewById(R.id.tls12_item);
+        TextView tls12Section = (TextView) findViewById(R.id.tls12_section);
+        final CheckBox checkboxTls12 = (CheckBox) findViewById(R.id.checkbox_tls12);
+        boolean tlsSupported = tv.biliclassic.util.WolfTls.isSupportedEnvironment();
+        if (tls12Section != null) {
+            tls12Section.setVisibility(tlsSupported ? View.VISIBLE : View.GONE);
+        }
+        if (tls12Item != null && checkboxTls12 != null) {
+            tls12Item.setVisibility(tlsSupported ? View.VISIBLE : View.GONE);
+            if (tlsSupported) {
+                checkboxTls12.setChecked(SharedPreferencesUtil.getBoolean("tls12_wolfssl", false));
+                checkboxTls12.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                        SharedPreferencesUtil.putBoolean("tls12_wolfssl", isChecked);
+                    }
+                });
+                tls12Item.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        checkboxTls12.toggle();
+                    }
+                });
+            }
+        }
+
         LinearLayout deviceInfoItem = (LinearLayout) findViewById(R.id.device_info_item);
         if (deviceInfoItem != null) {
             deviceInfoItem.setOnClickListener(new View.OnClickListener() {
@@ -1099,12 +1145,16 @@ public class SettingsActivity extends BaseActivity {
     public static boolean isConvertPlayEnabled() {
         // 老设备（ARMv5 / 无 VFP 的 ARMv6）默认开转码，转成 240P 后能硬解
         return SharedPreferencesUtil.getBoolean(KEY_CONVERT_PLAY,
-                DeviceInfoUtil.needsTranscodeForHwDecode());
+                DeviceUtils.needsTranscodeForHwDecode());
     }
 
     // 转码播放服务地址（SCF Web 函数 /transcode）
     public static String getConvertPlayApiBase() {
         return CONVERT_API_BASE;
+    }
+
+    public static String getConvertPlayApiBaseFallback() {
+        return CONVERT_API_BASE_FALLBACK;
     }
 
     public static String getConvertPlayApiUrl() {
@@ -1253,7 +1303,7 @@ public class SettingsActivity extends BaseActivity {
         int defaultDecoder;
         if (isIjkHardwareSupported()) {
             defaultDecoder = DECODER_IJK_HARD;
-        } else if (DeviceInfoUtil.hasHardwareVideoDsp()) {
+        } else if (DeviceUtils.hasHardwareVideoDsp()) {
             defaultDecoder = DECODER_SYSTEM;
         } else {
             defaultDecoder = DECODER_IJK_SOFT;
@@ -1272,8 +1322,19 @@ public class SettingsActivity extends BaseActivity {
 
     // 视频画质选择
     private void showVideoQualityDialog() {
-        final String[] qualities = {"360P 流畅", "480P 清晰", "720P 高清", "1080P 超清"};
-        final int[] qualityValues = {QUALITY_360P, QUALITY_480P, QUALITY_720P, QUALITY_1080P};
+        final String[] qualities = {
+                getString(R.string.quality_360p),
+                getString(R.string.videodetail_q_480p),
+                getString(R.string.quality_720p),
+                getString(R.string.quality_1080p),
+                getString(R.string.quality_1080p_plus),
+                getString(R.string.quality_4k),
+                getString(R.string.quality_8k)
+        };
+        final int[] qualityValues = {
+                QUALITY_360P, QUALITY_480P, QUALITY_720P, QUALITY_1080P,
+                QUALITY_1080P_PLUS, QUALITY_4K, QUALITY_8K
+        };
         int currentQuality = getVideoQuality();
 
         int checkedIndex = 0;
@@ -1304,7 +1365,13 @@ public class SettingsActivity extends BaseActivity {
 
     private void updateVideoQualityDisplay() {
         int quality = getVideoQuality();
-        if (quality == QUALITY_1080P) {
+        if (quality == QUALITY_8K) {
+            videoQualityText.setText(getString(R.string.quality_8k));
+        } else if (quality == QUALITY_4K) {
+            videoQualityText.setText(getString(R.string.quality_4k));
+        } else if (quality == QUALITY_1080P_PLUS) {
+            videoQualityText.setText(getString(R.string.quality_1080p_plus));
+        } else if (quality == QUALITY_1080P) {
             videoQualityText.setText(getString(R.string.quality_1080p));
         } else if (quality == QUALITY_720P) {
             videoQualityText.setText(getString(R.string.quality_720p));
@@ -1773,6 +1840,68 @@ public class SettingsActivity extends BaseActivity {
     }
 
     // 播放器选择对话框
+    private void updateRecommendColumnsDisplay(TextView textView) {
+        int value = SharedPreferencesUtil.getInt(SharedPreferencesUtil.RECOMMEND_COLUMNS, 0);
+        if (value >= 1 && value <= 5) {
+            textView.setText(getString(R.string.recommend_columns_value, value));
+        } else {
+            textView.setText(getString(R.string.recommend_columns_auto));
+        }
+    }
+
+    private void showRecommendColumnsDialog(final TextView textView) {
+        final int current = SharedPreferencesUtil.getInt(SharedPreferencesUtil.RECOMMEND_COLUMNS, 0);
+        final Context ctx = SdkHelper.dialogContext(DialogUtil.wrap(this));
+        final String auto = getString(R.string.recommend_columns_auto);
+        if (SdkHelper.getSdkInt() >= 11) {
+            try {
+                final Class<?> pickerClass = Class.forName("android.widget.NumberPicker");
+                final Object picker = pickerClass.getConstructor(Context.class).newInstance(ctx);
+                pickerClass.getMethod("setMinValue", int.class).invoke(picker, 0);
+                pickerClass.getMethod("setMaxValue", int.class).invoke(picker, 5);
+                pickerClass.getMethod("setDisplayedValues", String[].class).invoke(picker,
+                        (Object) new String[]{auto, "1", "2", "3", "4", "5"});
+                pickerClass.getMethod("setWrapSelectorWheel", boolean.class).invoke(picker, false);
+                pickerClass.getMethod("setValue", int.class).invoke(picker,
+                        current >= 0 && current <= 5 ? current : 0);
+                new AlertDialog.Builder(ctx)
+                        .setTitle(getString(R.string.recommend_columns_title))
+                        .setView((View) picker)
+                        .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                int value = 0;
+                                try {
+                                    value = ((Integer) pickerClass.getMethod("getValue")
+                                            .invoke(picker)).intValue();
+                                } catch (Throwable t) {
+                                }
+                                SharedPreferencesUtil.putInt(SharedPreferencesUtil.RECOMMEND_COLUMNS, value);
+                                updateRecommendColumnsDisplay(textView);
+                            }
+                        })
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show();
+                return;
+            } catch (Throwable t) {
+            }
+        }
+        final String[] labels = {auto, "1", "2", "3", "4", "5"};
+        new AlertDialog.Builder(ctx)
+                .setTitle(getString(R.string.recommend_columns_title))
+                .setSingleChoiceItems(labels, current >= 0 && current <= 5 ? current : 0,
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                SharedPreferencesUtil.putInt(SharedPreferencesUtil.RECOMMEND_COLUMNS, which);
+                                updateRecommendColumnsDisplay(textView);
+                                dialog.dismiss();
+                            }
+                        })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
     private void showPlayerChoiceDialog() {
         final String[] allPlayers = {"内置播放器（IJK V3）", "内置播放器（Ostwind）", "自动检测", "MX Player (免费版)", "MX Player (专业版)", "MoboPlayer", "MoboPlayer Pro", "VLC", "VPlayer", "RockPlaye Liter", "QQ影音", "凉腕播放器", "系统播放器"};
         final int[] allValues = {PLAYER_BUILTIN, PLAYER_OSTWIND, PLAYER_AUTO, PLAYER_MX_AD, PLAYER_MX_PRO, PLAYER_MOBO, PLAYER_MOBO_PRO, PLAYER_VLC, PLAYER_VPLAYER, PLAYER_ROCKPLAYER, PLAYER_QQPLAYER, PLAYER_LIANGWAN, PLAYER_SYSTEM};
@@ -2726,4 +2855,13 @@ public class SettingsActivity extends BaseActivity {
                     }
                 });
     }
+    @Override
+    public void onDestroy() {
+        if (mainHandler != null) {
+            mainHandler.removeCallbacksAndMessages(null);
+        }
+        super.onDestroy();
+    }
+
+
 }

@@ -16,8 +16,9 @@ public class ConvertPlayUtil {
     private static final String KEY_INSTALL_ID = "convert_install_id";
     private static final String KEY_TOKEN = "convert_token";
 
-    private static String sToken;
-    private static boolean sTokenLoaded;
+    // 每台服务器各自的 token（新/旧服务器注册表不保证共享）
+    private static final java.util.HashMap<String, String> sTokenCache =
+            new java.util.HashMap<String, String>();
     private static boolean sTooLarge;
 
     /** AUTH_MASKED 逐字符 XOR 0x5A，
@@ -64,7 +65,7 @@ public class ConvertPlayUtil {
     public static boolean isConvertEnabled() {
         return tv.biliclassic.SettingsActivity.isConvertPlayEnabled()
                 && tv.biliclassic.util.SdkHelper.getSdkInt() < 21
-                && !tv.biliclassic.util.DeviceInfoUtil.hasNeon();
+                && tv.biliclassic.util.DeviceUtils.isTranscodePlaySupported();
     }
 
     /**
@@ -85,31 +86,65 @@ public class ConvertPlayUtil {
      */
     public static String fetchTranscodedUrl(String srcUrl, String name) {
         sTooLarge = false;
-        String token = getCachedToken();
-        if (token == null) {
-            token = registerToken();
+        String primary = tv.biliclassic.SettingsActivity.getConvertPlayApiBase();
+        String fallback = tv.biliclassic.SettingsActivity.getConvertPlayApiBaseFallback();
+        String[] bases;
+        if (fallback != null && fallback.length() > 0 && !fallback.equals(primary)) {
+            bases = new String[]{primary, fallback};
+        } else {
+            bases = new String[]{primary};
         }
+        // 优先新服务器；失败再回退旧服务器
+        for (int i = 0; i < bases.length; i++) {
+            String url = tryBase(bases[i], srcUrl);
+            if (url != null) return url;
+            // 源视频过大：换服务器也没用，直接回退原画质
+            if (sTooLarge) return null;
+        }
+        return null;
+    }
+
+    /** 针对某台服务器：注册/复用 token，转码；token 失效则重注册重试一次。 */
+    private static String tryBase(String base, String srcUrl) {
+        String api = base + "/transcode";
+        String token = getCachedToken(base);
+        if (token == null) token = registerToken(base);
         if (token == null) return null;
-        String api = tv.biliclassic.SettingsActivity.getConvertPlayApiUrl();
         String url = doTranscode(api, srcUrl, token);
         if (url != null) return url;
-        // 源视频过大已被服务端拒收：直接回退原画质，不再重试
         if (sTooLarge) return null;
         // token 可能已被服务端作废：清掉重新注册再试一次
-        sToken = null;
-        sTokenLoaded = false;
-        SharedPreferencesUtil.putString(KEY_TOKEN, "");
-        String token2 = registerToken();
+        clearToken(base);
+        String token2 = registerToken(base);
         if (token2 == null) return null;
         return doTranscode(api, srcUrl, token2);
     }
 
-    private static String getCachedToken() {
-        if (!sTokenLoaded) {
-            sTokenLoaded = true;
-            sToken = SharedPreferencesUtil.getString(KEY_TOKEN, "");
+    private static String tokenKey(String base) {
+        boolean primary = base != null && base.equals(
+                tv.biliclassic.SettingsActivity.getConvertPlayApiBase());
+        return KEY_TOKEN + (primary ? "_p" : "_f");
+    }
+
+    private static String getCachedToken(String base) {
+        String k = tokenKey(base);
+        if (!sTokenCache.containsKey(k)) {
+            sTokenCache.put(k, SharedPreferencesUtil.getString(k, ""));
         }
-        return (sToken != null && sToken.length() > 0) ? sToken : null;
+        String t = sTokenCache.get(k);
+        return (t != null && t.length() > 0) ? t : null;
+    }
+
+    private static void saveToken(String base, String token) {
+        String k = tokenKey(base);
+        sTokenCache.put(k, token);
+        SharedPreferencesUtil.putString(k, token);
+    }
+
+    private static void clearToken(String base) {
+        String k = tokenKey(base);
+        sTokenCache.put(k, "");
+        SharedPreferencesUtil.putString(k, "");
     }
 
     private static String doTranscode(String api, String srcUrl, String token) {
@@ -156,11 +191,11 @@ public class ConvertPlayUtil {
     }
 
     /** /register 用全局密钥签名换每设备 token；同一设备返回同一 token。失败返回 null。 */
-    private static String registerToken() {
+    private static String registerToken(String base) {
         String installId = getInstallId();
         // 老设备系统时钟可能严重错误（如时钟回到 1970/1980），
         // 直接用本机时间签名会被服务端判为“签名过期”。先取服务器时钟算 ts。
-        String ts = getServerTs();
+        String ts = getServerTs(base);
         if (ts == null) {
             ts = Long.toString(System.currentTimeMillis() / 1000L);
         }
@@ -172,34 +207,30 @@ public class ConvertPlayUtil {
             body.put("install_id", installId);
             body.put("ts", ts);
             if (sig != null) body.put("sig", sig);
-            String[] resp = httpPostJson(
-                    tv.biliclassic.SettingsActivity.getConvertPlayApiBase() + "/register", body);
+            String[] resp = httpPostJson(base + "/register", body);
             int code = Integer.parseInt(resp[0]);
             if (code >= 200 && code < 300) {
                 JSONObject res = new JSONObject(resp[1]);
                 String token = res.optString("token", "");
                 if (token.length() > 0) {
-                    SharedPreferencesUtil.putString(KEY_TOKEN, token);
-                    sToken = token;
-                    sTokenLoaded = true;
-                    Log.e(TAG, "注册成功 install=" + installId);
+                    saveToken(base, token);
+                    Log.e(TAG, "注册成功 install=" + installId + " base=" + base);
                     return token;
                 }
             } else {
-                Log.e(TAG, "注册失败 code=" + code + " body=" + resp[1]);
+                Log.e(TAG, "注册失败 base=" + base + " code=" + code + " body=" + resp[1]);
             }
         } catch (Exception e) {
-            Log.e(TAG, "注册异常", e);
+            Log.e(TAG, "注册异常 base=" + base, e);
         }
         return null;
     }
 
     /** GET /health 取服务器秒级时间戳，用于老设备时钟错误时签名。失败返回 null。 */
-    private static String getServerTs() {
+    private static String getServerTs(String base) {
         java.net.HttpURLConnection conn = null;
         try {
-            java.net.URL u = new java.net.URL(
-                    tv.biliclassic.SettingsActivity.getConvertPlayApiBase() + "/health");
+            java.net.URL u = new java.net.URL(base + "/health");
             conn = (java.net.HttpURLConnection) u.openConnection();
             conn.setConnectTimeout(5000);
             conn.setReadTimeout(5000);
