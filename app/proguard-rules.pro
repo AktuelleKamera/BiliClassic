@@ -33,6 +33,7 @@
 -keep class util.PlayerToastMessageViewHolder {
     <fields>;
     <methods>;
+    public <init>(boolean);
 }
 
 # Metro 主题：自定义 View（布局 XML android:name 按类名反射恢复）与 Fragment，
