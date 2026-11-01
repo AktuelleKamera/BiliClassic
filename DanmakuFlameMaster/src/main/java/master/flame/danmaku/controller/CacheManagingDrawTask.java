@@ -132,12 +132,12 @@ public class CacheManagingDrawTask extends DrawTask {
 
     @Override
     public void quit() {
-        super.quit();
-        reset();
-        if(mCacheManager!=null){
+        if (mCacheManager != null) {
             mCacheManager.end();
             mCacheManager = null;
         }
+        super.quit();
+        reset();
         NativeBitmapFactory.releaseLibs();
     }
 
@@ -287,10 +287,6 @@ public class CacheManagingDrawTask extends DrawTask {
                     IDrawingCache<?> cache = danmaku.cache;
                     boolean hasReferences = cache != null && cache.hasReferences();
                     if (removeAllReferences && hasReferences) {
-                        if (cache.get() != null) {
-                            mRealSize -= cache.size();
-                            cache.destroy();
-                        }
                         entryRemoved(true, danmaku, null);
                         it.remove();
                         continue;
@@ -302,7 +298,6 @@ public class CacheManagingDrawTask extends DrawTask {
                 }
                 // mCaches.clear();
             }
-            mRealSize = 0;
         }
 
         protected void entryRemoved(boolean evicted, BaseDanmaku oldValue, BaseDanmaku newValue) {
@@ -313,7 +308,10 @@ public class CacheManagingDrawTask extends DrawTask {
                     return;
                 }
                 mRealSize -= sizeOf(oldValue);
-                oldValue.cache.destroy();                
+                if (mRealSize < 0) {
+                    mRealSize = 0;
+                }
+                oldValue.cache.destroy();
                 mCachePool.release((DrawingCache) oldValue.cache);
                 oldValue.cache = null;
             }

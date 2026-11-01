@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 
 /**
  * Created by MoiTempete.
@@ -11,12 +12,19 @@ import java.io.OutputStream;
 public class IOUtils {
     public static String getString(InputStream in){
         byte[] data = getBytes(in);
-        return data == null? null:new String(data);
+        if (data == null) return null;
+        try {
+            return new String(data, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            return new String(data);
+        }
     }
     public static byte[] getBytes(InputStream in){
 
         try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            int initialSize = in.available();
+            if (initialSize <= 8192) initialSize = 8192;
+            ByteArrayOutputStream baos = new ByteArrayOutputStream(initialSize);
             byte[] buffer = new byte[8192];
             int len = 0;
             while ((len = in.read(buffer)) != -1)

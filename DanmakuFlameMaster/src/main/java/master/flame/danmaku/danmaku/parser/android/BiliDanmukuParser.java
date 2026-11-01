@@ -95,27 +95,45 @@ public class BiliDanmukuParser extends BaseDanmakuParser {
             completed = true;
         }
 
+        private boolean isDanmakuTag(String localName, String qName) {
+            return localName != null && localName.length() != 0
+                    ? "d".equalsIgnoreCase(localName) : "d".equalsIgnoreCase(qName);
+        }
+
         @Override
         public void startElement(String uri, String localName, String qName, Attributes attributes)
                 throws SAXException {
-            String tagName = localName.length() != 0 ? localName : qName;
-            tagName = tagName.toLowerCase(Locale.getDefault()).trim();
-            if (tagName.equals("d")) {
-                String pValue = attributes.getValue("p");
-                String[] values = pValue.split(",");
-                if (values.length > 0) {
-                    long time = (long) (Float.parseFloat(values[0]) * 1000);
-                    int type = Integer.parseInt(values[1]);
-                    float textSize = Float.parseFloat(values[2]);
-                    int color = Integer.parseInt(values[3]) | 0xFF000000;
-                    item = DanmakuFactory.createDanmaku(type, mDisp);
-                    if (item != null) {
-                        item.time = time;
-                        item.textSize = textSize * (mDispDensity - 0.6f);
-                        item.textColor = color;
-                        item.textShadowColor = color <= Color.BLACK ? Color.WHITE : Color.BLACK;
-                    }
+            if (!isDanmakuTag(localName, qName)) {
+                return;
+            }
+            String pValue = attributes.getValue("p");
+            if (pValue == null) {
+                return;
+            }
+            int comma1 = pValue.indexOf(',');
+            int comma2 = comma1 < 0 ? -1 : pValue.indexOf(',', comma1 + 1);
+            int comma3 = comma2 < 0 ? -1 : pValue.indexOf(',', comma2 + 1);
+            if (comma3 < 0) {
+                return;
+            }
+            int comma4 = pValue.indexOf(',', comma3 + 1);
+            item = null;
+            try {
+                long time = (long) (Float.parseFloat(pValue.substring(0, comma1)) * 1000);
+                int type = Integer.parseInt(pValue.substring(comma1 + 1, comma2));
+                float textSize = Float.parseFloat(pValue.substring(comma2 + 1, comma3));
+                int color = Integer.parseInt(comma4 < 0
+                        ? pValue.substring(comma3 + 1)
+                        : pValue.substring(comma3 + 1, comma4)) | 0xFF000000;
+                item = DanmakuFactory.createDanmaku(type, mDisp);
+                if (item != null) {
+                    item.time = time;
+                    item.textSize = textSize * (mDispDensity - 0.6f);
+                    item.textColor = color;
+                    item.textShadowColor = color <= Color.BLACK ? Color.WHITE : Color.BLACK;
                 }
+            } catch (NumberFormatException e) {
+                item = null;
             }
         }
 
@@ -139,8 +157,11 @@ public class BiliDanmukuParser extends BaseDanmakuParser {
                 DanmakuFactory.fillText(item, decodeXmlString(new String(ch, start, length)));
                 item.index = index++;
 
-                String text = String.valueOf(item.text).trim();
-                if (item.getType() == BaseDanmaku.TYPE_SPECIAL && text.startsWith("[")
+                if (item.getType() != BaseDanmaku.TYPE_SPECIAL) {
+                    return;
+                }
+                String text = item.text == null ? "" : item.text.toString().trim();
+                if (text.startsWith("[")
                         && text.endsWith("]")) {
                     String[] textArr = null;
                     try {

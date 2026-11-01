@@ -232,14 +232,29 @@ public class DanmakuFactory {
 
     public static void fillText(BaseDanmaku danmaku, String text) {
         danmaku.text = text;
-        if (text == null || text.length() == 0 || !text.contains(BaseDanmaku.DANMAKU_BR_CHAR)) {
+        if (text == null || text.length() == 0) {
             return;
         }
-
-        String[] lines = String.valueOf(danmaku.text).split(BaseDanmaku.DANMAKU_BR_CHAR, -1);
-        if (lines.length > 1) {
-            danmaku.lines = lines;
+        String sep = BaseDanmaku.DANMAKU_BR_CHAR;
+        int first = text.indexOf(sep);
+        if (first < 0) {
+            return;
         }
+        int count = 1;
+        int index = first + sep.length();
+        while ((index = text.indexOf(sep, index)) >= 0) {
+            count++;
+            index += sep.length();
+        }
+        String[] lines = new String[count + 1];
+        int start = 0;
+        int out = 0;
+        while ((index = text.indexOf(sep, start)) >= 0) {
+            lines[out++] = text.substring(start, index);
+            start = index + sep.length();
+        }
+        lines[out] = text.substring(start);
+        danmaku.lines = lines;
     }
 
     /**

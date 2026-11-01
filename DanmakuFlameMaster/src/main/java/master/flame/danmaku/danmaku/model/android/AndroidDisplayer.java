@@ -41,8 +41,36 @@ public class AndroidDisplayer extends AbsDisplayer<Canvas> {
 
     private Matrix matrix = new Matrix();
 
-    private static float sLastScaleTextSize;
-    private final static Map<Float, Float> sCachedScaleSize = new HashMap<Float, Float>(10);
+    private static final ThreadLocal<ScaleSizeCache> sScaleSizeCache =
+            new ThreadLocal<ScaleSizeCache>() {
+                @Override
+                protected ScaleSizeCache initialValue() {
+                    return new ScaleSizeCache();
+                }
+            };
+
+    private static final class ScaleSizeCache {
+        private float mScale = 1f;
+        private final Map<Float, Float> mSizes = new HashMap<Float, Float>(10);
+
+        Float get(float textSize, float scale) {
+            if (mScale != scale || mSizes.size() > 32) {
+                mScale = scale;
+                mSizes.clear();
+            }
+            Float key = Float.valueOf(textSize);
+            Float size = mSizes.get(key);
+            if (size == null) {
+                size = Float.valueOf(textSize * scale);
+                mSizes.put(key, size);
+            }
+            return size;
+        }
+
+        void clear() {
+            mSizes.clear();
+        }
+    }
 
     @SuppressWarnings("unused")
     private int HIT_CACHE_COUNT = 0;
@@ -493,13 +521,9 @@ public class AndroidDisplayer extends AbsDisplayer<Canvas> {
         if (!DanmakuGlobalConfig.DEFAULT.isTextScaled) {
             return;
         }
-        Float size = sCachedScaleSize.get(danmaku.textSize);
-        if (size == null || sLastScaleTextSize != DanmakuGlobalConfig.DEFAULT.scaleTextSize) {
-            sLastScaleTextSize = DanmakuGlobalConfig.DEFAULT.scaleTextSize;
-            size = danmaku.textSize * DanmakuGlobalConfig.DEFAULT.scaleTextSize;
-            sCachedScaleSize.put(danmaku.textSize, size);
-        }
-        paint.setTextSize(size);
+        Float size = sScaleSizeCache.get().get(danmaku.textSize,
+                DanmakuGlobalConfig.DEFAULT.scaleTextSize);
+        paint.setTextSize(size.floatValue());
     }
 
     @Override
@@ -534,7 +558,10 @@ public class AndroidDisplayer extends AbsDisplayer<Canvas> {
     public static void clearTextHeightCache() {
         //TODO clear(); sTextHeightCache.clear();
         sStuffer.clearCaches();
-        sCachedScaleSize.clear();
+        ScaleSizeCache scaleSizeCache = sScaleSizeCache.get();
+        if (scaleSizeCache != null) {
+            scaleSizeCache.clear();
+        }
     }
 
     @Override

@@ -5,9 +5,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TreeMap;
 
 import master.flame.danmaku.danmaku.model.BaseDanmaku;
@@ -62,23 +64,46 @@ public class DanmakuFilters {
      * @author ch
      */
     public static class TypeDanmakuFilter extends BaseDanmakuFilter<List<Integer>> {
+        private volatile int mFilterTypes = 0;
 
-        final List<Integer> mFilterTypes = Collections.synchronizedList(new ArrayList<Integer>());
+        private static int toBit(int type) {
+            if (type <= 0 || type >= 32) {
+                return 0;
+            }
+            return 1 << type;
+        }
 
         public void enableType(Integer type) {
-            if (!mFilterTypes.contains(type))
-                mFilterTypes.add(type);
+            if (type == null) {
+                return;
+            }
+            int bit = toBit(type.intValue());
+            if (bit == 0) {
+                return;
+            }
+            synchronized (this) {
+                mFilterTypes |= bit;
+            }
         }
 
         public void disableType(Integer type) {
-            if (mFilterTypes.contains(type))
-                mFilterTypes.remove(type);
+            if (type == null) {
+                return;
+            }
+            int bit = toBit(type.intValue());
+            if (bit == 0) {
+                return;
+            }
+            synchronized (this) {
+                mFilterTypes &= ~bit;
+            }
         }
 
         @Override
         public boolean filter(BaseDanmaku danmaku, int orderInScreen, int totalsizeInScreen,
                               DanmakuTimer timer, boolean fromCachingTask) {
-            boolean filtered = danmaku != null && mFilterTypes.contains(danmaku.getType());
+            boolean filtered = danmaku != null
+                    && (mFilterTypes & toBit(danmaku.getType())) != 0;
             if (filtered) {
                 danmaku.mFilterParam |= FILTER_TYPE_TYPE;
             }
@@ -87,26 +112,29 @@ public class DanmakuFilters {
 
         @Override
         public void setData(List<Integer> data) {
-            reset();
-            if (data != null) {
-                for (Integer i : data) {
-                    enableType(i);
+            if (data == null) {
+                reset();
+                return;
+            }
+            int bits = 0;
+            for (Integer i : data) {
+                if (i != null) {
+                    bits |= toBit(i.intValue());
                 }
+            }
+            synchronized (this) {
+                mFilterTypes = bits;
             }
         }
 
         @Override
         public void reset() {
-            mFilterTypes.clear();
+            synchronized (this) {
+                mFilterTypes = 0;
+            }
         }
-
     }
 
-    /**
-     * 根据同屏数量过滤弹幕
-     * 
-     * @author ch
-     */
     public static class QuantityDanmakuFilter extends BaseDanmakuFilter<Integer> {
 
         protected int mMaximumSize = -1;
@@ -362,74 +390,83 @@ public class DanmakuFilters {
 
     public static class DuplicateMergingFilter extends BaseDanmakuFilter<Void> {
 
-        protected final IDanmakus blockedDanmakus = new Danmakus(Danmakus.ST_BY_LIST);
-        protected final LinkedHashMap<String, BaseDanmaku> currentDanmakus = new LinkedHashMap<String, BaseDanmaku>();
-        private final IDanmakus passedDanmakus = new Danmakus(Danmakus.ST_BY_LIST);
+        protected final LinkedHashSet<BaseDanmaku> blockedDanmakus = new LinkedHashSet<BaseDanmaku>();
+        protected final LinkedHashSet<BaseDanmaku> passedDanmakus = new LinkedHashSet<BaseDanmaku>();
+        protected final LinkedHashMap<CharSequence, BaseDanmaku> currentDanmakus =
+                new LinkedHashMap<CharSequence, BaseDanmaku>();
 
-        private final void removeTimeoutDanmakus(final IDanmakus danmakus, long limitTime) {
-            IDanmakuIterator it = danmakus.iterator();
+        private void removeTimeoutDanmakus(Set<BaseDanmaku> danmakus, long limitTime,
+                                           boolean clearAll) {
+            Iterator<BaseDanmaku> it = danmakus.iterator();
             long startTime = System.currentTimeMillis();
             while (it.hasNext()) {
                 try {
-                    BaseDanmaku item = it.next();
-                    if (item.isTimeOut()) {
+                    if (it.next().isTimeOut()) {
                         it.remove();
-                    } else {
-                        break;
+                    } else if (!clearAll) {
+                        return;
                     }
                 } catch (Exception e) {
-                    break;
+                    return;
                 }
-                if (System.currentTimeMillis() - startTime > limitTime) {
-                    break;
+                if (!clearAll && System.currentTimeMillis() - startTime > limitTime) {
+                    return;
                 }
             }
         }
 
-        private void removeTimeoutDanmakus(LinkedHashMap<String, BaseDanmaku> danmakus,
-                int limitTime) {
-            Iterator<Entry<String, BaseDanmaku>> it = danmakus.entrySet().iterator();
+        private void removeTimeoutDanmakus(LinkedHashMap<CharSequence, BaseDanmaku> danmakus,
+                                           long limitTime, boolean clearAll) {
+            Iterator<Entry<CharSequence, BaseDanmaku>> it = danmakus.entrySet().iterator();
             long startTime = System.currentTimeMillis();
             while (it.hasNext()) {
                 try {
-                    Entry<String, BaseDanmaku> entry = it.next();
-                    BaseDanmaku item = entry.getValue();
-                    if (item.isTimeOut()) {
+                    if (it.next().getValue().isTimeOut()) {
                         it.remove();
-                    } else {
-                        break;
+                    } else if (!clearAll) {
+                        return;
                     }
                 } catch (Exception e) {
-                    break;
+                    return;
                 }
-                if (System.currentTimeMillis() - startTime > limitTime) {
-                    break;
+                if (!clearAll && System.currentTimeMillis() - startTime > limitTime) {
+                    return;
                 }
             }
         }
 
-        public synchronized boolean needFilter(BaseDanmaku danmaku, int index, int totalsizeInScreen,
-                DanmakuTimer timer, boolean fromCachingTask) {
-            removeTimeoutDanmakus(blockedDanmakus, 2);
-            removeTimeoutDanmakus(passedDanmakus, 2);
-            removeTimeoutDanmakus(currentDanmakus, 3);
+        public synchronized boolean needFilter(BaseDanmaku danmaku, int index,
+                int totalsizeInScreen, DanmakuTimer timer, boolean fromCachingTask) {
+            boolean clearAll = blockedDanmakus.size() + passedDanmakus.size()
+                    + currentDanmakus.size() > 1500;
+            if (fromCachingTask || clearAll) {
+                removeTimeoutDanmakus(blockedDanmakus, 10, clearAll);
+                removeTimeoutDanmakus(passedDanmakus, 10, clearAll);
+                removeTimeoutDanmakus(currentDanmakus, 10, clearAll);
+            }
+
             if (blockedDanmakus.contains(danmaku) && !danmaku.isOutside()) {
                 return true;
             }
             if (passedDanmakus.contains(danmaku)) {
                 return false;
             }
-            if (currentDanmakus.containsKey(danmaku.text)) {
-                currentDanmakus.put(String.valueOf(danmaku.text), danmaku);
-                blockedDanmakus.removeItem(danmaku);
-                blockedDanmakus.addItem(danmaku);
-                return true;
-            } else {
-                currentDanmakus.put(String.valueOf(danmaku.text), danmaku);
-                passedDanmakus.addItem(danmaku);
+
+            CharSequence text = danmaku.text;
+            if (text == null) {
+                passedDanmakus.add(danmaku);
                 return false;
             }
-
+            BaseDanmaku current = currentDanmakus.get(text);
+            if (current == null || current.isTimeOut()) {
+                currentDanmakus.put(text, danmaku);
+                passedDanmakus.add(danmaku);
+                return false;
+            }
+            currentDanmakus.put(text, danmaku);
+            blockedDanmakus.remove(danmaku);
+            blockedDanmakus.add(danmaku);
+            return true;
         }
 
         @Override
@@ -444,7 +481,6 @@ public class DanmakuFilters {
 
         @Override
         public void setData(Void data) {
-
         }
 
         @Override
@@ -458,62 +494,106 @@ public class DanmakuFilters {
         public void clear() {
             reset();
         }
-
     }
 
     public static class MaximumLinesFilter extends BaseDanmakuFilter<Map<Integer, Integer>> {
 
-        private Map<Integer, Integer> mMaximumLinesPairs;
+        private volatile int[] mMaximumLines;
 
         @Override
-        public boolean filter(BaseDanmaku danmaku, int lines, int totalsizeInScreen, DanmakuTimer timer, boolean willHit) {
+        public boolean filter(BaseDanmaku danmaku, int lines, int totalsizeInScreen,
+                              DanmakuTimer timer, boolean willHit) {
             boolean filtered = false;
-            if (mMaximumLinesPairs != null) {
-                Integer maxLines = mMaximumLinesPairs.get(danmaku.getType());
-                filtered = (maxLines != null && lines >= maxLines);
-                if (filtered) {
-                    danmaku.mFilterParam |= FILTER_TYPE_MAXIMUM_LINES;
+            int[] maximumLines = mMaximumLines;
+            if (maximumLines != null && danmaku != null) {
+                int type = danmaku.getType();
+                if (type > 0 && type < maximumLines.length) {
+                    int max = maximumLines[type];
+                    filtered = max >= 0 && lines >= max;
                 }
+            }
+            if (filtered) {
+                danmaku.mFilterParam |= FILTER_TYPE_MAXIMUM_LINES;
             }
             return filtered;
         }
 
         @Override
         public void setData(Map<Integer, Integer> data) {
-            mMaximumLinesPairs = data;
+            if (data == null) {
+                mMaximumLines = null;
+                return;
+            }
+            int maxType = 0;
+            for (Integer type : data.keySet()) {
+                if (type != null && type.intValue() > maxType) {
+                    maxType = type.intValue();
+                }
+            }
+            int[] values = new int[maxType + 1];
+            for (int i = 0; i < values.length; i++) {
+                values[i] = -1;
+            }
+            for (Entry<Integer, Integer> entry : data.entrySet()) {
+                Integer type = entry.getKey();
+                Integer value = entry.getValue();
+                if (type != null && value != null) {
+                    int index = type.intValue();
+                    if (index > 0 && index < values.length) {
+                        values[index] = value.intValue();
+                    }
+                }
+            }
+            mMaximumLines = values;
         }
 
         @Override
         public void reset() {
-            mMaximumLinesPairs = null;
+            mMaximumLines = null;
         }
     }
 
     public static class OverlappingFilter extends BaseDanmakuFilter<Map<Integer, Boolean>> {
 
-        private Map<Integer, Boolean> mEnabledPairs;
+        private volatile int mEnabledTypes;
 
         @Override
-        public boolean filter(BaseDanmaku danmaku, int index, int totalsizeInScreen, DanmakuTimer timer, boolean willHit) {
+        public boolean filter(BaseDanmaku danmaku, int index, int totalsizeInScreen,
+                              DanmakuTimer timer, boolean willHit) {
             boolean filtered = false;
-            if (mEnabledPairs != null) {
-                Boolean enabledValue = mEnabledPairs.get(danmaku.getType());
-                filtered = enabledValue != null && enabledValue && willHit;
-                if (filtered) {
-                    danmaku.mFilterParam |= FILTER_TYPE_OVERLAPPING;
+            if (willHit && danmaku != null) {
+                int type = danmaku.getType();
+                if (type > 0 && type < 32) {
+                    filtered = (mEnabledTypes & (1 << type)) != 0;
                 }
+            }
+            if (filtered) {
+                danmaku.mFilterParam |= FILTER_TYPE_OVERLAPPING;
             }
             return filtered;
         }
 
         @Override
         public void setData(Map<Integer, Boolean> data) {
-            mEnabledPairs = data;
+            int bits = 0;
+            if (data != null) {
+                for (Entry<Integer, Boolean> entry : data.entrySet()) {
+                    Integer type = entry.getKey();
+                    Boolean enabled = entry.getValue();
+                    if (type != null && enabled != null && enabled.booleanValue()) {
+                        int index = type.intValue();
+                        if (index > 0 && index < 32) {
+                            bits |= 1 << index;
+                        }
+                    }
+                }
+            }
+            mEnabledTypes = bits;
         }
 
         @Override
         public void reset() {
-            mEnabledPairs = null;
+            mEnabledTypes = 0;
         }
     }
 
@@ -544,27 +624,22 @@ public class DanmakuFilters {
     public void filter(BaseDanmaku danmaku, int index, int totalsizeInScreen,
                        DanmakuTimer timer, boolean fromCachingTask) {
         for (IDanmakuFilter<?> f : mFilterArray) {
-            if (f != null) {
-                boolean filtered = f.filter(danmaku, index, totalsizeInScreen, timer, fromCachingTask);
-                danmaku.filterResetFlag = GlobalFlagValues.FILTER_RESET_FLAG;
-                if (filtered) {
-                    break;
-                }
+            if (f != null && f.filter(danmaku, index, totalsizeInScreen, timer, fromCachingTask)) {
+                break;
             }
         }
+        danmaku.filterResetFlag = GlobalFlagValues.FILTER_RESET_FLAG;
     }
 
     public boolean filterSecondary(BaseDanmaku danmaku, int lines, int totalsizeInScreen,
                                    DanmakuTimer timer, boolean willHit) {
         for (IDanmakuFilter<?> f : mFilterArraySecondary) {
-            if (f != null) {
-                boolean filtered = f.filter(danmaku, lines, totalsizeInScreen, timer, willHit);
+            if (f != null && f.filter(danmaku, lines, totalsizeInScreen, timer, willHit)) {
                 danmaku.filterResetFlag = GlobalFlagValues.FILTER_RESET_FLAG;
-                if (filtered) {
-                    return true;
-                }
+                return true;
             }
         }
+        danmaku.filterResetFlag = GlobalFlagValues.FILTER_RESET_FLAG;
         return false;
     }
 

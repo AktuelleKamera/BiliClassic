@@ -132,6 +132,33 @@ public class DanmakuUtils {
         return w * h * 4;
     }
 
+    private static boolean textEquals(CharSequence a, CharSequence b) {
+        if (a == b) return true;
+        if (a == null || b == null) return false;
+        int length = a.length();
+        if (length != b.length()) return false;
+        for (int i = 0; i < length; i++) {
+            if (a.charAt(i) != b.charAt(i)) return false;
+        }
+        return true;
+    }
+
+    private static int compareText(CharSequence a, CharSequence b) {
+        if (a == b) return 0;
+        if (a == null) return -1;
+        if (b == null) return 1;
+        int length = Math.min(a.length(), b.length());
+        for (int i = 0; i < length; i++) {
+            char ca = a.charAt(i);
+            char cb = b.charAt(i);
+            if (ca != cb) return ca < cb ? -1 : 1;
+        }
+        int la = a.length();
+        int lb = b.length();
+        if (la == lb) return 0;
+        return la < lb ? -1 : 1;
+    }
+
     public static final boolean isDuplicate(BaseDanmaku obj1, BaseDanmaku obj2) {
         if (obj1 == null || obj2 == null || obj1 == obj2) {
             return false;
@@ -145,7 +172,7 @@ public class DanmakuUtils {
             return false;
         }
 
-        return obj1.text.equals(obj2.text);
+        return textEquals(obj1.text, obj2.text);
     }
 
     public static final int compare(BaseDanmaku obj1, BaseDanmaku obj2) {
@@ -196,7 +223,7 @@ public class DanmakuUtils {
             return 1;
         }
 
-        int r = obj1.text.toString().compareTo(obj2.text.toString());
+        int r = compareText(obj1.text, obj2.text);
         if (r != 0) {
             return r;
         }

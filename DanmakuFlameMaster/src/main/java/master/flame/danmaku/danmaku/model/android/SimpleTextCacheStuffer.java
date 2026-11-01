@@ -4,8 +4,7 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.text.TextPaint;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import master.flame.danmaku.danmaku.model.BaseDanmaku;
 
@@ -14,14 +13,24 @@ import master.flame.danmaku.danmaku.model.BaseDanmaku;
  */
 public class SimpleTextCacheStuffer extends BaseCacheStuffer {
 
-    private final static Map<Float, Float> sTextHeightCache = new HashMap<Float, Float>();
+    private final static ConcurrentHashMap<Float, Float> sTextHeightCache =
+            new ConcurrentHashMap<Float, Float>();
+    private final static ThreadLocal<Paint.FontMetricsInt> sFontMetrics =
+            new ThreadLocal<Paint.FontMetricsInt>() {
+                @Override
+                protected Paint.FontMetricsInt initialValue() {
+                    return new Paint.FontMetricsInt();
+                }
+            };
 
     protected Float getCacheHeight(BaseDanmaku danmaku, Paint paint) {
-        Float textSize = paint.getTextSize();
+        Float textSize = Float.valueOf(paint.getTextSize());
         Float textHeight = sTextHeightCache.get(textSize);
         if (textHeight == null) {
-            Paint.FontMetrics fontMetrics = paint.getFontMetrics();
-            textHeight = fontMetrics.descent - fontMetrics.ascent + fontMetrics.leading;
+            Paint.FontMetricsInt fontMetrics = sFontMetrics.get();
+            paint.getFontMetricsInt(fontMetrics);
+            textHeight = Float.valueOf(fontMetrics.descent - fontMetrics.ascent
+                    + fontMetrics.leading);
             sTextHeightCache.put(textSize, textHeight);
         }
         return textHeight;

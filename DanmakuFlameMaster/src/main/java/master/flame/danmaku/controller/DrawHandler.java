@@ -432,7 +432,7 @@ public class DrawHandler extends Handler {
                     dTime = System.currentTimeMillis() - lastTime;
                     long diffTime = mFrameUpdateRate - dTime;
                     if (diffTime > 1) {
-                        SystemClock.sleep(1);
+                        SystemClock.sleep(diffTime > 4 ? diffTime - 2 : 1);
                         continue;
                     }
                     lastTime = startMS;
