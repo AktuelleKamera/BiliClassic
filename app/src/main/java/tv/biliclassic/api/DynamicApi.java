@@ -119,8 +119,10 @@ public class DynamicApi {
      * 获取单条动态详情（web-dynamic v1 detail 接口）。
      */
     public static Dynamic getDynamicDetail(long dynamicId) throws IOException, JSONException {
+        String url = "https://api.bilibili.com/x/polymer/web-dynamic/v1/detail?features="
+                + FEATURES + "&id=" + dynamicId;
         JSONObject resp = NetWorkUtil.getJson(
-                "https://api.bilibili.com/x/polymer/web-dynamic/v1/detail?id=" + dynamicId);
+                ConfInfoApi.signWBI(DmImgParamUtil.getDmImgParamsUrl(url)));
         if (resp.optInt("code", -1) != 0) {
             throw new JSONException(resp.optString("message", "获取动态详情失败"));
         }
