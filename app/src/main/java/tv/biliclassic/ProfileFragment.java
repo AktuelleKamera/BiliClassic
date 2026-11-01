@@ -405,6 +405,9 @@ public class ProfileFragment extends Fragment {
         if (btnLogin != null) btnLogin.setBackgroundColor(0xFFD86DA5);
         if (btnSwitchAccount != null) btnSwitchAccount.setBackgroundColor(0xFFDDDDDD);
         if (btnLogout != null) btnLogout.setBackgroundColor(0xFFDDDDDD);
+        if (tvUserId != null) {
+            tv.biliclassic.util.UiSkin.setBgDrawableKeepPadding(tvUserId, null);
+        }
         // 功能列表项确定性恢复原 selector 背景，确保高亮色不残留
         restoreFeatureItemBg(itemRefresh);
         restoreFeatureItemBg(itemFavorites);
@@ -423,6 +426,9 @@ public class ProfileFragment extends Fragment {
         if (userCard != null && userCard.getVisibility() == View.VISIBLE) {
             if (ivAvatar != null && ivAvatar.getVisibility() == View.VISIBLE) {
                 mKeyNavItems.add(ivAvatar);
+            }
+            if (tvUserId != null && tvUserId.getVisibility() == View.VISIBLE) {
+                mKeyNavItems.add(tvUserId);
             }
             if (btnSwitchAccount != null && btnSwitchAccount.getVisibility() == View.VISIBLE) {
                 mKeyNavItems.add(btnSwitchAccount);
