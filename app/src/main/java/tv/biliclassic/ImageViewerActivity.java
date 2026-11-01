@@ -131,12 +131,13 @@ public class ImageViewerActivity extends BaseActivity {
                     ViewGroup.LayoutParams.MATCH_PARENT));
 
             String url = imageList.get(position);
-            Bitmap cached = GlobalImageCache.getInstance().getAndAcquire(url);
+            String cacheKey = "viewer:" + url;
+            Bitmap cached = GlobalImageCache.getInstance().getAndAcquire(cacheKey);
             if (cached != null && !cached.isRecycled()) {
                 photoView.setImageBitmap(cached);
                 setMaxScale(photoView, 6.25f);
             } else {
-                loadImageForView(photoView, url, position);
+                loadImageForView(photoView, url, cacheKey, position);
             }
 
             container.addView(photoView);
@@ -148,31 +149,46 @@ public class ImageViewerActivity extends BaseActivity {
         public void destroyItem(ViewGroup container, int position, Object object) {
             PhotoView photoView = (PhotoView) object;
             String url = imageList.get(position);
-            GlobalImageCache.getInstance().release(url);
+            GlobalImageCache.getInstance().release("viewer:" + url);
             container.removeView(photoView);
             views.remove(position);
         }
     }
 
-    private void loadImageForView(final PhotoView photoView, final String url, final int position) {
+    private static String normalizeImageUrl(String url) {
+        if (url == null) return null;
+        String value = url.trim();
+        if (value.startsWith("//")) value = "http:" + value;
+        int query = value.indexOf('?');
+        String path = query >= 0 ? value.substring(0, query) : value;
+        String suffix = query >= 0 ? value.substring(query) : "";
+        int at = path.indexOf('@');
+        if (at > 0 && path.substring(0, at).toLowerCase(java.util.Locale.US).contains("hdslb.com")) {
+            path = path.substring(0, at);
+        }
+        if (path.startsWith("https://")) {
+            path = "http://" + path.substring(8);
+        }
+        return path + suffix;
+    }
+
+    private void loadImageForView(final PhotoView photoView, final String url,
+                                   final String cacheKey, final int position) {
         new Thread(new Runnable() {
             @Override
             public void run() {
                 if (isDestroyed) return;
-                String imageUrl = url;
-                if (imageUrl.startsWith("https://")) {
-                    imageUrl = "http://" + imageUrl.substring(8);
-                }
+                String imageUrl = normalizeImageUrl(url);
                 final Bitmap bitmap = downloadImage(imageUrl);
                 if (bitmap != null && !bitmap.isRecycled()) {
-                    GlobalImageCache.getInstance().put(url, bitmap);
+                    GlobalImageCache.getInstance().put(cacheKey, bitmap);
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
                             if (isDestroyed) return;
                             if (adapter.views.get(position) == photoView) {
                                 photoView.setImageBitmap(bitmap);
-                                GlobalImageCache.getInstance().acquire(url);
+                                GlobalImageCache.getInstance().acquire(cacheKey);
                                 setMaxScale(photoView, 6.25f);
                             }
                         }
@@ -251,9 +267,7 @@ public class ImageViewerActivity extends BaseActivity {
         HttpURLConnection conn = null;
         InputStream is = null;
         try {
-            if (urlStr.startsWith("https://")) {
-                urlStr = "http://" + urlStr.substring(8);
-            }
+            urlStr = normalizeImageUrl(urlStr);
 
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();
@@ -364,9 +378,7 @@ public class ImageViewerActivity extends BaseActivity {
         HttpURLConnection conn = null;
         InputStream is = null;
         try {
-            if (urlStr.startsWith("https://")) {
-                urlStr = "http://" + urlStr.substring(8);
-            }
+            urlStr = normalizeImageUrl(urlStr);
 
             URL url = new URL(urlStr);
             conn = (HttpURLConnection) url.openConnection();

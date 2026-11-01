@@ -47,6 +47,13 @@ public class HomeFragment extends Fragment {
     private ListView homeList;
     private HomeSectionAdapter adapter;
     private int[] mainCategories;
+    private boolean mHomeKeyNavActive = false;
+    private int mHomeNavRow = 0;
+    private int mHomeNavCol = 0;
+    private int mHomeSelectionRetry = 0;
+    private View mHomeBanner;
+    private final java.util.WeakHashMap<View, Drawable> mHomeFocusBackgrounds =
+            new java.util.WeakHashMap<View, Drawable>();
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private ExecutorService imageExecutor;
 
@@ -147,6 +154,7 @@ public class HomeFragment extends Fragment {
 
         // Banner 作为列表 header；显式按"全宽 × 图片比例"设高，避免 ListView header 里 adjustViewBounds 测量异常
         View banner = inflater.inflate(R.layout.home_banner, homeList, false);
+        mHomeBanner = banner;
         ImageView bannerImage = (ImageView) banner.findViewById(R.id.banner_image);
         if (bannerImage != null) {
             try {
@@ -626,6 +634,224 @@ public class HomeFragment extends Fragment {
     /**
      * 虚拟化行适配器：ListView 每行一个分区卡，只构建可见行。
      */
+    private static final int[] HOME_VIDEO_CONTAINERS = {
+            R.id.video1_container, R.id.video2_container,
+            R.id.video3_container, R.id.video4_container
+    };
+
+    private static final int[] HOME_VIDEO_COVERS = {
+            R.id.video1_cover, R.id.video2_cover,
+            R.id.video3_cover, R.id.video4_cover
+    };
+
+    public boolean isAtTop() {
+        return mHomeNavRow < 0;
+    }
+
+    public boolean handleRemoteKey(android.view.KeyEvent event) {
+        if (event.getAction() != android.view.KeyEvent.ACTION_DOWN
+                || homeList == null || adapter == null) {
+            return false;
+        }
+        int action = tv.biliclassic.util.KeyBindingUtil.classify(event.getKeyCode());
+        if (action != tv.biliclassic.util.KeyBindingUtil.ACTION_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
+            return false;
+        }
+        int rowCount = adapter.getCount();
+        if (rowCount <= 0) return false;
+        if (!mHomeKeyNavActive) {
+            if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT
+                    || action == tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT) {
+                return false;
+            }
+            mHomeKeyNavActive = true;
+            mHomeNavRow = 0;
+            mHomeNavCol = 0;
+            applyHomeSelection();
+            return true;
+        }
+        if (event.getRepeatCount() != 0) return true;
+        if (mHomeNavRow < -1 || mHomeNavRow >= rowCount) mHomeNavRow = 0;
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                || action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
+            int first = homeList.getFirstVisiblePosition();
+            int last = homeList.getLastVisiblePosition();
+            int page = Math.max(1, last - first);
+            mHomeNavRow += action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                    ? -page : page;
+            if (mHomeNavRow < 0) mHomeNavRow = 0;
+            mHomeNavCol = 0;
+            if (mHomeNavRow >= rowCount) mHomeNavRow = rowCount - 1;
+            mHomeNavCol = 0;
+            applyHomeSelection();
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP) {
+            if (mHomeNavRow > 0) {
+                mHomeNavRow--;
+                clampHomeColumn();
+                applyHomeSelection();
+                return true;
+            }
+            if (mHomeNavRow == 0) {
+                mHomeNavRow = -1;
+                mHomeNavCol = 0;
+                applyHomeSelection();
+                return true;
+            }
+            return false;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
+            if (mHomeNavRow < 0) {
+                mHomeNavRow = 0;
+                mHomeNavCol = 0;
+                applyHomeSelection();
+                return true;
+            }
+            if (mHomeNavRow >= rowCount - 1) return true;
+            mHomeNavRow++;
+            clampHomeColumn();
+            applyHomeSelection();
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT) {
+            if (mHomeNavRow < 0) return false;
+            if (mHomeNavCol <= 0) return false;
+            mHomeNavCol--;
+            applyHomeSelection();
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT) {
+            if (mHomeNavRow < 0) return false;
+            int max = getHomeColumnCount(getHomeSection(mHomeNavRow));
+            if (mHomeNavCol >= max) return true;
+            mHomeNavCol++;
+            applyHomeSelection();
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+            View section = getHomeSection(mHomeNavRow);
+            View click = getHomeClickTarget(section, mHomeNavCol);
+            if (click != null) click.performClick();
+            return true;
+        }
+        return true;
+    }
+
+    private int getHomeColumnCount(View section) {
+        if (section == null) return 0;
+        if (section == mHomeBanner) return 0;
+        int count = 0;
+        for (int id : HOME_VIDEO_CONTAINERS) {
+            View v = section.findViewById(id);
+            if (v != null && v.getVisibility() == View.VISIBLE) count++;
+        }
+        return count;
+    }
+
+    private View getHomeSection(int row) {
+        if (homeList == null) return null;
+        if (row < 0) return mHomeBanner;
+        int position = row + homeList.getHeaderViewsCount();
+        int child = position - homeList.getFirstVisiblePosition();
+        if (child >= 0 && child < homeList.getChildCount()) {
+            return homeList.getChildAt(child);
+        }
+        return null;
+    }
+
+    private View getHomeTarget(View section, int col) {
+        if (section == null) return null;
+        if (section == mHomeBanner) return mHomeBanner;
+        int index = 0;
+        for (int id : HOME_VIDEO_CONTAINERS) {
+            View v = section.findViewById(id);
+            if (v == null || v.getVisibility() != View.VISIBLE) continue;
+            if (index == col) return v;
+            index++;
+        }
+        return section.findViewById(R.id.partition_card);
+    }
+
+    private View getHomeClickTarget(View section, int col) {
+        if (section == null) return null;
+        if (section == mHomeBanner) return mHomeBanner;
+        int index = 0;
+        for (int viewId : HOME_VIDEO_CONTAINERS) {
+            View container = section.findViewById(viewId);
+            if (container == null || container.getVisibility() != View.VISIBLE) continue;
+            if (index == col) {
+                View cover = section.findViewById(HOME_VIDEO_COVERS[index]);
+                return cover != null ? cover : container;
+            }
+            index++;
+        }
+        return section.findViewById(R.id.partition_card);
+    }
+
+    private void clampHomeColumn() {
+        View section = getHomeSection(mHomeNavRow);
+        int max = getHomeColumnCount(section);
+        if (mHomeNavCol > max) mHomeNavCol = max;
+        if (mHomeNavCol < 0) mHomeNavCol = 0;
+    }
+
+    private void restoreHomeFocus() {
+        for (View v : mHomeFocusBackgrounds.keySet()) {
+            Drawable bg = mHomeFocusBackgrounds.get(v);
+            if (v != null) v.setBackgroundDrawable(bg);
+        }
+        mHomeFocusBackgrounds.clear();
+    }
+
+    public void clearKeyHighlight() {
+        mHomeKeyNavActive = false;
+        mHomeNavRow = -1;
+        mHomeNavCol = 0;
+        mHomeSelectionRetry = 0;
+        restoreHomeFocus();
+    }
+
+    private void applyHomeSelection() {
+        if (homeList == null) return;
+        restoreHomeFocus();
+        int position = mHomeNavRow + homeList.getHeaderViewsCount();
+        homeList.setSelection(position);
+        View section = getHomeSection(mHomeNavRow);
+        View target = getHomeTarget(section, mHomeNavCol);
+        if (target == null) {
+            if (mHomeSelectionRetry >= 3) {
+                mHomeSelectionRetry = 0;
+                return;
+            }
+            mHomeSelectionRetry++;
+            final int row = mHomeNavRow;
+            final int col = mHomeNavCol;
+            homeList.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    mHomeNavRow = row;
+                    mHomeNavCol = col;
+                    applyHomeSelection();
+                }
+            }, 60L);
+            return;
+        }
+        mHomeSelectionRetry = 0;
+        mHomeFocusBackgrounds.put(target, target.getBackground());
+        android.graphics.drawable.GradientDrawable focus =
+                new android.graphics.drawable.GradientDrawable();
+        focus.setColor(0x00000000);
+        focus.setStroke(3, 0xFFD86DA5);
+        target.setBackgroundDrawable(focus);
+    }
+
     static class HomeSectionAdapter extends BaseAdapter {
 
         private Context context;

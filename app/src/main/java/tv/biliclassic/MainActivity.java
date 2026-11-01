@@ -36,7 +36,7 @@ import java.util.List;
 import tv.biliclassic.util.AnnouncementUtil;
 import tv.biliclassic.metro.MetroHomeActivity;
 import tv.biliclassic.metro.MetroSetupActivity;
-import tv.biliclassic.util.DeviceInfoUtil;
+import tv.biliclassic.util.DeviceUtils;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.SdkHelper;
@@ -52,6 +52,7 @@ public class MainActivity extends BaseActivity {
     private static final int TIP_DELAY_MS = 1500;
 
     private ViewPager mPager;
+    private PagerTabStrip mPagerTabStrip;
     private List<FragmentInfo> mFragments = new ArrayList<FragmentInfo>();
     private Handler mHandler = new Handler();
 
@@ -184,7 +185,10 @@ public class MainActivity extends BaseActivity {
         }
 
         final PagerTabStrip tabStrip = (PagerTabStrip) findViewById(R.id.pager_tab_strip);
+        mPagerTabStrip = tabStrip;
         if (tabStrip != null) {
+            tabStrip.setFocusable(true);
+            tabStrip.setFocusableInTouchMode(true);
             tabStrip.setTabIndicatorColor(0xFFFF9FC5);
             tabStrip.setBackgroundResource(R.drawable.tab_background);
             tabStrip.setTextColor(0xFFFFFFFF);
@@ -239,6 +243,15 @@ public class MainActivity extends BaseActivity {
             @Override
             public void onPageSelected(int position) {
                 clearTopBarHighlight();
+                clearActiveFragmentKeyHighlight();
+                if (mPager != null) {
+                    mPager.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            clearActiveFragmentKeyHighlight();
+                        }
+                    });
+                }
                 updateOrientationForTab();
             }
 
@@ -343,7 +356,8 @@ public class MainActivity extends BaseActivity {
         // 启动就按比例定 logo 宽，避免老系统上以原图宽度顶着左边
         fitLogoWidth(logo);
 
-        if (shouldEnableLandscape()) {
+        if (shouldEnableLandscape()
+                && !SharedPreferencesUtil.contains(KEY_LANDSCAPE_ENABLED)) {
             boolean tipShown = SharedPreferencesUtil.getBoolean(KEY_LANDSCAPE_TIP_SHOWN, false);
             if (!tipShown) {
                 mHandler.postDelayed(new Runnable() {
@@ -1166,6 +1180,7 @@ public class MainActivity extends BaseActivity {
     private View mTopNavSearch;
     private View mTopNavMore;
     private int mTopNavIndex = -1;
+    private boolean mTabStripFocus = false;
 
     private java.util.ArrayList<View> getTopNavItems() {
         java.util.ArrayList<View> items = new java.util.ArrayList<View>();
@@ -1192,11 +1207,36 @@ public class MainActivity extends BaseActivity {
     }
 
     /** 进顶栏：把原生焦点给第一个顶栏按钮（高亮由 selector 的 state_focused 渲染）。 */
+    private void clearActiveFragmentKeyHighlight() {
+        if (mActiveFragment instanceof HomeFragment) {
+            ((HomeFragment) mActiveFragment).clearKeyHighlight();
+        } else if (mActiveFragment instanceof NewAnimeFragment) {
+            ((NewAnimeFragment) mActiveFragment).clearKeyHighlight();
+        } else if (mActiveFragment instanceof RecommendFragment) {
+            ((RecommendFragment) mActiveFragment).clearKeyHighlight();
+        } else if (mActiveFragment instanceof ProfileFragment) {
+            ((ProfileFragment) mActiveFragment).clearKeyHighlight();
+        } else if (mActiveFragment instanceof DynamicFragment) {
+            ((DynamicFragment) mActiveFragment).clearKeyHighlight();
+        } else if (mActiveFragment instanceof AboutFragment) {
+            ((AboutFragment) mActiveFragment).clearKeyHighlight();
+        }
+    }
+
+    private void enterTabStrip() {
+        clearActiveFragmentKeyHighlight();
+        mTopNavIndex = -1;
+        mTabStripFocus = true;
+        if (mPagerTabStrip != null) {
+            mPagerTabStrip.requestFocus();
+        } else {
+            java.util.ArrayList<View> items = getTopNavItems();
+            if (items.size() > 0) items.get(0).requestFocus();
+        }
+    }
+
     private void enterTopBar() {
-        java.util.ArrayList<View> items = getTopNavItems();
-        if (items.size() == 0) return;
-        mTopNavIndex = 0;
-        items.get(0).requestFocus();
+        enterTabStrip();
     }
 
     /** 退出顶栏：清掉按钮的原生焦点（否则 selector 的 state_focused 粉色高亮残留）。 */
@@ -1206,6 +1246,16 @@ public class MainActivity extends BaseActivity {
         if (mTopNavMore == null) mTopNavMore = findViewById(R.id.btn_title_more);
         if (mTopNavSearch != null) mTopNavSearch.clearFocus();
         if (mTopNavMore != null) mTopNavMore.clearFocus();
+    }
+
+    private void focusContentAfterTopBar() {
+        mTabStripFocus = false;
+        clearTopBarHighlight();
+        if (mPager != null) {
+            mPager.setFocusable(true);
+            mPager.setFocusableInTouchMode(true);
+            mPager.requestFocus();
+        }
     }
 
     /** 顶栏导航：左右移动原生焦点，确认触发，上下退出；其它键退出并放行。 */
@@ -1246,9 +1296,12 @@ public class MainActivity extends BaseActivity {
             }
             return true;
         }
-        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP
-                || action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
-            clearTopBarHighlight();
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
+            enterTabStrip();
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP) {
+            focusContentAfterTopBar();
             return true;
         }
         // 其它键（返回/菜单/刷新等）不归顶栏管：退出顶栏并放行
@@ -1262,8 +1315,14 @@ public class MainActivity extends BaseActivity {
         if (mActiveFragment instanceof RecommendFragment) {
             return ((RecommendFragment) mActiveFragment).isAtTabStrip();
         }
+        if (mActiveFragment instanceof HomeFragment) {
+            return ((HomeFragment) mActiveFragment).isAtTop();
+        }
         if (mActiveFragment instanceof NewAnimeFragment) {
             return ((NewAnimeFragment) mActiveFragment).isAtTabStrip();
+        }
+        if (mActiveFragment instanceof DynamicFragment) {
+            return ((DynamicFragment) mActiveFragment).isAtTop();
         }
         if (mActiveFragment instanceof AboutFragment) {
             return ((AboutFragment) mActiveFragment).isNavAtTop();
@@ -1307,6 +1366,31 @@ public class MainActivity extends BaseActivity {
             if (mTopNavSearch != null && getCurrentFocus() == mTopNavSearch) {
                 clearTopBarHighlight();
                 expandTitleSearch();
+                return true;
+            }
+        }
+        if (mTabStripFocus
+                && event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+            int tabAction = tv.biliclassic.util.KeyBindingUtil.classify(event.getKeyCode());
+            if (tabAction == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT
+                    || tabAction == tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT) {
+                if (event.getRepeatCount() == 0) {
+                    switchTab(tabAction);
+                }
+                return true;
+            }
+            if (tabAction == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
+                    || tabAction == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+                focusContentAfterTopBar();
+                return true;
+            }
+            if (tabAction == tv.biliclassic.util.KeyBindingUtil.ACTION_UP) {
+                if (mTopNavSearch == null) mTopNavSearch = findViewById(R.id.btn_search);
+                if (mTopNavSearch != null) {
+                    mTabStripFocus = false;
+                    mTopNavIndex = 0;
+                    mTopNavSearch.requestFocus();
+                }
                 return true;
             }
         }
@@ -1371,6 +1455,18 @@ public class MainActivity extends BaseActivity {
                 }
                 // 推荐页：方向键/确认键/数字键 2/8 移动光标与翻页
                 // （所有 DOWN 都消费，含长按 repeat，防止 ScrollView 内置长按滚动干扰）
+                if (mActiveFragment instanceof DynamicFragment) {
+                    DynamicFragment df = (DynamicFragment) mActiveFragment;
+                    if (df.handleRemoteKey(event)) {
+                        return true;
+                    }
+                }
+                if (mActiveFragment instanceof HomeFragment) {
+                    HomeFragment hf = (HomeFragment) mActiveFragment;
+                    if (hf.handleRemoteKey(event)) {
+                        return true;
+                    }
+                }
                 RecommendFragment rf = getCurrentRecommendFragment();
                 if (rf != null) {
                     if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT
@@ -1456,8 +1552,12 @@ public class MainActivity extends BaseActivity {
     /** 触屏操作时退出顶栏导航并清高亮（遥控器选中后直接点屏幕的残留场景）。 */
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
-        if (ev.getAction() == android.view.MotionEvent.ACTION_DOWN && mTopNavIndex >= 0) {
-            clearTopBarHighlight();
+        if (ev.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+            mTabStripFocus = false;
+            if (mTopNavIndex >= 0) {
+                clearTopBarHighlight();
+            }
+            clearActiveFragmentKeyHighlight();
         }
         return super.dispatchTouchEvent(ev);
     }
@@ -1557,8 +1657,8 @@ public class MainActivity extends BaseActivity {
     }
 
     private void checkLegacyVersionCompatibility() {
-        if (DeviceInfoUtil.isLegacy) {
-            boolean isLegacyDevice = DeviceInfoUtil.isLegacyDevice();
+        if (DeviceUtils.isLegacy) {
+            boolean isLegacyDevice = DeviceUtils.isLegacyDevice();
             if (!isLegacyDevice) {
                 new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                         .setTitle(getString(R.string.version_notice))

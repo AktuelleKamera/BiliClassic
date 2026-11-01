@@ -18,6 +18,7 @@ import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.io.File;
@@ -48,6 +49,8 @@ import tv.biliclassic.widget.LoadingBarView;
 public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
 
     private ListView mTileList;
+    private ScrollView mLegacyScroll;
+    private LinearLayout mLegacyContainer;
     // 统一加载条（公共组件）
     private LoadingBarView mLoadingBar;
     private SwipeRefreshLayout mSwipeRefresh;
@@ -61,6 +64,7 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
     private TileRowAdapter mTileAdapter;
     // 视图重建时恢复的滚动位置（避免再次进入"推荐/个人中心"时被顶回顶部）
     private int mSavedPosition = 0;
+    private int mLegacyRenderGen = 0;
     // 本次"加载更多"新内容的起始行（用于滚动到新内容开头 + 为新行播放错峰滑入）
     private int mLoadMoreStartRow = -1;
     // 已触发过滑入动画的新行位置（避免重复播放）
@@ -68,9 +72,10 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        View root = inflater.inflate(R.layout.metro_recommend, container, false);
+        int sdk = tv.biliclassic.util.SdkHelper.getSdkInt();
+        View root = inflater.inflate(sdk < 4
+                ? R.layout.metro_recommend_legacy : R.layout.metro_recommend, container, false);
 
-        // 封面加载线程池：按"图片加载线程数"设置创建（与其它页面一致）
         int loadThreads = tv.biliclassic.util.SdkHelper.getImageLoadThreads();
         if (loadThreads <= 1) {
             mImageExecutor = Executors.newSingleThreadExecutor();
@@ -78,50 +83,41 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
             mImageExecutor = Executors.newFixedThreadPool(loadThreads);
         }
 
-        mTileList = (ListView) root.findViewById(R.id.tile_list);
         mLoadingBar = (LoadingBarView) root.findViewById(R.id.progress_bar);
-        // 夜间模式：灰色提示文字换白色
         mLoadingBar.setTextColor(MetroTheme.grey());
-        mLoadingBar.bindBackground(mTileList);
 
-        // API 3: 移除 SwipeRefreshLayout（引起 Layout.draw 递归），与推荐页处理一致
-        if (tv.biliclassic.util.SdkHelper.getSdkInt() < 4) {
-            SwipeRefreshLayout srl = (SwipeRefreshLayout) root.findViewById(R.id.swipe_refresh_metro);
-            if (srl != null) {
-                ListView list = (ListView) srl.findViewById(R.id.tile_list);
-                ViewGroup parent = (ViewGroup) srl.getParent();
-                if (parent != null && list != null) {
-                    int idx = parent.indexOfChild(srl);
-                    // list 目前还是 srl 的子 View，必须先摘掉才能挂到 parent 上，
-                    // 否则 addView 抛 "child already has a parent"
-                    ViewGroup listParent = (ViewGroup) list.getParent();
-                    if (listParent != null) listParent.removeView(list);
-                    parent.removeView(srl);
-                    parent.addView(list, idx, srl.getLayoutParams());
+        if (sdk < 4) {
+            mLegacyScroll = (ScrollView) root.findViewById(R.id.legacy_scroll);
+            mLegacyContainer = (LinearLayout) root.findViewById(R.id.legacy_container);
+            mLoadingBar.bindBackground(mLegacyScroll);
+            mLegacyScroll.post(new Runnable() {
+                @Override
+                public void run() {
+                    loadRecommend();
                 }
-            }
+            });
+            return root;
         }
 
+        mTileList = (ListView) root.findViewById(R.id.tile_list);
+        mLoadingBar.bindBackground(mTileList);
         mTileAdapter = new TileRowAdapter();
         mTileList.setAdapter(mTileAdapter);
 
-        // 下拉刷新（与正常版推荐一致）
-        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 4) {
-            mSwipeRefresh = (SwipeRefreshLayout) root.findViewById(R.id.swipe_refresh_metro);
-            if (mSwipeRefresh != null) {
-                mSwipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-                    @Override
-                    public void onRefresh() {
-                        refresh();
-                    }
-                });
-            }
+        mSwipeRefresh = (SwipeRefreshLayout) root.findViewById(R.id.swipe_refresh_metro);
+        if (mSwipeRefresh != null) {
+            mSwipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+                @Override
+                public void onRefresh() {
+                    refresh();
+                }
+            });
         }
 
-        // 滚动接近底部自动加载下一页（虚拟化列表复用行）
         mTileList.setOnScrollListener(new AbsListView.OnScrollListener() {
             @Override
-            public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+            public void onScroll(AbsListView view, int firstVisibleItem,
+                                 int visibleItemCount, int totalItemCount) {
             }
 
             @Override
@@ -153,6 +149,14 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
 
     /** 已有数据被移走再挂回时：新视图树为空，不重复下载，按 mVideoList 重建。 */
     private void rebuildTiles() {
+        if (mLegacyContainer != null) {
+            mFirstLoad = false;
+            renderLegacyTiles();
+            if (mLoadingBar != null) {
+                mLoadingBar.hide();
+            }
+            return;
+        }
         if (mTileAdapter == null) return;
         mFirstLoad = false;
         mTileAdapter.notifyDataSetChanged();
@@ -201,6 +205,14 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
                             }
                             mVideoList.addAll(items);
                             mLoadingBar.hide();
+                            mFirstLoad = false;
+                            mIsLoading = false;
+                            mPage = 1;
+                            stopRefreshing();
+                            if (mLegacyContainer != null) {
+                                renderLegacyTiles();
+                                return;
+                            }
                             mTileList.setVisibility(View.VISIBLE);
                             mTileAdapter.notifyDataSetChanged();
                             mFirstLoad = false;
@@ -280,9 +292,12 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
                             } else {
                                 int oldCount = mVideoList.size();
                                 mVideoList.addAll(items);
-                                // 新内容起始行 = 旧行数 / 2（每行两个磁贴）
-                                mLoadMoreStartRow = oldCount / 2;
-                                mTileAdapter.notifyDataSetChanged();
+                                if (mLegacyContainer != null) {
+                                    renderLegacyTiles();
+                                } else {
+                                    mLoadMoreStartRow = oldCount / 2;
+                                    mTileAdapter.notifyDataSetChanged();
+                                }
                             }
                             mIsLoading = false;
                             // 不自动滚动：用户停留原地，继续往下滑即可看到新内容；
@@ -321,7 +336,7 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
 
     /** 首次加载：先清残留动画，再对可见行做错峰滑入（老机用适中位移）。 */
     private void animateAllRows() {
-        if (mTileList == null) return;
+        if (mTileList == null || tv.biliclassic.util.SdkHelper.getSdkInt() < 4) return;
         clearRowAnimations();
         int count = mTileList.getChildCount();
         int screenWidth = getResources().getDisplayMetrics().widthPixels;
@@ -348,6 +363,97 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
         }
     }
 
+    private void openVideo(final VideoCard card) {
+        if (getActivity() == null || card == null) return;
+        Intent intent = new Intent(getActivity(), VideoDetailActivity.class);
+        if (card.aid != 0) {
+            intent.putExtra("aid", card.aid);
+        } else if (card.bvid != null && card.bvid.length() > 0) {
+            intent.putExtra("bvid", card.bvid);
+        }
+        startActivity(intent);
+    }
+
+    private void bindLegacyCell(View cell, final VideoCard card) {
+        ImageView cover = (ImageView) cell.findViewById(R.id.cover);
+        TextView title = (TextView) cell.findViewById(R.id.title);
+        TextView viewTv = (TextView) cell.findViewById(R.id.view);
+        TextView danmakuTv = (TextView) cell.findViewById(R.id.danmaku);
+
+        if (MetroTheme.isNight()) {
+            cell.setBackgroundResource(R.drawable.item_click_effect_grey);
+            View coverContainer = cell.findViewById(R.id.cover_container);
+            if (coverContainer != null) {
+                coverContainer.setBackgroundColor(0xFF484848);
+            }
+            if (title != null) {
+                title.setTextColor(0xFFF2F2F2);
+            }
+        }
+        if (title != null) {
+            title.setText(card.title != null ? card.title : "");
+        }
+        if (viewTv != null) {
+            viewTv.setText(card.view != null ? card.view : "0");
+        }
+        if (danmakuTv != null) {
+            danmakuTv.setText(card.danmaku > 0 ? String.valueOf(card.danmaku) : "0");
+        }
+        loadCover(cover, card.cover);
+        cell.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openVideo(card);
+            }
+        });
+    }
+
+    private void renderLegacyTiles() {
+        if (mLegacyContainer == null || getActivity() == null) return;
+        final int gen = ++mLegacyRenderGen;
+        mLegacyContainer.removeAllViews();
+        LayoutInflater inflater = LayoutInflater.from(getActivity());
+        renderLegacyTilesChunk(gen, inflater, tileSizePx(), 0);
+    }
+
+    private void renderLegacyTilesChunk(final int gen, final LayoutInflater inflater,
+                                        final int tileSize, final int start) {
+        if (gen != mLegacyRenderGen || mLegacyContainer == null || getActivity() == null) {
+            return;
+        }
+        final int end = Math.min(start + 4, mVideoList.size());
+        for (int i = start; i < end; i += 2) {
+            LinearLayout row = new LinearLayout(getActivity());
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER);
+            row.setPadding(0, 4, 0, 4);
+            for (int j = 0; j < 2 && i + j < mVideoList.size(); j++) {
+                View cell = inflater.inflate(R.layout.item_recommend, row, false);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(tileSize, tileSize);
+                lp.setMargins(4, 4, 4, 4);
+                cell.setLayoutParams(lp);
+                bindLegacyCell(cell, mVideoList.get(i + j));
+                row.addView(cell);
+            }
+            mLegacyContainer.addView(row,
+                    new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+                            tileSize + 16));
+        }
+        if (end < mVideoList.size()) {
+            mHandler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    renderLegacyTilesChunk(gen, inflater, tileSize, end);
+                }
+            }, 30L);
+            return;
+        }
+        if (mLegacyScroll != null) {
+            mLegacyScroll.scrollTo(0, 0);
+            mLegacyScroll.setVisibility(View.VISIBLE);
+        }
+    }
+
     private int tileSizePx() {
         int screenWidth = getResources().getDisplayMetrics().widthPixels;
         int tileSizePx = (screenWidth - 48) / 2;
@@ -357,7 +463,7 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
 
     /** MetroTurnPage：翻入时磁贴错峰滑入。 */
     public void animateTurnIn() {
-        if (mTileList == null) return;
+        if (mTileList == null || tv.biliclassic.util.SdkHelper.getSdkInt() < 4) return;
         clearRowAnimations();
         int count = mTileList.getChildCount();
         int screenWidth = getResources().getDisplayMetrics().widthPixels;
@@ -384,7 +490,7 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
 
     /** MetroTurnPage：翻出时磁贴错峰滑出。 */
     public void animateTurnOut() {
-        if (mTileList == null) return;
+        if (mTileList == null || tv.biliclassic.util.SdkHelper.getSdkInt() < 4) return;
         clearRowAnimations();
         int count = mTileList.getChildCount();
         int screenWidth = getResources().getDisplayMetrics().widthPixels;
@@ -471,6 +577,8 @@ public class MetroRecommendFragment extends Fragment implements MetroTurnPage {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        mHandler.removeCallbacksAndMessages(null);
+        mLegacyRenderGen++;
         if (mImageExecutor != null) {
             mImageExecutor.shutdownNow();
             mImageExecutor = null;

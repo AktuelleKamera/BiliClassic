@@ -2,6 +2,7 @@ package tv.biliclassic;
 
 import tv.biliclassic.util.DeviceUtil;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -21,6 +22,7 @@ import android.support.v4.view.ViewPager;
 import android.view.View;
 import android.view.KeyEvent;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.view.Gravity;
 import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
@@ -87,7 +89,7 @@ public class VideoDetailActivity extends BaseActivity {
     private boolean[] mPageChecked;
     private int mSelectedQuality = 64;
     private String mSelectedQualityName = "";
-    private AlertDialog mDownloadDialog;
+    private Dialog mDownloadDialog;
 
     // 收藏相关
     private boolean mIsFavorited = false;
@@ -744,13 +746,7 @@ public class VideoDetailActivity extends BaseActivity {
                     border.setCornerRadius(corner);
                     border.setStroke(DeviceUtil.dpToPx(5), FOCUS_COLOR);
                     border.setColor(0x00000000);
-                    Drawable[] layers;
-                    if (bg != null) {
-                        layers = new Drawable[]{bg, border};
-                    } else {
-                        layers = new Drawable[]{new ColorDrawable(0x00000000), border};
-                    }
-                    v.setBackgroundDrawable(new LayerDrawable(layers));
+                    v.setBackgroundDrawable(border);
                 }
             } else {
                 // 恢复播放按钮文字样式（常规字重、无阴影）
@@ -976,6 +972,13 @@ public class VideoDetailActivity extends BaseActivity {
                 mOriginalBackgrounds.put(parts, parts.getBackground());
             }
             parts.setBackgroundResource(R.drawable.focus_overlay);
+            if (parts instanceof android.widget.ListView) {
+                ((android.widget.ListView) parts).setSelector(
+                        tv.biliclassic.metro.MetroTheme.isNight()
+                                ? R.drawable.focus_outline_transparent
+                                : R.drawable.focus_solid_pink);
+                ((android.widget.ListView) parts).setDrawSelectorOnTop(true);
+            }
         }
         videoDetailFragment.selectPart(videoDetailFragment.getCurrentPartIndex());
     }
@@ -1004,7 +1007,9 @@ public class VideoDetailActivity extends BaseActivity {
 
     private void playCurrentPart() {
         if (videoDetailFragment != null) {
-            videoDetailFragment.playPart(videoDetailFragment.getCurrentPartIndex());
+            int position = videoDetailFragment.getCurrentPartIndex();
+            videoDetailFragment.playPart(position);
+            exitPartBrowsing();
         }
     }
 
@@ -1013,7 +1018,18 @@ public class VideoDetailActivity extends BaseActivity {
             return;
         }
         mPartBrowsing = false;
-        // 恢复内容区焦点（rebuild 会重新 applyFocusHighlight）
+        View parts = findViewById(R.id.lv_parts);
+        if (parts != null) {
+            if (mOriginalBackgrounds.containsKey(parts)) {
+                parts.setBackgroundDrawable(mOriginalBackgrounds.remove(parts));
+            }
+            if (parts instanceof android.widget.ListView) {
+                ((android.widget.ListView) parts).setSelector(android.R.color.transparent);
+            }
+        }
+        if (videoDetailFragment != null) {
+            videoDetailFragment.clearPartSelection();
+        }
         rebuildFocusableViews();
     }
 
@@ -1029,7 +1045,12 @@ public class VideoDetailActivity extends BaseActivity {
             if (mPartBrowsing) {
                 if (firstPress) {
                     if (action == KeyBindingUtil.ACTION_UP) {
-                        movePart(-1);
+                        if (videoDetailFragment != null
+                                && videoDetailFragment.getCurrentPartIndex() <= 0) {
+                            exitPartBrowsing();
+                        } else {
+                            movePart(-1);
+                        }
                     } else if (action == KeyBindingUtil.ACTION_DOWN) {
                         movePart(1);
                     } else if (action == KeyBindingUtil.ACTION_CONFIRM) {
@@ -1089,8 +1110,12 @@ public class VideoDetailActivity extends BaseActivity {
                     return true;
                 }
             } else if (f instanceof VideoDetailFragment) {
-                // 视频详情 Tab：Activity 层焦点系统
+                // ��Ƶ���� Tab��Activity �㽹��ϵͳ
                 if (handleDetailKey(event)) {
+                    return true;
+                }
+            } else if (f instanceof BangumiDetailFragment) {
+                if (((BangumiDetailFragment) f).handleRemoteKey(event)) {
                     return true;
                 }
             } else {
@@ -1122,6 +1147,12 @@ public class VideoDetailActivity extends BaseActivity {
             return false;
         }
         int action = KeyBindingUtil.classify(event.getKeyCode());
+        if (mFocusableViews.isEmpty() && videoDetailFragment != null) {
+            rebuildFocusableViews();
+        }
+        if (mFocusableViews.isEmpty()) {
+            return false;
+        }
         if (action == KeyBindingUtil.ACTION_UP
                 || action == KeyBindingUtil.ACTION_DOWN
                 || action == KeyBindingUtil.ACTION_LEFT
@@ -1152,8 +1183,21 @@ public class VideoDetailActivity extends BaseActivity {
      */
     private Fragment getFragmentByPosition(int position) {
         try {
-            return getSupportFragmentManager().findFragmentByTag(
-                    "android:switcher:" + R.id.viewpager + ":" + position);
+            if (viewPager == null || viewPager.getAdapter() == null) {
+                return null;
+            }
+            long itemId = position;
+            if (viewPager.getAdapter() instanceof android.support.v4.app.FragmentPagerAdapter) {
+                itemId = ((android.support.v4.app.FragmentPagerAdapter) viewPager.getAdapter())
+                        .getItemId(position);
+            }
+            Fragment fragment = getSupportFragmentManager().findFragmentByTag(
+                    "android:switcher:" + R.id.viewpager + ":" + itemId);
+            if (fragment == null) {
+                fragment = getSupportFragmentManager().findFragmentByTag(
+                        "android:switcher:" + R.id.viewpager + ":" + position);
+            }
+            return fragment;
         } catch (Exception e) {
             return null;
         }
@@ -1549,8 +1593,7 @@ public class VideoDetailActivity extends BaseActivity {
             public void onSuccess(String responseJson) {
                 Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.comment_sent), Toast.LENGTH_SHORT).show();
                 CommentFragment.CommentItem newItem = CommentFragment.parseCommentFromResponse(responseJson);
-                Fragment fragment = getSupportFragmentManager().findFragmentByTag(
-                        "android:switcher:" + R.id.viewpager + ":" + (isBangumi ? 1 : 2));
+                Fragment fragment = getFragmentByPosition(isBangumi ? 1 : 2);
                 if (fragment instanceof CommentFragment) {
                     ((CommentFragment) fragment).insertNewComment(newItem);
                 } else {
@@ -1574,14 +1617,14 @@ public class VideoDetailActivity extends BaseActivity {
             public void onSuccess(String responseJson) {
                 Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.comment_sent), Toast.LENGTH_SHORT).show();
                 CommentFragment.CommentItem newItem = CommentFragment.parseCommentFromResponse(responseJson);
-                Fragment fragment = getSupportFragmentManager().findFragmentByTag(
-                        "android:switcher:" + R.id.viewpager + ":" + (isBangumi ? 1 : 2));
+                Fragment fragment = getFragmentByPosition(isBangumi ? 1 : 2);
                 if (fragment instanceof CommentFragment) {
                     ((CommentFragment) fragment).insertNewComment(newItem);
                 } else {
                     refreshComments();
                 }
             }
+
             @Override
             public void onFailed(String error) {}
         });
@@ -1763,8 +1806,7 @@ public class VideoDetailActivity extends BaseActivity {
             int commentPosition = isBangumi ? 1 : 2;
             viewPager.setCurrentItem(commentPosition);
         }
-        Fragment fragment = getSupportFragmentManager().findFragmentByTag(
-                "android:switcher:" + R.id.viewpager + ":" + (isBangumi ? 1 : 2));
+        Fragment fragment = getFragmentByPosition(isBangumi ? 1 : 2);
         if (fragment instanceof CommentFragment) {
             ((CommentFragment) fragment).refreshComments();
         }
@@ -2243,9 +2285,17 @@ public class VideoDetailActivity extends BaseActivity {
         mPageChecked[0] = true;
 
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_download_choice, null);
-
         ListView listView = (ListView) dialogView.findViewById(R.id.list_view);
         final RadioGroup qualityGroup = (RadioGroup) dialogView.findViewById(R.id.quality_group);
+
+        boolean dashMode = SettingsActivity.getPlayStreamFormat() == 16
+                && !tv.biliclassic.util.ConvertPlayUtil.isConvertEnabled();
+        View quality1080Plus = dialogView.findViewById(R.id.quality_1080_plus);
+        View quality4k = dialogView.findViewById(R.id.quality_4k);
+        if (!dashMode) {
+            if (quality1080Plus != null) quality1080Plus.setVisibility(View.GONE);
+            if (quality4k != null) quality4k.setVisibility(View.GONE);
+        }
 
         int defaultQuality = SettingsActivity.getVideoQuality();
         if (defaultQuality == 16) {
@@ -2254,6 +2304,10 @@ public class VideoDetailActivity extends BaseActivity {
             qualityGroup.check(R.id.quality_480);
         } else if (defaultQuality == 80) {
             qualityGroup.check(R.id.quality_1080);
+        } else if (dashMode && defaultQuality == 112) {
+            qualityGroup.check(R.id.quality_1080_plus);
+        } else if (dashMode && defaultQuality == 120) {
+            qualityGroup.check(R.id.quality_4k);
         } else {
             qualityGroup.check(R.id.quality_720);
         }
@@ -2261,12 +2315,26 @@ public class VideoDetailActivity extends BaseActivity {
         final PageListAdapter adapter = new PageListAdapter();
         listView.setAdapter(adapter);
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)));
-        builder.setTitle(getString(R.string.select_part_quality));
-        builder.setView(dialogView);
-        builder.setPositiveButton(getString(R.string.videodetail_download), new DialogInterface.OnClickListener() {
+        final Dialog dialog = new Dialog(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)));
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(dialogView);
+        dialog.setCanceledOnTouchOutside(true);
+        dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
             @Override
-            public void onClick(DialogInterface dialog, int which) {
+            public void onDismiss(DialogInterface dialogInterface) {
+                mDownloadDialog = null;
+            }
+        });
+
+        dialogView.findViewById(R.id.btn_cancel).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+        dialogView.findViewById(R.id.btn_download).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
                 int checkedId = qualityGroup.getCheckedRadioButtonId();
                 if (checkedId == R.id.quality_360) {
                     mSelectedQuality = 16;
@@ -2277,9 +2345,15 @@ public class VideoDetailActivity extends BaseActivity {
                 } else if (checkedId == R.id.quality_720) {
                     mSelectedQuality = 64;
                     mSelectedQualityName = getString(R.string.quality_720p);
-                } else {
+                } else if (checkedId == R.id.quality_1080) {
                     mSelectedQuality = 80;
                     mSelectedQualityName = getString(R.string.quality_1080p);
+                } else if (checkedId == R.id.quality_1080_plus) {
+                    mSelectedQuality = 112;
+                    mSelectedQualityName = getString(R.string.quality_1080p_plus);
+                } else {
+                    mSelectedQuality = 120;
+                    mSelectedQualityName = getString(R.string.quality_4k);
                 }
 
                 for (int i = 0; i < mPages.size(); i++) {
@@ -2287,17 +2361,18 @@ public class VideoDetailActivity extends BaseActivity {
                         videoDetailFragment.prepareDownload(mPages.get(i), mSelectedQuality, mSelectedQualityName);
                     }
                 }
-                mDownloadDialog = null;
-            }
-        });
-        builder.setNegativeButton(getString(R.string.videodetail_cancel), new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                mDownloadDialog = null;
+                dialog.dismiss();
             }
         });
 
-        mDownloadDialog = builder.show();
+        dialog.show();
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new ColorDrawable(0));
+            window.setGravity(Gravity.BOTTOM);
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+        mDownloadDialog = dialog;
     }
 
     private class PageListAdapter extends BaseAdapter {

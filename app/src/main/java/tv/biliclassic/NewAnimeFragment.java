@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -14,6 +15,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -91,6 +93,14 @@ public class NewAnimeFragment extends Fragment {
 
     public boolean isAtTabStrip() {
         return mAtTabStrip;
+    }
+
+    public void clearKeyHighlight() {
+        mKeyNavActive = false;
+        mAtTabStrip = true;
+        if (animeListAdapter != null) {
+            animeListAdapter.setSelected(-1, -1);
+        }
     }
 
     // Android 2.x 上 setImageResource 每次可能重新解码资源图，缓存默认 Drawable 实例复用
@@ -1464,42 +1474,63 @@ public class NewAnimeFragment extends Fragment {
             View result;
             if (row.type == TYPE_LARGE) {
                 result = buildLargeCard(convertView, items.get(row.items[0]));
-                applyRowHighlight(result, position, 0);
             } else if (row.type == TYPE_SMALL) {
                 result = buildSmallRow(convertView, row);
-                applySmallRowHighlight(result, position, row);
             } else {
                 result = buildTabletMixedRow(convertView, row);
+            }
+            // 夜间/主题重绘会覆盖背景，必须最后再画按键选中高亮。
+            tv.biliclassic.util.UiSkin.recolorItem(result);
+            if (row.type == TYPE_LARGE) {
+                applyRowHighlight(result, position, 0);
+            } else if (row.type == TYPE_SMALL) {
+                applySmallRowHighlight(result, position, row);
+            } else {
                 applyTabletRowHighlight(result, position, row);
             }
-            tv.biliclassic.util.UiSkin.recolorItem(result);
             return result;
         }
 
         // 行高亮辅助：大卡（单卡）行
-        private void applyRowHighlight(View card, int row, int col) {
-            if (mSelectedRow == row && mSelectedCol == col) {
-                card.setBackgroundColor(0x66D86DA5);
-            } else {
-                card.setBackgroundDrawable(null);
+        private void setFocusOverlay(View card, boolean selected) {
+            if (card == null) return;
+            View overlay = card.findViewWithTag("anime_focus_overlay");
+            if (overlay == null) {
+                if (!(card instanceof FrameLayout)) {
+                    if (selected) card.setBackgroundColor(0x66D86DA5);
+                    else card.setBackgroundDrawable(null);
+                    return;
+                }
+                overlay = new View(context);
+                overlay.setTag("anime_focus_overlay");
+                overlay.setFocusable(false);
+                overlay.setClickable(false);
+                GradientDrawable border = new GradientDrawable();
+                border.setShape(GradientDrawable.RECTANGLE);
+                border.setCornerRadius(DeviceUtil.dpToPx(2));
+                border.setStroke(DeviceUtil.dpToPx(4), 0xFFD86DA5);
+                border.setColor(0x00000000);
+                overlay.setBackgroundDrawable(border);
+                ((FrameLayout) card).addView(overlay, new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT));
             }
+            overlay.setVisibility(selected ? View.VISIBLE : View.GONE);
         }
 
-        // small 行：两个卡片（child 0 和 child 2，中间是 divider）
+        private void applyRowHighlight(View card, int row, int col) {
+            setFocusOverlay(card, mSelectedRow == row && mSelectedCol == col);
+        }
+
         private void applySmallRowHighlight(View container, int row, RowInfo rowInfo) {
             if (!(container instanceof LinearLayout)) return;
             LinearLayout rowView = (LinearLayout) container;
             View left = rowView.getChildAt(0);
             View right = rowView.getChildAt(2);
-            boolean leftSel = (mSelectedRow == row && mSelectedCol == 0);
-            boolean rightSel = (mSelectedRow == row && mSelectedCol == 1);
-            if (leftSel) left.setBackgroundColor(0x66D86DA5);
-            else left.setBackgroundDrawable(null);
-            if (rightSel) right.setBackgroundColor(0x66D86DA5);
-            else right.setBackgroundDrawable(null);
+            setFocusOverlay(left, mSelectedRow == row && mSelectedCol == 0);
+            setFocusOverlay(right, mSelectedRow == row && mSelectedCol == 1);
         }
 
-        // tablet mixed 行：大卡 + 两小卡（取决于 isEven 布局）
         private void applyTabletRowHighlight(View container, int row, RowInfo rowInfo) {
             if (!(container instanceof LinearLayout)) return;
             LinearLayout rowView = (LinearLayout) container;
@@ -1507,17 +1538,11 @@ public class NewAnimeFragment extends Fragment {
             LinearLayout smallColumn = rowInfo.isEven
                     ? (LinearLayout) rowView.getChildAt(2)
                     : (LinearLayout) rowView.getChildAt(0);
-            boolean largeSel = (mSelectedRow == row && mSelectedCol == 0);
-            boolean sm1Sel = (mSelectedRow == row && mSelectedCol == 1);
-            boolean sm2Sel = (mSelectedRow == row && mSelectedCol == 2);
-            if (largeSel) large.setBackgroundColor(0x66D86DA5);
-            else large.setBackgroundDrawable(null);
-            View sm1 = smallColumn.getChildAt(0);
-            View sm2 = smallColumn.getChildAt(2);
-            if (sm1Sel) sm1.setBackgroundColor(0x66D86DA5);
-            else sm1.setBackgroundDrawable(null);
-            if (sm2Sel) sm2.setBackgroundColor(0x66D86DA5);
-            else sm2.setBackgroundDrawable(null);
+            setFocusOverlay(large, mSelectedRow == row && mSelectedCol == 0);
+            setFocusOverlay(smallColumn.getChildAt(0),
+                    mSelectedRow == row && mSelectedCol == 1);
+            setFocusOverlay(smallColumn.getChildAt(2),
+                    mSelectedRow == row && mSelectedCol == 2);
         }
 
         private View buildLargeCard(View convertView, AnimeItem item) {

@@ -231,6 +231,17 @@ public abstract class BaseActivity extends FragmentActivity {
     }
 
     /** 状态栏高度（px）；读取失败回退 24dp。 */
+    private int getNavigationBarHeight() {
+        try {
+            int id = getResources().getIdentifier("navigation_bar_height", "dimen", "android");
+            if (id > 0) {
+                return getResources().getDimensionPixelSize(id);
+            }
+        } catch (Throwable t) {
+        }
+        return 0;
+    }
+
     private int getStatusBarHeight() {
         try {
             int id = getResources().getIdentifier("status_bar_height", "dimen", "android");
@@ -276,7 +287,9 @@ public abstract class BaseActivity extends FragmentActivity {
                     .getMethod("getWindowVisibleDisplayFrame", android.graphics.Rect.class)
                     .invoke(decor, r);
             int diff = decor.getHeight() - r.bottom;
-            if (diff >= decor.getHeight() / 4) {
+            int navHeight = getNavigationBarHeight();
+            int limit = navHeight > 0 ? navHeight * 2 : decor.getHeight() / 4;
+            if (diff > limit) {
                 return;
             }
             android.view.View c = decor.findViewById(android.R.id.content);
@@ -284,6 +297,9 @@ public abstract class BaseActivity extends FragmentActivity {
                 return;
             }
             int pad = diff > 0 ? diff : 0;
+            if (navHeight > 0 && pad > navHeight) {
+                pad = navHeight;
+            }
             if (c.getPaddingBottom() != pad) {
                 c.setPadding(c.getPaddingLeft(), c.getPaddingTop(), c.getPaddingRight(), pad);
             }
@@ -853,7 +869,6 @@ public abstract class BaseActivity extends FragmentActivity {
             return null;
         }
         final View anchor = pick;
-        final boolean clampText = anchor instanceof android.widget.TextView;
         if (anchor.getId() <= 0) {
             anchor.setId(sDynId--);
         }
@@ -879,14 +894,41 @@ public abstract class BaseActivity extends FragmentActivity {
             }
         });
         bar.addView(region, 0);
-        // 布局完成后按「实际右缘」定宽
+        updatePressRegionWidth(region, anchor);
+        return region;
+    }
+
+    protected void refreshTitlePressRegion() {
+        try {
+            View back = findViewById(R.id.btn_back);
+            if (back == null) {
+                return;
+            }
+            View parent = (View) back.getParent();
+            if (!(parent instanceof android.widget.RelativeLayout)) {
+                return;
+            }
+            android.widget.RelativeLayout bar = (android.widget.RelativeLayout) parent;
+            View region = bar.findViewWithTag(PRESS_TAG);
+            if (region == null) {
+                return;
+            }
+            View logo = findViewById(R.id.logo_container);
+            View title = findTitleText(bar, back, logo);
+            updatePressRegionWidth(region, title != null ? title : back);
+        } catch (Throwable t) {
+        }
+    }
+
+    private static void updatePressRegionWidth(final View region, final View anchor) {
+        if (region == null || anchor == null) {
+            return;
+        }
         anchor.post(new Runnable() {
             @Override
             public void run() {
                 int right = anchor.getRight();
-                // 锚点是标题文字时只亮到文字实宽，
-                // 免得标题被撑满 back->search 后高亮一直顶到右上按钮
-                if (clampText && anchor instanceof android.widget.TextView) {
+                if (anchor instanceof android.widget.TextView) {
                     android.widget.TextView tv = (android.widget.TextView) anchor;
                     CharSequence text = tv.getText();
                     float textW = tv.getPaint().measureText(
@@ -894,7 +936,7 @@ public abstract class BaseActivity extends FragmentActivity {
                     int textRight = tv.getLeft() + tv.getCompoundPaddingLeft()
                             + (int) Math.ceil((double) textW)
                             + tv.getCompoundPaddingRight();
-                    if (textRight > 0 && textRight < right) {
+                    if (textRight > 0) {
                         right = textRight;
                     }
                 }
@@ -905,8 +947,6 @@ public abstract class BaseActivity extends FragmentActivity {
                 if (rlp == null) {
                     return;
                 }
-                // 关键：区域同时挂了「贴左 + 贴右」两个锚点，
-                // RelativeLayout 会无视 width 直接铺满整条，必须先解除右锚点
                 if (rlp instanceof android.widget.RelativeLayout.LayoutParams) {
                     ((android.widget.RelativeLayout.LayoutParams) rlp)
                             .addRule(android.widget.RelativeLayout.ALIGN_RIGHT, 0);
@@ -918,7 +958,6 @@ public abstract class BaseActivity extends FragmentActivity {
                 region.setLayoutParams(rlp);
             }
         });
-        return region;
     }
 
     /**

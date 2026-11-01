@@ -1,11 +1,13 @@
 package tv.biliclassic;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
+import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -40,6 +42,16 @@ public class AboutActivity extends BaseActivity {
         TextView bilibiliWebsite = (TextView) findViewById(R.id.bilibili_website);
         bilibiliWebsite.setText(Html.fromHtml("<a href=\"https://www.bilibili.com\">哔哩哔哩弹幕网</a>"));
         bilibiliWebsite.setMovementMethod(LinkMovementMethod.getInstance());
+
+        View helpTutorial = findViewById(R.id.help_tutorial);
+        if (helpTutorial != null) {
+            helpTutorial.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    startActivity(new Intent(AboutActivity.this, HelpListActivity.class));
+                }
+            });
+        }
     }
 
     private String getVersionName() {

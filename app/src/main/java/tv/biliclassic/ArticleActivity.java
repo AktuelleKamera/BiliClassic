@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 import tv.biliclassic.api.ArticleApi;
 import tv.biliclassic.model.ArticleInfo;
 import tv.biliclassic.util.ImageLoader;
+import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.StringUtil;
 
 /**
@@ -33,6 +34,7 @@ public class ArticleActivity extends BaseActivity {
             Pattern.CASE_INSENSITIVE);
 
     private long cvid;
+    private String mHelpUrl;
     private LinearLayout mContent;
     private ScrollView mScroll;
     private View mLoading;
@@ -85,11 +87,53 @@ public class ArticleActivity extends BaseActivity {
             titleText.setText(title);
         }
 
+        mHelpUrl = getIntent().getStringExtra("help_url");
+        if (mHelpUrl != null && mHelpUrl.length() > 0) {
+            loadHelp();
+            return;
+        }
+
         if (cvid <= 0) {
             finish();
             return;
         }
         loadArticle();
+    }
+
+    private void loadHelp() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String html = null;
+                String error = null;
+                try {
+                    html = NetWorkUtil.get(mHelpUrl);
+                } catch (Exception e) {
+                    error = e.getMessage();
+                }
+                final String finalHtml = html;
+                final String finalError = error;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isFinishing()) return;
+                        if (mLoading != null) mLoading.setVisibility(View.GONE);
+                        if (finalHtml == null || finalHtml.length() == 0) {
+                            android.widget.Toast.makeText(ArticleActivity.this,
+                                    finalError == null ? "教程加载失败" : "教程加载失败: " + finalError,
+                                    android.widget.Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        if (mScroll != null) mScroll.setVisibility(View.VISIBLE);
+                        if (mContent != null) {
+                            mContent.removeAllViews();
+                            mImageUrls.clear();
+                            renderContent(finalHtml);
+                        }
+                    }
+                });
+            }
+        }, "HelpHtml").start();
     }
 
     private void loadArticle() {

@@ -39,6 +39,10 @@ public class DynamicFragment extends Fragment {
 
     private DynamicAdapter adapter;
     private List<Dynamic> feedList = new ArrayList<Dynamic>();
+    private boolean mKeyNavActive = false;
+    private int mNavIndex = 0;
+    private final java.util.WeakHashMap<View, android.graphics.drawable.Drawable>
+            mFocusBackgrounds = new java.util.WeakHashMap<View, android.graphics.drawable.Drawable>();
 
     // null = 尚未加载过；"" = 没有更多
     private String offset = null;
@@ -452,6 +456,107 @@ public class DynamicFragment extends Fragment {
     private void postUi(Runnable r) {
         if (getActivity() == null) return;
         runUi(r);
+    }
+
+    public boolean isAtTop() {
+        return mNavIndex <= 0;
+    }
+
+    public void clearKeyHighlight() {
+        mKeyNavActive = false;
+        restoreFocusBackgrounds();
+    }
+
+    public boolean handleRemoteKey(android.view.KeyEvent event) {
+        if (event.getAction() != android.view.KeyEvent.ACTION_DOWN
+                || listView == null || adapter == null) {
+            return false;
+        }
+        int action = tv.biliclassic.util.KeyBindingUtil.classify(event.getKeyCode());
+        if (action != tv.biliclassic.util.KeyBindingUtil.ACTION_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
+            return false;
+        }
+        int count = adapter.getCount();
+        if (count <= 0) return false;
+        if (!mKeyNavActive) {
+            mKeyNavActive = true;
+            mNavIndex = 0;
+            applySelection();
+            return true;
+        }
+        if (event.getRepeatCount() != 0) return true;
+        if (mNavIndex < 0 || mNavIndex >= count) mNavIndex = 0;
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                || action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
+            int first = listView.getFirstVisiblePosition();
+            int last = listView.getLastVisiblePosition();
+            int page = Math.max(1, last - first);
+            mNavIndex += action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                    ? -page : page;
+            if (mNavIndex < 0) mNavIndex = 0;
+            if (mNavIndex >= count) mNavIndex = count - 1;
+            applySelection();
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP) {
+            if (mNavIndex <= 0) return false;
+            mNavIndex--;
+            applySelection();
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
+            if (mNavIndex >= count - 1) return true;
+            mNavIndex++;
+            applySelection();
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+            View target = getItemView(mNavIndex);
+            if (target != null) target.performClick();
+            return true;
+        }
+        return true;
+    }
+
+    private View getItemView(int position) {
+        if (listView == null) return null;
+        int child = position - listView.getFirstVisiblePosition();
+        if (child >= 0 && child < listView.getChildCount()) return listView.getChildAt(child);
+        listView.setSelection(position);
+        return null;
+    }
+
+    private void restoreFocusBackgrounds() {
+        for (View v : mFocusBackgrounds.keySet()) {
+            android.graphics.drawable.Drawable bg = mFocusBackgrounds.get(v);
+            if (v != null) v.setBackgroundDrawable(bg);
+        }
+        mFocusBackgrounds.clear();
+    }
+
+    private void applySelection() {
+        if (listView == null) return;
+        restoreFocusBackgrounds();
+        mKeyNavActive = true;
+        listView.setSelection(mNavIndex);
+        final int position = mNavIndex;
+        listView.post(new Runnable() {
+            @Override
+            public void run() {
+                View target = getItemView(position);
+                if (target == null) return;
+                mFocusBackgrounds.put(target, target.getBackground());
+                android.graphics.drawable.GradientDrawable focus =
+                        new android.graphics.drawable.GradientDrawable();
+                focus.setColor(0x00000000);
+                focus.setStroke(3, 0xFFD86DA5);
+                target.setBackgroundDrawable(focus);
+            }
+        });
     }
 
     @Override

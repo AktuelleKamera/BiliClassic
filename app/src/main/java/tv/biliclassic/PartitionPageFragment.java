@@ -296,6 +296,7 @@ public class PartitionPageFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        if (mainHandler != null) mainHandler.removeCallbacksAndMessages(null);
         super.onDestroyView();
         if (adapter != null) {
             adapter.clearCache();

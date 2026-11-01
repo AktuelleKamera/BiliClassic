@@ -41,6 +41,7 @@ public class MetroHomeActivity extends BaseActivity {
     private GradientDrawable mHighlightBg;
     // 已应用的 Metro 背景图路径（用于换图后刷新、清图后还原）
     private String mAppliedMetroBg;
+    private boolean mAppliedNightMode;
     private final java.util.List<View> mItems = new java.util.ArrayList<View>();
     private Class<?>[] mTargets;
     private int mFocusIndex = -1;
@@ -80,6 +81,7 @@ public class MetroHomeActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.metro_home);
+        mAppliedNightMode = isNightMode();
 
         mScroll = (ScrollView) findViewById(R.id.menu_scroll);
         mMenu = (LinearLayout) findViewById(R.id.metro_menu);
@@ -112,16 +114,28 @@ public class MetroHomeActivity extends BaseActivity {
 
         // 一次性把详情 Fragment 都 add 进容器（不 replace），之后切换只用 visibility。
         // 视图在 onCreate 时按真实容器尺寸 measure 一次并常驻，永不销毁重建。
-        mRecommendFrag = new MetroRecommendFragment();
-        mProfileFrag = new MetroProfileFragment();
-        mHistoryFrag = new MetroHistoryFragment();
-        mFavoriteFrag = new MetroFavoriteFragment();
         FragmentManager fm = getSupportFragmentManager();
+        mRecommendFrag = (MetroRecommendFragment) fm.findFragmentByTag("recommend");
+        mProfileFrag = (MetroProfileFragment) fm.findFragmentByTag("profile");
+        mHistoryFrag = (MetroHistoryFragment) fm.findFragmentByTag("history");
+        mFavoriteFrag = (MetroFavoriteFragment) fm.findFragmentByTag("favorite");
         FragmentTransaction ft = fm.beginTransaction();
-        ft.add(R.id.metro_fragment_container, mRecommendFrag, "recommend");
-        ft.add(R.id.metro_fragment_container, mProfileFrag, "profile");
-        ft.add(R.id.metro_fragment_container, mHistoryFrag, "history");
-        ft.add(R.id.metro_fragment_container, mFavoriteFrag, "favorite");
+        if (mRecommendFrag == null) {
+            mRecommendFrag = new MetroRecommendFragment();
+            ft.add(R.id.metro_fragment_container, mRecommendFrag, "recommend");
+        }
+        if (mProfileFrag == null) {
+            mProfileFrag = new MetroProfileFragment();
+            ft.add(R.id.metro_fragment_container, mProfileFrag, "profile");
+        }
+        if (mHistoryFrag == null) {
+            mHistoryFrag = new MetroHistoryFragment();
+            ft.add(R.id.metro_fragment_container, mHistoryFrag, "history");
+        }
+        if (mFavoriteFrag == null) {
+            mFavoriteFrag = new MetroFavoriteFragment();
+            ft.add(R.id.metro_fragment_container, mFavoriteFrag, "favorite");
+        }
         ft.commitAllowingStateLoss();
         fm.executePendingTransactions();
         hideFragmentView(mRecommendFrag);
@@ -232,8 +246,19 @@ public class MetroHomeActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // 设置里换/清背景图后回到首页要同步（原来只在 onCreate 加载一次）
-        loadMetroBackground();
+        if (mAppliedNightMode != isNightMode()) {
+            restartForNightMode();
+        } else {
+            loadMetroBackground();
+        }
+    }
+
+    private void restartForNightMode() {
+        try {
+            startActivity(getIntent());
+        } catch (Throwable t) {
+        }
+        finish();
     }
 
     /** Metro 主题自定义背景 */
@@ -242,11 +267,9 @@ public class MetroHomeActivity extends BaseActivity {
         final View root = findViewById(R.id.root_layout);
         // 没设背景图：从有图切回默认（日间白/夜间黑）
         if (path == null || path.length() == 0) {
-            if (mAppliedMetroBg != null) {
-                mAppliedMetroBg = null;
-                if (root != null) {
-                    root.setBackgroundColor(isNightMode() ? Color.BLACK : Color.WHITE);
-                }
+            mAppliedMetroBg = null;
+            if (root != null) {
+                root.setBackgroundColor(isNightMode() ? Color.BLACK : Color.WHITE);
             }
             return;
         }

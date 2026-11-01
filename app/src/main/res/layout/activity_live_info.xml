@@ -170,6 +170,12 @@
 
                 <TextView
                     android:id="@+id/btn_quality"
+
+                    android:focusable="true"
+
+                    android:focusableInTouchMode="true"
+
+                    android:clickable="true"
                     android:layout_width="0dp"
                     android:layout_height="40dp"
                     android:layout_weight="1"
@@ -181,6 +187,12 @@
 
                 <TextView
                     android:id="@+id/btn_route"
+
+                    android:focusable="true"
+
+                    android:focusableInTouchMode="true"
+
+                    android:clickable="true"
                     android:layout_width="0dp"
                     android:layout_height="40dp"
                     android:layout_weight="1"
@@ -194,6 +206,12 @@
             <!-- 进入生放送 -->
             <TextView
                 android:id="@+id/btn_play"
+
+                android:focusable="true"
+
+                android:focusableInTouchMode="true"
+
+                android:clickable="true"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
                 android:layout_margin="12dp"

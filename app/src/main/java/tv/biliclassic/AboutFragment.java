@@ -136,7 +136,28 @@ public class AboutFragment extends Fragment {
             mNavItems.add(bilibiliWebsite);
         }
 
+        View.OnTouchListener clearHighlight = new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, android.view.MotionEvent event) {
+                if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+                    clearKeyHighlight();
+                }
+                return false;
+            }
+        };
+        for (View item : mNavItems) {
+            item.setOnTouchListener(clearHighlight);
+        }
+
         return view;
+    }
+
+    public void clearKeyHighlight() {
+        mNavIndex = -1;
+        mKeyNavActive = false;
+        for (View v : mNavItems) {
+            if (v != null) v.setBackgroundDrawable(createLinkHighlight());
+        }
     }
 
     /** 供 MainActivity 判断光标是否已在最顶部（再按上键进入顶栏）。 */

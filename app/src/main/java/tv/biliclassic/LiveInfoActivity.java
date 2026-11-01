@@ -163,7 +163,7 @@ public class LiveInfoActivity extends BaseActivity {
 
                 String title = room != null ? room.title : "";
                 if (playInfo != null && (title == null || title.length() == 0)) {
-                    title = getString(R.string.live_info_player_prefix) + roomId;
+                    title = getString(R.string.live_info_player_prefix) + " " + roomId;
                 }
                 if (title == null) title = "";
                 textTitle.setText(title);
@@ -242,6 +242,11 @@ public class LiveInfoActivity extends BaseActivity {
                 }
 
                 updateButtons();
+                if (btnPlay != null && btnPlay.isEnabled()) {
+                    btnPlay.requestFocus();
+                } else if (btnQuality != null) {
+                    btnQuality.requestFocus();
+                }
             }
         });
     }
@@ -487,14 +492,14 @@ public class LiveInfoActivity extends BaseActivity {
         }
 
         String title = (room != null && room.title != null && room.title.length() > 0)
-                ? room.title : (getString(R.string.live_info_player_prefix) + roomId);
+                ? room.title : (getString(R.string.live_info_player_prefix) + " " + roomId);
         String cover = room != null ? room.pickCover() : "";
 
         long liveRoomId = (room != null && room.realRoomId() > 0) ? room.realRoomId() : roomId;
 
         Intent intent = new Intent(this, BiliPlayerActivity.class);
         intent.putExtra("video_url", playUrl);
-        intent.putExtra("video_title", getString(R.string.live_info_player_prefix) + title);
+        intent.putExtra("video_title", getString(R.string.live_info_player_prefix) + " " + title);
         intent.putExtra("aid", liveRoomId);
         intent.putExtra("live_room_id", liveRoomId);
         intent.putExtra("online_mode", true);

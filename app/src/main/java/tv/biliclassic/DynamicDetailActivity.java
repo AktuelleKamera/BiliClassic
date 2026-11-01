@@ -60,6 +60,118 @@ public class DynamicDetailActivity extends BaseActivity {
     private String mCursor = "";
     private boolean mLoading = false;
     private boolean mEnd = false;
+    private boolean mKeyNavActive = false;
+    private int mNavIndex = 0;
+    private final java.util.WeakHashMap<View, android.graphics.drawable.Drawable>
+            mFocusBackgrounds = new java.util.WeakHashMap<View, android.graphics.drawable.Drawable>();
+
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        if (event.getAction() != android.view.KeyEvent.ACTION_DOWN
+                || list == null || list.getAdapter() == null) {
+            return super.dispatchKeyEvent(event);
+        }
+        int action = tv.biliclassic.util.KeyBindingUtil.classify(event.getKeyCode());
+        if (action != tv.biliclassic.util.KeyBindingUtil.ACTION_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
+            return super.dispatchKeyEvent(event);
+        }
+        int count = list.getAdapter().getCount();
+        if (count <= 0) return true;
+        if (!mKeyNavActive) {
+            mKeyNavActive = true;
+            mNavIndex = 0;
+            applySelection();
+            return true;
+        }
+        if (event.getRepeatCount() != 0) return true;
+        if (mNavIndex < 0 || mNavIndex >= count) mNavIndex = 0;
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                || action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
+            int first = list.getFirstVisiblePosition();
+            int last = list.getLastVisiblePosition();
+            int page = Math.max(1, last - first);
+            mNavIndex += action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                    ? -page : page;
+            if (mNavIndex < 0) mNavIndex = 0;
+            if (mNavIndex >= count) mNavIndex = count - 1;
+            applySelection();
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP) {
+            if (mNavIndex > 0) {
+                mNavIndex--;
+                applySelection();
+            }
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
+            if (mNavIndex < count - 1) {
+                mNavIndex++;
+                applySelection();
+            }
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+            View target = getItemView(mNavIndex);
+            if (target != null) target.performClick();
+            return true;
+        }
+        return true;
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent event) {
+        if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+            clearKeyHighlight();
+        }
+        return super.dispatchTouchEvent(event);
+    }
+
+    public void clearKeyHighlight() {
+        mKeyNavActive = false;
+        restoreFocusBackgrounds();
+    }
+
+    private View getItemView(int position) {
+        if (list == null) return null;
+        int child = position - list.getFirstVisiblePosition();
+        if (child >= 0 && child < list.getChildCount()) return list.getChildAt(child);
+        list.setSelection(position);
+        return null;
+    }
+
+    private void restoreFocusBackgrounds() {
+        for (View v : mFocusBackgrounds.keySet()) {
+            android.graphics.drawable.Drawable bg = mFocusBackgrounds.get(v);
+            if (v != null) v.setBackgroundDrawable(bg);
+        }
+        mFocusBackgrounds.clear();
+    }
+
+    private void applySelection() {
+        if (list == null) return;
+        restoreFocusBackgrounds();
+        mKeyNavActive = true;
+        list.setSelection(mNavIndex);
+        final int position = mNavIndex;
+        list.post(new Runnable() {
+            @Override
+            public void run() {
+                View target = getItemView(position);
+                if (target == null) return;
+                mFocusBackgrounds.put(target, target.getBackground());
+                android.graphics.drawable.GradientDrawable focus =
+                        new android.graphics.drawable.GradientDrawable();
+                focus.setColor(0x00000000);
+                focus.setStroke(3, 0xFFD86DA5);
+                target.setBackgroundDrawable(focus);
+            }
+        });
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +193,9 @@ public class DynamicDetailActivity extends BaseActivity {
         }
 
         list = (ListView) findViewById(R.id.dd_list);
+        list.setSelector(new android.graphics.drawable.ColorDrawable(0x00000000));
+        list.setItemsCanFocus(false);
+        list.setDrawSelectorOnTop(false);
         loading = (tv.biliclassic.widget.LoadingBarView) findViewById(R.id.dd_loading);
 
         header = LayoutInflater.from(this).inflate(R.layout.dd_header, list, false);

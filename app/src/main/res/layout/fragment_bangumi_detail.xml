@@ -84,6 +84,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/bangumi_region_label"
+                        android:paddingRight="4dp"
                         android:textColor="#666666"
                         android:textSize="13sp" />
 
@@ -107,6 +108,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/bangumi_score_label"
+                        android:paddingRight="4dp"
                         android:textColor="#666666"
                         android:textSize="13sp" />
 
@@ -130,6 +132,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/bangumi_update_label"
+                        android:paddingRight="4dp"
                         android:textColor="#666666"
                         android:textSize="13sp" />
 
@@ -153,6 +156,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/bangumi_season_label"
+                        android:paddingRight="4dp"
                         android:textColor="#666666"
                         android:textSize="12sp" />
 

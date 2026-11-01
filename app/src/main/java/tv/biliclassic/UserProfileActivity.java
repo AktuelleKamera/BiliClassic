@@ -104,6 +104,10 @@ public class UserProfileActivity extends BaseActivity {
     private boolean mArticleLoaded = false;
 
     private boolean isDestroyed = false;
+    private boolean mSpaceKeyNavActive = false;
+    private int mSpaceNavIndex = 0;
+    private final java.util.WeakHashMap<View, Drawable> mSpaceFocusBackgrounds =
+            new java.util.WeakHashMap<View, Drawable>();
 
     // 滚动中暂缓应用新图，避免每张图到达都触发整屏软件重绘（仅主线程访问）
     private volatile boolean mScrolling = false;
@@ -213,6 +217,12 @@ public class UserProfileActivity extends BaseActivity {
         listView.setDivider(null);
         listView.setDividerHeight(0);
         listView.setEmptyView(videoEmptyView);
+        listView.setSelector(tv.biliclassic.metro.MetroTheme.isNight()
+                ? R.drawable.focus_outline_transparent : R.drawable.focus_solid_pink);
+        listView.setDrawSelectorOnTop(true);
+        listView.setItemsCanFocus(false);
+        listView.setFocusable(true);
+        listView.setFocusableInTouchMode(true);
 
         tvUserSign.setMaxWidth(Integer.MAX_VALUE);
         tvUserSign.setMaxLines(Integer.MAX_VALUE);
@@ -307,11 +317,126 @@ public class UserProfileActivity extends BaseActivity {
     }
 
     /** 切换顶栏内容：视频列表 / 用户动态 / 用户专栏 */
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        if (listView == null || listView.getAdapter() == null) {
+            return super.dispatchKeyEvent(event);
+        }
+        if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) {
+            return super.dispatchKeyEvent(event);
+        }
+        int action = tv.biliclassic.util.KeyBindingUtil.classify(event.getKeyCode());
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT
+                || action == tv.biliclassic.util.KeyBindingUtil.ACTION_RIGHT) {
+            if (event.getRepeatCount() == 0) {
+                int target = currentMode
+                        + (action == tv.biliclassic.util.KeyBindingUtil.ACTION_LEFT ? -1 : 1);
+                if (target >= MODE_VIDEO && target <= MODE_ARTICLE) {
+                    switchMode(target);
+                }
+            }
+            return true;
+        }
+        if (action != tv.biliclassic.util.KeyBindingUtil.ACTION_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                && action != tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
+            return super.dispatchKeyEvent(event);
+        }
+        int count = listView.getAdapter().getCount();
+        if (count <= 0) return true;
+        if (!mSpaceKeyNavActive) {
+            mSpaceKeyNavActive = true;
+            mSpaceNavIndex = listView.getFirstVisiblePosition();
+            applySpaceSelection();
+            return true;
+        }
+        if (event.getRepeatCount() != 0) return true;
+        if (mSpaceNavIndex < 0 || mSpaceNavIndex >= count) mSpaceNavIndex = 0;
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                || action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_DOWN) {
+            int first = listView.getFirstVisiblePosition();
+            int last = listView.getLastVisiblePosition();
+            int page = Math.max(1, last - first);
+            mSpaceNavIndex += action == tv.biliclassic.util.KeyBindingUtil.ACTION_PAGE_UP
+                    ? -page : page;
+            if (mSpaceNavIndex < 0) mSpaceNavIndex = 0;
+            if (mSpaceNavIndex >= count) mSpaceNavIndex = count - 1;
+            applySpaceSelection();
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_UP) {
+            if (mSpaceNavIndex > 0) {
+                mSpaceNavIndex--;
+                applySpaceSelection();
+            }
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_DOWN) {
+            if (mSpaceNavIndex < count - 1) {
+                mSpaceNavIndex++;
+                applySpaceSelection();
+            }
+            return true;
+        }
+        if (action == tv.biliclassic.util.KeyBindingUtil.ACTION_CONFIRM) {
+            View target = getSpaceItemView(mSpaceNavIndex);
+            if (target != null) target.performClick();
+            return true;
+        }
+        return true;
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent event) {
+        if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+            clearSpaceHighlight();
+        }
+        return super.dispatchTouchEvent(event);
+    }
+
+    private View getSpaceItemView(int position) {
+        if (listView == null) return null;
+        int child = position - listView.getFirstVisiblePosition();
+        if (child >= 0 && child < listView.getChildCount()) {
+            return listView.getChildAt(child);
+        }
+        listView.setSelection(position);
+        return null;
+    }
+
+    private void clearSpaceHighlight() {
+        mSpaceKeyNavActive = false;
+        mSpaceFocusBackgrounds.clear();
+        if (listView != null) {
+            listView.clearChoices();
+            listView.invalidate();
+        }
+    }
+
+    private void applySpaceSelection() {
+        if (listView == null) return;
+        mSpaceKeyNavActive = true;
+        if (!listView.isFocused()) {
+            listView.requestFocusFromTouch();
+        }
+        listView.setSelection(mSpaceNavIndex);
+        listView.post(new Runnable() {
+            @Override
+            public void run() {
+                listView.invalidateViews();
+            }
+        });
+    }
+
     private void switchMode(int mode) {
         if ((mode != MODE_VIDEO && mode != MODE_DYNAMIC && mode != MODE_ARTICLE) || mode == currentMode) {
             return;
         }
         currentMode = mode;
+        mSpaceNavIndex = 0;
+        clearSpaceHighlight();
         listView.setSelection(0);
         if (mode == MODE_VIDEO) {
             listView.setAdapter(videoAdapter);
@@ -465,36 +590,20 @@ public class UserProfileActivity extends BaseActivity {
     /** 拉黑/取消拉黑当前 UP。 */
     private void toggleBlock() {
         final boolean wantBlock = !(mUserInfo != null && mUserInfo.blocked);
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                final int code;
-                try {
-                    code = UserInfoApi.blockUser(mid, wantBlock);
-                } catch (Exception e) {
-                    mainHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (!isDestroyed) Toast.makeText(UserProfileActivity.this, "操作失败", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                    return;
-                }
-                mainHandler.post(new Runnable() {
+        tv.biliclassic.util.UserBlockHelper.setBlocked(mid, wantBlock, true,
+                new tv.biliclassic.util.UserBlockHelper.Callback() {
                     @Override
-                    public void run() {
+                    public void onResult(boolean success) {
                         if (isDestroyed) return;
-                        if (code == 0) {
+                        if (success) {
                             if (mUserInfo != null) mUserInfo.blocked = wantBlock;
                             Toast.makeText(UserProfileActivity.this,
                                     wantBlock ? "已拉黑" : "已取消拉黑", Toast.LENGTH_SHORT).show();
                         } else {
-                            Toast.makeText(UserProfileActivity.this, "操作失败(" + code + ")", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(UserProfileActivity.this, "操作失败", Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
-            }
-        }).start();
     }
 
     private void loadUserInfo() {
@@ -551,6 +660,8 @@ public class UserProfileActivity extends BaseActivity {
         if (tvUserNameTitle != null) {
             tvUserNameTitle.setText(userInfo.name + "的空间");
         }
+
+        refreshTitlePressRegion();
 
         if (userInfo.sign != null && userInfo.sign.length() > 0) {
             tvUserSign.setText(userInfo.sign);
@@ -1152,6 +1263,7 @@ public class UserProfileActivity extends BaseActivity {
 
     @Override
     protected void onDestroy() {
+        if (mainHandler != null) mainHandler.removeCallbacksAndMessages(null);
         super.onDestroy();
         isDestroyed = true;
         if (executor != null && !executor.isShutdown()) {

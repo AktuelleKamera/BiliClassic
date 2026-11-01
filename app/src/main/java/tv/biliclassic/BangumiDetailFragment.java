@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.graphics.Bitmap;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import tv.biliclassic.util.GlobalImageCache;
+import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
@@ -46,6 +48,7 @@ public class BangumiDetailFragment extends Fragment {
     private EpisodeAdapter adapter;
     private List<Bangumi.Episode> episodeList = new ArrayList<Bangumi.Episode>();
     private Handler mHandler = new Handler();
+    private int selectedEpisodePosition = -1;
     private View mRootView;
 
     private boolean mIsFollowing = false;
@@ -103,6 +106,9 @@ public class BangumiDetailFragment extends Fragment {
             }
         });
         lvEpisodes.setAdapter(adapter);
+        lvEpisodes.setSelector(tv.biliclassic.metro.MetroTheme.isNight()
+                ? R.drawable.focus_outline_transparent : R.drawable.focus_solid_pink);
+        lvEpisodes.setDrawSelectorOnTop(true);
 
         // 在 View 还未显示时，先让 tvDesc 不限制行数，测完再恢复
         tvDesc.setMaxLines(Integer.MAX_VALUE);
@@ -129,6 +135,120 @@ public class BangumiDetailFragment extends Fragment {
         });
 
         return view;
+    }
+
+    public boolean handleRemoteKey(KeyEvent event) {
+        if (event.getAction() != KeyEvent.ACTION_DOWN) {
+            return false;
+        }
+        int action = KeyBindingUtil.classify(event.getKeyCode());
+        if (action == KeyBindingUtil.ACTION_PAGE_UP
+                || action == KeyBindingUtil.ACTION_PAGE_DOWN) {
+            if (event.getRepeatCount() == 0) {
+                int direction = action == KeyBindingUtil.ACTION_PAGE_UP ? -5 : 5;
+                if (selectedEpisodePosition < 0) {
+                    selectedEpisodePosition = findFirstPlayable();
+                } else {
+                    selectedEpisodePosition = findNextPlayable(selectedEpisodePosition, direction);
+                }
+                applyEpisodeSelection();
+            }
+            return true;
+        }
+        if (action == KeyBindingUtil.ACTION_UP || action == KeyBindingUtil.ACTION_DOWN) {
+            if (event.getRepeatCount() == 0) {
+                if (selectedEpisodePosition < 0) {
+                    selectedEpisodePosition = findFirstPlayable();
+                } else {
+                    selectedEpisodePosition = findNextPlayable(
+                            selectedEpisodePosition,
+                            action == KeyBindingUtil.ACTION_UP ? -1 : 1);
+                }
+                applyEpisodeSelection();
+            }
+            return true;
+        }
+        if (action == KeyBindingUtil.ACTION_CONFIRM) {
+            if (event.getRepeatCount() == 0) {
+                playSelectedEpisode();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private int findFirstPlayable() {
+        for (int i = 0; i < episodeList.size(); i++) {
+            Bangumi.Episode episode = episodeList.get(i);
+            if (episode != null && !episode.isDivider) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private int findNextPlayable(int from, int delta) {
+        int position = from;
+        while (true) {
+            position += delta;
+            if (position < 0 || position >= episodeList.size()) {
+                return from;
+            }
+            Bangumi.Episode episode = episodeList.get(position);
+            if (episode != null && !episode.isDivider) {
+                return position;
+            }
+        }
+    }
+
+    private void applyEpisodeSelection() {
+        if (lvEpisodes == null || selectedEpisodePosition < 0) {
+            return;
+        }
+        if (selectedEpisodePosition >= episodeList.size()) {
+            selectedEpisodePosition = findFirstPlayable();
+            if (selectedEpisodePosition < 0) {
+                return;
+            }
+        }
+        lvEpisodes.setSelection(selectedEpisodePosition);
+        final int position = selectedEpisodePosition;
+        lvEpisodes.post(new Runnable() {
+            @Override
+            public void run() {
+                ensureEpisodeVisible(position);
+            }
+        });
+    }
+
+    private void ensureEpisodeVisible(int position) {
+        if (lvEpisodes == null || !(mRootView instanceof ScrollView)) {
+            return;
+        }
+        int first = lvEpisodes.getFirstVisiblePosition();
+        View child = lvEpisodes.getChildAt(position - first);
+        if (child == null) {
+            return;
+        }
+        ScrollView scrollView = (ScrollView) mRootView;
+        int rowTop = lvEpisodes.getTop() + child.getTop();
+        int rowBottom = rowTop + child.getHeight();
+        int visibleTop = scrollView.getScrollY();
+        int visibleBottom = visibleTop + scrollView.getHeight();
+        if (rowTop < visibleTop) {
+            scrollView.smoothScrollTo(0, rowTop);
+        } else if (rowBottom > visibleBottom) {
+            scrollView.smoothScrollTo(0, rowBottom - scrollView.getHeight());
+        }
+    }
+
+    private void playSelectedEpisode() {
+        if (selectedEpisodePosition < 0 || selectedEpisodePosition >= episodeList.size()) {
+            selectedEpisodePosition = findFirstPlayable();
+        }
+        if (selectedEpisodePosition >= 0 && selectedEpisodePosition < episodeList.size()) {
+            playEpisode(episodeList.get(selectedEpisodePosition));
+        }
     }
 
     private void playEpisode(final Bangumi.Episode episode) {
@@ -418,4 +538,13 @@ public class BangumiDetailFragment extends Fragment {
             TextView tvTitle;
         }
     }
+    @Override
+    public void onDestroy() {
+        if (mHandler != null) {
+            mHandler.removeCallbacksAndMessages(null);
+        }
+        super.onDestroy();
+    }
+
+
 }

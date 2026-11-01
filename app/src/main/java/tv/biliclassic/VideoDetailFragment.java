@@ -141,6 +141,9 @@ public class VideoDetailFragment extends Fragment {
 
         partAdapter = new VideoPartAdapter(getActivity(), partList);
         lvParts.setAdapter(partAdapter);
+        lvParts.setSelector(tv.biliclassic.metro.MetroTheme.isNight()
+                ? R.drawable.focus_outline_transparent : R.drawable.focus_solid_pink);
+        lvParts.setDrawSelectorOnTop(true);
 
         partAdapter.setOnPartClickListener(new VideoPartAdapter.OnPartClickListener() {
             @Override
@@ -309,6 +312,16 @@ public class VideoDetailFragment extends Fragment {
             partAdapter.setSelectedPosition(position);
         }
         playVideo();
+    }
+
+    public void clearPartSelection() {
+        if (partAdapter != null) {
+            partAdapter.setSelectedPosition(-1);
+        }
+        if (lvParts != null) {
+            lvParts.clearChoices();
+            lvParts.invalidateViews();
+        }
     }
 
     /**
