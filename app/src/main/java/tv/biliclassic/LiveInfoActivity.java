@@ -107,6 +107,16 @@ public class LiveInfoActivity extends BaseActivity {
             }
         });
 
+        View.OnFocusChangeListener focusHighlight = new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                v.setSelected(hasFocus);
+            }
+        };
+        btnQuality.setOnFocusChangeListener(focusHighlight);
+        btnRoute.setOnFocusChangeListener(focusHighlight);
+        btnPlay.setOnFocusChangeListener(focusHighlight);
+
         loadData();
     }
 

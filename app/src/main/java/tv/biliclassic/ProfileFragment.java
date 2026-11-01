@@ -477,12 +477,15 @@ public class ProfileFragment extends Fragment {
                 if (v.getId() == R.id.btn_login) {
                     v.setBackgroundColor(0xFFC06090);
                 } else {
-                    v.setBackgroundColor(0x66D86DA5);
+                    tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(v,
+                            R.drawable.recommend_item_selected);
                 }
             } else {
                 // 未选中：确定性恢复布局背景色（不依赖 getBackground 保存，
                 // 避免 Android 2.x Button 背景为 null、或已保存高亮色导致无法恢复）
-                if (v.getId() == R.id.btn_login) {
+                if (v == tvUserId) {
+                    tv.biliclassic.util.UiSkin.setBgDrawableKeepPadding(v, null);
+                } else if (v.getId() == R.id.btn_login) {
                     v.setBackgroundColor(0xFFD86DA5);
                 } else if (v.getId() == R.id.btn_switch_account
                         || v.getId() == R.id.btn_logout) {
