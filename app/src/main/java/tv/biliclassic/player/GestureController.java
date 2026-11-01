@@ -74,6 +74,8 @@ public class GestureController {
     // 若硬引用会让整个 GestureController 加载失败、手势/控制栏全部失灵，故必须反射解耦。
     private Object mToastViewHolder;
     private boolean mToastViewHolderChecked;
+    private Object mResumeToastViewHolder;
+    private boolean mResumeToastViewHolderChecked;
     private String mProgreesFmt;
 
     private GestureListener mGestureListener;
@@ -414,6 +416,10 @@ public class GestureController {
         if (mToastViewHolder != null) {
             toastHolderRelease(mToastViewHolder);
             mToastViewHolder = null;
+        }
+        if (mResumeToastViewHolder != null) {
+            toastHolderRelease(mResumeToastViewHolder);
+            mResumeToastViewHolder = null;
         }
         mLongPressHandler.removeCallbacksAndMessages(null);
         mHandler.removeCallbacks(mHideSpeedTipRunnable);
@@ -1055,6 +1061,21 @@ public class GestureController {
         return mToastViewHolder;
     }
 
+    private Object getResumeToastViewHolder() {
+        if (mResumeToastViewHolder == null && !mResumeToastViewHolderChecked) {
+            mResumeToastViewHolderChecked = true;
+            try {
+                mResumeToastViewHolder = Class.forName("util.PlayerToastMessageViewHolder")
+                        .getConstructor(boolean.class).newInstance(Boolean.TRUE);
+                Log.d(TAG, "PlayerToastMessageViewHolder resume init ok");
+            } catch (Throwable t) {
+                Log.w(TAG, "PlayerToastMessageViewHolder resume init failed: " + t.getMessage());
+                mResumeToastViewHolder = null;
+            }
+        }
+        return mResumeToastViewHolder;
+    }
+
     private void toastHolderInitView(Object holder, ViewGroup rootView) {
         try {
             holder.getClass().getMethod("initView", Activity.class, ViewGroup.class)
@@ -1115,11 +1136,43 @@ public class GestureController {
         hideToastHint();
     }
 
+    public void showResumeTip(String text, String cancelText, Runnable cancelAction) {
+        Object holder = getResumeToastViewHolder();
+        if (holder == null) return;
+        FrameLayout rootView = (FrameLayout) mActivity.findViewById(android.R.id.content);
+        if (rootView == null) return;
+        toastHolderInitView(holder, rootView);
+        toastHolderSetResumeAction(holder, cancelAction);
+        toastHolderSetResumeText(holder, cancelText);
+        toastHolderShow(holder, text, 5000, false);
+    }
+
+    private void toastHolderSetResumeAction(Object holder, Runnable action) {
+        try {
+            holder.getClass().getMethod("setResumeAction", Runnable.class)
+                    .invoke(holder, action);
+        } catch (Throwable t) {
+        }
+    }
+
+    private void toastHolderSetResumeText(Object holder, String text) {
+        try {
+            holder.getClass().getMethod("setResumeText", String.class)
+                    .invoke(holder, text);
+        } catch (Throwable t) {
+        }
+    }
+
     private void hideToastHint() {
-        Object holder = getToastViewHolder();
-        if (holder != null) {
+        if (mToastViewHolder != null) {
             try {
-                holder.getClass().getMethod("dismiss").invoke(holder);
+                mToastViewHolder.getClass().getMethod("dismiss").invoke(mToastViewHolder);
+            } catch (Throwable t) {
+            }
+        }
+        if (mResumeToastViewHolder != null) {
+            try {
+                mResumeToastViewHolder.getClass().getMethod("dismiss").invoke(mResumeToastViewHolder);
             } catch (Throwable t) {
             }
         }

@@ -15,9 +15,21 @@ public class PlayerToastMessageViewHolder {
     private Animation mAnimOut;
     private FrameLayout mParentView;
     private TextView mTipTextView;
+    private TextView mResumeView;
+    private android.view.View mCloseView;
+    private Runnable mResumeAction;
     private ViewGroup mViewRoot;
+    private boolean mUseTips;
     private boolean isAnimationIn;
     private boolean isAnimationOut;
+
+    public PlayerToastMessageViewHolder() {
+        this(false);
+    }
+
+    public PlayerToastMessageViewHolder(boolean useTips) {
+        mUseTips = useTips;
+    }
 
     private Runnable dismissRunnable = new Runnable() {
         public void run() {
@@ -96,7 +108,11 @@ public class PlayerToastMessageViewHolder {
         if (!inited() && activity != null && (rootView instanceof FrameLayout)) {
             mParentView = (FrameLayout) rootView;
             LayoutInflater layoutInflater = (LayoutInflater) activity.getSystemService(Activity.LAYOUT_INFLATER_SERVICE);
-            mViewRoot = (ViewGroup) layoutInflater.inflate(R.layout.bili_app_player_toast_message, mParentView, false);
+            if (mUseTips) {
+                mViewRoot = (ViewGroup) layoutInflater.inflate(R.layout.bili_app_player_toast_tips, mParentView, false);
+            } else {
+                mViewRoot = (ViewGroup) layoutInflater.inflate(R.layout.bili_app_player_toast_message, mParentView, false);
+            }
             mLayoutParams = new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -104,7 +120,29 @@ public class PlayerToastMessageViewHolder {
             mParentView.addView(mViewRoot, mLayoutParams);
             if (mViewRoot != null) {
                 mViewRoot.setVisibility(android.view.View.INVISIBLE);
-                mTipTextView = (TextView) mViewRoot.findViewById(R.id.message);
+                if (mUseTips) {
+                    mTipTextView = (TextView) mViewRoot.findViewById(R.id.tips_view);
+                    mResumeView = (TextView) mViewRoot.findViewById(R.id.resume_play_view);
+                    mCloseView = mViewRoot.findViewById(R.id.close);
+                    if (mResumeView != null) {
+                        mResumeView.setOnClickListener(new android.view.View.OnClickListener() {
+                            public void onClick(android.view.View v) {
+                                if (mResumeAction != null) mResumeAction.run();
+                                forceDismissImmediately();
+                            }
+                        });
+                    }
+                    if (mCloseView != null) {
+                        mCloseView.setFocusable(true);
+                        mCloseView.setOnClickListener(new android.view.View.OnClickListener() {
+                            public void onClick(android.view.View v) {
+                                forceDismissImmediately();
+                            }
+                        });
+                    }
+                } else {
+                    mTipTextView = (TextView) mViewRoot.findViewById(R.id.message);
+                }
                 loadAnimations(activity);
             }
         }
@@ -136,10 +174,33 @@ public class PlayerToastMessageViewHolder {
         }
     }
 
+    public void setResumeAction(Runnable action) {
+        mResumeAction = action;
+        if (mResumeView != null) {
+            mResumeView.setVisibility(action != null ? android.view.View.VISIBLE
+                    : android.view.View.GONE);
+        }
+    }
+
+    public void setResumeText(String text) {
+        if (mResumeView != null) mResumeView.setText(text);
+    }
+
     public void show(String text, int ms, boolean showAtBottom) {
         if (mViewRoot != null && mTipTextView != null) {
             setTipViewCenter(!showAtBottom);
             mTipTextView.setText(text);
+            if (mResumeView != null) {
+                mResumeView.setVisibility(mResumeAction != null
+                        ? android.view.View.VISIBLE : android.view.View.GONE);
+                if (mResumeAction != null) {
+                    mViewRoot.post(new Runnable() {
+                        public void run() {
+                            if (mResumeView != null) mResumeView.requestFocus();
+                        }
+                    });
+                }
+            }
             mViewRoot.clearAnimation();
             cancelAnimation(mAnimIn);
             if (!mViewRoot.isShown() || isAnimationOut) {

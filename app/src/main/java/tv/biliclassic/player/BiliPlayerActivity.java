@@ -205,6 +205,7 @@ public class BiliPlayerActivity extends Activity implements
     private boolean pendingPrepare = false;
     private int mSeekWhenPrepared = 0;
     private boolean mStartAfterSeek = false;
+    private boolean mShowResumeTipOnPrepare = false;
     private boolean mTextureViewConfigured = false;
     private static int sPendingSeekPosition = 0;
     private boolean playerLocked = false;
@@ -233,10 +234,31 @@ public class BiliPlayerActivity extends Activity implements
         public void pausePlayer() {
             if (mediaPlayer != null) { mediaPlayer.pause(); isPlaying = false; updatePlayPauseButton(); }
         }
-        public void resumePlayer() {
+    public void resumePlayer() {
             if (mediaPlayer != null && isPrepared) { mediaPlayer.start(); isPlaying = true; updatePlayPauseButton(); if (!isLiveStream) handler.sendEmptyMessage(MSG_UPDATE_PROGRESS); }
         }
     };
+
+    private void cancelAutoResume() {
+    if (!isPrepared || mediaPlayer == null) return;
+    mStartAfterSeek = false;
+    try {
+        mediaPlayer.seekTo(0);
+    } catch (Throwable ignored) {
+    }
+    if (mDanmakuManager != null) mDanmakuManager.seekTo(0L);
+    mLastKnownPosition = 0;
+    if (!isPlaying) {
+        try {
+            mediaPlayer.start();
+            isPlaying = true;
+        } catch (Throwable ignored) {
+        }
+    }
+    updatePlayPauseButton();
+    updateTimeDisplay();
+    handler.sendEmptyMessage(MSG_UPDATE_PROGRESS);
+    }
 
     private boolean optionsMenuInflated = false;
     private boolean aspectRatioFixed = false;
@@ -636,7 +658,9 @@ public class BiliPlayerActivity extends Activity implements
         // 断点续播：从 B 站播放地址接口带回的上次进度（毫秒）作为默认 seek 位置。
         // 仅在没有任何其他待跳转位置（如画质切换/后台恢复）时生效；直播不续播。
         if (mSeekWhenPrepared <= 0 && !isLiveStream) {
-            mSeekWhenPrepared = getIntent().getIntExtra("resume_position", 0);
+            int resumePosition = getIntent().getIntExtra("resume_position", 0);
+            mSeekWhenPrepared = resumePosition;
+            mShowResumeTipOnPrepare = resumePosition > 0;
         }
         enableGesture = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.ENABLE_GESTURE, true);
         commentSwipeEnabled = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.COMMENT_SWIPE_ENABLE, true);
@@ -2919,6 +2943,8 @@ public class BiliPlayerActivity extends Activity implements
         if (mDanmakuManager != null) mDanmakuManager.onVideoPrepared(mp);
 
         mStartAfterSeek = false;
+        final int resumeTipPosition = mShowResumeTipOnPrepare ? mSeekWhenPrepared : 0;
+        mShowResumeTipOnPrepare = false;
         if (mSeekWhenPrepared > 0 && mDuration > 0) {
             // 防御：断点位置超出视频总长（如接口返回异常值）时，从 0 开始，避免被夹到结尾
             if (mSeekWhenPrepared <= mDuration) {
