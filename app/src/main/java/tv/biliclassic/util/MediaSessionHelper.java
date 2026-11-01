@@ -24,7 +24,7 @@ import android.view.KeyEvent;
 public class MediaSessionHelper {
 
     private static final int NOTIFICATION_ID = 1001;
-    private static final String CHANNEL_ID = "media_playback";
+    private static final String CHANNEL_ID = "media_playback_silent";
 
     // MediaSession.FLAG_HANDLES_MEDIA_BUTTONS | MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS
     private static final int SESSION_FLAGS = 0x1 | 0x2;
@@ -33,8 +33,8 @@ public class MediaSessionHelper {
     private static final int STATE_PAUSED = 2;
     // PlaybackState.ACTION_PLAY_PAUSE
     private static final long ACTION_PLAY_PAUSE = 1L << 9;
-    // NotificationManager.IMPORTANCE_DEFAULT
-    private static final int IMPORTANCE_DEFAULT = 3;
+    // NotificationManager.IMPORTANCE_LOW
+    private static final int IMPORTANCE_LOW = 2;
 
     private Context context;
     private Class<?> activityClass;
@@ -96,7 +96,13 @@ public class MediaSessionHelper {
         try {
             Class<?> chClass = Class.forName("android.app.NotificationChannel");
             Object channel = chClass.getConstructor(String.class, CharSequence.class, int.class)
-                    .newInstance(CHANNEL_ID, "媒体播放", Integer.valueOf(IMPORTANCE_DEFAULT));
+                    .newInstance(CHANNEL_ID, "\u5a92\u4f53\u64ad\u653e", Integer.valueOf(IMPORTANCE_LOW));
+            chClass.getMethod("setSound", Class.forName("android.net.Uri"),
+                            Class.forName("android.media.AudioAttributes"))
+                    .invoke(channel, (Object) null, (Object) null);
+            chClass.getMethod("setVibrationPattern", long[].class)
+                    .invoke(channel, (Object) new long[0]);
+            chClass.getMethod("enableVibration", boolean.class).invoke(channel, Boolean.FALSE);
             chClass.getMethod("setShowBadge", boolean.class).invoke(channel, Boolean.FALSE);
             chClass.getMethod("setLockscreenVisibility", int.class)
                     .invoke(channel, Integer.valueOf(Notification.VISIBILITY_PUBLIC));
@@ -236,6 +242,15 @@ public class MediaSessionHelper {
                     .invoke(builder, Boolean.valueOf(isPlaying));
             builderClass.getMethod("setShowWhen", boolean.class)
                     .invoke(builder, Boolean.FALSE);
+            builderClass.getMethod("setOnlyAlertOnce", boolean.class)
+                    .invoke(builder, Boolean.TRUE);
+            builderClass.getMethod("setDefaults", int.class)
+                    .invoke(builder, Integer.valueOf(0));
+            try {
+                builderClass.getMethod("setSound", Class.forName("android.net.Uri"))
+                        .invoke(builder, (Object) null);
+            } catch (Throwable t) {
+            }
 
             Bitmap largeIcon = (coverBitmap != null && !coverBitmap.isRecycled())
                     ? coverBitmap : defaultLargeIcon;
