@@ -238,7 +238,35 @@ public class AnnouncementUtil {
         final AlertDialog[] dialogHolder = new AlertDialog[1];
         View contentView = buildAnnouncementContent(dialogContext, context, announcement,
                 announcements, index, dialogHolder);
-        builder.setView(contentView);
+
+        // 小屏/圆屏手表：内容放进可限高的 ScrollView，并保留对话框自身的关闭按钮，
+        // 避免公告按钮被挤出屏幕后完全无法取消。
+        final android.widget.ScrollView scroll = new android.widget.ScrollView(dialogContext) {
+            @Override
+            protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+                int maxHeight = (int) (getResources().getDisplayMetrics().heightPixels * 0.6f);
+                int mode = MeasureSpec.getMode(heightMeasureSpec);
+                int size = MeasureSpec.getSize(heightMeasureSpec);
+                if (mode == MeasureSpec.UNSPECIFIED || size > maxHeight) {
+                    heightMeasureSpec = MeasureSpec.makeMeasureSpec(
+                            maxHeight, MeasureSpec.AT_MOST);
+                }
+                super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+            }
+        };
+        scroll.addView(contentView, new android.widget.ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        builder.setView(scroll);
+        builder.setNegativeButton("关闭", new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface dialog, int which) {
+                dismissDialog(dialogHolder);
+                if (announcement.showOnce) {
+                    markAnnouncementShown(context, announcement.id);
+                }
+                showAnnouncementQueue(context, announcements, index + 1);
+            }
+        });
         builder.setCancelable(announcement.forceShow);
         dialogHolder[0] = builder.show();
     }
