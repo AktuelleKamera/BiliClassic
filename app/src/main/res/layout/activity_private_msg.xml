@@ -99,7 +99,7 @@
         android:background="#F5F5F5"
         android:divider="@null"
         android:dividerHeight="0dp"
-        android:stackFromBottom="true"
+        android:stackFromBottom="false"
         android:transcriptMode="normal" />
 
 </RelativeLayout>

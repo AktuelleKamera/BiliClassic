@@ -430,4 +430,13 @@ public class TimelineFragment extends Fragment {
         if (a != null) a.runOnUiThread(r);
     }
 
+    @Override
+    public void onDestroy() {
+        if (mainHandler != null) {
+            mainHandler.removeCallbacksAndMessages(null);
+        }
+        super.onDestroy();
+    }
+
+
 }

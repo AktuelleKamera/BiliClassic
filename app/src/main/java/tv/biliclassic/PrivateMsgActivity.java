@@ -92,7 +92,7 @@ public class PrivateMsgActivity extends BaseActivity {
             return;
         }
 
-        loadMessages(true);
+        loadMessages(false);
         scheduleRefresh();
     }
 
@@ -198,11 +198,10 @@ public class PrivateMsgActivity extends BaseActivity {
     @Override
     protected void onDestroy() {
         if (refreshHandler != null) {
-            if (refreshRunnable != null) {
-                refreshHandler.removeCallbacks(refreshRunnable);
-            }
+            refreshHandler.removeCallbacksAndMessages(null);
             refreshHandler = null;
         }
+        if (msgList != null) msgList.setAdapter(null);
         super.onDestroy();
     }
 }

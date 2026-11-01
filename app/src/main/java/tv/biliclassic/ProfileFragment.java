@@ -40,6 +40,7 @@ import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.ImageLoader;
+import tv.biliclassic.util.DeviceUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.UpdateUtil;
 import tv.biliclassic.util.DialogUtil;
@@ -519,6 +520,11 @@ public class ProfileFragment extends Fragment {
         return mKeyNavIndex == 0;
     }
 
+    public void clearKeyHighlight() {
+        mKeyNavIndex = -1;
+        applyKeyNavHighlight();
+    }
+
     /**
      * 供 MainActivity.dispatchKeyEvent 调用：
      * 方向键上下移动光标，确认键触发选中条目点击。
@@ -861,7 +867,7 @@ public class ProfileFragment extends Fragment {
             executor.execute(new Runnable() {
                 @Override
                 public void run() {
-                    final Bitmap bmp = BitmapFactory.decodeFile(avatarFile.getAbsolutePath());
+                    final Bitmap bmp = decodeAvatarFile(avatarFile);
                     if (bmp != null && !bmp.isRecycled()) {
                         imageCache.put(savedUrl, bmp);
                         mainHandler.post(new Runnable() {
@@ -883,6 +889,31 @@ public class ProfileFragment extends Fragment {
 
         // 无缓存：走网络
         fetchUserName(mid);
+    }
+
+    private Bitmap decodeAvatarFile(File file) {
+        try {
+            android.graphics.BitmapFactory.Options bounds =
+                    new android.graphics.BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            android.graphics.BitmapFactory.decodeFile(file.getAbsolutePath(), bounds);
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+                return null;
+            }
+            int target = DeviceUtil.dpToPx(96);
+            int sample = 1;
+            while (bounds.outWidth / (sample * 2) >= target
+                    && bounds.outHeight / (sample * 2) >= target) {
+                sample *= 2;
+            }
+            android.graphics.BitmapFactory.Options options =
+                    new android.graphics.BitmapFactory.Options();
+            options.inSampleSize = sample;
+            options.inPreferredConfig = Bitmap.Config.RGB_565;
+            return android.graphics.BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     private void saveAvatarToFile(Bitmap bitmap, long mid) {
@@ -938,4 +969,13 @@ public class ProfileFragment extends Fragment {
         updateLoginStatus();
         MsgUtil.showMsg(getActivity(), "已退出登录…随时欢迎回来哦(´；ω；`)");
     }
+    @Override
+    public void onDestroy() {
+        if (mainHandler != null) {
+            mainHandler.removeCallbacksAndMessages(null);
+        }
+        super.onDestroy();
+    }
+
+
 }

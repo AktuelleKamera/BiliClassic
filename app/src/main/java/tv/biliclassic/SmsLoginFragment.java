@@ -16,7 +16,7 @@ import android.widget.Toast;
 
 import java.util.ArrayList;
 
-import tv.biliclassic.util.BiliAppLogin;
+import tv.biliclassic.api.LoginApi;
 import tv.biliclassic.util.GeetestDialog;
 import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.LoginHelper;
@@ -26,7 +26,7 @@ import tv.biliclassic.util.SharedPreferencesUtil;
 
 /**
  * 短信验证码登录（app 端接口，人机验证为滑动类型）。
- * 逻辑移植自 BiliMD LoginActivity/BiliAppLogin，界面改为 BiliClassic 的 XML 风格。
+ * 逻辑移植自 BiliMD LoginActivity/LoginApi，界面改为 BiliClassic 的 XML 风格。
  */
 public class SmsLoginFragment extends Fragment {
 
@@ -161,6 +161,7 @@ public class SmsLoginFragment extends Fragment {
 
     @Override
     public void onDestroyView() {
+        if (mUi != null) mUi.removeCallbacksAndMessages(null);
         super.onDestroyView();
         isDestroyed = true;
     }
@@ -172,7 +173,7 @@ public class SmsLoginFragment extends Fragment {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                BiliAppLogin.SendResult r = BiliAppLogin.sendSms(tel, area, null, null, null, null);
+                LoginApi.SendResult r = LoginApi.sendSms(tel, area, null, null, null, null);
                 if (r.ok) {
                     mCaptchaKey = r.captchaKey == null ? "" : r.captchaKey;
                     smsSentUi();
@@ -182,7 +183,7 @@ public class SmsLoginFragment extends Fragment {
                 final String msg = r.message;
                 // -105：需要人机验证。先解析响应里的 recaptcha_url，失败再走 /x/safecenter/captcha/pre
                 if (!r.hasGee()) {
-                    BiliAppLogin.SendResult pre = BiliAppLogin.preCapture();
+                    LoginApi.SendResult pre = LoginApi.preCapture();
                     if (pre.hasGee()) {
                         r.geeGt = pre.geeGt;
                         r.geeChallenge = pre.geeChallenge;
@@ -214,8 +215,8 @@ public class SmsLoginFragment extends Fragment {
                                 new Thread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        BiliAppLogin.SendResult r2 =
-                                                BiliAppLogin.sendSms(tel, area, c2, validate, seccode, token);
+                                        LoginApi.SendResult r2 =
+                                                LoginApi.sendSms(tel, area, c2, validate, seccode, token);
                                         if (r2.ok) {
                                             mCaptchaKey = r2.captchaKey == null ? "" : r2.captchaKey;
                                             smsSentUi();
@@ -291,7 +292,7 @@ public class SmsLoginFragment extends Fragment {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                final BiliAppLogin.LoginResult r = BiliAppLogin.loginBySms(tel, area, code, mCaptchaKey);
+                final LoginApi.LoginResult r = LoginApi.loginBySms(tel, area, code, mCaptchaKey);
                 if (!r.ok) {
                     final String m = "(" + r.code + ") " + r.message;
                     mUi.post(new Runnable() {
@@ -303,7 +304,7 @@ public class SmsLoginFragment extends Fragment {
                     return;
                 }
                 if (r.cookieString != null && r.cookieString.length() > 0) {
-                    BiliAppLogin.storeLoginCookies(r.cookieString);
+                    LoginApi.storeLoginCookies(r.cookieString);
                 }
                 String ck = NetWorkUtil.getCookieString();
                 if (ck == null || ck.length() == 0) {

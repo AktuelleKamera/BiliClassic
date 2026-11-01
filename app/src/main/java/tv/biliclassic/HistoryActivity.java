@@ -142,6 +142,7 @@ public class HistoryActivity extends BaseActivity {
     }
 
     protected void onDestroy() {
+        if (mainHandler != null) mainHandler.removeCallbacksAndMessages(null);
         super.onDestroy();
         if (adapter != null) {
             adapter.clearCache();
