@@ -15,6 +15,8 @@ namespace BiliClassic
         {
             InitializeComponent();
             ThemeHelper.ApplyPage(this);
+            // 这两个按钮在旧版是默认无填色的，黑主题下还原
+            ThemeHelper.ApplyAccentButtons(this);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -30,12 +32,6 @@ namespace BiliClassic
             AutoCheckUpdateCheck.IsChecked = AppSettings.AutoCheckUpdate;
             LoadQuality(AppSettings.PlayQuality);
             _loading = false;
-
-            if (!AppSettings.DashSupported)
-            {
-                DashPlaybackCheck.Visibility = Visibility.Collapsed;
-                DashHintText.Visibility = Visibility.Collapsed;
-            }
         }
 
         private void LoadQuality(int quality)
