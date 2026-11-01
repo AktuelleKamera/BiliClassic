@@ -197,6 +197,24 @@ public class UserProfileActivity extends BaseActivity {
 
     private void initViews() {
         ivAvatar = (ImageView) findViewById(R.id.iv_avatar);
+        if (ivAvatar != null) {
+            ivAvatar.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (mUserInfo == null || mUserInfo.avatar == null
+                            || mUserInfo.avatar.length() == 0) {
+                        return;
+                    }
+                    ArrayList<String> images = new ArrayList<String>();
+                    images.add(mUserInfo.avatar);
+                    Intent intent = new Intent(UserProfileActivity.this,
+                            ImageViewerActivity.class);
+                    intent.putStringArrayListExtra("imageList", images);
+                    intent.putExtra("index", 0);
+                    startActivity(intent);
+                }
+            });
+        }
         tvUserNameTitle = (TextView) findViewById(R.id.tv_user_name_title);
         tvUserSign = (TextView) findViewById(R.id.tv_user_sign);
         tvFans = (TextView) findViewById(R.id.tv_fans);

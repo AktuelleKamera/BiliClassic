@@ -252,7 +252,12 @@ public class ProfileFragment extends Fragment {
         };
 
         if (ivAvatar != null) {
-            ivAvatar.setOnClickListener(profileClickListener);
+            ivAvatar.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    openAvatarViewer();
+                }
+            });
         }
         if (tvUserId != null) {
             tvUserId.setOnClickListener(profileClickListener);
@@ -344,6 +349,19 @@ public class ProfileFragment extends Fragment {
         }
 
         return view;
+    }
+
+    private void openAvatarViewer() {
+        String url = SharedPreferencesUtil.getString("avatar_url", "");
+        if (url == null || url.length() == 0 || getActivity() == null) {
+            return;
+        }
+        ArrayList<String> images = new ArrayList<String>();
+        images.add(url);
+        Intent intent = new Intent(getActivity(), ImageViewerActivity.class);
+        intent.putStringArrayListExtra("imageList", images);
+        intent.putExtra("index", 0);
+        startActivity(intent);
     }
 
     @Override
