@@ -217,6 +217,16 @@ public class SettingsActivity extends BaseActivity {
         }
 
         // 按键绑定入口
+        LinearLayout helpTutorialItem = (LinearLayout) findViewById(R.id.help_tutorial_item);
+        if (helpTutorialItem != null) {
+            helpTutorialItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    startActivity(new Intent(SettingsActivity.this, HelpListActivity.class));
+                }
+            });
+        }
+
         LinearLayout keyBindingItem = (LinearLayout) findViewById(R.id.key_binding_item);
         if (keyBindingItem != null) {
             keyBindingItem.setOnClickListener(new View.OnClickListener() {
