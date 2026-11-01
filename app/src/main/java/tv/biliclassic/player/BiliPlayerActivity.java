@@ -345,6 +345,9 @@ public class BiliPlayerActivity extends Activity implements
     private int[] mQualityValues;
     private int mCurrentQn;
     private boolean mOfflineMode;
+    private boolean mHideControls;
+    private boolean mHideLoading;
+    private boolean mForceHwDecode;
     private int mQualitySwitchSeekPos = 0;
     private boolean mErrorToastShown;
 
@@ -489,7 +492,10 @@ public class BiliPlayerActivity extends Activity implements
                     }
                 });
 
-        if (!getIntent().getBooleanExtra("offline_mode", false)) {
+        mHideControls = getIntent().getBooleanExtra("hide_controls", false);
+        mHideLoading = getIntent().getBooleanExtra("hide_loading", false);
+        mForceHwDecode = getIntent().getBooleanExtra("force_hw_decode", false);
+        if (!getIntent().getBooleanExtra("offline_mode", false) && !mHideLoading) {
             initLoadingOverlay();
         }
 
@@ -541,6 +547,9 @@ public class BiliPlayerActivity extends Activity implements
         if (onlineMode && SettingsActivity.getPlayStreamFormat() == 16
                 && decoderType == DECODER_SYSTEM) {
             decoderType = SdkHelper.getSdkInt() >= 16 ? DECODER_IJK_HARD : DECODER_IJK_SOFT;
+        }
+        if (mForceHwDecode && SdkHelper.getSdkInt() >= 16) {
+            decoderType = DECODER_IJK_HARD;
         }
         mRendererType = SettingsActivity.getRendererType();
         if (mRendererType == RENDERER_TEXTUREVIEW && SdkHelper.getSdkInt() < 14) {
@@ -4462,6 +4471,10 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     private void showControls() {
+        if (mHideControls) {
+            hideControls();
+            return;
+        }
         if (topBar != null) topBar.setVisibility(View.VISIBLE);
         if (bottomBar != null) bottomBar.setVisibility(View.VISIBLE);
         if (btnBack != null) btnBack.setVisibility(View.VISIBLE);
@@ -4487,7 +4500,7 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     private void toggleControls() {
-        if (playerLocked) return;
+        if (playerLocked || mHideControls) return;
         if (controlsVisible) {
             hideControls();
         } else {
@@ -4810,7 +4823,7 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         if (event.getKeyCode() == KeyEvent.KEYCODE_MENU && event.getAction() == KeyEvent.ACTION_DOWN) {
-            if (!isPrepared) {
+            if (mHideControls || !isPrepared) {
                 return true;
             }
             if (!controlsVisible) {
