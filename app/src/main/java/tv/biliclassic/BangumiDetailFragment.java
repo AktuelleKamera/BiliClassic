@@ -30,6 +30,7 @@ import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.UiSkin;
 import tv.biliclassic.api.BangumiApi;
 import tv.biliclassic.model.Bangumi;
 
@@ -108,6 +109,9 @@ public class BangumiDetailFragment extends Fragment {
         lvEpisodes.setAdapter(adapter);
         lvEpisodes.setSelector(tv.biliclassic.metro.MetroTheme.isNight()
                 ? R.drawable.focus_outline_transparent : R.drawable.focus_solid_pink);
+        lvEpisodes.setDivider(new android.graphics.drawable.ColorDrawable(
+                tv.biliclassic.metro.MetroTheme.isNight() ? 0x33FFFFFF : 0xFFE0E0E0));
+        lvEpisodes.setDividerHeight(1);
         lvEpisodes.setDrawSelectorOnTop(true);
 
         // 在 View 还未显示时，先让 tvDesc 不限制行数，测完再恢复
@@ -496,6 +500,7 @@ public class BangumiDetailFragment extends Fragment {
                 tv.setBackgroundColor(0xFFF0F0F0);
                 tv.setClickable(false);
                 tv.setFocusable(false);
+                UiSkin.recolorItem(tv);
                 return convertView;
             }
 
@@ -538,6 +543,14 @@ public class BangumiDetailFragment extends Fragment {
             TextView tvTitle;
         }
     }
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mRootView != null) {
+            tv.biliclassic.util.UiSkin.recolorItem(mRootView);
+        }
+    }
+
     @Override
     public void onDestroy() {
         if (mHandler != null) {
