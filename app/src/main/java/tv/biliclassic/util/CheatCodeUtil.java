@@ -80,8 +80,13 @@ public final class CheatCodeUtil {
             // 私信
             intent = new Intent(activity, PrivateMsgListActivity.class);
         } else if (k.equals("weaknesspays")) {
-            // EA GAMES：Ostwind 硬解 + 隐藏控制栏/加载动画，播完退出
-            intent = new Intent(activity, tv.biliclassic.player.OstwindPlayerActivity.class);
+            // API 4+ (Android 1.6+) 使用 IJK；更老设备继续走 Ostwind。
+            if (SdkHelper.getSdkInt() >= 4) {
+                intent = new Intent(activity, tv.biliclassic.player.BiliPlayerActivity.class);
+                intent.putExtra("_from_external_redirect", true);
+            } else {
+                intent = new Intent(activity, tv.biliclassic.player.OstwindPlayerActivity.class);
+            }
             intent.putExtra("video_url", "http://www.biliclassic.cn/EA_GAMES.mp4");
             intent.putExtra("video_title", "EA GAMES");
             intent.putExtra("hide_controls", true);
