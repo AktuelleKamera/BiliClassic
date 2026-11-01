@@ -575,9 +575,10 @@ public class DanmakuManager {
         if (!mUseSimpleEngine && mLoaded && mEnabled && mDanmakuView != null
                 && !mDanmakuStarted && !mReleased) {
             long pos = getCurrentVideoPosition();
-            if (pos > 0) mDanmakuView.seekTo(pos);
+            if (pos <= 0 && mSeekPending) pos = mSeekTarget;
             mDanmakuView.start();
             mDanmakuStarted = true;
+            if (pos > 0) mDanmakuView.seekTo(pos);
         }
     }
 
@@ -1084,9 +1085,10 @@ public class DanmakuManager {
                     mLoaded = true;
                     if (mEnabled && mVideoStarted) {
                         long pos = getCurrentVideoPosition();
-                        if (pos > 0) mDanmakuView.seekTo(pos);
+                        if (pos <= 0 && mSeekPending) pos = mSeekTarget;
                         mDanmakuView.start();
                         mDanmakuStarted = true;
+                        if (pos > 0) mDanmakuView.seekTo(pos);
                     }
                 }
 
