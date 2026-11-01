@@ -523,6 +523,7 @@ public abstract class BaseActivity extends FragmentActivity {
      */
     protected void showOverflowMenu(View anchor) {
         try {
+            boolean night = tv.biliclassic.util.UiSkin.isNight();
             XmlResourceParser xp = getResources().getXml(R.menu.main_menu);
             String ns = "http://schemas.android.com/apk/res/android";
             int[] ids = new int[8];
@@ -576,14 +577,16 @@ public abstract class BaseActivity extends FragmentActivity {
 
             for (int i = 0; i < n; i++) {
                 if (i > 0) {
-                    View div = new View(this);
-                    android.graphics.drawable.Drawable dv =
-                            safeDrawable(R.drawable.abs__list_divider_holo_light);
-                    if (dv != null) {
-                        div.setBackgroundDrawable(dv);
-                    } else {
-                        div.setBackgroundColor(0xFFE0E0E0);
-                    }
+                      View div = new View(this);
+                      android.graphics.drawable.Drawable dv =
+                              safeDrawable(R.drawable.abs__list_divider_holo_light);
+                      if (night) {
+                          div.setBackgroundColor(0x33FFFFFF);
+                      } else if (dv != null) {
+                          div.setBackgroundDrawable(dv);
+                      } else {
+                          div.setBackgroundColor(0xFFE0E0E0);
+                      }
                     panel.addView(div, new LinearLayout.LayoutParams(
                             LinearLayout.LayoutParams.MATCH_PARENT, divH));
                 }
@@ -591,20 +594,22 @@ public abstract class BaseActivity extends FragmentActivity {
                 TextView row = new TextView(this);
                 row.setText(titles[i]);
                 row.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-                row.setTextColor(0xFF000000);
-                row.setSingleLine(true);
-                row.setEllipsize(TextUtils.TruncateAt.END);
-                row.setGravity(Gravity.CENTER_VERTICAL);
-                row.setMinWidth(minW);
-                row.setClickable(true);
-                row.setFocusable(true);
-                android.graphics.drawable.Drawable rs =
-                        safeDrawable(R.drawable.apptheme__app__list_selector_holo_light);
-                if (rs != null) {
-                    row.setBackgroundDrawable(rs);
-                } else {
-                    row.setBackgroundColor(0xFFFFFFFF);
-                }
+                  row.setTextColor(night ? 0xFFE6E6E6 : 0xFF000000);
+                  row.setSingleLine(true);
+                  row.setEllipsize(TextUtils.TruncateAt.END);
+                  row.setGravity(Gravity.CENTER_VERTICAL);
+                  row.setMinWidth(minW);
+                  row.setClickable(true);
+                  row.setFocusable(true);
+                  android.graphics.drawable.Drawable rs =
+                          safeDrawable(R.drawable.apptheme__app__list_selector_holo_light);
+                  if (night) {
+                      row.setBackgroundResource(R.drawable.item_click_effect_grey);
+                  } else if (rs != null) {
+                      row.setBackgroundDrawable(rs);
+                  } else {
+                      row.setBackgroundColor(0xFFFFFFFF);
+                  }
                 // 低版本（1.x）setBackgroundDrawable/setBackgroundColor 会重置 padding，
                 // 所以 padding 必须放在设置背景之后，否则左边距会消失
                 row.setPadding(pad, 0, pad, 0);
@@ -631,7 +636,9 @@ public abstract class BaseActivity extends FragmentActivity {
             ScrollView scroll = new ScrollView(this);
             android.graphics.drawable.Drawable pbg =
                     safeDrawable(R.drawable.abs__menu_dropdown_panel_holo_light);
-            if (pbg != null) {
+            if (night) {
+                scroll.setBackgroundDrawable(new ColorDrawable(0xFF2A2A2A));
+            } else if (pbg != null) {
                 scroll.setBackgroundDrawable(pbg);
             } else {
                 scroll.setBackgroundDrawable(new ColorDrawable(0xFFF2F2F2));
