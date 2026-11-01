@@ -3927,7 +3927,7 @@ public class BiliPlayerActivity extends Activity implements
 
     private void showUserBlockDialog() {
         final EditText input = new EditText(this);
-        input.setHint("输入要屏蔽的用户 UID");
+        input.setHint("输入要屏蔽的用户UID");
         input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         new AlertDialog.Builder(SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle("屏蔽用户弹幕")
