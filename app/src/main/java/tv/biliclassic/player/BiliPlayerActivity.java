@@ -2787,21 +2787,23 @@ public class BiliPlayerActivity extends Activity implements
             ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "packet-buffering",
                     isLiveStream ? 0L : 1L);
             // max-buffer-size 是压缩包队列的预读上限（见 ff_ffplay_options.h MAX_QUEUE_SIZE）。
-            // 按目标画质分档给缓冲，否则 4K 只给 512KB 时垫子不足 0.2s，会不停缓冲：
-            //   直播                -> 4MB（码率通常较高，老设备内存有限不宜过大）
+            // 与 0.5.1 一致，按目标画质和堆内存动态设置：
+            //   直播                -> 高内存 8MB / 低内存 4MB
             //   4K 及以上(120/125/126/127) -> 10MB
-            //   1080P 系列(80/112/116)     -> 1MB
-            //   其余（720P 及以下）        -> 512KB
-            // 注意：直播没有 qn（mCurrentQn=0），必须单列，否则会落到 512KB 一直缓冲
+            //   1080P 系列(80/112/116)     -> 2MB
+            //   其余（720P 及以下）        -> 高内存 4MB / 低内存 512KB
+            // 注意：直播没有 qn（mCurrentQn=0），必须单列，否则会落到默认档
             long maxBufferSize;
             if (isLiveStream) {
-                maxBufferSize = 4 * 1024 * 1024L;
+                maxBufferSize = SdkHelper.isHighMemoryDevice()
+                        ? 8 * 1024 * 1024L : 4 * 1024 * 1024L;
             } else if (mCurrentQn >= 120) {
                 maxBufferSize = 10 * 1024 * 1024L;
             } else if (mCurrentQn >= 80) {
-                maxBufferSize = 1024 * 1024L;
+                maxBufferSize = 2 * 1024 * 1024L;
             } else {
-                maxBufferSize = 512 * 1024L;
+                maxBufferSize = SdkHelper.isHighMemoryDevice()
+                        ? 4 * 1024 * 1024L : 512 * 1024L;
             }
             ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "max-buffer-size", maxBufferSize);
         }
