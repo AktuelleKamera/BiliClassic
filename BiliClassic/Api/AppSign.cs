@@ -60,12 +60,10 @@ namespace BiliClassic.Api
                 {
                     sb.Append(c);
                 }
-                else if (c == ' ')
-                {
-                    sb.Append('+');
-                }
                 else
                 {
+                    // 空格必须编成 %20，服务端是按 Uri.encode 那套重算签名的，
+                    // 用 '+' 会对不上（-3 签名错误）
                     sb.Append('%');
                     sb.Append(bytes[i].ToString("X2"));
                 }
