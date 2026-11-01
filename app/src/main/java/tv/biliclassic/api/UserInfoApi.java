@@ -174,22 +174,45 @@ public class UserInfoApi {
      * 获取用户发布的视频列表（已修复，移除 DmImgParamUtil）
      */
     public static int getUserVideos(long mid, int page, String searchKeyword, List<VideoCard> videoList) throws IOException, JSONException {
-        String url = "https://api.bilibili.com/x/space/wbi/arc/search?";
-        url += "keyword=" + searchKeyword
-                + "&mid=" + mid
-                + "&order_avoided=true&order=pubdate&pn=" + page
-                + "&ps=40&tid=0&web_location=333.999";
+        ArrayList headers = new ArrayList();
+        headers.add("Referer");
+        headers.add("https://space.bilibili.com/" + mid);
+        headers.add("Origin");
+        headers.add("https://space.bilibili.com");
+        headers.add("Accept-Language");
+        headers.add(NetWorkUtil.getAcceptLanguage());
 
-        // 直接使用 ConfInfoApi.signWBI，移除 DmImgParamUtil
-        url = ConfInfoApi.signWBI(url);
-        Log.e(TAG, "getUserVideos URL=" + url);
+        JSONObject all = null;
+        int code = -1;
+        for (int attempt = 0; attempt < 2; attempt++) {
+            String url = "https://api.bilibili.com/x/space/wbi/arc/search?mid=" + mid
+                    + "&order_avoided=true&order=pubdate&platform=web&pn=" + page
+                    + "&ps=40&tid=0&web_location=333.1387";
+            if (searchKeyword != null && searchKeyword.length() > 0) {
+                url += "&keyword=" + searchKeyword;
+            }
 
-        JSONObject all = NetWorkUtil.getJson(url);
+            // 与 0.5.1/PiliPlus 一致：WBI 签名 + 空间页 Referer/Origin
+            url = ConfInfoApi.signWBI(url);
+            Log.e(TAG, "getUserVideos URL=" + url);
 
-        if (all != null) {
-            int code = all.optInt("code", -1);
+            all = NetWorkUtil.getJson(url, headers);
+            code = all != null ? all.optInt("code", -1) : -1;
             Log.e(TAG, "getUserVideos code=" + code);
 
+            if (code != -352 && code != -412) {
+                break;
+            }
+            Log.w(TAG, "getUserVideos 风控 code=" + code + "，刷新 buvid/WBI 后重试");
+            try {
+                NetWorkUtil.fetchBuvid3();
+            } catch (Throwable ignored) {
+            }
+            NetWorkUtil.refreshHeaders();
+            ConfInfoApi.invalidateWbiKey();
+        }
+
+        if (all != null) {
             if (code == 0 && all.has("data") && !all.isNull("data")) {
                 JSONObject data = all.getJSONObject("data");
                 JSONObject list = data.getJSONObject("list");
