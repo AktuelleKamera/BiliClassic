@@ -37,7 +37,30 @@ public final class UiSkin {
     }
 
     public static boolean isNight() {
-        return SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NIGHT_MODE, false);
+        if (SharedPreferencesUtil.contains(SharedPreferencesUtil.NIGHT_MODE)) {
+            return SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NIGHT_MODE, false);
+        }
+        return isSystemNight();
+    }
+
+    /**
+     * 未手动设置夜间模式时跟随系统深色模式。
+     * uiMode/UI_MODE_NIGHT_* 从 API 8 才有，反射读取以兼容 Android 1.x。
+     */
+    private static boolean isSystemNight() {
+        try {
+            if (SdkHelper.getSdkInt() < 8) return false;
+            android.content.Context ctx = SharedPreferencesUtil.getAppContext();
+            if (ctx == null) return false;
+            Object cfg = ctx.getResources().getConfiguration();
+            Class<?> cls = android.content.res.Configuration.class;
+            int uiMode = cls.getField("uiMode").getInt(cfg);
+            int mask = cls.getField("UI_MODE_NIGHT_MASK").getInt(null);
+            int yes = cls.getField("UI_MODE_NIGHT_YES").getInt(null);
+            return (uiMode & mask) == yes;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     /**

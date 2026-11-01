@@ -476,7 +476,7 @@ public class SettingsActivity extends BaseActivity {
         checkboxNightMode = (CheckBox) findViewById(R.id.checkbox_night_mode);
         final LinearLayout nightModeItem = (LinearLayout) findViewById(R.id.night_mode_item);
         if (nightModeItem != null && checkboxNightMode != null) {
-            boolean nightMode = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NIGHT_MODE, false);
+            boolean nightMode = tv.biliclassic.util.UiSkin.isNight();
             checkboxNightMode.setChecked(nightMode);
             checkboxNightMode.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 @Override

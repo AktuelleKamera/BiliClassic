@@ -770,9 +770,7 @@ public class MetroHomeActivity extends BaseActivity {
 
 
     private boolean isNightMode() {
-        // 依据 App 自身的"夜间模式"开关（设置里那个），而非系统的 uiMode
-        return tv.biliclassic.util.SharedPreferencesUtil.getBoolean(
-                tv.biliclassic.util.SharedPreferencesUtil.NIGHT_MODE, false);
+        return tv.biliclassic.util.UiSkin.isNight();
     }
 
     @Override

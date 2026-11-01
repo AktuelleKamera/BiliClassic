@@ -41,7 +41,7 @@ public final class BgUtil {
     }
 
     public static boolean isNight() {
-        return SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NIGHT_MODE, false);
+        return UiSkin.isNight();
     }
 
     /** 应用窗口背景：有自定义图用图（模糊+遮罩），否则用纹理（夜间深色） */

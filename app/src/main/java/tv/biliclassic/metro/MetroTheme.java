@@ -11,8 +11,7 @@ public final class MetroTheme {
 
     /** 是否夜间模式（与设置里的"夜间模式"开关一致） */
     public static boolean isNight() {
-        return tv.biliclassic.util.SharedPreferencesUtil.getBoolean(
-                tv.biliclassic.util.SharedPreferencesUtil.NIGHT_MODE, false);
+        return tv.biliclassic.util.UiSkin.isNight();
     }
 
     /** 灰色辅助文字（#999999）：夜间换白色 */

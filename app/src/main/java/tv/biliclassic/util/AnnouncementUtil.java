@@ -252,8 +252,7 @@ public class AnnouncementUtil {
                                                  final List<Announcement> announcements,
                                                  final int index,
                                                  final AlertDialog[] dialogHolder) {
-        final boolean night = SharedPreferencesUtil.getBoolean(
-                SharedPreferencesUtil.NIGHT_MODE, false);
+        final boolean night = tv.biliclassic.util.UiSkin.isNight();
         LinearLayout root = new LinearLayout(dialogContext);
         root.setOrientation(LinearLayout.VERTICAL);
         int pad = dp(dialogContext, 16);

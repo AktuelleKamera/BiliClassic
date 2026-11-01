@@ -86,7 +86,7 @@ public abstract class BaseActivity extends FragmentActivity {
         super.onCreate(savedInstanceState);
 
         // 夜间模式：替换窗口背景（bili_texture_1 -> bili_texture_2）
-        if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NIGHT_MODE, false)) {
+        if (tv.biliclassic.util.UiSkin.isNight()) {
             setTheme(R.style.AppThemeNight);
         }
 
