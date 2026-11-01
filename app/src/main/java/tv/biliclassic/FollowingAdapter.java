@@ -169,7 +169,7 @@ public class FollowingAdapter extends BaseObservableAdapter<UserInfo> {
         try {
             android.graphics.drawable.Drawable borderDrawable =
                     context.getResources().getDrawable(R.drawable.image_border_overlay);
-            imageView.setBackgroundDrawable(borderDrawable);
+            tv.biliclassic.util.UiSkin.setBgDrawableKeepPadding(imageView, borderDrawable);
             int paddingPx = DeviceUtil.dpToPx(2);
             imageView.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
         } catch (Exception e) {

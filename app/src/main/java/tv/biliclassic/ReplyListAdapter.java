@@ -17,6 +17,7 @@ import android.os.Vibrator;
 import android.view.Gravity;
 import android.text.ClipboardManager;
 import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
 import android.text.style.ReplacementSpan;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -65,10 +66,15 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
 
     public void setSelectedPosition(int position) {
         this.selectedPosition = position;
+        notifyDataSetChanged();
     }
 
     public void setHideHighlight(boolean hide) {
+        if (this.hideHighlight == hide) return;
         this.hideHighlight = hide;
+        if (selectedPosition >= 0) {
+            notifyDataSetChanged();
+        }
     }
 
     public void setScrolling(boolean scrolling) {
@@ -115,7 +121,7 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
                     final ViewHolder h = (ViewHolder) v.getTag();
                     switch (event.getAction()) {
                         case MotionEvent.ACTION_DOWN:
-                            v.setBackgroundColor(0x40D86DA5);
+                            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(v, 0x40D86DA5);
                             h.copyText = ((TextView) h.message).getText().toString();
                             h.longPressRunnable = new Runnable() {
                                 @Override
@@ -123,9 +129,9 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
                                     // 长按已触发：立即恢复行背景。手指抬起的事件可能被
                                     // 对话框窗口吃掉（UP/CANCEL 丢失），不恢复会高亮卡死
                                     if (!hideHighlight && h.position == selectedPosition) {
-                                        rowView.setBackgroundColor(0x66D86DA5);
+                                        tv.biliclassic.util.UiSkin.setBgColorKeepPadding(rowView, 0x66D86DA5);
                                     } else {
-                                        rowView.setBackgroundResource(R.drawable.item_click_effect_white);
+                                        tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(rowView, R.drawable.item_click_effect_white);
                                     }
                                     final long itemMid = h.mid;
                                     final String text = h.copyText;
@@ -160,9 +166,10 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
                             // 用行创建时捕获的旧位置会因行复用导致高亮卡死/丢失）。
                             // 若是键盘光标选中项则保留粉色高亮
                             if (!hideHighlight && h.position == selectedPosition) {
-                                v.setBackgroundColor(0x66D86DA5);
+                                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(v, 0x66D86DA5);
                             } else {
-                                v.setBackgroundResource(R.drawable.item_click_effect_white);
+                                tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(v,
+                                        R.drawable.item_click_effect_white);
                             }
                             break;
                     }
@@ -183,14 +190,23 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
         if (rd.isTop && msgText.startsWith("[置顶]")) {
             msgText = msgText.substring(4);
         }
+        SpannableStringBuilder messageBuilder = new SpannableStringBuilder();
+        int messageOffset = 0;
         if (rd.isTop) {
-            SpannableString ss = new SpannableString("\u200B" + msgText);
-            ss.setSpan(new BadgeSpan(mDensity), 0, 1,
+            messageBuilder.append("\u200B");
+            messageBuilder.setSpan(new BadgeSpan(mDensity), 0, 1,
                     android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            holder.message.setText(ss);
-        } else {
-            holder.message.setText(msgText);
+            messageOffset = 1;
         }
+        messageBuilder.append(msgText);
+        boolean hasLinks = tv.biliclassic.util.CommentLinkUtil.applyLinks(
+                messageBuilder, messageOffset, msgText, context,
+                tv.biliclassic.metro.MetroTheme.isNight());
+        holder.message.setText(messageBuilder);
+        holder.message.setFocusable(false);
+        holder.message.setFocusableInTouchMode(false);
+        holder.message.setMovementMethod(hasLinks
+                ? android.text.method.LinkMovementMethod.getInstance() : null);
         holder.mid = rd.mid;
         holder.oid = mOid;
         holder.rpid = rd.rpid;
@@ -287,6 +303,15 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
         }
 
         //显示回复按钮
+        if (holder.likeCount != null && h2.likeIcon != null) {
+            holder.likeCount.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    h2.likeIcon.performClick();
+                }
+            });
+        }
+
         if (holder.replyButton != null) {
             holder.replyButton.setVisibility(View.VISIBLE);
             holder.replyButton.setOnClickListener(new View.OnClickListener() {
@@ -351,7 +376,7 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
                         moreTv.setTextSize(14);
                         moreTv.setTextColor(0xFFFFFFFF);
                         moreTv.setGravity(Gravity.CENTER);
-                        moreTv.setBackgroundColor(0x88000000);
+                        tv.biliclassic.util.UiSkin.setBgColorKeepPadding(moreTv, 0x88000000);
                         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(imgSize, imgSize);
                         lp.leftMargin = margin;
                         moreTv.setLayoutParams(lp);
@@ -432,7 +457,7 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
         if (imageView == null) return;
         try {
             Drawable borderDrawable = context.getResources().getDrawable(R.drawable.image_border_overlay);
-            imageView.setBackgroundDrawable(borderDrawable);
+            tv.biliclassic.util.UiSkin.setBgDrawableKeepPadding(imageView, borderDrawable);
             int paddingPx = DeviceUtil.dpToPx(2);
             imageView.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
         } catch (Exception e) {}

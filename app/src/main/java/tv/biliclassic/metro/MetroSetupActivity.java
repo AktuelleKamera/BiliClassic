@@ -29,6 +29,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import tv.biliclassic.BaseActivity;
 import tv.biliclassic.MainActivity;
@@ -40,10 +42,17 @@ import tv.biliclassic.util.UpdateUtil;
 
 public class MetroSetupActivity extends BaseActivity {
 
+    private static final int AGREEMENT_VERSION = 1;
+    private static final String KEY_AGREEMENT_VERSION = "agreement_version";
+
+    private View mPageAgreement;
     private View mPageWelcome;
     private View mPageTiles;
     private View mPageBinding;
     private View mPageTheme;
+    private boolean mOnAgreement = false;
+    private boolean mAgreementVisited = false;
+    private long mAgreementAnimationUntil = 0L;
     // 主题选择页所处的页态与进入前的上一页（用于 BACK 返回）
     private boolean mOnTheme = false;
     private ViewGroup mPrevPage;
@@ -102,6 +111,9 @@ public class MetroSetupActivity extends BaseActivity {
     // 按键机在询问页可用方向键选择"是/否"，确认键触发；BACK 回磁贴页
     private int mAskChoiceIndex = 0; // 0 = 是，1 = 否
     private boolean mAskKeyNavActive = false;
+    private int mThemeChoiceIndex = 0;
+    private boolean mThemeKeyNavActive = false;
+    private int mAgreementChoiceIndex = 1;
 
     static final int TAB_PROFILE = 0;
     static final int TAB_HOME = 1;
@@ -161,13 +173,39 @@ public class MetroSetupActivity extends BaseActivity {
             titleText.setText(getString(R.string.setup_first_meeting));
         }
 
+        mPageAgreement = findViewById(R.id.page_agreement);
         mPageWelcome = findViewById(R.id.page_welcome);
         mPageTiles = findViewById(R.id.page_tiles);
         mPageBinding = findViewById(R.id.page_binding);
         mPageTheme = findViewById(R.id.page_theme);
 
+        initAgreementPage();
         initBindingPage();
         initThemePage();
+
+        boolean agreementAccepted = SharedPreferencesUtil.getInt(KEY_AGREEMENT_VERSION, 0) >= AGREEMENT_VERSION;
+        if (mPageAgreement != null) {
+            mPageAgreement.setVisibility(agreementAccepted ? View.GONE : View.VISIBLE);
+            if (!agreementAccepted) mAgreementVisited = true;
+        }
+        if (mPageWelcome != null) {
+            mPageWelcome.setVisibility(agreementAccepted ? View.VISIBLE : View.GONE);
+        }
+        mOnAgreement = !agreementAccepted;
+        if (mOnAgreement) {
+            mAgreementChoiceIndex = 1;
+            applyAgreementHighlight();
+            if (mPageAgreement != null) {
+                mPageAgreement.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        loadAgreement();
+                    }
+                }, 120L);
+            } else {
+                loadAgreement();
+            }
+        }
 
         // 右下角小电视水印：与 MetroHome 完全一致的尺寸算法（70% 屏幕长边 + 12% 溢出）
         ImageView wm = (ImageView) findViewById(R.id.tv_watermark);
@@ -340,9 +378,289 @@ public class MetroSetupActivity extends BaseActivity {
                 }
             });
         }
+        int currentTheme = tv.biliclassic.util.SharedPreferencesUtil.getInt(
+                tv.biliclassic.SettingsActivity.KEY_UI_THEME,
+                tv.biliclassic.SettingsActivity.THEME_CLASSIC);
+        mThemeChoiceIndex = currentTheme == tv.biliclassic.SettingsActivity.THEME_METRO ? 0 : 1;
+        applyThemeHighlight();
+    }
+
+    private void applyThemeHighlight() {
+        TextView metro = (TextView) findViewById(R.id.btn_theme_metro);
+        TextView classic = (TextView) findViewById(R.id.btn_theme_classic);
+        if (metro != null) {
+            metro.setSelected(mThemeChoiceIndex == 0);
+            metro.setTextColor(0xFFFFFFFF);
+        }
+        if (classic != null) {
+            classic.setSelected(mThemeChoiceIndex == 1);
+            classic.setTextColor(mThemeChoiceIndex == 1 ? 0xFFFFFFFF : 0xFFD86DA5);
+        }
     }
 
     /** 主题选择后：无缝进主页 —— Setup 淡出、主页放大飞入（两屏小电视水印交叉过渡）。 */
+    private void applyAgreementHighlight() {
+        TextView exit = (TextView) findViewById(R.id.btn_agreement_exit);
+        TextView agree = (TextView) findViewById(R.id.btn_agreement_agree);
+        if (exit != null) {
+            exit.setSelected(mAgreementChoiceIndex == 0);
+            exit.setTextColor(mAgreementChoiceIndex == 0 ? 0xFFFFFFFF : 0xFFD86DA5);
+        }
+        if (agree != null) {
+            agree.setSelected(mAgreementChoiceIndex == 1);
+            agree.setTextColor(0xFFFFFFFF);
+        }
+    }
+
+    private void initAgreementPage() {
+        if (mPageAgreement == null) return;
+        View exit = findViewById(R.id.btn_agreement_exit);
+        if (exit != null) {
+            exit.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    finish();
+                }
+            });
+        }
+        View agree = findViewById(R.id.btn_agreement_agree);
+        if (agree != null) {
+            agree.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (mAnimating) return;
+                    SharedPreferencesUtil.putInt(KEY_AGREEMENT_VERSION, AGREEMENT_VERSION);
+                    mOnAgreement = false;
+                    slideAgreementToWelcome();
+                }
+            });
+        }
+    }
+
+    private void loadAgreement() {
+        if (!mOnAgreement || isFinishing()) return;
+        if (findViewById(R.id.agreement_container) == null) return;
+        renderAgreement(Arrays.asList(
+                getResources().getStringArray(R.array.agreement_default_lines)));
+        animateAgreementIn();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final List<String> remote = tv.biliclassic.api.AgreementApi.fetch();
+                if (remote == null || remote.size() == 0) return;
+                mHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isFinishing() || !mOnAgreement) return;
+                        final Runnable applyRemote = new Runnable() {
+                            @Override
+                            public void run() {
+                                if (isFinishing() || !mOnAgreement) return;
+                                renderAgreement(remote);
+                            }
+                        };
+                        long wait = mAgreementAnimationUntil
+                                - android.os.SystemClock.uptimeMillis();
+                        if (wait > 0L) {
+                            mHandler.postDelayed(applyRemote, wait);
+                        } else {
+                            applyRemote.run();
+                        }
+                    }
+                });
+            }
+        }, "AgreementLoad").start();
+    }
+
+    private void renderAgreement(List<String> lines) {
+        if (!mOnAgreement || isFinishing()) return;
+        LinearLayout container = (LinearLayout) findViewById(R.id.agreement_container);
+        if (container == null) return;
+        container.removeAllViews();
+        boolean hasContent = false;
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i);
+            if (line == null) continue;
+            if (line.length() == 0) {
+                if (hasContent) {
+                    View spacer = new View(this);
+                    spacer.setLayoutParams(new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, DeviceUtil.dpToPx(8)));
+                    container.addView(spacer);
+                }
+                continue;
+            }
+            boolean bullet = line.startsWith("-");
+            TextView tv = new TextView(this);
+            tv.setText(line);
+            tv.setTextColor(bullet ? 0xFF555555 : 0xFFD86DA5);
+            tv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,
+                    getResources().getDimension(R.dimen.setup_changelog_text_size));
+            if (!bullet) tv.setTypeface(null, Typeface.BOLD);
+            tv.setPadding(DeviceUtil.dpToPx(bullet ? 24 : 16), DeviceUtil.dpToPx(4),
+                    DeviceUtil.dpToPx(16), DeviceUtil.dpToPx(4));
+            tv.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT));
+            container.addView(tv);
+            hasContent = true;
+        }
+    }
+
+    private void animateAgreementIn() {
+        LinearLayout container = (LinearLayout) findViewById(R.id.agreement_container);
+        if (container == null) return;
+        int width = mPageAgreement != null ? mPageAgreement.getWidth() : 0;
+        if (width <= 0) {
+            width = getResources().getDisplayMetrics().widthPixels;
+        }
+        long end = 0L;
+        for (int i = 0; i < container.getChildCount(); i++) {
+            View child = container.getChildAt(i);
+            TranslateAnimation anim = new TranslateAnimation(width, 0, 0, 0);
+            anim.setDuration(300L);
+            anim.setStartOffset(i * 60L);
+            anim.setInterpolator(new DecelerateInterpolator());
+            child.startAnimation(anim);
+            long childEnd = i * 60L + 300L;
+            if (childEnd > end) end = childEnd;
+        }
+        mAgreementAnimationUntil = android.os.SystemClock.uptimeMillis() + end;
+    }
+
+    private void slideAgreementToWelcome() {
+        if (mAnimating || mPageAgreement == null || mPageWelcome == null) return;
+        mAnimating = true;
+        int width = mPageAgreement.getWidth();
+        if (width <= 0) width = getResources().getDisplayMetrics().widthPixels;
+
+        mPageAgreement.clearAnimation();
+        mPageAgreement.setBackgroundDrawable(null);
+        mPageAgreement.setVisibility(View.VISIBLE);
+        mPageWelcome.setVisibility(View.VISIBLE);
+        mPageAgreement.bringToFront();
+
+        final ViewGroup agreement = (ViewGroup) mPageAgreement;
+        final ViewGroup welcome = (ViewGroup) mPageWelcome;
+        for (int i = 0; i < agreement.getChildCount(); i++) {
+            View child = agreement.getChildAt(i);
+            TranslateAnimation a = new TranslateAnimation(0, -width, 0, 0);
+            a.setDuration(360L);
+            a.setStartOffset(i * 60);
+            a.setInterpolator(new AccelerateInterpolator());
+            a.setFillAfter(true);
+            child.startAnimation(a);
+        }
+
+        int base = agreement.getChildCount() * 60 + 80;
+        if (welcome.getChildCount() == 0) {
+            finishAgreementTransition(agreement, welcome);
+            return;
+        }
+        for (int i = 0; i < welcome.getChildCount(); i++) {
+            View child = welcome.getChildAt(i);
+            TranslateAnimation a = new TranslateAnimation(width, 0, 0, 0);
+            a.setDuration(420L);
+            a.setStartOffset(base + i * 80);
+            a.setInterpolator(new DecelerateInterpolator());
+            a.setFillAfter(true);
+            if (i == welcome.getChildCount() - 1) {
+                a.setAnimationListener(new Animation.AnimationListener() {
+                    @Override
+                    public void onAnimationStart(Animation animation) {
+                    }
+
+                    @Override
+                    public void onAnimationEnd(Animation animation) {
+                        finishAgreementTransition(agreement, welcome);
+                    }
+
+                    @Override
+                    public void onAnimationRepeat(Animation animation) {
+                    }
+                });
+            }
+            child.startAnimation(a);
+        }
+    }
+
+    private void finishAgreementTransition(ViewGroup agreement, ViewGroup welcome) {
+        mPageAgreement.setVisibility(View.GONE);
+        mPageAgreement.setBackgroundDrawable(null);
+        clearChildAnimations(agreement);
+        clearChildAnimations(welcome);
+        mAnimating = false;
+        mOnAgreement = false;
+        View next = findViewById(R.id.btn_next);
+        if (next != null) next.setEnabled(true);
+    }
+
+    private void slideBackToAgreement() {
+        if (mAnimating || mPageAgreement == null || mPageWelcome == null) return;
+        mAnimating = true;
+        int width = mPageWelcome.getWidth();
+        if (width <= 0) width = getResources().getDisplayMetrics().widthPixels;
+
+        mPageAgreement.clearAnimation();
+        mPageAgreement.setBackgroundDrawable(null);
+        mPageAgreement.setVisibility(View.VISIBLE);
+        mPageAgreement.bringToFront();
+        mAgreementChoiceIndex = 1;
+        applyAgreementHighlight();
+
+        final ViewGroup agreement = (ViewGroup) mPageAgreement;
+        final ViewGroup welcome = (ViewGroup) mPageWelcome;
+        for (int i = 0; i < welcome.getChildCount(); i++) {
+            View child = welcome.getChildAt(i);
+            TranslateAnimation a = new TranslateAnimation(0, width, 0, 0);
+            a.setDuration(360L);
+            a.setStartOffset(i * 60);
+            a.setInterpolator(new AccelerateInterpolator());
+            a.setFillAfter(true);
+            child.startAnimation(a);
+        }
+
+        int base = welcome.getChildCount() * 60 + 80;
+        if (agreement.getChildCount() == 0) {
+            finishAgreementBack(agreement, welcome);
+            return;
+        }
+        for (int i = 0; i < agreement.getChildCount(); i++) {
+            View child = agreement.getChildAt(i);
+            TranslateAnimation a = new TranslateAnimation(-width, 0, 0, 0);
+            a.setDuration(420L);
+            a.setStartOffset(base + i * 80);
+            a.setInterpolator(new DecelerateInterpolator());
+            a.setFillAfter(true);
+            if (i == agreement.getChildCount() - 1) {
+                a.setAnimationListener(new Animation.AnimationListener() {
+                    @Override
+                    public void onAnimationStart(Animation animation) {
+                    }
+
+                    @Override
+                    public void onAnimationEnd(Animation animation) {
+                        finishAgreementBack(agreement, welcome);
+                    }
+
+                    @Override
+                    public void onAnimationRepeat(Animation animation) {
+                    }
+                });
+            }
+            child.startAnimation(a);
+        }
+    }
+
+    private void finishAgreementBack(ViewGroup agreement, ViewGroup welcome) {
+        mPageWelcome.setVisibility(View.GONE);
+        mPageAgreement.setBackgroundDrawable(null);
+        clearChildAnimations(agreement);
+        clearChildAnimations(welcome);
+        mAnimating = false;
+        mOnAgreement = true;
+    }
+
     private void leaveToMainFromTheme() {
         // 向导完成标志：选完主题（Metro/Classic）才真正完成
         saveSetupDefaults();
@@ -432,6 +750,8 @@ public class MetroSetupActivity extends BaseActivity {
 
         final ViewGroup themeGroup = (ViewGroup) mPageTheme;
         themeGroup.setVisibility(View.VISIBLE);
+        mThemeKeyNavActive = false;
+        applyThemeHighlight();
         themeGroup.bringToFront();
         // 判断要隐藏的上一页（绑定页或磁贴页）
         final ViewGroup prevPage = (mPageBinding != null && mPageBinding.getVisibility() == View.VISIBLE)
@@ -510,7 +830,7 @@ public class MetroSetupActivity extends BaseActivity {
             }
             child.startAnimation(a);
         }
-        animatePageLeftIn(prev, width, baseDelay);
+        animatePageLeftIn(prev, width, prev == mPageBinding ? 0 : baseDelay);
     }
 
     /** 恢复返回后所在页的页态与按钮可用性。 */
@@ -798,42 +1118,68 @@ public class MetroSetupActivity extends BaseActivity {
     }
 
     private void finishBinding() {
-        if (mAnimating) {
-            mAnimating = false;
-            slideToTheme();
-            return;
-        }
-        // 与磁贴页"开始使用"完成时一致：整页向下滑出后再进入主题选择
-        mAnimating = true;
-        final int h = mPageBinding != null ? mPageBinding.getHeight() : 0;
-        if (h > 0) {
-            TranslateAnimation exit = new TranslateAnimation(0, 0, 0, h);
-            exit.setDuration(400);
-            exit.setInterpolator(new AccelerateInterpolator());
-            exit.setFillAfter(true);
-            exit.setAnimationListener(new Animation.AnimationListener() {
-                @Override
-                public void onAnimationStart(Animation animation) {
-                }
-                @Override
-                public void onAnimationEnd(Animation animation) {
-                    mAnimating = false; // 关键：复位后再进主题页，否则 slideToTheme 会直接返回不播放
-                    slideToTheme();
-                }
-                @Override
-                public void onAnimationRepeat(Animation animation) {
-                }
-            });
-            mPageBinding.startAnimation(exit);
-        } else {
-            mAnimating = false;
-            slideToTheme();
-        }
+        if (mAnimating) return;
+        // 按键绑定不是最后一页，后面还有主题选择，直接横向滑到主题页。
+        slideToTheme();
     }
 
     @Override
     public boolean dispatchKeyEvent(android.view.KeyEvent event) {
-        // 录制页：任意按键被录入（BACK 除外——BACK 作为退出向导的逃生通道）
+        if (mOnAgreement && event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+            int act = KeyBindingUtil.classify(event.getKeyCode());
+            if (act == KeyBindingUtil.ACTION_LEFT || act == KeyBindingUtil.ACTION_RIGHT) {
+                if (event.getRepeatCount() == 0) {
+                    mAgreementChoiceIndex = act == KeyBindingUtil.ACTION_LEFT ? 0 : 1;
+                    applyAgreementHighlight();
+                }
+                return true;
+            }
+            if (act == KeyBindingUtil.ACTION_UP || act == KeyBindingUtil.ACTION_DOWN) {
+                ScrollView scroll = (ScrollView) findViewById(R.id.agreement_scroll);
+                if (scroll != null) {
+                    scroll.scrollBy(0, (act == KeyBindingUtil.ACTION_UP ? -1 : 1)
+                            * DeviceUtil.dpToPx(80));
+                }
+                return true;
+            }
+            if (act == KeyBindingUtil.ACTION_CONFIRM && event.getRepeatCount() == 0) {
+                if (mAgreementChoiceIndex == 1) {
+                    View agree = findViewById(R.id.btn_agreement_agree);
+                    if (agree != null) agree.performClick();
+                } else {
+                    finish();
+                }
+                return true;
+            }
+        }
+        // ¼��ҳ�����ⰴ����¼�루BACK ���⡪��BACK ��Ϊ�˳��򵼵�����ͨ����
+        if (mOnTheme && event.getAction() == android.view.KeyEvent.ACTION_DOWN
+                && event.getRepeatCount() == 0) {
+            int act = KeyBindingUtil.classify(event.getKeyCode());
+            if (act == KeyBindingUtil.ACTION_LEFT
+                    || act == KeyBindingUtil.ACTION_RIGHT
+                    || act == KeyBindingUtil.ACTION_UP
+                    || act == KeyBindingUtil.ACTION_DOWN) {
+                if (!mThemeKeyNavActive) {
+                    mThemeKeyNavActive = true;
+                    applyThemeHighlight();
+                    return true;
+                }
+                mThemeChoiceIndex = 1 - mThemeChoiceIndex;
+                applyThemeHighlight();
+                return true;
+            }
+            if (act == KeyBindingUtil.ACTION_CONFIRM) {
+                if (!mThemeKeyNavActive) {
+                    mThemeKeyNavActive = true;
+                    applyThemeHighlight();
+                }
+                View target = findViewById(mThemeChoiceIndex == 0
+                        ? R.id.btn_theme_metro : R.id.btn_theme_classic);
+                if (target != null) target.performClick();
+                return true;
+            }
+        }
         if (mOnPage3 && mRecording && event.getAction() == android.view.KeyEvent.ACTION_DOWN
                 && event.getRepeatCount() == 0) {
             if (event.getKeyCode() == android.view.KeyEvent.KEYCODE_BACK) {
@@ -899,6 +1245,7 @@ public class MetroSetupActivity extends BaseActivity {
                 if (!mTileKeyNavActive) {
                     mTileKeyNavActive = true;
                     applyTileHighlight();
+                    scrollTileIntoView();
                 }
                 if (act == KeyBindingUtil.ACTION_UP) {
                     moveTileFocus(-1);
@@ -923,6 +1270,10 @@ public class MetroSetupActivity extends BaseActivity {
         // 这里统一在 onKeyDown 接管 BACK，全版本行为一致
         if (keyCode == android.view.KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
             if (mAnimating) return true;
+            if (mOnAgreement) {
+                finish();
+                return true;
+            }
             if (mOnTheme) {
                 slideBackFromTheme();
                 return true;
@@ -936,6 +1287,9 @@ public class MetroSetupActivity extends BaseActivity {
                 slideBackToTiles();
             } else if (mOnPage2) {
                 slideToWelcome();
+            } else if (mAgreementVisited && mPageWelcome != null
+                    && mPageWelcome.getVisibility() == View.VISIBLE) {
+                slideBackToAgreement();
             } else {
                 finish();
             }
@@ -1140,7 +1494,32 @@ public class MetroSetupActivity extends BaseActivity {
         if (next != mTileFocusIndex) {
             mTileFocusIndex = next;
             applyTileHighlight();
+            scrollTileIntoView();
         }
+    }
+
+    private void scrollTileIntoView() {
+        final ScrollView scroll = (ScrollView) findViewById(R.id.tile_scroll);
+        if (scroll == null || mTiles.size() == 0) return;
+        if (mTileFocusIndex >= mTiles.size()) {
+            scroll.post(new Runnable() {
+                @Override
+                public void run() {
+                    scroll.fullScroll(View.FOCUS_DOWN);
+                }
+            });
+            return;
+        }
+        final View tile = mTiles.get(mTileFocusIndex);
+        if (tile == null) return;
+        scroll.post(new Runnable() {
+            @Override
+            public void run() {
+                android.graphics.Rect rect = new android.graphics.Rect();
+                tile.getDrawingRect(rect);
+                scroll.requestChildRectangleOnScreen(tile, rect, false);
+            }
+        });
     }
 
     /**

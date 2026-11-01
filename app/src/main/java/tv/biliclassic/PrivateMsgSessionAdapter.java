@@ -39,6 +39,7 @@ public class PrivateMsgSessionAdapter extends BaseObservableAdapter<PrivateMsgSe
     }
 
     public void release() {
+        mainHandler.removeCallbacksAndMessages(null);
         executor.shutdownNow();
     }
 
@@ -96,8 +97,8 @@ public class PrivateMsgSessionAdapter extends BaseObservableAdapter<PrivateMsgSe
             tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0x66D86DA5);
         } else {
             try {
-                convertView.setBackgroundDrawable(
-                        convertView.getResources().getDrawable(R.drawable.item_click_effect_white));
+                tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(convertView,
+                        R.drawable.item_click_effect_white);
             } catch (Exception e) {
                 tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0xFFF5F5F5);
             }
@@ -116,7 +117,7 @@ public class PrivateMsgSessionAdapter extends BaseObservableAdapter<PrivateMsgSe
         try {
             android.graphics.drawable.Drawable borderDrawable =
                     context.getResources().getDrawable(R.drawable.image_border_overlay);
-            imageView.setBackgroundDrawable(borderDrawable);
+            tv.biliclassic.util.UiSkin.setBgDrawableKeepPadding(imageView, borderDrawable);
             int paddingPx = tv.biliclassic.util.DeviceUtil.dpToPx(2);
             imageView.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
         } catch (Exception e) {

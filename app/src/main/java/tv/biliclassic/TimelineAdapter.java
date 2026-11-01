@@ -69,7 +69,7 @@ public class TimelineAdapter extends BaseObservableAdapter<TimelineFragment.time
         holder.dayTitle.setTextColor(textColor);
         holder.dayDate.setTextColor(textColor);
         if (holder.dayBar != null) {
-            holder.dayBar.setBackgroundColor(night ? 0xFF484848 : 0xFFCACACA);
+            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(holder.dayBar, night ? 0xFF484848 : 0xFFCACACA);
         }
         if (holder.dayBubble != null) {
             if (night) {

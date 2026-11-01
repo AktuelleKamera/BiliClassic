@@ -141,7 +141,7 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
                     final ViewHolder h = (ViewHolder) v.getTag();
                     switch (event.getAction()) {
                         case MotionEvent.ACTION_DOWN:
-                            v.setBackgroundColor(0x40D86DA5);
+                            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(v, 0x40D86DA5);
                             h.copyText = ((TextView) h.message).getText().toString();
                             h.downRpid = h.rpid;
                             Log.e("CommentClick", "DOWN rpid=" + h.rpid + " downRpid=" + h.downRpid);
@@ -168,7 +168,20 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
                                         });
                                         builder.show();
                                     } else {
-                                        copyToClipboard(text);
+                                        AlertDialog.Builder builder = new AlertDialog.Builder(
+                                                tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(context)));
+                                        builder.setItems(new String[]{"复制评论", "屏蔽用户"},
+                                                new DialogInterface.OnClickListener() {
+                                                    @Override
+                                                    public void onClick(DialogInterface dialog, int which) {
+                                                        if (which == 0) {
+                                                            copyToClipboard(text);
+                                                        } else if (which == 1) {
+                                                            blockUser(itemMid);
+                                                        }
+                                                    }
+                                                });
+                                        builder.show();
                                     }
                                 }
                             };
@@ -181,7 +194,7 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
                             }
                             // 触屏结束：恢复背景。若是键盘光标选中项则保留粉色高亮
                             if (position == selectedPosition) {
-                                v.setBackgroundColor(0x66D86DA5);
+                                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(v, 0x66D86DA5);
                             } else {
                                 tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(v, night
                                         ? R.drawable.item_click_effect_grey
@@ -204,12 +217,12 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
             tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0x66D86DA5);
         } else {
             try {
-                convertView.setBackgroundDrawable(
-                        convertView.getResources().getDrawable(night
-                                ? R.drawable.item_click_effect_grey
-                                : R.drawable.item_click_effect_white));
+                tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(convertView,
+                        night ? R.drawable.item_click_effect_grey
+                                : R.drawable.item_click_effect_white);
             } catch (Exception e) {
-                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, night ? 0xFF222222 : 0xFFFFFFFF);
+                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView,
+                        night ? 0xFF222222 : 0xFFFFFFFF);
             }
         }
 
@@ -223,21 +236,29 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
         if (holder.repliesText != null) holder.repliesText.setTextColor(night ? 0xFFB0B0B0 : 0xFF666666);
         if (holder.repliesMore != null) holder.repliesMore.setTextColor(night ? 0xFFB0B0B0 : 0xFF666666);
         if (holder.repliesContainer != null) {
-            holder.repliesContainer.setBackgroundColor(night ? 0xFF2A2A2A : 0xFFE8E8E8);
+            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(holder.repliesContainer,
+                night ? 0xFF2A2A2A : 0xFFE8E8E8);
         }
         String msgText = item.message != null ? item.message : "";
         if (item.isTop && msgText.startsWith("[置顶]")) {
             msgText = msgText.substring(4);
         }
+        SpannableStringBuilder messageBuilder = new SpannableStringBuilder();
+        int messageOffset = 0;
         if (item.isTop) {
-            SpannableString ss = new SpannableString("\u200B" + msgText);
-            ss.setSpan(new BadgeSpan(mDensity), 0, 1,
+            messageBuilder.append("\u200B");
+            messageBuilder.setSpan(new BadgeSpan(mDensity), 0, 1,
                     android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            holder.message.setText(ss);
-            holder.message.setMovementMethod(null);
-        } else {
-            holder.message.setText(msgText);
+            messageOffset = 1;
         }
+        messageBuilder.append(msgText);
+        boolean hasLinks = tv.biliclassic.util.CommentLinkUtil.applyLinks(
+                messageBuilder, messageOffset, msgText, context, night);
+        holder.message.setText(messageBuilder);
+        holder.message.setFocusable(false);
+        holder.message.setFocusableInTouchMode(false);
+        holder.message.setMovementMethod(hasLinks
+                ? LinkMovementMethod.getInstance() : null);
         holder.mid = item.mid;
         holder.oid = mAid;
         holder.rpid = item.rpid;
@@ -413,7 +434,7 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
                     moreTv.setTextSize(14);
                     moreTv.setTextColor(0xFFFFFFFF);
                     moreTv.setGravity(Gravity.CENTER);
-                    moreTv.setBackgroundColor(0x88000000);
+                    tv.biliclassic.util.UiSkin.setBgColorKeepPadding(moreTv, 0x88000000);
                     int size = DeviceUtil.dpToPx(80);
                     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
                     lp.rightMargin = DeviceUtil.dpToPx(4);
@@ -574,7 +595,7 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
         if (imageView == null) return;
         try {
             Drawable borderDrawable = context.getResources().getDrawable(R.drawable.image_border_overlay);
-            imageView.setBackgroundDrawable(borderDrawable);
+            tv.biliclassic.util.UiSkin.setBgDrawableKeepPadding(imageView, borderDrawable);
             int paddingPx = DeviceUtil.dpToPx(2);
             imageView.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
         } catch (Exception e) {}
@@ -582,6 +603,26 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
 
 
     public void clearCache() {
+    }
+
+    private void blockUser(final long blockMid) {
+        tv.biliclassic.util.UserBlockHelper.block(blockMid,
+                new tv.biliclassic.util.UserBlockHelper.Callback() {
+                    @Override
+                    public void onResult(boolean success) {
+                        if (success) {
+                            for (int i = list.size() - 1; i >= 0; i--) {
+                                if (list.get(i).mid == blockMid) {
+                                    list.remove(i);
+                                }
+                            }
+                            notifyDataSetChanged();
+                            Toast.makeText(context, "已屏蔽该用户", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(context, "屏蔽失败", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
     }
 
     private void copyToClipboard(String text) {

@@ -97,7 +97,7 @@ public class FavoriteVideoAdapter extends BaseObservableAdapter<VideoCard> {
         if (position == selectedPosition && !mHideHighlight) {
             tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0x66D86DA5);
         } else if (mMetro) {
-            convertView.setBackgroundDrawable(null);
+            tv.biliclassic.util.UiSkin.setBgDrawableKeepPadding(convertView, null);
         } else {
             tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(convertView, night
                     ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white);
@@ -109,9 +109,9 @@ public class FavoriteVideoAdapter extends BaseObservableAdapter<VideoCard> {
             View coverBox = (View) holder.cover.getParent();
             if (coverBox != null) {
                 if (night) {
-                    coverBox.setBackgroundColor(0xFF484848);
+                    tv.biliclassic.util.UiSkin.setBgColorKeepPadding(coverBox, 0xFF484848);
                 } else {
-                    coverBox.setBackgroundResource(R.drawable.bili_thumb_boarder);
+                    tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(coverBox, R.drawable.bili_thumb_boarder);
                 }
             }
         }

@@ -369,6 +369,7 @@
                         android:textColor="#333333" />
 
                     <CheckBox
+                        android:button="@drawable/ic_btn_holo_pink_checkbox"
                         android:id="@+id/checkbox_video_disabled"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -412,6 +413,7 @@
                         android:textColor="#333333" />
 
                     <CheckBox
+                        android:button="@drawable/ic_btn_holo_pink_checkbox"
                         android:id="@+id/checkbox_audio_disabled"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -474,6 +476,7 @@
                         android:textColor="#333333" />
 
                     <CheckBox
+                        android:button="@drawable/ic_btn_holo_pink_checkbox"
                         android:id="@+id/checkbox_opensles"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"

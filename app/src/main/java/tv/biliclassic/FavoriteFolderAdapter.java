@@ -95,9 +95,9 @@ public class FavoriteFolderAdapter extends BaseObservableAdapter<FavoriteFolder>
         View coverBox = (View) holder.cover.getParent();
         if (coverBox != null) {
             if (night) {
-                coverBox.setBackgroundColor(0xFF484848);
+                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(coverBox, 0xFF484848);
             } else {
-                coverBox.setBackgroundResource(R.drawable.bili_thumb_boarder);
+                tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(coverBox, R.drawable.bili_thumb_boarder);
             }
         }
 

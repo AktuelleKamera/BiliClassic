@@ -272,11 +272,92 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/page_agreement"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/agreement_title_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingLeft="@dimen/setup_page_padding"
+            android:paddingTop="@dimen/setup_page_padding"
+            android:paddingRight="@dimen/setup_page_padding"
+            android:paddingBottom="0dp">
+
+            <TextView
+                android:id="@+id/agreement_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/agreement_title"
+                android:textColor="#D86DA5"
+                android:textSize="@dimen/setup_title_text_size" />
+
+        </LinearLayout>
+
+        <ScrollView
+            android:id="@+id/agreement_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:paddingTop="0dp"
+            android:paddingBottom="@dimen/setup_page_padding">
+
+            <LinearLayout
+                android:id="@+id/agreement_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+        </ScrollView>
+
+        <LinearLayout
+            android:id="@+id/agreement_bottom_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/setup_page_padding"
+            android:gravity="right"
+            android:orientation="horizontal"
+            android:padding="@dimen/setup_page_padding">
+
+            <TextView
+                android:id="@+id/btn_agreement_exit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="@dimen/setup_page_padding"
+                android:background="@drawable/setup_ask_no_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="@dimen/setup_button_padding"
+                android:text="@string/agreement_exit"
+                android:textColor="#D86DA5"
+                android:textSize="@dimen/setup_button_text_size" />
+
+            <TextView
+                android:id="@+id/btn_agreement_agree"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/setup_ask_yes_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="@dimen/setup_button_padding"
+                android:text="@string/agreement_agree"
+                android:textColor="#FFFFFF"
+                android:textSize="@dimen/setup_button_text_size" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/page_welcome"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:visibility="visible">
+        android:visibility="gone">
 
         <LinearLayout
             android:id="@+id/welcome_title_row"

@@ -214,6 +214,7 @@
                     android:textSize="15sp" />
 
                 <CheckBox
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_landscape"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -302,6 +303,7 @@
                 </LinearLayout>
 
                 <CheckBox
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_modern_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -381,6 +383,7 @@
                 </LinearLayout>
 
                 <CheckBox
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_tablet_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -427,6 +430,7 @@
                 </LinearLayout>
 
                 <CheckBox
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_convert_play"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -526,6 +530,7 @@
                 </LinearLayout>
 
                 <CheckBox
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_round_screen_center"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -573,6 +578,7 @@
                 </LinearLayout>
 
                 <CheckBox
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_portrait_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -620,6 +626,7 @@
                 </LinearLayout>
 
                 <CheckBox
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_cast"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -667,6 +674,7 @@
                 </LinearLayout>
 
                 <CheckBox
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_night_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -740,6 +748,66 @@
                 android:background="#E0E0E0" />
 
             <!-- 播放器设置 -->
+            <TextView
+                android:id="@+id/tls12_section"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#F3F3F3"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="4dp"
+                android:text="@string/network_settings"
+                android:textColor="#666666"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/tls12_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/settings_item_bg"
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/tls12_support"
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/tls12_support_desc"
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <CheckBox
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
+                    android:id="@+id/checkbox_tls12"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:minHeight="0dp"
+                    android:padding="0dp" />
+            </LinearLayout>
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -1189,8 +1257,59 @@
 
             </LinearLayout>
 
-            <!-- 主题设置：Metro / Classic -->
             <LinearLayout
+                android:id="@+id/recommend_columns_item"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/settings_item_bg"
+                android:clickable="true"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/recommend_columns_title"
+                        android:textColor="#333333"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/recommend_columns_desc"
+                        android:textColor="#999999"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/recommend_columns_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginRight="8dp"
+                    android:text="@string/recommend_columns_auto"
+                    android:textColor="#999999"
+                    android:textSize="13sp" />
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center_vertical"
+                    android:contentDescription="@string/common_select"
+                    android:src="@android:drawable/ic_menu_edit" />
+
+            </LinearLayout>
+
+<LinearLayout
                 android:id="@+id/theme_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -1874,6 +1993,7 @@
                 </LinearLayout>
 
                 <CheckBox
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_enable_run_log"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -1964,6 +2084,7 @@
                 </LinearLayout>
 
                 <CheckBox
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_no_image_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -2009,6 +2130,7 @@
                 </LinearLayout>
 
                 <CheckBox
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_privacy_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -2055,6 +2177,7 @@
                 </LinearLayout>
 
                 <CheckBox
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_incognito_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -2142,6 +2265,7 @@
                     android:textSize="15sp" />
 
                 <CheckBox
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_auto_update"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

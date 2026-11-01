@@ -71,6 +71,17 @@ public final class UiSkin {
     }
 
     /** 同上，纯色背景 */
+    public static void setBgDrawableKeepPadding(View v, Drawable d) {
+        if (v == null) return;
+        int l = v.getPaddingLeft(), t = v.getPaddingTop();
+        int r = v.getPaddingRight(), b = v.getPaddingBottom();
+        v.setBackgroundDrawable(d);
+        if (v.getPaddingLeft() != l || v.getPaddingTop() != t
+                || v.getPaddingRight() != r || v.getPaddingBottom() != b) {
+            v.setPadding(l, t, r, b);
+        }
+    }
+
     public static void setBgColorKeepPadding(View v, int color) {
         if (v == null) return;
         int l = v.getPaddingLeft(), t = v.getPaddingTop();

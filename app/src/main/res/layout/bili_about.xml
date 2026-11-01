@@ -306,6 +306,22 @@
 
         </LinearLayout>
 
+        <TextView
+            android:id="@+id/help_tutorial"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/item_click_effect_grey"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:text="@string/help_tutorial"
+            android:textColor="#FCA3C5"
+            android:textSize="15sp" />
+
     </LinearLayout>
 
 </ScrollView>

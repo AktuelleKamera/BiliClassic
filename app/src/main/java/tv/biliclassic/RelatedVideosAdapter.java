@@ -72,8 +72,8 @@ public class RelatedVideosAdapter extends BaseObservableAdapter<VideoCard> {
             tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0x66D86DA5);
         } else {
             try {
-                convertView.setBackgroundDrawable(convertView.getResources().getDrawable(
-                        night ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white));
+                tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(convertView,
+                        night ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white);
             } catch (Exception e) {
                 tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, night ? 0xFF222222 : 0xFFFFFFFF);
             }
@@ -81,9 +81,9 @@ public class RelatedVideosAdapter extends BaseObservableAdapter<VideoCard> {
         // 夜间：封面框换深灰、文字调亮
         if (holder.coverContainer != null) {
             if (night) {
-                holder.coverContainer.setBackgroundColor(0xFF484848);
+                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(holder.coverContainer, 0xFF484848);
             } else {
-                holder.coverContainer.setBackgroundResource(R.drawable.bili_thumb_boarder);
+                tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(holder.coverContainer, R.drawable.bili_thumb_boarder);
             }
         }
         holder.title.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);

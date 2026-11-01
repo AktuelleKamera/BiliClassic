@@ -45,7 +45,7 @@ public class PrivateMsgAdapter extends BaseObservableAdapter<PrivateMessage> {
 
         if (msg.type == PrivateMessage.TYPE_RETRACT || msg.type == PrivateMessage.TYPE_SYSTEM) {
             root.setGravity(Gravity.CENTER_HORIZONTAL);
-            text.setBackgroundColor(0x00000000);
+            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(text, 0x00000000);
             text.setTextColor(0xFF999999);
             text.setTextSize(12);
         } else {
@@ -53,10 +53,10 @@ public class PrivateMsgAdapter extends BaseObservableAdapter<PrivateMessage> {
             text.setTextSize(14);
             if (msg.uid == myUid) {
                 root.setGravity(Gravity.RIGHT);
-                text.setBackgroundResource(R.drawable.chat_bubble_right);
+                tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(text, R.drawable.chat_bubble_right);
             } else {
                 root.setGravity(Gravity.LEFT);
-                text.setBackgroundResource(R.drawable.chat_bubble_left);
+                tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(text, R.drawable.chat_bubble_left);
             }
         }
 

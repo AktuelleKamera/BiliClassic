@@ -38,6 +38,18 @@ public class RecommendGridAdapter extends BaseObservableAdapter<VideoCard> {
 
     private static final String TAG = "RecommendAdapter";
     private int numColumns = 2;
+
+    public static int resolveColumns(Context context) {
+        int pref = SharedPreferencesUtil.getInt(SharedPreferencesUtil.RECOMMEND_COLUMNS, 0);
+        if (pref >= 1 && pref <= 5) {
+            return pref;
+        }
+        boolean tablet = tv.biliclassic.util.SdkHelper.getBooleanResource(
+                context.getResources(), R.bool.is_tablet);
+        boolean landscape = context.getResources().getConfiguration().orientation
+                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        return tablet ? (landscape ? 4 : 3) : 2;
+    }
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
     // 滚动中暂缓应用新图，避免每张图到达都触发整屏软件重绘；
@@ -133,10 +145,10 @@ public class RecommendGridAdapter extends BaseObservableAdapter<VideoCard> {
                 // requestLayout/invalidate，软件渲染下每次 getView 都设会放大掉帧
                 CellHolder ch = (CellHolder) cell.getTag();
                 if (ch == null) {
-                    cell.setBackgroundResource(itemBgRes);
+                    tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(cell, itemBgRes);
                 } else if (ch.itemBgRes != itemBgRes) {
                     ch.itemBgRes = itemBgRes;
-                    cell.setBackgroundResource(itemBgRes);
+                    tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(cell, itemBgRes);
                 }
             } else {
                 cell.setVisibility(View.INVISIBLE);
@@ -178,9 +190,9 @@ public class RecommendGridAdapter extends BaseObservableAdapter<VideoCard> {
         if (h.nightBgApplied != night) {
             h.nightBgApplied = night;
             if (night) {
-                h.coverContainer.setBackgroundColor(0xFF484848);
+                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(h.coverContainer, 0xFF484848);
             } else {
-                h.coverContainer.setBackgroundResource(R.drawable.bili_thumb_boarder);
+                tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(h.coverContainer, R.drawable.bili_thumb_boarder);
             }
         }
         h.title.setTextColor(night ? 0xFFF2F2F2 : 0xFF333333);
