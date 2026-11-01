@@ -1175,21 +1175,33 @@ public class SearchActivity extends BaseActivity {
         if (resultList == null || adapter == null || resultListData.size() == 0) {
             return false;
         }
-        // 排序下拉获得焦点时，方向键交给它处理
-        if (sortButton != null && sortButton.hasFocus()) {
-            return false;
-        }
         if (event.getAction() != KeyEvent.ACTION_DOWN) {
             return false;
         }
-        // 数字键在输入框聚焦时保留给输入法（避免输入数字被拦截），
-        // 方向键/OK 始终用于列表导航
         int action = KeyBindingUtil.classify(event.getKeyCode());
+
+        // 排序按钮获得焦点时，确认键打开排序菜单，下键回到结果列表
+        if (sortButton != null && sortButton.hasFocus()) {
+            if (action == KeyBindingUtil.ACTION_CONFIRM) {
+                sortButton.performClick();
+                return true;
+            }
+            if (action == KeyBindingUtil.ACTION_DOWN) {
+                selectedPosition = 0;
+                if (adapter != null) adapter.setHideHighlight(false);
+                resultList.requestFocus();
+                applySelection();
+                return true;
+            }
+            return false;
+        }
+
+        // 输入框获得焦点时，上下键/OK 进入结果列表
         if (searchEdit != null && searchEdit.hasFocus()) {
             if (action == KeyBindingUtil.ACTION_UP
                     || action == KeyBindingUtil.ACTION_DOWN
                     || action == KeyBindingUtil.ACTION_CONFIRM) {
-                // 放行：在输入框聚焦时也能用方向键/OK 操作列表
+                // 允许进入列表，后续统一处理
             } else {
                 return false;
             }
@@ -1204,15 +1216,20 @@ public class SearchActivity extends BaseActivity {
         if (selectedPosition < 0) {
             selectedPosition = 0;
         }
-        // 按键恢复：先取消触摸滑动时的隐藏，重新显示光标并滚回选中项，
-        // 让"焦点"回到遥控器接管的位置
         if (adapter != null) {
             adapter.setHideHighlight(false);
         }
-        // 首次按下才移动光标；长按 repeat 只消费不移动，防止 ListView 内置滚动干扰
         if (event.getRepeatCount() == 0) {
             int count = resultListData.size();
             if (action == KeyBindingUtil.ACTION_UP) {
+                // 第一项再按上键：进入顶部排序按钮
+                if (selectedPosition <= 0 && sortButton != null
+                        && sortButton.getVisibility() == View.VISIBLE) {
+                    adapter.setHideHighlight(true);
+                    resultList.clearFocus();
+                    sortButton.requestFocus();
+                    return true;
+                }
                 selectedPosition = Math.max(0, selectedPosition - 1);
             } else if (action == KeyBindingUtil.ACTION_DOWN) {
                 selectedPosition = Math.min(count - 1, selectedPosition + 1);
@@ -1229,7 +1246,6 @@ public class SearchActivity extends BaseActivity {
             }
             applySelection();
         }
-        // 所有 DOWN 事件都消费（含长按 repeat），避免列表自身滚动导致"回顶"
         return true;
     }
 
@@ -1318,4 +1334,13 @@ public class SearchActivity extends BaseActivity {
         public String articleCategory;
         public int articleView;
     }
+    @Override
+    public void onDestroy() {
+        if (retryHandler != null) {
+            retryHandler.removeCallbacksAndMessages(null);
+        }
+        super.onDestroy();
+    }
+
+
 }
