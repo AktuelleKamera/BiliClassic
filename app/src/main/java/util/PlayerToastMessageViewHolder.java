@@ -20,6 +20,7 @@ public class PlayerToastMessageViewHolder {
     private Runnable mResumeAction;
     private ViewGroup mViewRoot;
     private boolean mUseTips;
+    private boolean mDismissed;
     private boolean isAnimationIn;
     private boolean isAnimationOut;
 
@@ -85,6 +86,7 @@ public class PlayerToastMessageViewHolder {
         }
 
         public void onAnimationEnd(Animation animation) {
+            if (mDismissed) return;
             if (animation == mAnimIn) {
                 mViewRoot.setVisibility(android.view.View.VISIBLE);
                 startFadeDismiss(fadeMS);
@@ -134,6 +136,7 @@ public class PlayerToastMessageViewHolder {
                     }
                     if (mCloseView != null) {
                         mCloseView.setFocusable(true);
+                        mCloseView.setClickable(true);
                         mCloseView.setOnClickListener(new android.view.View.OnClickListener() {
                             public void onClick(android.view.View v) {
                                 forceDismissImmediately();
@@ -188,6 +191,7 @@ public class PlayerToastMessageViewHolder {
 
     public void show(String text, int ms, boolean showAtBottom) {
         if (mViewRoot != null && mTipTextView != null) {
+            mDismissed = false;
             setTipViewCenter(!showAtBottom);
             mTipTextView.setText(text);
             if (mResumeView != null) {
@@ -217,6 +221,7 @@ public class PlayerToastMessageViewHolder {
     }
 
     public void dismiss() {
+        if (mDismissed) return;
         if (mViewRoot != null && mTipTextView != null && !isAnimationOut) {
             mViewRoot.removeCallbacks(mDismissAction);
             mViewRoot.postDelayed(mDismissAction, mAnimIn.getDuration() + 100);
@@ -224,9 +229,16 @@ public class PlayerToastMessageViewHolder {
     }
 
     public void forceDismissImmediately() {
+        mDismissed = true;
         if (mViewRoot != null) {
+            mViewRoot.removeCallbacks(dismissRunnable);
             mViewRoot.removeCallbacks(mDismissAction);
-            mViewRoot.setVisibility(android.view.View.INVISIBLE);
+            mViewRoot.clearAnimation();
+            cancelAnimation(mAnimIn);
+            cancelAnimation(mAnimOut);
+            isAnimationIn = false;
+            isAnimationOut = false;
+            mViewRoot.setVisibility(android.view.View.GONE);
         }
     }
 
