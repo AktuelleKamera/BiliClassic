@@ -34,18 +34,24 @@ public class PlayerToastMessageViewHolder {
 
     private Runnable dismissRunnable = new Runnable() {
         public void run() {
-            if (mViewRoot != null && mViewRoot.isShown()) {
+            if (mViewRoot == null) return;
+            if (mViewRoot.isShown()) {
                 dismiss();
+            } else {
+                forceDismissImmediately();
             }
         }
     };
 
     private Runnable mDismissAction = new Runnable() {
         public void run() {
-            if (mViewRoot != null && mViewRoot.isShown()) {
-                cancelAnimation(mAnimIn);
-                mViewRoot.startAnimation(mAnimOut);
+            if (mViewRoot == null) return;
+            if (!mViewRoot.isShown()) {
+                forceDismissImmediately();
+                return;
             }
+            cancelAnimation(mAnimIn);
+            mViewRoot.startAnimation(mAnimOut);
         }
     };
 
@@ -142,6 +148,15 @@ public class PlayerToastMessageViewHolder {
                                 forceDismissImmediately();
                             }
                         });
+                        mCloseView.setOnTouchListener(new android.view.View.OnTouchListener() {
+                            public boolean onTouch(android.view.View v,
+                                                   android.view.MotionEvent event) {
+                                if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+                                    forceDismissImmediately();
+                                }
+                                return true;
+                            }
+                        });
                     }
                 } else {
                     mTipTextView = (TextView) mViewRoot.findViewById(R.id.message);
@@ -193,6 +208,7 @@ public class PlayerToastMessageViewHolder {
         if (mViewRoot != null && mTipTextView != null) {
             mDismissed = false;
             setTipViewCenter(!showAtBottom);
+            mViewRoot.bringToFront();
             mTipTextView.setText(text);
             if (mResumeView != null) {
                 mResumeView.setVisibility(mResumeAction != null
