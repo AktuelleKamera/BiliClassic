@@ -67,8 +67,8 @@ public class DeviceInfoActivity extends BaseActivity {
         String model = getBuildField("MODEL");
         String device = getBuildField("DEVICE");
         String product = getBuildField("PRODUCT");
-        String cpuAbi = getBuildField("CPU_ABI");
-        String cpuAbi2 = getBuildField("CPU_ABI2");
+        String cpuAbi = tv.biliclassic.util.CpuAbi.getCpuAbi();
+        String cpuAbi2 = tv.biliclassic.util.CpuAbi.getCpuAbi2();
         String release = getBuildFieldStatic("VERSION", "RELEASE");
         String sdk = getBuildFieldStatic("VERSION", "SDK");
         String sdkInt = getBuildFieldStaticInt("VERSION", "SDK_INT");
@@ -204,10 +204,10 @@ public class DeviceInfoActivity extends BaseActivity {
 
             String abi = null;
             try {
-                abi = (String) android.os.Build.class.getField("CPU_ABI").get(null);
+                abi = tv.biliclassic.util.CpuAbi.getCpuAbi();
             } catch (Exception ignored) {}
 
-            String deviceInfo = tv.biliclassic.util.DeviceInfoUtil.getDeviceInfo();
+            String deviceInfo = tv.biliclassic.util.HardwareInfoUtil.getDeviceInfo();
 
             if (tv.biliclassic.util.SdkHelper.getSdkInt() < 4) {
                 return deviceInfo;

@@ -6,11 +6,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
 
 public class CrashHandler implements Thread.UncaughtExceptionHandler {
+    private static final java.util.concurrent.atomic.AtomicBoolean sHandling =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
     private static CrashHandler instance;
     private Context context;
 
@@ -87,6 +86,11 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
 
     @Override
     public void uncaughtException(Thread thread, Throwable ex) {
+        if (!sHandling.compareAndSet(false, true)) {
+            android.os.Process.killProcess(android.os.Process.myPid());
+            System.exit(1);
+            return;
+        }
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         ex.printStackTrace(pw);
@@ -113,12 +117,12 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
                 crashDir.mkdirs();
             }
 
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.CHINA);
-            String fileName = "crash_" + sdf.format(new Date()) + ".txt";
+            long now = System.currentTimeMillis();
+            String fileName = "crash_" + now + ".txt";
             File crashFile = new File(crashDir, fileName);
 
             StringBuilder sb = new StringBuilder();
-            sb.append("时间: ").append(new Date()).append("\n");
+            sb.append("时间: ").append(now).append("\n");
             sb.append("设备: ").append(getBuildField("MODEL")).append("\n");
             sb.append("厂商: ").append(getManufacturer()).append("\n");
             sb.append("Android: ").append(getBuildField("RELEASE")).append("\n");

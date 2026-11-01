@@ -14,6 +14,7 @@ public class DeviceUtil {
     private static final String TAG = "DeviceUtil";
 
     private static final String KEY_FORCE_TV_MODE = "force_tv_mode";
+    private static Boolean sAutoTvCache;
 
     /** 「平板模式」开关 key未写入=按设备尺寸自动判断 */
     private static final String KEY_TABLET_MODE = "tablet_mode";
@@ -50,6 +51,14 @@ public class DeviceUtil {
         return (int) (dp * density + 0.5f);
     }
 
+    public static String getCpuAbi() {
+        return CpuAbi.getCpuAbi();
+    }
+
+    public static boolean isLegacyArm() {
+        return CpuAbi.isLegacyArm();
+    }
+
     public static boolean isForceTvModeEnabled() {
         return SharedPreferencesUtil.getBoolean(KEY_FORCE_TV_MODE, false);
     }
@@ -66,11 +75,15 @@ public class DeviceUtil {
 
         // 首次（未设置）：自动识别电视设备
         // 检测 Android 版本
+        if (sAutoTvCache != null) {
+            return sAutoTvCache.booleanValue();
+        }
         int sdkInt = SdkHelper.getSdkInt();
         Log.d(TAG, "SDK_INT: " + sdkInt);
 
         // Android 4.0 (API 14) 以下不支持 TV 模式
         if (sdkInt < 14) {
+            sAutoTvCache = Boolean.FALSE;
             Log.d(TAG, "isTv: Android 4.0 以下，不支持 TV 模式");
             return false;
         }
@@ -81,6 +94,7 @@ public class DeviceUtil {
         boolean hasTV = hasSystemFeature(pm, "android.hardware.type.television");
         Log.d(TAG, "FEATURE_TELEVISION: " + hasTV);
         if (hasTV) {
+            sAutoTvCache = Boolean.TRUE;
             Log.d(TAG, "isTv: 检测到 FEATURE_TELEVISION，返回 true");
             return true;
         }
@@ -89,6 +103,7 @@ public class DeviceUtil {
         boolean hasLeanback = hasSystemFeature(pm, "android.software.leanback");
         Log.d(TAG, "FEATURE_LEANBACK: " + hasLeanback);
         if (hasLeanback) {
+            sAutoTvCache = Boolean.TRUE;
             Log.d(TAG, "isTv: 检测到 FEATURE_LEANBACK，返回 true");
             return true;
         }
@@ -99,11 +114,13 @@ public class DeviceUtil {
         Log.d(TAG, "FEATURE_TOUCHSCREEN: " + hasTouch + ", FEATURE_KEYBOARD: " + hasKeyboard);
 
         if (!hasTouch && hasKeyboard) {
+            sAutoTvCache = Boolean.TRUE;
             Log.d(TAG, "isTv: 无触摸屏且有键盘，判定为电视");
             return true;
         }
 
         Log.d(TAG, "isTv: 判定为非电视设备");
+        sAutoTvCache = Boolean.FALSE;
         return false;
     }
 

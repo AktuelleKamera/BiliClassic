@@ -437,7 +437,7 @@ public class MetroProfileFragment extends Fragment implements MetroTurnPage {
             d.setBounds(0, 0, w, h);
             int start = sb.length();
             sb.append(" ");
-            sb.setSpan(new android.text.style.ImageSpan(d, android.text.style.ImageSpan.ALIGN_BOTTOM),
+            sb.setSpan(new android.text.style.ImageSpan(d),
                     start, start + 1, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         } catch (Throwable t) {
         }

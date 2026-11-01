@@ -99,7 +99,8 @@ public class MetroFolderVideoFragment extends Fragment implements MetroTurnPage 
         // 页面标题 = 收藏夹名称；记录当前 fid（后续换夹走 updateFolder）
         TextView pageTitle = (TextView) root.findViewById(R.id.page_title);
         Bundle args = getArguments();
-        String folderName = args != null ? args.getString("name", "") : "";
+        String folderName = args != null ? args.getString("name") : "";
+        if (folderName == null) folderName = "";
         mCurrentFid = args != null ? args.getLong("fid", 0) : 0;
         if (pageTitle != null) {
             pageTitle.setText(folderName != null && folderName.length() > 0

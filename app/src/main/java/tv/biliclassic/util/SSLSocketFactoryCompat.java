@@ -34,8 +34,7 @@ import javax.net.ssl.X509TrustManager;
  * 兼容低版本 Android 的 SSLSocketFactory。
  *
  * 问题背景：
- * - Android 1.6-4.x 系统默认只启用 TLSv1 与旧套件；B 站服务器现已要求 TLS 1.2+。
- * - Android 2.x-4.x 底层 Conscrypt 实际支持 TLSv1.1/TLSv1.2，但默认不启用，
+ * - Android 1.6-4.x 系统默认只启用 TLSv1 与旧套件；V站部分CDN现已要求 TLS 1.2+。
  *   导致握手慢或失败（"部分设备能用、部分设备网络极慢"）。
  *
  * 本类在创建每个 SSLSocket 时显式启用 socket 支持的最高 TLS 协议，
@@ -151,12 +150,18 @@ public class SSLSocketFactoryCompat extends SSLSocketFactory {
 
     @Override
     public String[] getDefaultCipherSuites() {
-        return cipherSuites;
+        if (cipherSuites != null && cipherSuites.length > 0) {
+            return cipherSuites;
+        }
+        return defaultFactory.getDefaultCipherSuites();
     }
 
     @Override
     public String[] getSupportedCipherSuites() {
-        return cipherSuites;
+        if (cipherSuites != null && cipherSuites.length > 0) {
+            return cipherSuites;
+        }
+        return defaultFactory.getSupportedCipherSuites();
     }
 
     @Override
