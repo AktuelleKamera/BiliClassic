@@ -95,6 +95,43 @@ namespace BiliClassic
             ApplyHeader(page, white);
         }
 
+        // 粉色实心按钮，黑主题下还原成旧版的无填色按钮
+        // 【注意】只用于「旧版本来是无填色、后来才改成粉色」的按钮，
+        // 播放视频/搜索/登录那些旧版就是粉的，别动
+        private static readonly Color AccentButtonColor = Color.FromArgb(0xFF, 0xD8, 0x6D, 0xA5);
+
+        public static void ApplyAccentButtons(DependencyObject root)
+        {
+            if (root == null || AppSettings.WhiteTheme)
+            {
+                return;
+            }
+            ApplyAccentButtonsCore(root);
+        }
+
+        private static void ApplyAccentButtonsCore(DependencyObject root)
+        {
+            Button button = root as Button;
+            if (button != null)
+            {
+                SolidColorBrush brush = button.Background as SolidColorBrush;
+                if (brush != null && brush.Color == AccentButtonColor)
+                {
+                    // 清掉本地值，让它退回默认模板（透明底 + 前景色边框）
+                    button.ClearValue(Control.BackgroundProperty);
+                    button.ClearValue(Control.BorderBrushProperty);
+                    button.ClearValue(Control.BorderThicknessProperty);
+                    button.ClearValue(Control.ForegroundProperty);
+                }
+            }
+
+            int count = VisualTreeHelper.GetChildrenCount(root);
+            for (int i = 0; i < count; i++)
+            {
+                ApplyAccentButtonsCore(VisualTreeHelper.GetChild(root, i));
+            }
+        }
+
 
         private const string HeaderTag = "theme_header_logo";
         private const string AppName = "哔哩经典";
