@@ -144,7 +144,7 @@ namespace BiliClassic.Api
 
             ParseAccept(body, result);
 
-            Match quality = Regex.Match(JsonText.Head(body, 300), @"""quality"":\s*(\d+)");
+            Match quality = Regex.Match(JsonText.Head(body, 2000), @"""quality"":\s*(\d+)");
             if (quality.Success)
             {
                 int value;
@@ -392,7 +392,7 @@ namespace BiliClassic.Api
                 return;
             }
 
-            Match quality = Regex.Match(JsonText.Head(body, 300), @"""quality"":\s*(\d+)");
+            Match quality = Regex.Match(JsonText.Head(body, 2000), @"""quality"":\s*(\d+)");
             if (quality.Success)
             {
                 int value;
@@ -524,6 +524,20 @@ namespace BiliClassic.Api
 
             int bestId = SelectQn(ids, want);
             result.Quality = bestId;
+
+            // accept_quality 是账号能请求的清晰度，不是这个视频真有的；
+            // DASH 清单里的轨道 id 才是，菜单按这个建，免得列出并不存在的 1080P
+            result.AcceptQuality.Clear();
+            for (int i = 0; i < ids.Count; i++)
+            {
+                if (!result.AcceptQuality.Contains(ids[i]))
+                {
+                    result.AcceptQuality.Add(ids[i]);
+                }
+            }
+            result.AcceptQuality.Sort();
+            result.AcceptQuality.Reverse();
+
             result.DashVideoUrls = SelectVideo(videoTracks, ids, codecsList, bestId);
             result.DashAudioUrls = SelectAudio(audioTracks, audioCodecs);
         }

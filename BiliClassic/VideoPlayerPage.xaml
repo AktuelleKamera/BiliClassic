@@ -249,8 +249,9 @@
                             </Rectangle>
                         </Button>
                         <!-- 右下角：点开清晰度选单 -->
+                        <!-- 宽100是固定的，边框和padding占掉就放不下"1080P"了 -->
                         <Button x:Name="QualityButton" Content="720P"
-                                MinWidth="0" Padding="12,2"
+                                MinWidth="0" Padding="6,2" BorderThickness="0"
                                 Click="QualityButton_Click" BorderBrush="Transparent" FontSize="20" Foreground="White" HorizontalAlignment="Right" Width="100" />
                         <Button Background="Transparent" BorderThickness="0" MinWidth="0" Name="SoundButton" Padding="8,4" HorizontalAlignment="Right" Width="80" Margin="0,0,180,0" BorderBrush="{x:Null}" Foreground="{x:Null}" HorizontalContentAlignment="Left" VerticalContentAlignment="Top" Click="SoundButton_Click">
                             <Rectangle Fill="White" Height="40" Name="rectangle2" Width="40">
