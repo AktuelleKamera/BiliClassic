@@ -403,8 +403,8 @@ public class ProfileFragment extends Fragment {
         }
         // 按钮类确定性恢复布局背景色（不依赖保存的 drawable）
         if (btnLogin != null) btnLogin.setBackgroundColor(0xFFD86DA5);
-        if (btnSwitchAccount != null) btnSwitchAccount.setBackgroundColor(0xFFDDDDDD);
-        if (btnLogout != null) btnLogout.setBackgroundColor(0xFFDDDDDD);
+        if (btnSwitchAccount != null) btnSwitchAccount.setBackgroundColor(accountActionBg());
+        if (btnLogout != null) btnLogout.setBackgroundColor(accountActionBg());
         if (tvUserId != null) {
             tv.biliclassic.util.UiSkin.setBgDrawableKeepPadding(tvUserId, null);
         }
@@ -451,6 +451,10 @@ public class ProfileFragment extends Fragment {
         }
     }
 
+    private int accountActionBg() {
+        return tv.biliclassic.util.UiSkin.isNight() ? 0xFF3A3A3A : 0xFFDDDDDD;
+    }
+
     /** 功能列表项恢复原始点击效果背景（透明 selector），清除可能的残留高亮色。 */
     private void restoreFeatureItemBg(View v) {
         if (v == null) return;
@@ -489,7 +493,7 @@ public class ProfileFragment extends Fragment {
                     v.setBackgroundColor(0xFFD86DA5);
                 } else if (v.getId() == R.id.btn_switch_account
                         || v.getId() == R.id.btn_logout) {
-                    v.setBackgroundColor(0xFFDDDDDD);
+                    v.setBackgroundColor(accountActionBg());
                 } else {
                     // 功能列表项：直接恢复原始 item_click_effect 背景
                     restoreFeatureItemBg(v);
