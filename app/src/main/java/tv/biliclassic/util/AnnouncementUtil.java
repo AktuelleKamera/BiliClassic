@@ -230,6 +230,7 @@ public class AnnouncementUtil {
 
         // 系统对话框最多 3 个按钮，而 WP 版公告有观看视频/播放音频/查看详情/
         // 知道了/不再显示，故用自定义视图承载全部按钮。
+        final boolean night = tv.biliclassic.util.UiSkin.isNight();
         final Context dialogContext =
                 tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(context));
         AlertDialog.Builder builder = new AlertDialog.Builder(dialogContext);
@@ -268,7 +269,24 @@ public class AnnouncementUtil {
             }
         });
         builder.setCancelable(announcement.forceShow);
-        dialogHolder[0] = builder.show();
+        AlertDialog dialog = builder.show();
+        dialogHolder[0] = dialog;
+        if (night && dialog != null) {
+            try {
+                dialog.getWindow().setBackgroundDrawable(
+                        new android.graphics.drawable.ColorDrawable(0xFF2A2A2A));
+                TextView title = (TextView) dialog.findViewById(android.R.id.title);
+                if (title != null) title.setTextColor(0xFFE6E6E6);
+                int[] buttonIds = {android.R.id.button1, android.R.id.button2,
+                        android.R.id.button3};
+                for (int id : buttonIds) {
+                    TextView button = (TextView) dialog.findViewById(id);
+                    if (button != null) button.setTextColor(0xFFFCA3C5);
+                }
+                tv.biliclassic.util.UiSkin.recolorItem(dialog.getWindow().getDecorView());
+            } catch (Throwable ignored) {
+            }
+        }
     }
 
     /**
