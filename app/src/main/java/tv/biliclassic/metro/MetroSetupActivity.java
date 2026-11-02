@@ -377,11 +377,35 @@ public class MetroSetupActivity extends BaseActivity {
                     leaveToMainFromTheme();
                 }
             });
+            btnClassic.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v, android.view.MotionEvent event) {
+                    if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+                        ((TextView) v).setTextColor(0xFFFFFFFF);
+                    } else if (event.getAction() == android.view.MotionEvent.ACTION_UP
+                            || event.getAction() == android.view.MotionEvent.ACTION_CANCEL) {
+                        v.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                applyThemeHighlight();
+                            }
+                        });
+                    }
+                    return false;
+                }
+            });
         }
         int currentTheme = tv.biliclassic.util.SharedPreferencesUtil.getInt(
                 tv.biliclassic.SettingsActivity.KEY_UI_THEME,
                 tv.biliclassic.SettingsActivity.THEME_CLASSIC);
         mThemeChoiceIndex = currentTheme == tv.biliclassic.SettingsActivity.THEME_METRO ? 0 : 1;
+        applyThemeHighlight();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // UiSkin 会在 super.onResume 里重设文字颜色，这里重新应用主题选中态。
         applyThemeHighlight();
     }
 
