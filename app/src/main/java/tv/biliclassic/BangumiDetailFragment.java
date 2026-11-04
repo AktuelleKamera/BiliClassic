@@ -113,6 +113,12 @@ public class BangumiDetailFragment extends Fragment {
                 tv.biliclassic.metro.MetroTheme.isNight() ? 0x33FFFFFF : 0xFFE0E0E0));
         lvEpisodes.setDividerHeight(1);
         lvEpisodes.setDrawSelectorOnTop(true);
+        if (UiSkin.isNight()) {
+            lvEpisodes.setBackgroundColor(0xFF171717);
+            if (tvEpisodeCount != null) {
+                tvEpisodeCount.setBackgroundColor(0xFF171717);
+            }
+        }
 
         // 在 View 还未显示时，先让 tvDesc 不限制行数，测完再恢复
         tvDesc.setMaxLines(Integer.MAX_VALUE);
@@ -497,10 +503,9 @@ public class BangumiDetailFragment extends Fragment {
                 tv.setTextSize(14);
                 tv.setTextColor(0xFFD86DA5);
                 tv.setPadding(DeviceUtil.dpToPx(16), DeviceUtil.dpToPx(8), DeviceUtil.dpToPx(16), DeviceUtil.dpToPx(4));
-                tv.setBackgroundColor(0xFFF0F0F0);
+                tv.setBackgroundColor(UiSkin.isNight() ? 0xFF171717 : 0xFFF0F0F0);
                 tv.setClickable(false);
                 tv.setFocusable(false);
-                UiSkin.recolorItem(tv);
                 return convertView;
             }
 
@@ -522,6 +527,11 @@ public class BangumiDetailFragment extends Fragment {
 
             holder.tvIndex.setText(String.valueOf(position + 1));
             holder.tvTitle.setText(title);
+            boolean night = UiSkin.isNight();
+            holder.tvIndex.setTextColor(0xFFD86DA5);
+            holder.tvTitle.setTextColor(night ? 0xFFF2F2F2 : 0xFF333333);
+            convertView.setBackgroundResource(night
+                    ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white);
 
             // 设置点击事件
             convertView.setOnClickListener(new View.OnClickListener() {
@@ -533,7 +543,6 @@ public class BangumiDetailFragment extends Fragment {
                 }
             });
 
-            tv.biliclassic.util.UiSkin.recolorItem(convertView);
             return convertView;
         }
 

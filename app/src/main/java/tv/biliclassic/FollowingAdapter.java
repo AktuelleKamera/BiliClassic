@@ -110,7 +110,7 @@ public class FollowingAdapter extends BaseObservableAdapter<UserInfo> {
         new android.app.AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(context))
                 .setTitle(context.getString(R.string.following_list_unfollow))
                 .setMessage(context.getString(R.string.following_list_unfollow_msg, user.name != null ? user.name : ""))
-                .setPositiveButton(context.getString(R.string.ostwind_no_decoder_ok),
+                .setPositiveButton(context.getString(android.R.string.ok),
                         new android.content.DialogInterface.OnClickListener() {
                             public void onClick(android.content.DialogInterface d, int w) {
                                 doUnfollow(user, position);

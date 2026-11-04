@@ -131,7 +131,7 @@
         <TextView
             android:id="@+id/tv_system_architect"
             style="@style/AboutBodyText"
-            android:text="@string/bili_about_bbcallen" />
+            android:text="@string/bili_about_skyler1n" />
 
         <TextView
             style="@style/AboutBodyText"

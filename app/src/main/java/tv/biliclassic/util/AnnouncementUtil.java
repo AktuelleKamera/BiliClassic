@@ -26,7 +26,6 @@ import tv.biliclassic.BuildConfig;
 import tv.biliclassic.VideoDetailActivity;
 import tv.biliclassic.WebViewActivity;
 import tv.biliclassic.player.AudioPlayerActivity;
-import tv.biliclassic.player.OstwindPlayerActivity;
 
 /**
  * 公告工具类
@@ -344,7 +343,7 @@ public class AnnouncementUtil {
                             if (direct != null) {
                                 startActivitySafely(context, direct);
                             } else {
-                                Intent intent = new Intent(context, OstwindPlayerActivity.class);
+                                Intent intent = new Intent(context, tv.biliclassic.player.BiliPlayerActivity.class);
                                 intent.putExtra("video_url", a.videoUrl);
                                 intent.putExtra("video_title", a.title);
                                 startActivitySafely(context, intent);

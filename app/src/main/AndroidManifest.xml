@@ -77,12 +77,53 @@
         <activity
             android:name=".MainActivity"
             android:screenOrientation="portrait"
-            android:configChanges="keyboardHidden|orientation|screenSize">
+            android:configChanges="keyboardHidden|orientation|screenSize" />
+
+        <activity-alias
+            android:name=".MainLauncherPortrait"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+        <activity-alias
+            android:name=".MainLauncherLandscape"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:screenOrientation="landscape">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".MainLauncherSensor"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="false"
+            android:screenOrientation="sensor">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityLandscape"
+            android:targetActivity=".MainActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+
+        <activity-alias
+            android:name=".MainActivitySensor"
+            android:targetActivity=".MainActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
 
         <!-- 外部链接分发 -->
         <activity
@@ -206,13 +247,6 @@
             android:configChanges="orientation|screenSize"
             android:theme="@style/PlayerTheme" />
 
-        <!-- 简易在线播放器（Ostwind，兼容 Android 2.2 及以下，MediaPlayer + 本地代理） -->
-        <activity
-            android:name=".player.OstwindPlayerActivity"
-            android:configChanges="orientation|screenSize|keyboardHidden"
-            android:screenOrientation="landscape"
-            android:theme="@style/PlayerTheme" />
-
         <!-- 公告音频播放页 -->
         <activity
             android:name=".player.AudioPlayerActivity"
@@ -286,6 +320,60 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <activity-alias
+            android:name=".SearchActivityLandscape"
+            android:targetActivity=".SearchActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".SearchActivitySensor"
+            android:targetActivity=".SearchActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+
+        <activity-alias
+            android:name=".VideoDetailActivityLandscape"
+            android:targetActivity=".VideoDetailActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".VideoDetailActivitySensor"
+            android:targetActivity=".VideoDetailActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+
+        <activity-alias
+            android:name=".WebViewActivityLandscape"
+            android:targetActivity=".WebViewActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".WebViewActivitySensor"
+            android:targetActivity=".WebViewActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+
+        <activity-alias
+            android:name=".OfflineActivityLandscape"
+            android:targetActivity=".OfflineActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".OfflineActivitySensor"
+            android:targetActivity=".OfflineActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+
+        <activity-alias
+            android:name=".metro.MetroHomeActivityLandscape"
+            android:targetActivity=".metro.MetroHomeActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".metro.MetroHomeActivitySensor"
+            android:targetActivity=".metro.MetroHomeActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
     </application>
 
 </manifest>

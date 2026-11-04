@@ -90,7 +90,6 @@
     <string name="bili_about_staff">STAFF</string>
     <string name="bili_about_9bishi">⑨bishi</string>
     <string name="bili_about_skyler1n">Skyler1n</string>
-    <string name="bili_about_bbcallen">bbcallen</string>
     <string name="bili_about_cctyl">cctyl</string>
     <string name="bili_about_xiaosuyang">小蘇陽</string>
     <string name="bili_about_wcxawa">wcxawa</string>
@@ -251,24 +250,9 @@
     <string name="keybinding_toast_done">按键绑定完成</string>
     <string name="keybinding_toast_skip">已跳过按键绑定</string>
     <string name="keybinding_toast_exit">已退出按键绑定</string>
-    <string name="settingsactivity_setmessage_ostwind">当前系统不支持内置播放器，在线播放建议使用东风(Ostwind)播放器。\n\n是否切换到旋风播放器并开启在线播放？</string>
     <string name="activity_settings_keyboard">按键设置</string>
     <string name="activity_settings_round_screen_center">圆形屏幕居中</string>
     <string name="activity_settings_round_screen_center_desc">在圆形屏幕上居中显示内容</string>
-    <string name="activity_settings_view_run_log">查看运行日志</string>
-    <string name="activity_settings_enable_run_log">开启运行日志</string>
-    <string name="activity_settings_enable_run_log_desc">开启后记录运行与弹幕绘制日志到文件，用于排查问题（关闭可节省性能）</string>
-    <string name="activity_settings_run_log_on">已开启运行日志</string>
-    <string name="activity_settings_run_log_off">已关闭运行日志</string>
-    <string name="activity_settings_run_log_empty">暂无日志</string>
-    <string name="activity_settings_run_log_title">运行日志</string>
-    <string name="activity_settings_run_log_subject">BiliClassic 日志</string>
-    <string name="activity_settings_run_log_share_fail">分享失败: %1$s</string>
-    <string name="ostwind_no_decoder_title">未找到软解解码器</string>
-    <string name="ostwind_no_decoder_msg">当前设备没有可用的软解解码器，请安装MoboPlayer软解包后重试。可加群754725037下载。\n\nAndroid 1.6+可改用IJK播放器尝试。</string>
-    <string name="ostwind_no_decoder_mobo_hint">你可以安装MoboPlayer的解码包来使用Ostwind播放器的软解。</string>
-    <string name="ostwind_no_decoder_ok">确定</string>
-    <string name="ostwind_error">播放失败，请检查网络或重新选择播放器</string>
     <string name="activity_settings_night_mode">夜间模式</string>
     <string name="activity_settings_night_mode_desc">使用深色纹理背景</string>
     <string name="activity_settings_cast_title">投屏（Miracast）</string>
@@ -433,6 +417,7 @@
     <string name="profile_loading">加载中……</string>
     <string name="publish_time_empty">发布时间: --</string>
     <string name="quality_1080p">1080P 超清</string>
+    <string name="quality_1080p60">1080P60 超清60帧</string>
     <string name="quality_1080p_plus">1080P+ 超清+</string>
     <string name="quality_4k">4K 超高清</string>
     <string name="quality_8k">8K 超高清</string>
@@ -638,7 +623,6 @@
     <string name="player_recommend_builtin">• 内置播放器（IJK V3）：推荐使用，内置软件解码器和系统解码器，无需安装第三方应用。可在设置中切换解码方式（软件解码器/系统解码器）。</string>
     <string name="player_recommend_lightweight">• VPlayer / MoboPlayer / RockPlaye Liter：轻量级播放器，部分老设备兼容性较好，可作为备选。</string>
     <string name="player_recommend_mx_vlc">• MX Player / VLC：自带解码器，支持H.264 High Profile，在老设备上播放流畅，推荐使用。</string>
-    <string name="player_recommend_old_android">• 建议：如果你的设备是Android 1.6以下，请优先选择内置播放器（Ostwind）或MoboPlayer。</string>
     <string name="player_recommend_system">• 系统播放器：依赖手机硬件解码。不支持H.264 High Profile软解，部分视频可能无法播放或只有声音。</string>
     <string name="player_settings">播放器设置</string>
     <string name="portrait_adapted_devices">* 已自动适配设备：HTC ChaCha / 三星Galaxy Y Pro / 三星Galaxy Pro / 索尼A5100</string>
@@ -727,4 +711,6 @@
     <string name="recommend_columns_value">%1$d 列</string>
     <string name="player_resume_tip_fmt">已定位到 %1$s</string>
     <string name="player_resume_from_start">从头播放</string>
+    <string name="decoder_title_split_audio">仅软解视频</string>
+    <string name="decoder_summary_split_audio">软解时使用MediaPlayer播放视频音频</string>
 </resources>

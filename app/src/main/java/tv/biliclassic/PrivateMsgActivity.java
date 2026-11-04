@@ -56,11 +56,22 @@ public class PrivateMsgActivity extends BaseActivity {
         input = (EditText) findViewById(R.id.msg_input);
         sendBtn = (Button) findViewById(R.id.send_btn);
         TextView title = (TextView) findViewById(R.id.title_text);
+        boolean night = tv.biliclassic.util.UiSkin.isNight();
+        if (night) {
+            if (msgList != null) msgList.setBackgroundColor(0xFF171717);
+            android.view.View inputLayout = findViewById(R.id.layout_input);
+            if (inputLayout != null) inputLayout.setBackgroundColor(0xFF171717);
+            if (input != null) {
+                input.setTextColor(0xFFF2F2F2);
+                input.setHintTextColor(0xFF888888);
+            }
+        }
         if (talkerName != null && talkerName.length() > 0) {
             title.setText(talkerName);
         }
 
         msgList.setCacheColorHint(0x00000000);
+        msgList.setTranscriptMode(android.widget.AbsListView.TRANSCRIPT_MODE_DISABLED);
 
         findViewById(R.id.btn_back).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -92,7 +103,7 @@ public class PrivateMsgActivity extends BaseActivity {
             return;
         }
 
-        loadMessages(false);
+        loadMessages(true);
         scheduleRefresh();
     }
 
@@ -133,7 +144,12 @@ public class PrivateMsgActivity extends BaseActivity {
                                 messages.addAll(list);
                                 adapter.notifyDataSetChanged();
                                 if (scrollBottom && messages.size() > 0) {
-                                    msgList.setSelection(messages.size() - 1);
+                                    final int last = messages.size() - 1;
+                                    msgList.post(new Runnable() {
+                                        public void run() {
+                                            msgList.setSelection(last);
+                                        }
+                                    });
                                 }
                             }
                         }

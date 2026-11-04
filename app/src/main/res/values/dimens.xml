@@ -18,7 +18,7 @@
     <dimen name="setup_button_text_size">18sp</dimen>
     <dimen name="setup_button_padding">8dp</dimen>
     <dimen name="setup_page_padding">16dp</dimen>
-    <dimen name="setup_message_padding">24dp</dimen>
+    <dimen name="setup_message_padding">16dp</dimen>
     <dimen name="setup_prompt_text_size">32sp</dimen>
     <dimen name="setup_progress_text_size">16sp</dimen>
     <dimen name="setup_hint_text_size">13sp</dimen>

@@ -107,6 +107,15 @@ public class SearchActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         try {
             setContentView(R.layout.activity_search);
+        final android.view.View contentRoot = findViewById(android.R.id.content);
+        if (contentRoot != null) {
+            contentRoot.setFocusableInTouchMode(true);
+            contentRoot.post(new Runnable() {
+                public void run() {
+                    contentRoot.requestFocus();
+                }
+            });
+        }
         } catch (Exception e) {
             android.util.Log.w("SearchActivity", "Could not inflate search layout", e);
             setContentView(new TextView(this));
@@ -121,6 +130,17 @@ public class SearchActivity extends BaseActivity {
         emptyView = (TextView) findViewById(R.id.empty_view);
         topLoading = (LinearLayout) findViewById(R.id.top_loading);
         topProgress = (ProgressBar) findViewById(R.id.top_progress);
+        if (tv.biliclassic.util.UiSkin.isNight()) {
+            if (resultList != null) {
+                resultList.setBackgroundResource(R.drawable.bili_texture_background_night);
+            }
+            if (emptyView != null) {
+                emptyView.setTextColor(0xFFCCCCCC);
+            }
+            if (topLoading != null) {
+                topLoading.setBackgroundColor(0xFF171717);
+            }
+        }
 
         // 排序下拉 + 结果态搜索按钮 + 搜索态搜索框
         sortButton = findViewById(R.id.sort_button);

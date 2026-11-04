@@ -4,7 +4,7 @@
         android:drawable="@drawable/ic_ar_adjust_video"
         android:maxLevel="0"/>
     <item
-        android:drawable="@drawable/ic_ar_fill"
+        android:drawable="@drawable/ic_ar_adjust_screen"
         android:maxLevel="1"/>
     <item
         android:drawable="@drawable/ic_ar_adjust_screen"

@@ -18,7 +18,6 @@ import java.util.ArrayList;
  *
  * 用法：
  * 1. Activity 层：BaseActivity 已统一在 DecorView 挂监听（onContentChanged 里调用），
- *    BiliPlayerActivity / OstwindPlayerActivity 直接继承 Activity，在 setContentView 后单独挂；
  * 2. 弹窗等独立窗口：调用 {@link #attach(View)} 给滚动容器挂监听。
  *
  * 兼容性：泛动作分发为 API 12+ 能力。旧 Dalvik（2.x）校验器遇到对不存在 API 的

@@ -42,26 +42,28 @@ public class PrivateMsgAdapter extends BaseObservableAdapter<PrivateMessage> {
 
         LinearLayout root = (LinearLayout) convertView.findViewById(R.id.msg_root);
         TextView text = (TextView) convertView.findViewById(R.id.msg_text);
+        boolean night = tv.biliclassic.util.UiSkin.isNight();
 
         if (msg.type == PrivateMessage.TYPE_RETRACT || msg.type == PrivateMessage.TYPE_SYSTEM) {
             root.setGravity(Gravity.CENTER_HORIZONTAL);
             tv.biliclassic.util.UiSkin.setBgColorKeepPadding(text, 0x00000000);
-            text.setTextColor(0xFF999999);
+            text.setTextColor(night ? 0xFFCCCCCC : 0xFF999999);
             text.setTextSize(12);
         } else {
-            text.setTextColor(0xFF333333);
+            text.setTextColor(night ? 0xFFF2F2F2 : 0xFF333333);
             text.setTextSize(14);
             if (msg.uid == myUid) {
                 root.setGravity(Gravity.RIGHT);
-                tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(text, R.drawable.chat_bubble_right);
+                tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(text,
+                        night ? R.drawable.chat_bubble_right_night : R.drawable.chat_bubble_right);
             } else {
                 root.setGravity(Gravity.LEFT);
-                tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(text, R.drawable.chat_bubble_left);
+                tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(text,
+                        night ? R.drawable.chat_bubble_left_night : R.drawable.chat_bubble_left);
             }
         }
 
         text.setText(messageText(msg));
-        tv.biliclassic.util.UiSkin.recolorItem(convertView);
         return convertView;
     }
 

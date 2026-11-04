@@ -129,6 +129,16 @@ public class MetroSetupActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_setup);
+        ScrollView tileScroll = (ScrollView) findViewById(R.id.tile_scroll);
+        if (tileScroll != null) {
+            tileScroll.setVerticalFadingEdgeEnabled(false);
+            tileScroll.setHorizontalFadingEdgeEnabled(false);
+        }
+        ScrollView agreementScroll = (ScrollView) findViewById(R.id.agreement_scroll);
+        if (agreementScroll != null) {
+            agreementScroll.setVerticalFadingEdgeEnabled(false);
+            agreementScroll.setHorizontalFadingEdgeEnabled(false);
+        }
 
         // 圆形屏幕（手表）适配：标题行居中显示，避免偏左在圆屏上难看。
         // 用户手动开启"圆形屏幕居中"开关立即生效；系统自动检测（WindowInsets.isRound /
@@ -154,7 +164,8 @@ public class MetroSetupActivity extends BaseActivity {
             rootLayout.post(new Runnable() {
                 @Override
                 public void run() {
-                    Animation anim = AnimationUtils.loadAnimation(MetroSetupActivity.this, R.anim.fade_slide_up);
+                    Animation anim = AnimationUtils.loadAnimation(MetroSetupActivity.this,
+                            R.anim.fade_slide_up);
                     if (anim != null) {
                         rootLayout.startAnimation(anim);
                     }
@@ -377,28 +388,8 @@ public class MetroSetupActivity extends BaseActivity {
                     leaveToMainFromTheme();
                 }
             });
-            btnClassic.setOnTouchListener(new View.OnTouchListener() {
-                @Override
-                public boolean onTouch(View v, android.view.MotionEvent event) {
-                    if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
-                        ((TextView) v).setTextColor(0xFFFFFFFF);
-                    } else if (event.getAction() == android.view.MotionEvent.ACTION_UP
-                            || event.getAction() == android.view.MotionEvent.ACTION_CANCEL) {
-                        v.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                applyThemeHighlight();
-                            }
-                        });
-                    }
-                    return false;
-                }
-            });
         }
-        int currentTheme = tv.biliclassic.util.SharedPreferencesUtil.getInt(
-                tv.biliclassic.SettingsActivity.KEY_UI_THEME,
-                tv.biliclassic.SettingsActivity.THEME_CLASSIC);
-        mThemeChoiceIndex = currentTheme == tv.biliclassic.SettingsActivity.THEME_METRO ? 0 : 1;
+        mThemeChoiceIndex = -1;
         applyThemeHighlight();
     }
 
@@ -1189,7 +1180,7 @@ public class MetroSetupActivity extends BaseActivity {
                     applyThemeHighlight();
                     return true;
                 }
-                mThemeChoiceIndex = 1 - mThemeChoiceIndex;
+                mThemeChoiceIndex = mThemeChoiceIndex < 0 ? 0 : 1 - mThemeChoiceIndex;
                 applyThemeHighlight();
                 return true;
             }
@@ -1198,9 +1189,11 @@ public class MetroSetupActivity extends BaseActivity {
                     mThemeKeyNavActive = true;
                     applyThemeHighlight();
                 }
-                View target = findViewById(mThemeChoiceIndex == 0
-                        ? R.id.btn_theme_metro : R.id.btn_theme_classic);
-                if (target != null) target.performClick();
+                if (mThemeChoiceIndex >= 0) {
+                    View target = findViewById(mThemeChoiceIndex == 0
+                            ? R.id.btn_theme_metro : R.id.btn_theme_classic);
+                    if (target != null) target.performClick();
+                }
                 return true;
             }
         }

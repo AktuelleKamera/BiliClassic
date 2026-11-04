@@ -35,7 +35,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="@dimen/setup_page_padding">
+            android:paddingLeft="@dimen/setup_page_padding"
+            android:paddingTop="@dimen/setup_page_padding"
+            android:paddingRight="@dimen/setup_page_padding"
+            android:paddingBottom="0dp">
 
             <TextView
                 android:id="@+id/page2_title"
@@ -53,8 +56,9 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:paddingTop="@dimen/setup_page_padding"
+            android:paddingTop="0dp"
             android:paddingBottom="@dimen/setup_page_padding"
+            android:fadingEdge="none"
             android:clipChildren="false">
 
             <LinearLayout
@@ -304,7 +308,8 @@
             android:layout_height="0dp"
             android:layout_weight="1"
             android:paddingTop="0dp"
-            android:paddingBottom="@dimen/setup_page_padding">
+            android:paddingBottom="@dimen/setup_page_padding"
+            android:fadingEdge="none">
 
             <LinearLayout
                 android:id="@+id/agreement_container"
@@ -459,15 +464,20 @@
 
         </FrameLayout>
 
-        <LinearLayout
+        <FrameLayout
             android:id="@+id/theme_bottom_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
             android:padding="@dimen/setup_page_padding"
             android:layout_marginBottom="@dimen/setup_page_padding">
 
+            <LinearLayout
+                android:id="@+id/theme_buttons"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:orientation="horizontal"
+                android:gravity="center">
             <TextView
                 android:id="@+id/btn_theme_metro"
                 android:layout_width="wrap_content"
@@ -493,7 +503,8 @@
                 android:clickable="true"
                 android:focusable="true" />
 
-        </LinearLayout>
+            </LinearLayout>
+        </FrameLayout>
 
     </LinearLayout>
 

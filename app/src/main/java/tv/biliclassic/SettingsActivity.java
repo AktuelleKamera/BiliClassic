@@ -50,6 +50,7 @@ public class SettingsActivity extends BaseActivity {
     private static final String KEY_AUTO_CHECK_UPDATE = "auto_check_update";
     private static final String KEY_DEFAULT_TAB = "default_tab";
     public static final String KEY_VIDEO_QUALITY = "video_quality";
+    private static final String KEY_VIDEO_QUALITY_DASH = "video_quality_dash";
     private static final String KEY_MODERN_MODE = "modern_mode";
     private static final String KEY_PORTRAIT_MODE = "portrait_mode";
     public static final String KEY_DECODER_TYPE = "decoder_type";
@@ -71,6 +72,7 @@ public class SettingsActivity extends BaseActivity {
     private static final int QUALITY_480P = 32;
     private static final int QUALITY_720P = 64;
     private static final int QUALITY_1080P = 80;
+    private static final int QUALITY_1080P60 = 116;
     private static final int QUALITY_1080P_PLUS = 112;
     private static final int QUALITY_4K = 120;
     private static final int QUALITY_8K = 127;
@@ -87,7 +89,6 @@ public class SettingsActivity extends BaseActivity {
     private static final int PLAYER_SYSTEM = 7;
     private static final int PLAYER_BUILTIN = 8;
     private static final int PLAYER_LIANGWAN = 9;
-    public static final int PLAYER_OSTWIND = 10;
     private static final int PLAYER_MOBO_PRO = 11;
 
     // 首页 Tab 索引
@@ -115,7 +116,7 @@ public class SettingsActivity extends BaseActivity {
 
     // 内置播放器最低系统版本要求（已解除 Android 2.3 限制，所有版本均可选择；
     // 老设备上若 IJK native 库加载失败，BiliPlayerActivity 会自动回退系统解码器）
-    private static final int MIN_SDK_FOR_BUILTIN = 3;
+    private static final int MIN_SDK_FOR_BUILTIN = 1;
     // IJK 硬解最低系统版本要求 (Android 4.1 / API 16)
     private static final int MIN_SDK_FOR_IJK_HARDWARE = 16;
 
@@ -284,12 +285,17 @@ public class SettingsActivity extends BaseActivity {
                 @Override
                 public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                     SharedPreferencesUtil.putBoolean(KEY_LANDSCAPE_ENABLED, isChecked);
+                    tv.biliclassic.util.OrientationAlias.updateLauncher(
+                            SettingsActivity.this, isChecked);
 
                     Toast.makeText(SettingsActivity.this,
                             isChecked ? "已开启横屏模式，正在重启..." : "已关闭横屏模式，正在重启...",
                             Toast.LENGTH_SHORT).show();
 
-                    Intent intent = new Intent(SettingsActivity.this, MainActivity.class);
+                    Intent intent = new Intent();
+                    intent.setClassName(SettingsActivity.this,
+                            isChecked ? "tv.biliclassic.MainActivityLandscape"
+                                    : "tv.biliclassic.MainActivity");
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
                     finish();
@@ -612,7 +618,6 @@ public class SettingsActivity extends BaseActivity {
         // 解码方式选择
         decoderChoiceItem = (LinearLayout) findViewById(R.id.decoder_choice_item);
         decoderChoiceText = (TextView) findViewById(R.id.decoder_choice_text);
-
         if (decoderChoiceItem != null) {
             updateDecoderChoiceDisplay();
             decoderChoiceItem.setOnClickListener(new View.OnClickListener() {
@@ -821,50 +826,6 @@ public class SettingsActivity extends BaseActivity {
                 @Override
                 public void onClick(View v) {
                     showClearCrashLogDialog();
-                }
-            });
-        }
-
-        // 运行日志：默认关闭（避免日志写入影响性能），开启后记录运行与弹幕绘制日志到文件
-        final String KEY_RUN_LOG = "run_log_enabled";
-        final CheckBox checkboxRunLog = (CheckBox) findViewById(R.id.checkbox_enable_run_log);
-        LinearLayout enableRunLogItem = (LinearLayout) findViewById(R.id.enable_run_log_item);
-        boolean runLogEnabled = SharedPreferencesUtil.getBoolean(KEY_RUN_LOG, false);
-        tv.biliclassic.util.LogFileUtil.setEnabled(runLogEnabled);
-        master.flame.danmaku.util.DiagLogger.setEnabled(runLogEnabled);
-        if (checkboxRunLog != null) {
-            checkboxRunLog.setChecked(runLogEnabled);
-        }
-        if (enableRunLogItem != null) {
-            enableRunLogItem.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    checkboxRunLog.toggle();
-                    boolean current = checkboxRunLog.isChecked();
-                    SharedPreferencesUtil.putBoolean(KEY_RUN_LOG, current);
-                    tv.biliclassic.util.LogFileUtil.setEnabled(current);
-                    master.flame.danmaku.util.DiagLogger.setEnabled(current);
-                    if (current) {
-                        tv.biliclassic.util.LogFileUtil.clearDiag();
-                        tv.biliclassic.util.LogFileUtil.log("App", "运行日志已开启 SDK="
-                                + tv.biliclassic.util.SdkHelper.getSdkInt()
-                                + " model=" + android.os.Build.MODEL);
-                    }
-                    Toast.makeText(SettingsActivity.this,
-                            current ? getString(R.string.activity_settings_run_log_on)
-                                    : getString(R.string.activity_settings_run_log_off),
-                            Toast.LENGTH_SHORT).show();
-                }
-            });
-        }
-
-        // 查看运行日志（应用内日志，无需 adb）
-        LinearLayout viewLogItem = (LinearLayout) findViewById(R.id.view_log_item);
-        if (viewLogItem != null) {
-            viewLogItem.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    tv.biliclassic.util.LogFileUtil.showLogsDialog(SettingsActivity.this);
                 }
             });
         }
@@ -1211,18 +1172,7 @@ public class SettingsActivity extends BaseActivity {
         return SdkHelper.getSdkInt() >= MIN_SDK_FOR_BUILTIN;
     }
 
-    // Android 1.5(API 3)及以下：默认用 Ostwind（用户仍可自行改）
-    private static final int MAX_SDK_FOR_DEFAULT_OSTWIND = 3;
-
-    private static boolean defaultOstwind() {
-        return SdkHelper.getSdkInt() <= MAX_SDK_FOR_DEFAULT_OSTWIND;
-    }
-
-    // 获取默认播放器偏好（已解除版本限制，全版本默认内置播放器）
     public static int getDefaultPlayerPreference() {
-        if (defaultOstwind()) {
-            return PLAYER_OSTWIND;
-        }
         if (!isBuiltinPlayerSupported()) {
             return PLAYER_AUTO;
         }
@@ -1232,6 +1182,10 @@ public class SettingsActivity extends BaseActivity {
     // 获取当前播放器偏好（带版本适配）
     public static int getPlayerPreference() {
         int pref = SharedPreferencesUtil.getInt(KEY_PLAYER_PREFERENCE, getDefaultPlayerPreference());
+        if (pref == 10) {
+            SharedPreferencesUtil.putInt(KEY_PLAYER_PREFERENCE, PLAYER_BUILTIN);
+            return PLAYER_BUILTIN;
+        }
         if (pref == PLAYER_BUILTIN && !isBuiltinPlayerSupported()) {
             SharedPreferencesUtil.putInt(KEY_PLAYER_PREFERENCE, PLAYER_AUTO);
             return PLAYER_AUTO;
@@ -1265,9 +1219,6 @@ public class SettingsActivity extends BaseActivity {
                 return isBuiltinPlayerSupported() ? "内置播放器（IJK V3）" : "内置播放器（IJK V3）(不可用)";
             case PLAYER_LIANGWAN:
                 return "凉腕播放器";
-            case PLAYER_OSTWIND:
-                return "内置播放器（Ostwind）";
-            case PLAYER_SYSTEM:
             default:
                 return "系统播放器";
         }
@@ -1295,11 +1246,6 @@ public class SettingsActivity extends BaseActivity {
                 return "com.tencent.research.drop";
             case PLAYER_LIANGWAN:
                 return "com.aliangmaker.media";
-            case PLAYER_OSTWIND:
-                // Ostwind 是本 App 内置简易播放器（MediaPlayer + 自定义请求头），
-                // 包名返回特殊标记，跳转处识别后直接启动本地 Activity
-                return "tv.biliclassic.ostwind";
-            case PLAYER_SYSTEM:
             case PLAYER_AUTO:
             default:
                 return null;
@@ -1309,6 +1255,10 @@ public class SettingsActivity extends BaseActivity {
     // 获取解码方式
     public static int getDecoderType() {
         // 默认值：4.1 以上默认 IJK 硬解；4.1 以下带硬件解码 DSP 的老 SoC 默认系统解码（走 DSP 硬解），
+        if (SdkHelper.getSdkInt() < 3) {
+            int old = SharedPreferencesUtil.getInt(KEY_DECODER_TYPE, DECODER_SYSTEM);
+            return old == DECODER_IJK_SOFT ? DECODER_IJK_SOFT : DECODER_SYSTEM;
+        }
         // 其余无 VFP 老设备默认 IJK 软解
         int defaultDecoder;
         if (isIjkHardwareSupported()) {
@@ -1332,19 +1282,26 @@ public class SettingsActivity extends BaseActivity {
 
     // 视频画质选择
     private void showVideoQualityDialog() {
-        final String[] qualities = {
+        final boolean dash = getPlayStreamFormat() == 16;
+        final String[] allQualities = {
                 getString(R.string.quality_360p),
                 getString(R.string.videodetail_q_480p),
                 getString(R.string.quality_720p),
                 getString(R.string.quality_1080p),
                 getString(R.string.quality_1080p_plus),
+                getString(R.string.quality_1080p60),
                 getString(R.string.quality_4k),
                 getString(R.string.quality_8k)
         };
-        final int[] qualityValues = {
+        final int[] allValues = {
                 QUALITY_360P, QUALITY_480P, QUALITY_720P, QUALITY_1080P,
-                QUALITY_1080P_PLUS, QUALITY_4K, QUALITY_8K
+                QUALITY_1080P_PLUS, QUALITY_1080P60, QUALITY_4K, QUALITY_8K
         };
+        int count = dash ? allQualities.length : 4;
+        final String[] qualities = new String[count];
+        final int[] qualityValues = new int[count];
+        System.arraycopy(allQualities, 0, qualities, 0, count);
+        System.arraycopy(allValues, 0, qualityValues, 0, count);
         int currentQuality = getVideoQuality();
 
         int checkedIndex = 0;
@@ -1361,7 +1318,9 @@ public class SettingsActivity extends BaseActivity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         int newQuality = qualityValues[which];
-                        SharedPreferencesUtil.putInt(KEY_VIDEO_QUALITY, newQuality);
+                        SharedPreferencesUtil.putInt(
+                                dash ? KEY_VIDEO_QUALITY_DASH : KEY_VIDEO_QUALITY,
+                                newQuality);
                         updateVideoQualityDisplay();
                         Toast.makeText(SettingsActivity.this,
                                 "已切换为: " + qualities[which],
@@ -1381,6 +1340,8 @@ public class SettingsActivity extends BaseActivity {
             videoQualityText.setText(getString(R.string.quality_4k));
         } else if (quality == QUALITY_1080P_PLUS) {
             videoQualityText.setText(getString(R.string.quality_1080p_plus));
+        } else if (quality == QUALITY_1080P60) {
+            videoQualityText.setText(getString(R.string.quality_1080p60));
         } else if (quality == QUALITY_1080P) {
             videoQualityText.setText(getString(R.string.quality_1080p));
         } else if (quality == QUALITY_720P) {
@@ -1393,7 +1354,18 @@ public class SettingsActivity extends BaseActivity {
     }
 
     public static int getVideoQuality() {
-        return SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY, QUALITY_360P);
+        if (getPlayStreamFormat() == 16) {
+            if (!SharedPreferencesUtil.contains(KEY_VIDEO_QUALITY_DASH)) {
+                int old = SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY, QUALITY_1080P);
+                int dashDefault = old == QUALITY_1080P_PLUS || old == QUALITY_1080P60
+                        || old == QUALITY_4K || old == QUALITY_8K
+                        ? old : QUALITY_1080P;
+                SharedPreferencesUtil.putInt(KEY_VIDEO_QUALITY_DASH, dashDefault);
+            }
+            return SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY_DASH, QUALITY_1080P);
+        }
+        int quality = SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY, QUALITY_360P);
+        return quality > QUALITY_1080P ? QUALITY_1080P : quality;
     }
 
     // 获取渲染方式
@@ -1561,25 +1533,6 @@ public class SettingsActivity extends BaseActivity {
 
     private void applyOnlinePlayChoice(final boolean enable) {
         if (enable) {
-            // 2.3 以下（内置播放器不可用）：提示改用东风(Ostwind)播放器
-            if (!isBuiltinPlayerSupported() && getPlayerPreference() != PLAYER_OSTWIND) {
-                new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(SettingsActivity.this)))
-                        .setTitle(getString(R.string.common_hint))
-                        .setMessage(getString(R.string.settingsactivity_setmessage_ostwind))
-                        .setPositiveButton("切换并开启", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                SharedPreferencesUtil.putInt(KEY_PLAYER_PREFERENCE, PLAYER_OSTWIND);
-                                updatePlayerChoiceDisplay();
-                                SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, true);
-                                updateOnlinePlayDisplay();
-                                Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2_1), Toast.LENGTH_SHORT).show();
-                            }
-                        })
-                        .setNegativeButton("取消", null)
-                        .show();
-                return;
-            }
             SharedPreferencesUtil.putBoolean(KEY_ONLINE_PLAY, true);
             updateOnlinePlayDisplay();
             Toast.makeText(SettingsActivity.this, SettingsActivity.this.getString(R.string.settingsactivity_toast_5df2_4), Toast.LENGTH_SHORT).show();
@@ -1913,8 +1866,8 @@ public class SettingsActivity extends BaseActivity {
     }
 
     private void showPlayerChoiceDialog() {
-        final String[] allPlayers = {"内置播放器（IJK V3）", "内置播放器（Ostwind）", "自动检测", "MX Player (免费版)", "MX Player (专业版)", "MoboPlayer", "MoboPlayer Pro", "VLC", "VPlayer", "RockPlaye Liter", "QQ影音", "凉腕播放器", "系统播放器"};
-        final int[] allValues = {PLAYER_BUILTIN, PLAYER_OSTWIND, PLAYER_AUTO, PLAYER_MX_AD, PLAYER_MX_PRO, PLAYER_MOBO, PLAYER_MOBO_PRO, PLAYER_VLC, PLAYER_VPLAYER, PLAYER_ROCKPLAYER, PLAYER_QQPLAYER, PLAYER_LIANGWAN, PLAYER_SYSTEM};
+        final String[] allPlayers = {"内置播放器（IJK V3）", "自动检测", "MX Player (免费版)", "MX Player (专业版)", "MoboPlayer", "MoboPlayer Pro", "VLC", "VPlayer", "RockPlaye Liter", "QQ影音", "凉腕播放器", "系统播放器"};
+        final int[] allValues = {PLAYER_BUILTIN, PLAYER_AUTO, PLAYER_MX_AD, PLAYER_MX_PRO, PLAYER_MOBO, PLAYER_MOBO_PRO, PLAYER_VLC, PLAYER_VPLAYER, PLAYER_ROCKPLAYER, PLAYER_QQPLAYER, PLAYER_LIANGWAN, PLAYER_SYSTEM};
 
         // 低版本过滤掉内置播放器
         ArrayList filteredPlayers = new ArrayList();

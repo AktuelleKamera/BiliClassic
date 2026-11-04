@@ -42,6 +42,13 @@ public class PrivateMsgListActivity extends BaseActivity {
 
         listView = (ListView) findViewById(R.id.list_view);
         emptyView = (TextView) findViewById(R.id.empty_view);
+        boolean night = tv.biliclassic.util.UiSkin.isNight();
+        if (listView != null) {
+            listView.setBackgroundColor(night ? 0xFF171717 : 0xFFF5F5F5);
+        }
+        if (emptyView != null) {
+            emptyView.setTextColor(night ? 0xFFCCCCCC : 0xFF999999);
+        }
 
         adapter = new PrivateMsgSessionAdapter(this, sessionList, userMap);
         listView.setAdapter(adapter);

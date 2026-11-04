@@ -162,7 +162,8 @@ public class NewAnimeFragment extends Fragment {
                 animeList.setCacheColorHint(0x00000000);
                 animeList.setClipToPadding(false);
                 animeList.setFocusable(true);
-                animeList.setFocusableInTouchMode(true);
+                animeList.setFocusableInTouchMode(false);
+                animeList.setItemsCanFocus(false);
                 // 列表行绘制缓存（堆 >= 16MB 才开，低内存用 LOW）
                 tv.biliclassic.util.SdkHelper.enableListDrawingCache(animeList);
                 animeList.setVisibility(View.VISIBLE);

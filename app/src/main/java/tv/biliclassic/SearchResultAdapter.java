@@ -310,9 +310,12 @@ public class SearchResultAdapter extends BaseObservableAdapter<SearchActivity.Se
         } else {
             try {
                 tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(convertView,
-                        R.drawable.item_click_effect_white);
+                        tv.biliclassic.util.UiSkin.isNight()
+                                ? R.drawable.item_click_effect_grey
+                                : R.drawable.item_click_effect_white);
             } catch (Exception e) {
-                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0xFFFFFFFF);
+                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView,
+                        tv.biliclassic.util.UiSkin.isNight() ? 0xFF222222 : 0xFFFFFFFF);
             }
         }
     }

@@ -755,6 +755,7 @@ public class ReplyListActivity extends BaseActivity {
 
         tvEmpty.setVisibility(View.GONE);
         footerBar.showLoading();
+        final boolean firstPage = allReplies.size() == 0;
 
         new Thread(new Runnable() {
             @Override
@@ -832,7 +833,7 @@ public class ReplyListActivity extends BaseActivity {
 
                             // 触摸用户不预选高亮（选中态会常驻不消失）；
                             // 按键用户首次按方向键时由 dispatchKeyEvent 从第一条/根评论开始
-                            if (allReplies.size() > 0 && mNavIndex < 0) {
+                            if (firstPage && allReplies.size() > 0 && mNavIndex < 0) {
                                 lv.setSelection(0);
                             }
 

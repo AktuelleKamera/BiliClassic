@@ -84,8 +84,11 @@ public class PrivateMsgSessionAdapter extends BaseObservableAdapter<PrivateMsgSe
         }
         avatarUrl = PrivateMsgApi.avatarUrl(avatarUrl);
 
+        boolean night = tv.biliclassic.util.UiSkin.isNight();
         name.setText(displayName);
+        name.setTextColor(night ? 0xFFF2F2F2 : 0xFF333333);
         content.setText(previewText(session));
+        content.setTextColor(night ? 0xFFCCCCCC : 0xFF999999);
         if (session.unread > 0) {
             unread.setText(String.valueOf(session.unread));
             unread.setVisibility(View.VISIBLE);
@@ -98,16 +101,17 @@ public class PrivateMsgSessionAdapter extends BaseObservableAdapter<PrivateMsgSe
         } else {
             try {
                 tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(convertView,
-                        R.drawable.item_click_effect_white);
+                        night ? R.drawable.item_click_effect_grey
+                                : R.drawable.item_click_effect_white);
             } catch (Exception e) {
-                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView, 0xFFF5F5F5);
+                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(convertView,
+                        night ? 0xFF222222 : 0xFFF5F5F5);
             }
         }
 
         avatar.setImageResource(R.drawable.bili_default_avatar);
         addAvatarBorder(avatar);
         ImageLoader.bind(avatar, avatarUrl, R.drawable.bili_default_avatar, 48, 48);
-        tv.biliclassic.util.UiSkin.recolorItem(convertView);
         return convertView;
     }
 

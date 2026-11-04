@@ -153,11 +153,22 @@ public abstract class BaseActivity extends FragmentActivity {
     @Override
     public void onContentChanged() {
         super.onContentChanged();
+        if (SdkHelper.getSdkInt() < 4) {
+            SdkHelper.disableSoundEffects(getWindow().getDecorView());
+        }
         tv.biliclassic.util.CrownScrollHelper.attachToWindow(this);
         wireTitleActions();
         wireTitlePress();
         tv.biliclassic.util.UiSkin.apply(this);
         installSkinReloader();
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (SdkHelper.getSdkInt() < 4 && ev.getAction() == MotionEvent.ACTION_DOWN) {
+            SdkHelper.disableSoundEffects(getWindow().getDecorView());
+        }
+        return super.dispatchTouchEvent(ev);
     }
 
     private long mLastSkinReload = 0L;
@@ -1276,5 +1287,24 @@ public abstract class BaseActivity extends FragmentActivity {
     public void onLowMemory() {
         super.onLowMemory();
         tv.biliclassic.util.GlobalImageCache.getInstance().clear();
+    }
+
+    @Override
+    public void startActivity(Intent intent) {
+        try {
+            super.startActivity(tv.biliclassic.util.OrientationAlias.wrap(this, intent));
+        } catch (android.content.ActivityNotFoundException e) {
+            super.startActivity(intent);
+        }
+    }
+
+    @Override
+    public void startActivityForResult(Intent intent, int requestCode) {
+        try {
+            super.startActivityForResult(
+                    tv.biliclassic.util.OrientationAlias.wrap(this, intent), requestCode);
+        } catch (android.content.ActivityNotFoundException e) {
+            super.startActivityForResult(intent, requestCode);
+        }
     }
 }

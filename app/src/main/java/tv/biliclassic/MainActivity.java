@@ -164,6 +164,15 @@ public class MainActivity extends BaseActivity {
         }
 
         setContentView(R.layout.activity_main);
+        final android.view.View contentRoot = findViewById(android.R.id.content);
+        if (contentRoot != null) {
+            contentRoot.setFocusableInTouchMode(true);
+            contentRoot.post(new Runnable() {
+                public void run() {
+                    contentRoot.requestFocus();
+                }
+            });
+        }
         tv.biliclassic.util.PerfLog.init();
         tv.biliclassic.util.PerfLog.attachGlobalFrameWatcher(findViewById(android.R.id.content));
         checkLegacyVersionCompatibility();

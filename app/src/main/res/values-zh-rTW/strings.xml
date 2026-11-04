@@ -90,7 +90,6 @@
     <string name="bili_about_staff">STAFF</string>
     <string name="bili_about_9bishi">⑨bishi</string>
     <string name="bili_about_skyler1n">Skyler1n</string>
-    <string name="bili_about_bbcallen">bbcallen</string>
     <string name="bili_about_cctyl">cctyl</string>
     <string name="bili_about_xiaosuyang">小蘇陽</string>
     <string name="bili_about_wcxawa">wcxawa</string>
@@ -250,24 +249,9 @@
     <string name="keybinding_toast_done">按鍵綁定完成</string>
     <string name="keybinding_toast_skip">已跳過按鍵綁定</string>
     <string name="keybinding_toast_exit">已退出按鍵綁定</string>
-    <string name="settingsactivity_setmessage_ostwind">目前系統不支援內建播放器，線上播放建議使用旋風(Ostwind)播放器。\n\n是否切換到旋風播放器並開啟線上播放？</string>
     <string name="activity_settings_keyboard">按鍵設定</string>
     <string name="activity_settings_round_screen_center">圓形螢幕居中</string>
     <string name="activity_settings_round_screen_center_desc">在圓形螢幕上居中顯示內容</string>
-    <string name="activity_settings_view_run_log">查看執行日誌</string>
-    <string name="activity_settings_enable_run_log">開啟執行日誌</string>
-    <string name="activity_settings_enable_run_log_desc">開啟後將執行與彈幕繪製日誌寫入檔案，用於排查問題（關閉可節省性能）</string>
-    <string name="activity_settings_run_log_on">已開啟執行日誌</string>
-    <string name="activity_settings_run_log_off">已關閉執行日誌</string>
-    <string name="activity_settings_run_log_empty">暫無日誌</string>
-    <string name="activity_settings_run_log_title">執行日誌</string>
-    <string name="activity_settings_run_log_subject">BiliClassic 日誌</string>
-    <string name="activity_settings_run_log_share_fail">分享失敗: %1$s</string>
-    <string name="ostwind_no_decoder_title">未找到軟解解碼器</string>
-    <string name="ostwind_no_decoder_msg">當前裝置沒有可用的軟解解碼器，請安裝MoboPlayer軟解包後重試。可加群754725037下載。\n\nAndroid 1.6+可改用IJK播放器嘗試。</string>
-    <string name="ostwind_no_decoder_mobo_hint">你可以安裝MoboPlayer的解碼包來使用Ostwind播放器的軟解。</string>
-    <string name="ostwind_no_decoder_ok">確定</string>
-    <string name="ostwind_error">播放失敗，請檢查網路或重新選擇播放器</string>
     <string name="activity_settings_night_mode">夜間模式</string>
     <string name="activity_settings_night_mode_desc">使用深色紋理背景</string>
 
@@ -433,6 +417,7 @@
     <string name="profile_loading">載入中……</string>
     <string name="publish_time_empty">發布時間: --</string>
     <string name="quality_1080p">1080P 超清</string>
+    <string name="quality_1080p60">1080P60 超清60幀</string>
     <string name="quality_1080p_plus">1080P+ 超清+</string>
     <string name="quality_4k">4K 超高清</string>
     <string name="quality_8k">8K 超高清</string>
@@ -638,7 +623,6 @@
     <string name="player_recommend_builtin">• 內建播放器（IJK V3）：推薦使用，內建軟體解碼器和系統解碼器，無須安裝第三方應用程式。可在設定中切換解碼方式（IJK軟解/系統解碼器）。</string>
     <string name="player_recommend_lightweight">• VPlayer / MoboPlayer / RockPlaye Liter：輕量級播放器，部分老裝置兼容性較好，可作為備選。</string>
     <string name="player_recommend_mx_vlc">• MX Player / VLC：自帶解碼器，支援H.264 High Profile，在老裝置上播放流暢，推薦使用。</string>
-    <string name="player_recommend_old_android">• 建議：如果你的裝置是Android 1.6以下，請優先選擇內建播放器（Ostwind）或MoboPlayer。</string>
     <string name="player_recommend_system">• 系統播放器：依賴手機硬體解碼。不支援H.264 High Profile軟解，部分影片可能無法播放或只有聲音。</string>
     <string name="player_settings">播放器設定</string>
     <string name="portrait_adapted_devices">* 已自動相容裝置：HTC ChaCha / 三星Galaxy Y Pro / 三星Galaxy Pro / 索尼A5100</string>
@@ -727,4 +711,6 @@
     <string name="recommend_columns_value">%1$d 列</string>
     <string name="player_resume_tip_fmt">已定位到 %1$s</string>
     <string name="player_resume_from_start">從頭播放</string>
+    <string name="decoder_title_split_audio">僅軟解影片</string>
+    <string name="decoder_summary_split_audio">軟解時使用MediaPlayer播放影片音訊</string>
 </resources>
