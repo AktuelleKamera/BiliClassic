@@ -6,7 +6,6 @@ import org.json.JSONObject;
 
 /**
  * 转码播放取地址工具：把原始视频地址交给 SCF 转成 240P H.264 Baseline，
- * 供 VideoDetailFragment / Ostwind / BiliPlayer 共用（取地址阶段要显示在小电视加载动画里）。
  *
  * 注意：转码是同步长耗时（几百秒），必须在后台线程调用。
  */
@@ -22,7 +21,7 @@ public class ConvertPlayUtil {
     private static boolean sTooLarge;
 
     /** AUTH_MASKED 逐字符 XOR 0x5A，
-        避免密钥明文直接出现在 dex 字符串里（仅防随手窃取，非强加密）。 */
+        避免密钥明文直接出现在 dex 字符串里（其实根本没有任何用，因为这是GPLv3开源的，目前防护主要是在服务端，这只能防君子不防小人233） */
     private static final int[] AUTH_MASKED = {
         62,59,104,63,106,63,60,62,111,107,57,105,62,108,106,107,60,108,104,99,63,99,63,98,
         109,98,59,59,111,57,105,104,107,98,110,107,99,62,111,59,63,56,110,111,99,57,108,105,
@@ -69,7 +68,7 @@ public class ConvertPlayUtil {
     }
 
     /**
-     * 转码播放：开启且系统<5.0 时把地址交给 SCF 转成 240P；失败则回退原地址。
+     * 转码播放：开启且系统<5.0 时把地址转成240P；失败则回退原地址。
      * 必须在后台线程调用。
      */
     public static String convertPlayUrl(String rawUrl, String name) {
@@ -97,11 +96,25 @@ public class ConvertPlayUtil {
         // 优先新服务器；失败再回退旧服务器
         for (int i = 0; i < bases.length; i++) {
             String url = tryBase(bases[i], srcUrl);
-            if (url != null) return url;
-            // 源视频过大：换服务器也没用，直接回退原画质
+            if (url != null) {
+                if (isHostResolvable(url)) return url;
+                Log.e(TAG, "transcoded host unresolved: " + url);
+            }
+            // Դ��Ƶ���󣺻�������Ҳû�ã�ֱ�ӻ���ԭ����
             if (sTooLarge) return null;
         }
         return null;
+    }
+
+    private static boolean isHostResolvable(String url) {
+        try {
+            String host = new java.net.URL(url).getHost();
+            if (host == null || host.length() == 0) return false;
+            java.net.InetAddress.getByName(host);
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     /** 针对某台服务器：注册/复用 token，转码；token 失效则重注册重试一次。 */

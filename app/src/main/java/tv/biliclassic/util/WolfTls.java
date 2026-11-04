@@ -28,7 +28,9 @@ public final class WolfTls {
             try {
                 System.loadLibrary("wolfssl");
                 loaded = true;
-            } catch (Throwable ignored) {
+                android.util.Log.d("WolfTls", "libwolfssl loaded");
+            } catch (Throwable t) {
+                android.util.Log.w("WolfTls", "libwolfssl load failed: " + t);
             }
             sLoaded = Boolean.valueOf(loaded);
         }

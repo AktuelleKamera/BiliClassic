@@ -70,7 +70,7 @@ public class LocalStreamProxy {
     private boolean mPfBroken = false; // 远端连接失效，需要从当前偏移重连
     private long mPfResetTarget = -1;  // seek：要求预读线程改从该偏移拉取
     private long mTotalLength = -1;    // 远端文件总长（自 Content-Range 解析）
-    private HttpURLConnection mPfConn;
+    private RemoteConn mPfConn;
     private InputStream mPfRemote;
     private Thread mPfThread;
     private long mLastPfLogElapsed;
@@ -183,6 +183,101 @@ public class LocalStreamProxy {
             }
         } catch (Exception e) {
             Log.e(TAG, "Failed to create SSL factory", e);
+        }
+    }
+
+    private interface RemoteConn {
+        void setReadTimeout(int timeoutMs);
+        int getResponseCode() throws IOException;
+        String getHeaderField(String name);
+        long getContentLength();
+        String getContentType();
+        InputStream getInputStream() throws IOException;
+        InputStream getErrorStream();
+        void disconnect();
+    }
+
+    private static final class HttpRemoteConn implements RemoteConn {
+        private final HttpURLConnection conn;
+
+        HttpRemoteConn(HttpURLConnection conn) {
+            this.conn = conn;
+        }
+
+        public void setReadTimeout(int timeoutMs) {
+            conn.setReadTimeout(timeoutMs);
+        }
+
+        public int getResponseCode() throws IOException {
+            return conn.getResponseCode();
+        }
+
+        public String getHeaderField(String name) {
+            return conn.getHeaderField(name);
+        }
+
+        public long getContentLength() {
+            return LocalStreamProxy.getContentLength(conn);
+        }
+
+        public String getContentType() {
+            return conn.getContentType();
+        }
+
+        public InputStream getInputStream() throws IOException {
+            return conn.getInputStream();
+        }
+
+        public InputStream getErrorStream() {
+            return conn.getErrorStream();
+        }
+
+        public void disconnect() {
+            try {
+                conn.disconnect();
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    private static final class WolfRemoteConn implements RemoteConn {
+        private final tv.biliclassic.util.WolfTlsConnection conn;
+
+        WolfRemoteConn(tv.biliclassic.util.WolfTlsConnection conn) {
+            this.conn = conn;
+        }
+
+        public void setReadTimeout(int timeoutMs) {
+            conn.setReadTimeout(timeoutMs);
+        }
+
+        public int getResponseCode() throws IOException {
+            return conn.getResponseCode();
+        }
+
+        public String getHeaderField(String name) {
+            return conn.getHeader(name);
+        }
+
+        public long getContentLength() {
+            return conn.getContentLength();
+        }
+
+        public String getContentType() {
+            String type = conn.getHeader("Content-Type");
+            return type != null ? type : "video/mp4";
+        }
+
+        public InputStream getInputStream() throws IOException {
+            return conn.getInputStream();
+        }
+
+        public InputStream getErrorStream() {
+            return null;
+        }
+
+        public void disconnect() {
+            conn.disconnect();
         }
     }
 
@@ -466,7 +561,7 @@ public class LocalStreamProxy {
 
     /** 读远端的 [start,end] 字节区间并全部返回；失败返回 null。 */
     private byte[] readRange(String targetUrl, long start, long end) {
-        HttpURLConnection conn = null;
+        RemoteConn conn = null;
         InputStream is = null;
         try {
             conn = openRemoteConnection(targetUrl, "bytes=" + start + "-" + end);
@@ -655,7 +750,7 @@ public class LocalStreamProxy {
 
     /** 打开从 offset 开始的远端流，解析总长度并复位缓冲窗口 */
     private void openPfRemote(long offset) throws IOException {
-        HttpURLConnection conn = openRemoteConnection(remoteUrl, "bytes=" + offset + "-");
+        RemoteConn conn = openRemoteConnection(remoteUrl, "bytes=" + offset + "-");
         // 预读连接用短读超时：远端静默断连时最多阻塞 10 秒就走断线重连，
         // 避免默认 60 秒超时期间消费端无数据可读（表现为播放冻结）
         try {
@@ -669,7 +764,7 @@ public class LocalStreamProxy {
         }
         long total = parseTotalFromContentRange(conn.getHeaderField("Content-Range"));
         if (total <= 0 && offset == 0) {
-            total = getContentLength(conn);
+            total = conn.getContentLength();
         }
         InputStream in = conn.getInputStream();
         synchronized (mPfLock) {
@@ -798,13 +893,13 @@ public class LocalStreamProxy {
         // 这样远端必然返回 Content-Range（含文件总长度）。
         String remoteRange = (rangeHeader != null) ? rangeHeader : "bytes=0-";
 
-        HttpURLConnection conn = openRemoteConnection(targetUrl, remoteRange);
+        RemoteConn conn = openRemoteConnection(targetUrl, remoteRange);
 
         int respCode = conn.getResponseCode();
         Log.d(TAG, "remote response=" + respCode + " target="
                 + (targetUrl == audioUrl ? "audio" : "video"));
         String contentType = conn.getContentType();
-        long contentLength = getContentLength(conn);
+        long contentLength = conn.getContentLength();
         String contentRange = conn.getHeaderField("Content-Range");
 
         Log.d(TAG, "req line=" + requestLine + " clientRange=" + rangeHeader
@@ -861,31 +956,43 @@ public class LocalStreamProxy {
         }
     }
 
-    private HttpURLConnection openRemoteConnection(String targetUrl, String rangeHeader) throws IOException {
-        // 优先明文 HTTP：本 app 目标设备（Android 2.x~4.x）的 TLS 栈最高只支持
-        // TLS 1.0，B 站 CDN 要求 TLS 1.2+ 会直接拒绝握手；upos CDN 对明文 HTTP
-        // 完全可用（流地址为带签名的临时链接）。HTTP 失败时再回退 HTTPS。
+    private RemoteConn openRemoteConnection(String targetUrl, String rangeHeader) throws IOException {
+        // Android 1.0-4.4 ??? TLS ????? TLS 1.0??? CDN ???
+        // TLS 1.2??? WolfSSL ???? WolfSSL ???????????
+        // ??? HTTP/HTTPS ?????
+        if (targetUrl != null && targetUrl.startsWith("https://")
+                && tv.biliclassic.util.WolfTls.isAvailable()) {
+            try {
+                RemoteConn wolf = openWolfConnection(targetUrl, rangeHeader);
+                remotePreferHttps = Boolean.TRUE;
+                Log.d(TAG, "WolfSSL playback TLS enabled");
+                return wolf;
+            } catch (IOException e) {
+                Log.w(TAG, "WolfSSL fetch failed (" + e.getMessage()
+                        + "), fallback to system connection");
+            }
+        }
+
+        // ??? HTTP???? TLS ?????? TLS 1.0????????????
+        // HTTP ??? CDN ?? HTTPS ?????
         String primary = targetUrl;
         if (primary != null && primary.startsWith("https://")) {
             primary = "http://" + primary.substring("https://".length());
         }
 
-        // 已探测过该远端只收 HTTPS 时直接走 HTTPS，避免每个 Range 请求都白跑一趟明文
         Boolean preferHttps = remotePreferHttps;
         if (preferHttps != null && preferHttps.booleanValue()) {
             return openRemoteConnectionImpl(targetUrl, rangeHeader);
         }
 
         try {
-            HttpURLConnection conn = openRemoteConnectionImpl(primary, rangeHeader);
+            RemoteConn conn = openRemoteConnectionImpl(primary, rangeHeader);
             int code = conn.getResponseCode();
             boolean ok = (code >= 200 && code < 300);
             if (!ok && !primary.equals(targetUrl)) {
-                // mCDN 等节点对明文请求"成功建立连接但返回 400/403"，
-                // 不抛 IOException，必须显式按状态码回退 HTTPS
                 try { conn.disconnect(); } catch (Throwable ignored) {}
                 Log.w(TAG, "HTTP fetch got status " + code + ", retry over HTTPS");
-                HttpURLConnection sslConn = openRemoteConnectionImpl(targetUrl, rangeHeader);
+                RemoteConn sslConn = openRemoteConnectionImpl(targetUrl, rangeHeader);
                 remotePreferHttps = Boolean.TRUE;
                 return sslConn;
             }
@@ -896,7 +1003,7 @@ public class LocalStreamProxy {
         } catch (IOException e) {
             if (primary != null && !primary.equals(targetUrl)) {
                 Log.w(TAG, "HTTP fetch failed (" + e.getMessage() + "), retry over HTTPS");
-                HttpURLConnection sslConn = openRemoteConnectionImpl(targetUrl, rangeHeader);
+                RemoteConn sslConn = openRemoteConnectionImpl(targetUrl, rangeHeader);
                 remotePreferHttps = Boolean.TRUE;
                 return sslConn;
             }
@@ -904,7 +1011,17 @@ public class LocalStreamProxy {
         }
     }
 
-    private HttpURLConnection openRemoteConnectionImpl(String targetUrl, String rangeHeader) throws IOException {
+    private RemoteConn openRemoteConnectionImpl(String targetUrl, String rangeHeader) throws IOException {
+        if (targetUrl.startsWith("https://")
+                && tv.biliclassic.util.WolfTls.isAvailable()) {
+            try {
+                return openWolfConnection(targetUrl, rangeHeader);
+            } catch (IOException e) {
+                Log.w(TAG, "WolfSSL retry failed (" + e.getMessage()
+                        + "), fallback to system TLS");
+            }
+        }
+
         URL url = new URL(targetUrl);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 
@@ -917,13 +1034,11 @@ public class LocalStreamProxy {
         conn.setConnectTimeout(15000);
         conn.setReadTimeout(60000);
 
-        // 先应用防盗链请求头（Referer/Cookie/User-Agent 等）
         if (requestHeaders != null) {
             for (Map.Entry<String, String> e : requestHeaders.entrySet()) {
                 conn.setRequestProperty(e.getKey(), e.getValue());
             }
         }
-        // 覆盖 UA 为现代浏览器 UA（B 站 CDN 对老 Android UA 返回 403）
         conn.setRequestProperty("User-Agent", tv.biliclassic.util.NetWorkUtil.USER_AGENT_WEB);
         conn.setRequestProperty("Accept", "*/*");
 
@@ -933,12 +1048,42 @@ public class LocalStreamProxy {
 
         conn.setInstanceFollowRedirects(true);
         conn.connect();
-        return conn;
+        return new HttpRemoteConn(conn);
     }
 
-    /**
-     * 读取 Content-Length（长整型，避免 int 溢出；chunked 时返回 -1）。
-     */
+    private RemoteConn openWolfConnection(String targetUrl, String rangeHeader) throws IOException {
+        String currentUrl = targetUrl;
+        for (int redirect = 0; redirect < 6; redirect++) {
+            tv.biliclassic.util.WolfTlsConnection conn =
+                    new tv.biliclassic.util.WolfTlsConnection(currentUrl, null);
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(60000);
+            if (requestHeaders != null) {
+                for (Map.Entry<String, String> e : requestHeaders.entrySet()) {
+                    conn.setRequestProperty(e.getKey(), e.getValue());
+                }
+            }
+            conn.setRequestProperty("User-Agent", tv.biliclassic.util.NetWorkUtil.USER_AGENT_WEB);
+            conn.setRequestProperty("Accept", "*/*");
+            if (rangeHeader != null) {
+                conn.setRequestProperty("Range", rangeHeader);
+            }
+            conn.connect();
+            int code = conn.getResponseCode();
+            if (code >= 300 && code < 400) {
+                String location = conn.getHeader("Location");
+                conn.disconnect();
+                if (location == null || location.length() == 0) {
+                    throw new IOException("TLS redirect without Location: " + code);
+                }
+                currentUrl = new URL(new URL(currentUrl), location).toString();
+                continue;
+            }
+            return new WolfRemoteConn(conn);
+        }
+        throw new IOException("too many TLS redirects");
+    }
+
     private static long getContentLength(HttpURLConnection conn) {
         try {
             String v = conn.getHeaderField("Content-Length");

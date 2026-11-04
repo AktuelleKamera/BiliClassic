@@ -63,13 +63,12 @@ public class VideoDownloadManager {
         mStarted = true;
         HandlerThread thread = new HandlerThread("VideoDownload");
         thread.start();
-        mWorkHandler = new Handler(thread.getLooper(), new Handler.Callback() {
+        mWorkHandler = new Handler(thread.getLooper()) {
             @Override
-            public boolean handleMessage(Message msg) {
+            public void handleMessage(Message msg) {
                 onHandleMessage(msg);
-                return true;
             }
-        });
+        };
     }
 
     public void stop() {
