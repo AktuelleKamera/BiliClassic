@@ -22,6 +22,7 @@ import tv.biliclassic.VideoDetailActivity;
 import tv.biliclassic.api.HistoryApi;
 import tv.biliclassic.model.ApiResult;
 import tv.biliclassic.model.VideoCard;
+import tv.biliclassic.util.LocalHistoryStore;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.widget.LoadingBarView;
@@ -149,6 +150,26 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
     }
 
     /** 已有数据被移走再挂回时：不重复请求，按 mVideoList 重建。 */
+    private void loadLocalHistory() {
+        List<VideoCard> local = LocalHistoryStore.load();
+        mVideoList.clear();
+        mVideoList.addAll(local);
+        mIsLoading = false;
+        mHasError = false;
+        mIsEnd = true;
+        mFirstLoad = false;
+        stopRefreshing();
+        mAdapter.notifyDataSetChanged();
+        if (local.size() == 0) {
+            mLoadingBar.showStatus(getString(R.string.no_history));
+            mHistoryList.setVisibility(View.GONE);
+        } else {
+            mLoadingBar.hide();
+            mHistoryList.setVisibility(View.VISIBLE);
+            mHistoryList.setSelection(0);
+        }
+    }
+
     private void rebuildList() {
         if (mAdapter == null) return;
         mAdapter.notifyDataSetChanged();
@@ -180,9 +201,7 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
         // 未登录：历史记录需要 Cookie
         String cookies = SharedPreferencesUtil.getString("cookies", "");
         if (cookies == null || cookies.length() == 0) {
-            mLoadingBar.showStatus(getString(R.string.not_logged_in_yet));
-            mFirstLoad = false;
-            stopRefreshing();
+            loadLocalHistory();
             return;
         }
 

@@ -126,6 +126,7 @@ public class HistoryApi {
     public static void report(final long aid, final long cid, final int progressMs) {
         if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.PRIVACY_MODE, false)) return;
         if (aid == 0 || cid == 0) return;
+        tv.biliclassic.util.LocalHistoryStore.updateProgress(aid, cid, progressMs);
         final int progressSec = progressMs / 1000;
 
         new Thread(new Runnable() {

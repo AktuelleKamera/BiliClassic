@@ -19,6 +19,7 @@ import java.util.List;
 import tv.biliclassic.api.HistoryApi;
 import tv.biliclassic.model.ApiResult;
 import tv.biliclassic.model.VideoCard;
+import tv.biliclassic.util.LocalHistoryStore;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.widget.LoadingBarView;
@@ -237,9 +238,47 @@ public class HistoryActivity extends BaseActivity {
         loadHistory();
     }
 
+    private boolean showLocalHistoryIfAvailable() {
+        if (LocalHistoryStore.load().size() == 0) return false;
+        showLocalHistory();
+        return true;
+    }
+
+    private void showLocalHistory() {
+        List<VideoCard> local = LocalHistoryStore.load();
+        videoList.clear();
+        videoList.addAll(local);
+        adapter.notifyDataSetChanged();
+        isLoading = false;
+        isEnd = true;
+        mHasError = false;
+        footerBar.hide();
+        progressBar.hide();
+        if (local.size() == 0) {
+            emptyView.setText(getString(R.string.no_history));
+            emptyView.setVisibility(View.VISIBLE);
+            historyList.setVisibility(View.GONE);
+        } else {
+            emptyView.setVisibility(View.GONE);
+            historyList.setVisibility(View.VISIBLE);
+            historyList.setSelection(0);
+        }
+    }
+
     private void loadHistory() {
-        // 检查网络
+        String cookies = SharedPreferencesUtil.getString("cookies", "");
+        Log.d(TAG, "loadHistory - cookies length: " + (cookies == null ? "null"
+                : String.valueOf(cookies.length())));
+
+        if (cookies == null || cookies.length() == 0) {
+            Log.d(TAG, "loadHistory - 未登录，显示本地历史");
+            progressBar.hide();
+            showLocalHistory();
+            return;
+        }
+
         if (!NetWorkUtil.isNetworkAvailable(HistoryActivity.this)) {
+            if (showLocalHistoryIfAvailable()) return;
             mainHandler.post(new Runnable() {
                 public void run() {
                     progressBar.hide();
@@ -260,22 +299,6 @@ public class HistoryActivity extends BaseActivity {
             emptyView.setText(getString(R.string.load_failed_tap_retry));
             emptyView.setVisibility(View.VISIBLE);
             progressBar.hide();
-            return;
-        }
-
-        String cookies = SharedPreferencesUtil.getString("cookies", "");
-        Log.d(TAG, "loadHistory - cookies length: " + (cookies == null ? "null" : String.valueOf(cookies.length())));
-
-        if (cookies == null || cookies.length() == 0) {
-            Log.e(TAG, "loadHistory - 未登录");
-            mainHandler.post(new Runnable() {
-                public void run() {
-                    progressBar.hide();
-                    emptyView.setText(getString(R.string.not_logged_in_yet));
-                    emptyView.setVisibility(View.VISIBLE);
-                    historyList.setVisibility(View.GONE);
-                }
-            });
             return;
         }
 

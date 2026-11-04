@@ -1029,25 +1029,6 @@ public class VideoDetailFragment extends Fragment {
                                         final int resumeMs = computeResumeMs(playerData, targetCid);
                                         boolean hasDashAudio = playerData.audioUrl != null
                                                 && playerData.audioUrl.length() > 0;
-                                        // Ostwind 播放器：直接进 Ostwind，不走 PlayerAnimActivity
-                                        // （DASH 音视频分离流 MediaPlayer 解析不了，回退内置播放器）
-                                        if (pref == tv.biliclassic.SettingsActivity.PLAYER_OSTWIND && !hasDashAudio) {
-                                            Intent wIntent = new Intent(getActivity(),
-                                                    tv.biliclassic.player.OstwindPlayerActivity.class);
-                                            wIntent.putExtra("video_url", videoUrl);
-                                            String cookie = tv.biliclassic.util.CookieGenerator.getCookieString(true);
-                                            if (cookie != null && cookie.length() > 0) {
-                                                wIntent.putExtra("cookie", cookie);
-                                            }
-                                            wIntent.putExtra("agent", tv.biliclassic.util.NetWorkUtil.USER_AGENT_WEB);
-                                            wIntent.putExtra("video_title", tempPartTitle);
-                                            wIntent.putExtra("aid", tempAid);
-                                            wIntent.putExtra("cid", targetCid);
-                                            wIntent.putExtra("resume_position", resumeMs);
-                                            isPlayButtonClicked = false;
-                                            startActivity(wIntent);
-                                            return;
-                                        }
                                         // 内置播放器（PLAYER_BUILTIN）直接进 BiliPlayerActivity；
                                         // 其余（外部/系统/自动）统一走 PlayerAnimActivity 分派，
                                         // 由 PlayerAnimActivity 按播放器偏好处理在线播放（含本地代理跳外部）
@@ -1069,6 +1050,9 @@ public class VideoDetailFragment extends Fragment {
                                             intent.putExtra("part_index", tempPartIndex);
                                             if (videoInfo != null) {
                                                 intent.putExtra("cover_url", videoInfo.cover);
+                                            if (videoInfo.staff != null && videoInfo.staff.size() > 0) {
+                                                intent.putExtra("up_name", videoInfo.staff.get(0).name);
+                                            }
                                             }
                                             if (cidArray != null) {
                                                 intent.putExtra("cids", cidArray);
@@ -1095,6 +1079,9 @@ public class VideoDetailFragment extends Fragment {
                                         pIntent.putExtra("part_index", tempPartIndex);
                                         if (videoInfo != null) {
                                             pIntent.putExtra("cover_url", videoInfo.cover);
+                                            if (videoInfo.staff != null && videoInfo.staff.size() > 0) {
+                                                pIntent.putExtra("up_name", videoInfo.staff.get(0).name);
+                                            }
                                         }
                                         if (cidArray != null) {
                                             pIntent.putExtra("cids", cidArray);
@@ -1167,6 +1154,9 @@ public class VideoDetailFragment extends Fragment {
                                     intent.putExtra("part_index", tempPartIndex);
                                     if (videoInfo != null) {
                                         intent.putExtra("cover_url", videoInfo.cover);
+                                            if (videoInfo.staff != null && videoInfo.staff.size() > 0) {
+                                                intent.putExtra("up_name", videoInfo.staff.get(0).name);
+                                            }
                                     }
                                     if (cidArray != null) {
                                         intent.putExtra("cids", cidArray);
@@ -1254,6 +1244,9 @@ public class VideoDetailFragment extends Fragment {
         intent.putExtra("offline_mode", true);
         if (videoInfo != null) {
             intent.putExtra("cover_url", videoInfo.cover);
+                                            if (videoInfo.staff != null && videoInfo.staff.size() > 0) {
+                                                intent.putExtra("up_name", videoInfo.staff.get(0).name);
+                                            }
         }
         intent.putExtra("current_qn", qualityQn);
         if (qualityName != null && qualityName.length() > 0) {
