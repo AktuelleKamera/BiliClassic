@@ -86,6 +86,16 @@ public class SdkHelper {
         }
     }
 
+    public static void setMarqueeRepeatLimit(android.widget.TextView view, int limit) {
+        if (view == null) return;
+        try {
+            java.lang.reflect.Method m = android.widget.TextView.class
+                    .getMethod("setMarqueeRepeatLimit", int.class);
+            m.invoke(view, Integer.valueOf(limit));
+        } catch (Throwable ignored) {
+        }
+    }
+
     /**
      * 获取 AlertDialog 的按钮（API 3+ 才有 AlertDialog.getButton）。API<3 平台上没有该方法，
      * 若在字节码里直接引用，verifier 会在类加载时因方法不存在而拒绝整个类（VerifyError）。
@@ -342,5 +352,46 @@ public class SdkHelper {
         if (context == null) return null;
         if (getSdkInt() >= 11) return context;
         return new android.view.ContextThemeWrapper(context, tv.biliclassic.R.style.AppDialog);
+    }
+
+    private static boolean sSoundEffectLookupDone;
+    private static java.lang.reflect.Method sSetSoundEffectsEnabled;
+    private static java.lang.reflect.Field sSoundEffectsEnabledField;
+
+    /**
+     * Android 1.0/1.1 的 ViewRoot.playSoundEffect 会因 AudioManager 为空直接 NPE。
+     * 老系统递归关闭 View 的点击音效，避免普通点击按钮导致进程崩溃。
+     */
+    public static void disableSoundEffects(android.view.View view) {
+        if (view == null) return;
+        if (!sSoundEffectLookupDone) {
+            sSoundEffectLookupDone = true;
+            try {
+                sSetSoundEffectsEnabled = android.view.View.class
+                        .getMethod("setSoundEffectsEnabled", boolean.class);
+            } catch (Throwable ignored) {
+            }
+            try {
+                sSoundEffectsEnabledField = android.view.View.class
+                        .getDeclaredField("mSoundEffectsEnabled");
+                sSoundEffectsEnabledField.setAccessible(true);
+            } catch (Throwable ignored) {
+            }
+        }
+        try {
+            if (sSetSoundEffectsEnabled != null) {
+                sSetSoundEffectsEnabled.invoke(view, Boolean.FALSE);
+            } else if (sSoundEffectsEnabledField != null) {
+                sSoundEffectsEnabledField.setBoolean(view, false);
+            }
+        } catch (Throwable ignored) {
+        }
+        if (view instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) view;
+            int count = group.getChildCount();
+            for (int i = 0; i < count; i++) {
+                disableSoundEffects(group.getChildAt(i));
+            }
+        }
     }
 }

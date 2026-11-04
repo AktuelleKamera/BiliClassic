@@ -66,7 +66,6 @@ public class GestureController {
 
     private SeekBar mSeekBar;
     private TextView mTvCurrentTime;
-    // true = 注入的 SeekBar 进度单位是毫秒（如 Ostwind 的 setMax(dur)）；
     // false = 千分制 0~1000（完整版 BiliPlayer）
     private boolean mSeekBarUsesMillis = false;
 
@@ -168,17 +167,15 @@ public class GestureController {
         mHandler = handler;
         mListener = listener;
         mProgreesFmt = activity.getString(R.string.PlayerController_toast_message_play_progress_fmt);
-        // ViewConfiguration.get(Context) 与 getScaledTouchSlop() 均为 API 3 方法，API 1 不存在；
-        // 直接引用会被 dalvik 严格校验器拒绝整类（VerifyError），改用 jar 内反射辅助类。
         android.view.ViewConfiguration vc = android.support.v4.view.ViewConfigHelper.get(activity);
         mTouchSlop = android.support.v4.view.ViewConfigHelper.getScaledTouchSlop(vc);
 
         mGestureView = rootView.findViewById(R.id.controller_underlay);
         // SurfaceView 硬解走硬件 overlay 时 window.screenBrightness 不生效，
         // 若布局提供了黑色遮罩层则用 alpha 模拟亮度
-        mBrightnessDimView = rootView.findViewById(R.id.brightness_dim_layer);
+        mBrightnessDimView = null;
         if (mBrightnessDimView != null) {
-            // 注意：API<9（Ostwind 目标设备）没有 View.setAlpha，XML 的 android:alpha
+            // 注意：API<9没有 View.setAlpha，XML 的 android:alpha
             // 会被忽略导致遮罩全黑。默认必须隐藏遮罩（不调亮度=不遮挡），
             // 并保证背景 alpha 透明。
             try {
@@ -362,12 +359,10 @@ public class GestureController {
         Log.d(TAG, "setDuration: " + duration + "ms");
     }
 
-    /** 注入 SeekBar / 时间 TextView（供复用布局 id 不一致的播放器，如 Ostwind） */
     public void setSeekBar(SeekBar seekBar) {
         this.mSeekBar = seekBar;
     }
 
-    /** 声明注入的 SeekBar 是否以毫秒为单位（Ostwind 传 true，完整版默认 false=千分制） */
     public void setSeekBarUsesMillis(boolean usesMillis) {
         this.mSeekBarUsesMillis = usesMillis;
     }
@@ -674,6 +669,25 @@ public class GestureController {
             return true;
         }
 
+        public boolean onSingleTapUp(MotionEvent e) {
+            if (SdkHelper.getSdkInt() >= 3) {
+                return false;
+            }
+            Log.d(TAG, "onSingleTapUp");
+            mLongPressHandler.removeCallbacks(mLongPressRunnable);
+            if (!enableGesture) {
+                return true;
+            }
+            if (mInGestureSeekingMode || mInHorizontalMoving || mInVerticalMoving ||
+                    mIsScaling || mIsPinching || mIsDragging) {
+                return false;
+            }
+            if (mListener != null) {
+                mListener.onToggleControls();
+            }
+            return true;
+        }
+
         public boolean onSingleTapConfirmed(MotionEvent e) {
             Log.d(TAG, "onSingleTapConfirmed");
             mLongPressHandler.removeCallbacks(mLongPressRunnable);
@@ -814,7 +828,6 @@ public class GestureController {
                 long startMs = mSeekBarUsesMillis
                         ? mSeekBarStartProgress
                         : ((long) mSeekBarStartProgress) * mDuration / seekBarMax;
-                // 快退快进手感：全屏滑动按 10 分钟换算（与 Ostwind 原版 GESTURE_SEEK_RANGE_MS 一致），
                 // 避免全屏=整段视频导致轻轻一滑就跳到结尾。
                 // 注意：千分制（BiliPlayer seekbar max=1000）这里必须换算成毫秒范围再乘以 deltaFactorX，
                 // 不能直接用 1000（那是刻度范围，对长视频会算成只退 1 秒，导致"进退+0秒"）。

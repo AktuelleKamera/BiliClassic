@@ -24,6 +24,7 @@ public class DecoderSettingsActivity extends BaseActivity {
     private static final String KEY_VIDEO_DISABLED = "player_vn";
     private static final String KEY_AUDIO_DISABLED = "player_an";
     private static final String KEY_OPENSLES = "aout_opensles";
+    private static final String KEY_SPLIT_AUDIO = "player_split_audio";
 
     // ---- UI ----
     private TextView textPictqSize;
@@ -34,6 +35,7 @@ public class DecoderSettingsActivity extends BaseActivity {
     private CheckBox checkboxVideoDisabled;
     private CheckBox checkboxAudioDisabled;
     private CheckBox checkboxOpenSLES;
+    private CheckBox checkboxSplitAudio;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +83,7 @@ public class DecoderSettingsActivity extends BaseActivity {
 
         setVisible(R.id.divider_audio, showAudio);
         setVisible(R.id.category_audio, showAudio);
+        setVisible(R.id.item_split_audio, showSwDecode);
         setVisible(R.id.item_opensles, showAudio);
     }
 
@@ -114,10 +117,13 @@ public class DecoderSettingsActivity extends BaseActivity {
         checkboxVideoDisabled = (CheckBox) findViewById(R.id.checkbox_video_disabled);
         checkboxAudioDisabled = (CheckBox) findViewById(R.id.checkbox_audio_disabled);
         checkboxOpenSLES = (CheckBox) findViewById(R.id.checkbox_opensles);
+        checkboxSplitAudio = (CheckBox) findViewById(R.id.checkbox_split_audio);
 
         setupCheckBoxClick(R.id.item_video_disabled, checkboxVideoDisabled, KEY_VIDEO_DISABLED, false);
         setupCheckBoxClick(R.id.item_audio_disabled, checkboxAudioDisabled, KEY_AUDIO_DISABLED, false);
         setupCheckBoxClick(R.id.item_opensles, checkboxOpenSLES, KEY_OPENSLES, false);
+        setupCheckBoxClick(R.id.item_split_audio, checkboxSplitAudio, KEY_SPLIT_AUDIO,
+                tv.biliclassic.util.SdkHelper.getSdkInt() < 3);
     }
 
     // ---- list处理 ----
@@ -252,6 +258,11 @@ public class DecoderSettingsActivity extends BaseActivity {
 
     public static boolean isAudioDisabled() {
         return SharedPreferencesUtil.getBoolean(KEY_AUDIO_DISABLED, false);
+    }
+
+    public static boolean isSplitAudioEnabled() {
+        return SharedPreferencesUtil.getBoolean(KEY_SPLIT_AUDIO,
+                tv.biliclassic.util.SdkHelper.getSdkInt() < 3);
     }
 
     private static int parseInt(String s, int def) {

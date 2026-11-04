@@ -345,46 +345,11 @@ public final class IjkMediaPlayer extends AbstractMediaPlayer {
     @Override
     public void setDataSource(Context context, Uri uri, Map<String, String> headers)
             throws IOException, IllegalArgumentException, SecurityException, IllegalStateException {
-        final String scheme = uri.getScheme();
-        if (ContentResolver.SCHEME_FILE.equals(scheme)) {
-            setDataSource(uri.getPath());
-            return;
-        } else if (ContentResolver.SCHEME_CONTENT.equals(scheme)
-                && Settings.AUTHORITY.equals(uri.getAuthority())) {
-            // Redirect ringtones to go directly to underlying provider
-            uri = RingtoneManager.getActualDefaultRingtoneUri(context,
-                    RingtoneManager.getDefaultType(uri));
-            if (uri == null) {
-                throw new FileNotFoundException("Failed to resolve default ringtone");
-            }
+        if (uri == null) {
+            throw new IllegalArgumentException("uri is null");
         }
-
-        AssetFileDescriptor fd = null;
-        try {
-            ContentResolver resolver = context.getContentResolver();
-            fd = resolver.openAssetFileDescriptor(uri, "r");
-            if (fd == null) {
-                return;
-            }
-            // Note: using getDeclaredLength so that our behavior is the same
-            // as previous versions when the content provider is returning
-            // a full file.
-            if (fd.getDeclaredLength() < 0) {
-                setDataSource(fd.getFileDescriptor());
-            } else {
-                setDataSource(fd.getFileDescriptor(), fd.getStartOffset(), fd.getDeclaredLength());
-            }
-            return;
-        } catch (SecurityException ignored) {
-        } catch (IOException ignored) {
-        } finally {
-            if (fd != null) {
-                fd.close();
-            }
-        }
-
-        Log.d(TAG, "Couldn't open file on client side, trying server side");
-
+        // Android 1.0 has no ContentResolver.openAssetFileDescriptor(); the
+        // player is always fed a direct URL/path by this app.
         setDataSource(uri.toString(), headers);
     }
 

@@ -433,6 +433,50 @@
             </LinearLayout>
 
             <!-- 分隔线 -->
+            <!-- ????????? -->
+            <LinearLayout
+                android:id="@+id/item_split_audio"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#FFFFFF"
+                android:padding="12dp"
+                android:clickable="true"
+                android:layout_marginTop="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/decoder_title_split_audio"
+                        android:textSize="15sp"
+                        android:textColor="#333333" />
+
+                    <CheckBox
+                        android:button="@drawable/ic_btn_holo_pink_checkbox"
+                        android:id="@+id/checkbox_split_audio"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:focusable="false"
+                        android:clickable="false" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/decoder_summary_split_audio"
+                    android:textSize="12sp"
+                    android:textColor="#999999" />
+
+            </LinearLayout>
+
             <View
                 android:id="@+id/divider_audio"
                 android:layout_width="match_parent"

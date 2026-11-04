@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+import java.util.zip.CRC32;
 
 /**
  * no-VFP 老设备用的 IJK ffmpeg 加载器。
@@ -27,6 +28,100 @@ public class IjkLegacyLoader {
     private static final String LIB_NAME = "libijkffmpeg-legacy.so";
 
     private static boolean sLoaded = false;
+    private static boolean sCupcakeLoaded = false;
+
+    /**
+     * Android 1.5 loader: the three libraries stay split, but their NEEDED
+     * entries are patched to this fixed extraction directory.
+     */
+    public static synchronized boolean loadCupcakeLibraries(Context ctx) {
+        if (sCupcakeLoaded) return true;
+        try {
+            File dir = new File(ctx.getFilesDir(), "ijk_api3");
+            if (!dir.isDirectory() && !dir.mkdirs()) return false;
+
+            String appApk = ctx.getPackageManager()
+                    .getApplicationInfo(ctx.getPackageName(), 0).sourceDir;
+            File player = new File(dir, "libijkplayer.so");
+            File sdl = new File(dir, "libijksdl.so");
+            File ffmpeg = new File(dir, "libijkffmpeg.so");
+            File cxxShim = new File(dir, "libcxxshim.so");
+            ZipFile apk = new ZipFile(appApk);
+            try {
+                extractApkEntry(apk, "assets/ijk-api3/armeabi/libcxxshim.so", cxxShim);
+                extractApkEntry(apk, "assets/ijk-api3/armeabi/libijksdl.so", sdl);
+                extractApkEntry(apk, "assets/ijk-api3/armeabi/libijkplayer.so", player);
+
+                if (tv.biliclassic.util.DeviceUtils.needsNoVfpIjk()) {
+                    PackageInfo pi = ctx.getPackageManager().getPackageInfo(PACKAGE_NAME, 0);
+                    String packApk = pi.applicationInfo != null
+                            ? pi.applicationInfo.sourceDir : null;
+                    if (packApk == null || !new File(packApk).exists()) {
+                        Log.e(TAG, "legacy pack apk missing for API 3");
+                        return false;
+                    }
+                    if (!extractNamedLib(packApk, LIB_NAME, ffmpeg)) {
+                        return false;
+                    }
+                } else {
+                    extractApkEntry(apk, "lib/armeabi/libijkffmpeg.so", ffmpeg);
+                }
+            } finally {
+                apk.close();
+            }
+
+            System.load(cxxShim.getAbsolutePath());
+            System.load(ffmpeg.getAbsolutePath());
+            System.load(sdl.getAbsolutePath());
+            System.load(player.getAbsolutePath());
+            sCupcakeLoaded = true;
+            Log.d(TAG, "loaded API 3 IJK libraries with cxx shim");
+            return true;
+        } catch (Throwable error) {
+            Log.e(TAG, "API 3 library load failed", error);
+            return false;
+        }
+    }
+
+    private static void extractApkEntry(ZipFile apk, String entryName, File out)
+            throws java.io.IOException {
+        ZipEntry entry = apk.getEntry(entryName);
+        if (entry == null) {
+            throw new java.io.IOException("APK entry missing: " + entryName);
+        }
+        if (matchesEntry(out, entry)) {
+            return;
+        }
+        File temp = new File(out.getParentFile(), out.getName() + ".tmp");
+        InputStream in = apk.getInputStream(entry);
+        try {
+            FileOutputStream stream = new FileOutputStream(temp);
+            try {
+                byte[] buffer = new byte[8192];
+                int count;
+                while ((count = in.read(buffer)) != -1) stream.write(buffer, 0, count);
+            } finally {
+                stream.close();
+            }
+        } finally {
+            in.close();
+        }
+        if (!matchesEntry(temp, entry) || !temp.renameTo(out)) {
+            throw new java.io.IOException("Cannot extract " + entryName);
+        }
+    }
+
+    private static boolean matchesEntry(File file, ZipEntry entry) throws java.io.IOException {
+        if (!file.isFile() || file.length() != entry.getSize()) return false;
+        CRC32 crc = new CRC32();
+        InputStream in = new java.io.FileInputStream(file);
+        try {
+            byte[] buffer = new byte[8192];
+            int count;
+            while ((count = in.read(buffer)) != -1) crc.update(buffer, 0, count);
+        } finally { in.close(); }
+        return crc.getValue() == entry.getCrc();
+    }
 
     private IjkLegacyLoader() {
     }
@@ -94,7 +189,8 @@ public class IjkLegacyLoader {
             if (ctx == null) {
                 return false;
             }
-            android.content.pm.ApplicationInfo ai = ctx.getApplicationInfo();
+            android.content.pm.ApplicationInfo ai = ctx.getPackageManager()
+                    .getApplicationInfo(ctx.getPackageName(), 0);
             String apkPath = ai != null ? ai.sourceDir : null;
             if (apkPath == null || !new File(apkPath).exists()) {
                 Log.e(TAG, "own apk missing for " + libFileName);

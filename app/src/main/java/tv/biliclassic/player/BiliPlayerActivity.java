@@ -162,6 +162,10 @@ public class BiliPlayerActivity extends Activity implements
     private Surface mVideoSurface;
     private int mRendererType = RENDERER_SURFACEVIEW;
     private IMediaPlayer mediaPlayer;
+    private AndroidMediaPlayer splitAudioPlayer;
+    private boolean splitAudioEnabled;
+    private boolean splitAudioPrepared;
+    private long lastSplitAudioSync;
     private View topBar;
     private View bottomBar;
     private ImageView btnBack;
@@ -205,6 +209,10 @@ public class BiliPlayerActivity extends Activity implements
     private boolean pendingPrepare = false;
     private int mSeekWhenPrepared = 0;
     private boolean mStartAfterSeek = false;
+    private boolean mSeekPending = false;
+    private long mSeekTarget = 0L;
+    private long mSeekDisplayTarget = 0L;
+    private long mSeekDisplayHoldUntil = 0L;
     private boolean mShowResumeTipOnPrepare = false;
     private boolean mTextureViewConfigured = false;
     private static int sPendingSeekPosition = 0;
@@ -370,22 +378,22 @@ public class BiliPlayerActivity extends Activity implements
         String text;
     }
 
-    private Handler handler = new Handler(new Handler.Callback() {
-        public boolean handleMessage(Message msg) {
+    private Handler handler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
             switch (msg.what) {
                 case MSG_HIDE_CONTROLS:
                     hideControls();
-                    return true;
+                    break;
                 case MSG_UPDATE_PROGRESS:
                     updateProgress();
-                    return true;
+                    break;
                 case MSG_UPDATE_TIME:
                     updateDateTime();
-                    return true;
+                    break;
             }
-            return false;
         }
-    });
+    };
 
     private GestureController mGestureController;
 
@@ -453,6 +461,9 @@ public class BiliPlayerActivity extends Activity implements
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (SdkHelper.getSdkInt() < 9) {
+            setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        }
 
         // 全面屏挖孔适配：API 28+ 延伸到挖孔区域
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -540,11 +551,14 @@ public class BiliPlayerActivity extends Activity implements
         isLiveStream = getIntent().getBooleanExtra("live", false);
         boolean onlineMode = getIntent().getBooleanExtra("online_mode", false);
         decoderType = SettingsActivity.getDecoderType();
-        // 系统 MediaPlayer 无法解析 MPEG-DASH（音视频分离流）。
-        // 在线 DASH 时即使解码器偏好选了"系统"也强制走内置 IJK 路径：
-        // Android 4.1+（MediaCodec 可用）优先硬解，硬解失败会自动回退软解；
-        // 更老设备直接用软解。
-        if (onlineMode && SettingsActivity.getPlayStreamFormat() == 16
+        // Android 1.x: allow manually selected IJK software decoding.
+        if (SdkHelper.getSdkInt() < 3 && decoderType == DECODER_IJK_HARD) {
+            decoderType = DECODER_IJK_SOFT;
+        }
+        // System Stagefright cannot parse fragmented DASH MP4. Keep the
+        // original restriction and use IJK for DASH on supported systems.
+        if (SdkHelper.getSdkInt() >= 4 && onlineMode
+                && SettingsActivity.getPlayStreamFormat() == 16
                 && decoderType == DECODER_SYSTEM) {
             decoderType = SdkHelper.getSdkInt() >= 16 ? DECODER_IJK_HARD : DECODER_IJK_SOFT;
         }
@@ -558,6 +572,14 @@ public class BiliPlayerActivity extends Activity implements
 
         mAid = getIntent().getLongExtra("aid", 0);
         mCid = getIntent().getLongExtra("cid", 0);
+
+        if (!isLiveStream && mAid > 0
+                && !SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.PRIVACY_MODE, false)) {
+            tv.biliclassic.util.LocalHistoryStore.record(
+                    mAid, mCid, videoTitle, coverUrl,
+                    getIntent().getStringExtra("up_name"),
+                    getIntent().getIntExtra("resume_position", 0));
+        }
 
         mCids = getIntent().hasExtra("cids") ? getIntent().getLongArrayExtra("cids") : null;
         mPartNames = getIntent().hasExtra("pagenames") ? getIntent().getStringArrayExtra("pagenames") : null;
@@ -574,26 +596,7 @@ public class BiliPlayerActivity extends Activity implements
             int pref = SettingsActivity.getPlayerPreference();
             if (pref != 8) {
                 String playerPkg = SettingsActivity.getPlayerPackageName();
-                // DASH（音视频分离）只有内置 IJK 能播，不转交 Ostwind/外部播放器
                 if (videoUrl != null && videoUrl.length() > 0 && (audioUrl == null || audioUrl.length() == 0)) {
-                    if ("tv.biliclassic.ostwind".equals(playerPkg)) {
-                        // Ostwind 简易播放器：本 App 内 Activity，MediaPlayer + 自定义请求头
-                        Intent wIntent = new Intent(this, OstwindPlayerActivity.class);
-                        wIntent.putExtra("video_url", videoUrl);
-                        String cookie = CookieGenerator.getCookieString(true);
-                        if (cookie != null && cookie.length() > 0) {
-                            wIntent.putExtra("cookie", cookie);
-                        }
-                        wIntent.putExtra("agent", NetWorkUtil.USER_AGENT_WEB);
-                        wIntent.putExtra("_from_external_redirect", true);
-                        try {
-                            startActivity(wIntent);
-                            releaseBatteryReceiver();
-                            finish();
-                            return;
-                        } catch (Exception e) {
-                        }
-                    }
                     Intent extIntent;
                     // 在线播放：给所有外部播放器传本地代理地址（代理带 Referer/Cookie/UA 请求头
                     // 转发，外部播放器无法携带请求头，B 站 CDN 会 403 拒绝直连）
@@ -679,13 +682,6 @@ public class BiliPlayerActivity extends Activity implements
                 SharedPreferencesUtil.PLAYER_AUTO_ROTATION, false);
         portraitRotation = SharedPreferencesUtil.getBoolean(
                 SharedPreferencesUtil.PLAYER_PORTRAIT_ROTATION, false);
-        applyAutoRotation();
-
-        // 老 CPU（ARMv5 / 无 VFP 的 ARMv6）不再拦截播放：
-        // 带硬件视频 DSP 的设备默认走转码硬解，没有的软解也可能放得动。
-        if (DeviceUtils.isUnsupportedCpu()) {
-            Toast.makeText(this, getString(R.string.legacy_cpu_play_hint), Toast.LENGTH_LONG).show();
-        }
 
         initViews();
         initPlayer();
@@ -794,8 +790,8 @@ public class BiliPlayerActivity extends Activity implements
                 ? getString(R.string.player_loading_mode_system)
                 : getString(R.string.player_loading_mode_ijk);
         setLoadingStep1(getString(R.string.player_loading_device_info,
-                Build.MANUFACTURER, Build.MODEL, Build.VERSION.RELEASE,
-                String.valueOf(Build.VERSION.SDK_INT), mode));
+                DeviceUtils.getDeviceManufacturer(), Build.MODEL, Build.VERSION.RELEASE,
+                String.valueOf(SdkHelper.getSdkInt()), mode));
         setLoadingStep2(getString(R.string.player_loading_step_loading_video));
         root.addView(mLoadingOverlay);
         startLoadingAnimation();
@@ -880,6 +876,8 @@ public class BiliPlayerActivity extends Activity implements
 
                     public void onSeekTo(long position) {
                         if (mediaPlayer != null && isPrepared && mDuration > 0) {
+                            mSeekPending = true;
+                            mSeekTarget = position;
                             mediaPlayer.seekTo(position);
                             if (mDanmakuManager != null) mDanmakuManager.seekTo(position);
                             if (!isPlaying && mDanmakuManager != null) mDanmakuManager.pause();
@@ -1360,7 +1358,7 @@ public class BiliPlayerActivity extends Activity implements
                 tvTitle.setFocusableInTouchMode(false);
                 tvTitle.setSingleLine(true);
                 tvTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                tvTitle.setMarqueeRepeatLimit(0);
+                  SdkHelper.setMarqueeRepeatLimit(tvTitle, 0);
             }
         }
 
@@ -1554,6 +1552,8 @@ public class BiliPlayerActivity extends Activity implements
                                 // 执行跳转
                                 if (mediaPlayer != null && isPrepared && mDuration > 0) {
                                     long position = ((long) newProgress) * mDuration / 1000;
+                                    mSeekPending = true;
+                                    mSeekTarget = position;
                                     mediaPlayer.seekTo(position);
                                     if (mDanmakuManager != null) {
                                         mDanmakuManager.seekTo(position);
@@ -1597,7 +1597,9 @@ public class BiliPlayerActivity extends Activity implements
                     Log.d("SeekBarDebug", "onStopTrackingTouch: progress=" + progress + ", max=" + seekBar.getMax());
                     if (mediaPlayer != null && isPrepared && mDuration > 0) {
                         long position = ((long) progress) * mDuration / 1000;
-                        Log.d("SeekBarDebug", "跳转到: " + position + "ms");
+                        Log.d("SeekBarDebug", "��ת��: " + position + "ms");
+                        mSeekPending = true;
+                        mSeekTarget = position;
                         mediaPlayer.seekTo(position);
                         if (mDanmakuManager != null) mDanmakuManager.seekTo(position);
                         if (!isPlaying && mDanmakuManager != null) mDanmakuManager.pause();
@@ -1621,6 +1623,7 @@ public class BiliPlayerActivity extends Activity implements
             }
 
             mDanmakuManager.init();
+            mDanmakuContainer.setVisibility(View.INVISIBLE);
         }
 
         showControlsWithAutoHide();
@@ -2402,8 +2405,9 @@ public class BiliPlayerActivity extends Activity implements
 
     private boolean tryLoadIjkLibrary() {
         try {
-            // 无 VFP 的 ARMv5/ARMv6：自带 ijkffmpeg 含 VFP 指令跑不了，改从兼容包读取 legacy 版。
-            // ijksdl/ijkplayer 也从自身 APK 提取后用绝对路径加载。
+            if (SdkHelper.getSdkInt() <= 3) {
+                return IjkLegacyLoader.loadCupcakeLibraries(this);
+            }
             if (DeviceUtils.needsNoVfpIjk()) {
                 if (!IjkLegacyLoader.loadIjkFfmpegLegacy(this)) {
                     return false;
@@ -2578,12 +2582,106 @@ public class BiliPlayerActivity extends Activity implements
         mLoadingStep1.setVisibility(View.VISIBLE);
     }
 
+    private void prepareSplitAudio(String source) {
+        try {
+            android.util.Log.d("BiliPlayer", "split audio: system MediaPlayer");
+            splitAudioPlayer = new AndroidMediaPlayer();
+            splitAudioPlayer.setDataSource(source);
+            splitAudioPlayer.setOnPreparedListener(new IMediaPlayer.OnPreparedListener() {
+                public void onPrepared(IMediaPlayer mp) {
+                    android.util.Log.d("BiliPlayer", "split audio prepared");
+                    splitAudioPrepared = true;
+                    startSplitAudioIfReady();
+                }
+            });
+            splitAudioPlayer.setOnErrorListener(new IMediaPlayer.OnErrorListener() {
+                public boolean onError(IMediaPlayer mp, int what, int extra) {
+                    android.util.Log.w("BiliPlayer", "split audio error " + what + "/" + extra);
+                    splitAudioEnabled = false;
+                    releaseSplitAudio();
+                    return true;
+                }
+            });
+            splitAudioPlayer.setOnCompletionListener(new IMediaPlayer.OnCompletionListener() {
+                public void onCompletion(IMediaPlayer mp) {
+                    if (isPlaying && isPrepared && splitAudioEnabled
+                            && splitAudioPlayer != null) {
+                        try {
+                            splitAudioPlayer.seekTo((int) Math.max(0,
+                                    mediaPlayer == null ? 0 : mediaPlayer.getCurrentPosition()));
+                            splitAudioPlayer.start();
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                }
+            });
+            splitAudioPlayer.prepareAsync();
+        } catch (Throwable t) {
+            splitAudioEnabled = false;
+            releaseSplitAudio();
+        }
+    }
+
+    private void startSplitAudioIfReady() {
+        if (!splitAudioEnabled || !splitAudioPrepared || !isPrepared
+                || !isPlaying || splitAudioPlayer == null) return;
+        try {
+            splitAudioPlayer.start();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void pauseSplitAudio() {
+        if (splitAudioPlayer == null) return;
+        try {
+            splitAudioPlayer.pause();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void seekSplitAudio(int positionMs) {
+        if (!splitAudioEnabled || splitAudioPlayer == null) return;
+        try {
+            splitAudioPlayer.seekTo(positionMs);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void syncSplitAudio() {
+        if (!splitAudioEnabled || !splitAudioPrepared || !isPlaying
+                || splitAudioPlayer == null || mediaPlayer == null) return;
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (now - lastSplitAudioSync < 5000) return;
+        lastSplitAudioSync = now;
+        try {
+            long video = mediaPlayer.getCurrentPosition();
+            long audio = splitAudioPlayer.getCurrentPosition();
+            if (video < 1000 || audio < 1000) return;
+            if (Math.abs(video - audio) > 5000) {
+                android.util.Log.d("BiliPlayer", "split audio drift " + (video - audio));
+                splitAudioPlayer.seekTo((int) Math.max(0, video));
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void releaseSplitAudio() {
+        splitAudioPrepared = false;
+        if (splitAudioPlayer != null) {
+            try { splitAudioPlayer.pause(); } catch (Throwable ignored) {}
+            try { splitAudioPlayer.stop(); } catch (Throwable ignored) {}
+            try { splitAudioPlayer.reset(); } catch (Throwable ignored) {}
+            try { splitAudioPlayer.release(); } catch (Throwable ignored) {}
+            splitAudioPlayer = null;
+        }
+    }
+
     private void preparePlayer() {
         releasePlayer();
         mErrorToastShown = false;
 
         mHardwareDecodeRetryCount = 0;
-        mAllowDecoderFallback = true;
+        mAllowDecoderFallback = SdkHelper.getSdkInt() >= 3;
 
         boolean isNetworkUrl = videoUrl != null && videoUrl.startsWith("http");
 
@@ -2629,6 +2727,11 @@ public class BiliPlayerActivity extends Activity implements
                 }
             }
         }
+
+        splitAudioEnabled = videoUrl != null
+                && decoderType == DECODER_IJK_SOFT
+                && DecoderSettingsActivity.isSplitAudioEnabled()
+                && (audioUrl == null || audioUrl.length() == 0);
 
         if (decoderType == DECODER_SYSTEM) {
             AndroidMediaPlayer androidPlayer;
@@ -2710,7 +2813,7 @@ public class BiliPlayerActivity extends Activity implements
 
         IjkMediaPlayer ijkPlayer;
         try {
-            if (DeviceUtils.needsNoVfpIjk()) {
+            if (SdkHelper.getSdkInt() <= 3 || DeviceUtils.needsNoVfpIjk()) {
                 ijkPlayer = new IjkMediaPlayer(LEGACY_LIB_LOADER);
             } else {
                 ijkPlayer = new IjkMediaPlayer();
@@ -2729,6 +2832,10 @@ public class BiliPlayerActivity extends Activity implements
 
         boolean enableHardware = (decoderType == DECODER_IJK_HARD);
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec", enableHardware ? 1L : 0L);
+        if (SdkHelper.getSdkInt() <= 3) {
+            // Cupcake Surface buffers use RGB565; avoid an extra RGB32 conversion.
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "overlay-format", "fcc-rv16");
+        }
 
         if (enableHardware) {
             ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-all-videos", 1L);
@@ -2754,7 +2861,7 @@ public class BiliPlayerActivity extends Activity implements
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "vn",
                 DecoderSettingsActivity.isVideoDisabled() ? 1L : 0L);
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "an",
-                DecoderSettingsActivity.isAudioDisabled() ? 1L : 0L);
+                (splitAudioEnabled || DecoderSettingsActivity.isAudioDisabled()) ? 1L : 0L);
 
         int skipLoopFilter = DecoderSettingsActivity.getSkipLoopFilter();
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_CODEC, "skip_loop_filter", (long) skipLoopFilter);
@@ -2832,6 +2939,10 @@ public class BiliPlayerActivity extends Activity implements
             Toast.makeText(this, "设置数据源失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
             finish();
             return;
+        }
+
+        if (splitAudioEnabled) {
+            prepareSplitAudio(actualUrl);
         }
 
         mediaPlayer.setOnPreparedListener(this);
@@ -2960,6 +3071,8 @@ public class BiliPlayerActivity extends Activity implements
             // 防御：断点位置超出视频总长（如接口返回异常值）时，从 0 开始，避免被夹到结尾
             if (mSeekWhenPrepared <= mDuration) {
                 mStartAfterSeek = true;
+                mSeekPending = true;
+                mSeekTarget = mSeekWhenPrepared;
                 mp.seekTo(mSeekWhenPrepared);
                 if (mDanmakuManager != null) mDanmakuManager.seekTo(mSeekWhenPrepared);
             } else {
@@ -2970,7 +3083,9 @@ public class BiliPlayerActivity extends Activity implements
         if (!mStartAfterSeek) {
             mp.start();
             isPlaying = true;
+            startSplitAudioIfReady();
             if (mDanmakuManager != null) mDanmakuManager.onVideoStarted();
+            if (mDanmakuContainer != null) mDanmakuContainer.setVisibility(View.VISIBLE);
         }
         if (mediaSessionHelper != null) {
             mediaSessionHelper.setMetadata(videoTitle, "");
@@ -3042,6 +3157,12 @@ public class BiliPlayerActivity extends Activity implements
 
     @Override
     public void onSeekComplete(IMediaPlayer mp) {
+        long completedTarget = mSeekPending ? mSeekTarget : 0L;
+        mSeekPending = false;
+        if (completedTarget > 0) {
+            mSeekDisplayTarget = completedTarget;
+            mSeekDisplayHoldUntil = android.os.SystemClock.elapsedRealtime() + 1500L;
+        }
         if (mStartAfterSeek) {
             mStartAfterSeek = false;
             try {
@@ -3050,18 +3171,21 @@ public class BiliPlayerActivity extends Activity implements
             } catch (Throwable t) {
                 isPlaying = false;
             }
+            seekSplitAudio((int) mp.getCurrentPosition());
+            startSplitAudioIfReady();
             updatePlayPauseButton();
             if (mDanmakuManager != null) {
                 mDanmakuManager.onVideoStarted();
                 mDanmakuManager.resume();
             }
+            if (mDanmakuContainer != null) mDanmakuContainer.setVisibility(View.VISIBLE);
             updateTimeDisplay();
             handler.sendEmptyMessage(MSG_UPDATE_PROGRESS);
             return;
         }
         if (!mIsDragging) {
+            seekSplitAudio((int) mp.getCurrentPosition());
             updateTimeDisplay();
-            // 只有正在播放时才恢复弹幕
             if (mDanmakuManager != null && isPlaying) {
                 mDanmakuManager.resume();
             } else if (mDanmakuManager != null && !isPlaying) {
@@ -3075,10 +3199,15 @@ public class BiliPlayerActivity extends Activity implements
         if (recoverFromPrematureCompletion()) {
             return;
         }
+        if (getIntent().getBooleanExtra("_from_external_redirect", false)) {
+            finish();
+            return;
+        }
         mPrematureCompletionRetries = 0;
         mLastPrematureCompletionPosition = -1;
         mLastKnownPosition = 0;
         isPlaying = false;
+        pauseSplitAudio();
         mPlaybackCompleted = true;
         updatePlayPauseButton();
         if (seekBar != null) {
@@ -3095,7 +3224,9 @@ public class BiliPlayerActivity extends Activity implements
                 if (mediaPlayer != null) {
                     mediaPlayer.seekTo(0L);
                     mediaPlayer.start();
+                    seekSplitAudio(0);
                     isPlaying = true;
+                    startSplitAudioIfReady();
                     updatePlayPauseButton();
                     if (mDanmakuManager != null) mDanmakuManager.seekTo(0L);
                     if (mDanmakuManager != null) mDanmakuManager.resume();
@@ -3718,6 +3849,9 @@ public class BiliPlayerActivity extends Activity implements
             });
         }
 
+        if (SdkHelper.getSdkInt() < 4) {
+            SdkHelper.disableSoundEffects(wrapper);
+        }
         mPlayerOptionsPannel = new PopupWindow(wrapper,
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT, true);
@@ -3821,6 +3955,9 @@ public class BiliPlayerActivity extends Activity implements
             });
         }
 
+        if (SdkHelper.getSdkInt() < 4) {
+            SdkHelper.disableSoundEffects(wrapper);
+        }
         mPlayerSpeedPannel = new PopupWindow(wrapper,
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT, true);
@@ -3928,7 +4065,7 @@ public class BiliPlayerActivity extends Activity implements
     private void showUserBlockDialog() {
         final EditText input = new EditText(this);
         input.setHint("输入要屏蔽的用户UID");
-        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        SdkHelper.setInputType(input, android.text.InputType.TYPE_CLASS_NUMBER);
         new AlertDialog.Builder(SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle("屏蔽用户弹幕")
                 .setView(input)
@@ -4075,6 +4212,7 @@ public class BiliPlayerActivity extends Activity implements
 
         if (isPlaying) {
             mediaPlayer.pause();
+            pauseSplitAudio();
             isPlaying = false;
             if (mDanmakuManager != null) mDanmakuManager.pause();
         } else {
@@ -4087,11 +4225,13 @@ public class BiliPlayerActivity extends Activity implements
                 try {
                     mediaPlayer.seekTo(0);
                 } catch (Exception e) {}
+                seekSplitAudio(0);
                 if (mDanmakuManager != null) mDanmakuManager.seekTo(0L);
             }
             isPrepared = true;
             mediaPlayer.start();
             isPlaying = true;
+            startSplitAudioIfReady();
             if (mDanmakuManager != null) mDanmakuManager.resume();
         }
         updatePlayPauseButton();
@@ -4125,6 +4265,7 @@ public class BiliPlayerActivity extends Activity implements
     private void updateProgress() {
         if (mediaPlayer != null && isPrepared && isPlaying && !isLiveStream) {
             updateTimeDisplay();
+            syncSplitAudio();
             handler.sendEmptyMessageDelayed(MSG_UPDATE_PROGRESS, PROGRESS_UPDATE_INTERVAL);
         }
     }
@@ -4134,6 +4275,7 @@ public class BiliPlayerActivity extends Activity implements
         if (mAid == 0 || mCid == 0) return;
         if (mLastReportProgress == progress) return;
         mLastReportProgress = progress;
+        tv.biliclassic.util.LocalHistoryStore.updateProgress(mAid, mCid, progress);
         reportHistoryStatic(this, mAid, mCid, progress);
     }
 
@@ -4351,8 +4493,16 @@ public class BiliPlayerActivity extends Activity implements
         if (mIsDragging || (mGestureController != null && mGestureController.isGestureSeeking())) return;
 
         try {
-            long current = mStartAfterSeek
-                    ? mLastKnownPosition : mediaPlayer.getCurrentPosition();
+            long current;
+            if (mSeekPending) {
+                current = mSeekTarget;
+            } else {
+                current = mStartAfterSeek ? mLastKnownPosition : mediaPlayer.getCurrentPosition();
+                if (mSeekDisplayHoldUntil > android.os.SystemClock.elapsedRealtime()
+                        && Math.abs(current - mSeekDisplayTarget) > 1000L) {
+                    current = mSeekDisplayTarget;
+                }
+            }
             long duration = mediaPlayer.getDuration();
             if (duration <= 0) {
                 duration = mDuration;
@@ -4709,6 +4859,7 @@ public class BiliPlayerActivity extends Activity implements
         super.onPause();
         if (mediaPlayer != null && isPlaying) {
             mediaPlayer.pause();
+            pauseSplitAudio();
             isPlaying = false;
             updatePlayPauseButton();
             if (mDanmakuManager != null) mDanmakuManager.pause();
@@ -4929,10 +5080,14 @@ public class BiliPlayerActivity extends Activity implements
             mFileInputStream = null;
         }
 
+        releaseSplitAudio();
+        splitAudioEnabled = false;
+
         if (localProxy != null) {
             localProxy.stop();
             localProxy = null;
         }
+
         handler.removeMessages(MSG_UPDATE_PROGRESS);
         handler.removeMessages(MSG_HIDE_CONTROLS);
         handler.removeMessages(MSG_UPDATE_TIME);

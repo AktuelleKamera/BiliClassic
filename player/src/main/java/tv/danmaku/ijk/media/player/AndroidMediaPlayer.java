@@ -39,7 +39,6 @@ import tv.danmaku.ijk.media.player.pragma.DebugLog;
 
 public class AndroidMediaPlayer extends AbstractMediaPlayer {
     private final MediaPlayer mInternalMediaPlayer;
-    private final AndroidMediaPlayerListenerHolder mInternalListenerAdapter;
     private String mDataSource;
 
     private final Object mInitLock = new Object();
@@ -52,7 +51,6 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
             mInternalMediaPlayer = new MediaPlayer();
         }
         mInternalMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-        mInternalListenerAdapter = new AndroidMediaPlayerListenerHolder(this);
         attachInternalListeners();
     }
 
@@ -301,12 +299,22 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
 
     @Override
     public void setLooping(boolean looping) {
-        mInternalMediaPlayer.setLooping(looping);
+        try {
+            MediaPlayer.class.getMethod("setLooping", boolean.class)
+                    .invoke(mInternalMediaPlayer, Boolean.valueOf(looping));
+        } catch (Throwable ignored) {
+        }
     }
 
     @Override
     public boolean isLooping() {
-        return mInternalMediaPlayer.isLooping();
+        try {
+            Object value = MediaPlayer.class.getMethod("isLooping")
+                    .invoke(mInternalMediaPlayer);
+            return value instanceof Boolean && ((Boolean) value).booleanValue();
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 
     @Override
@@ -375,87 +383,65 @@ public class AndroidMediaPlayer extends AbstractMediaPlayer {
      * Listeners adapter
      */
     private void attachInternalListeners() {
-        mInternalMediaPlayer.setOnPreparedListener(mInternalListenerAdapter);
-        mInternalMediaPlayer
-                .setOnBufferingUpdateListener(mInternalListenerAdapter);
-        mInternalMediaPlayer.setOnCompletionListener(mInternalListenerAdapter);
-        mInternalMediaPlayer
-                .setOnSeekCompleteListener(mInternalListenerAdapter);
-        mInternalMediaPlayer
-                .setOnVideoSizeChangedListener(mInternalListenerAdapter);
-        mInternalMediaPlayer.setOnErrorListener(mInternalListenerAdapter);
-        mInternalMediaPlayer.setOnInfoListener(mInternalListenerAdapter);
+        java.lang.reflect.InvocationHandler handler = new java.lang.reflect.InvocationHandler() {
+            public Object invoke(Object proxy, java.lang.reflect.Method method, Object[] args) {
+                String name = method.getName();
+                try {
+                    if ("onPrepared".equals(name)) {
+                        notifyOnPrepared();
+                        return null;
+                    }
+                    if ("onCompletion".equals(name)) {
+                        notifyOnCompletion();
+                        return null;
+                    }
+                    if ("onBufferingUpdate".equals(name)) {
+                        if (args != null && args.length >= 2) {
+                            notifyOnBufferingUpdate(((Integer) args[1]).intValue());
+                        }
+                        return null;
+                    }
+                    if ("onSeekComplete".equals(name)) {
+                        notifyOnSeekComplete();
+                        return null;
+                    }
+                    if ("onVideoSizeChanged".equals(name)) {
+                        if (args != null && args.length >= 3) {
+                            notifyOnVideoSizeChanged(((Integer) args[1]).intValue(),
+                                    ((Integer) args[2]).intValue(), 1, 1);
+                        }
+                        return null;
+                    }
+                    if ("onError".equals(name) && args != null && args.length >= 3) {
+                        return Boolean.valueOf(notifyOnError(((Integer) args[1]).intValue(),
+                                ((Integer) args[2]).intValue()));
+                    }
+                    if ("onInfo".equals(name) && args != null && args.length >= 3) {
+                        return Boolean.valueOf(notifyOnInfo(((Integer) args[1]).intValue(),
+                                ((Integer) args[2]).intValue()));
+                    }
+                } catch (Throwable ignored) {
+                }
+                return null;
+            }
+        };
+        setListener("android.media.MediaPlayer$OnPreparedListener", "setOnPreparedListener", handler);
+        setListener("android.media.MediaPlayer$OnBufferingUpdateListener", "setOnBufferingUpdateListener", handler);
+        setListener("android.media.MediaPlayer$OnCompletionListener", "setOnCompletionListener", handler);
+        setListener("android.media.MediaPlayer$OnSeekCompleteListener", "setOnSeekCompleteListener", handler);
+        setListener("android.media.MediaPlayer$OnVideoSizeChangedListener", "setOnVideoSizeChangedListener", handler);
+        setListener("android.media.MediaPlayer$OnErrorListener", "setOnErrorListener", handler);
+        setListener("android.media.MediaPlayer$OnInfoListener", "setOnInfoListener", handler);
     }
 
-    private class AndroidMediaPlayerListenerHolder implements
-            MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener,
-            MediaPlayer.OnBufferingUpdateListener,
-            MediaPlayer.OnSeekCompleteListener,
-            MediaPlayer.OnVideoSizeChangedListener,
-            MediaPlayer.OnErrorListener, MediaPlayer.OnInfoListener {
-        public final WeakReference<AndroidMediaPlayer> mWeakMediaPlayer;
-
-        public AndroidMediaPlayerListenerHolder(AndroidMediaPlayer mp) {
-            mWeakMediaPlayer = new WeakReference<AndroidMediaPlayer>(mp);
-        }
-
-        @Override
-        public boolean onInfo(MediaPlayer mp, int what, int extra) {
-            AndroidMediaPlayer self = mWeakMediaPlayer.get();
-            return self != null && notifyOnInfo(what, extra);
-
-        }
-
-        @Override
-        public boolean onError(MediaPlayer mp, int what, int extra) {
-            AndroidMediaPlayer self = mWeakMediaPlayer.get();
-            return self != null && notifyOnError(what, extra);
-
-        }
-
-        @Override
-        public void onVideoSizeChanged(MediaPlayer mp, int width, int height) {
-            AndroidMediaPlayer self = mWeakMediaPlayer.get();
-            if (self == null)
-                return;
-
-            notifyOnVideoSizeChanged(width, height, 1, 1);
-        }
-
-        @Override
-        public void onSeekComplete(MediaPlayer mp) {
-            AndroidMediaPlayer self = mWeakMediaPlayer.get();
-            if (self == null)
-                return;
-
-            notifyOnSeekComplete();
-        }
-
-        @Override
-        public void onBufferingUpdate(MediaPlayer mp, int percent) {
-            AndroidMediaPlayer self = mWeakMediaPlayer.get();
-            if (self == null)
-                return;
-
-            notifyOnBufferingUpdate(percent);
-        }
-
-        @Override
-        public void onCompletion(MediaPlayer mp) {
-            AndroidMediaPlayer self = mWeakMediaPlayer.get();
-            if (self == null)
-                return;
-
-            notifyOnCompletion();
-        }
-
-        @Override
-        public void onPrepared(MediaPlayer mp) {
-            AndroidMediaPlayer self = mWeakMediaPlayer.get();
-            if (self == null)
-                return;
-
-            notifyOnPrepared();
+    private void setListener(String interfaceName, String methodName,
+                             java.lang.reflect.InvocationHandler handler) {
+        try {
+            Class<?> cls = Class.forName(interfaceName);
+            Object proxy = java.lang.reflect.Proxy.newProxyInstance(
+                    cls.getClassLoader(), new Class[]{cls}, handler);
+            MediaPlayer.class.getMethod(methodName, cls).invoke(mInternalMediaPlayer, proxy);
+        } catch (Throwable ignored) {
         }
     }
 }

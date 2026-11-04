@@ -24,7 +24,11 @@ public final class CpuAbi {
     }
 
     public static String getCpuAbi() {
-        return buildField("CPU_ABI");
+        String abi = buildField("CPU_ABI");
+        if (abi == null && getArch() == Arch.ARM) {
+            return "armeabi";
+        }
+        return abi;
     }
 
     public static String getCpuAbi2() {

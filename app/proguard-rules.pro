@@ -1,5 +1,11 @@
 -keepattributes *Annotation*
 
+# Android 1.0 IJK compatibility shells. These intentionally share framework
+# package names; keep them from being renamed or removed on release builds.
+-keep class android.media.AudioTrack { *; }
+-keep class android.media.PlaybackParams { *; }
+-ignorewarnings
+
 # Player (IjkPlayer): JNI native methods
 -keep class tv.danmaku.ijk.media.player.IjkMediaPlayer {
     native <methods>;
@@ -21,12 +27,6 @@
 
 # Danmaku: public API
 -keep class master.flame.danmaku.** { public protected *; }
-
-# MoboPlayer soft-decode JNI: native methods and native-called Java callbacks
--keep class com.clov4r.android.nil.** {
-    <fields>;
-    <methods>;
-}
 
 # GestureController 通过 Class.forName 反射加载进度提示 ViewHolder，
 # ProGuard 混淆会重命名/删除仅被字符串引用的类，导致手势 seek 的进度提示静默消失，必须 keep

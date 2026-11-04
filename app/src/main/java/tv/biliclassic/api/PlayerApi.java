@@ -350,6 +350,7 @@ public class PlayerApi {
         appendDashQuality(playerData, data, 127, "8K 超高清");
         appendDashQuality(playerData, data, 126, "杜比视界");
         appendDashQuality(playerData, data, 125, "HDR 真彩");
+        appendDashQuality(playerData, data, 116, "1080P60 高帧率");
 
         // 写入静态缓存
         if (!download && videoUrl.length() > 0) {
@@ -518,6 +519,7 @@ public class PlayerApi {
         appendDashQuality(playerData, data, 127, "8K 超高清");
         appendDashQuality(playerData, data, 126, "杜比视界");
         appendDashQuality(playerData, data, 125, "HDR 真彩");
+        appendDashQuality(playerData, data, 116, "1080P60 高帧率");
 
         android.util.Log.e("PlayerApi", "getBangumi 结束");
     }
