@@ -14,6 +14,7 @@ import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -162,13 +163,21 @@ public class NewAnimeFragment extends Fragment {
                 animeList.setCacheColorHint(0x00000000);
                 animeList.setClipToPadding(false);
                 animeList.setFocusable(true);
-                animeList.setFocusableInTouchMode(false);
-                animeList.setItemsCanFocus(false);
+                animeList.setFocusableInTouchMode(true);
                 // 列表行绘制缓存（堆 >= 16MB 才开，低内存用 LOW）
                 tv.biliclassic.util.SdkHelper.enableListDrawingCache(animeList);
                 animeList.setVisibility(View.VISIBLE);
                 animeListAdapter = new AnimeListAdapter(getActivity(), this);
                 animeList.setAdapter(animeListAdapter);
+                animeList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> parent, View view,
+                                            int position, long id) {
+                        if (animeListAdapter == null) return;
+                        AnimeItem item = animeListAdapter.getItemAt(position, 0);
+                        if (item != null) openAnimeDetail(item);
+                    }
+                });
                 animeList.setOnScrollListener(new AbsListView.OnScrollListener() {
                     @Override
                     public void onScroll(AbsListView view, int firstVisibleItem,
@@ -1389,6 +1398,7 @@ public class NewAnimeFragment extends Fragment {
         private int mSelectedCol = -1;
 
         void setSelected(int row, int col) {
+            if (mSelectedRow == row && mSelectedCol == col) return;
             mSelectedRow = row;
             mSelectedCol = col;
             notifyDataSetChanged();
