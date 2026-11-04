@@ -23,10 +23,12 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 
+import java.lang.reflect.Field;
 import java.util.LinkedList;
 import java.util.Locale;
 
@@ -63,6 +65,8 @@ public class DanmakuSurfaceView extends SurfaceView implements IDanmakuView, IDa
     private boolean mShowFps;
 
     private boolean mDanmakuVisible = true;
+    private boolean mNeedOverlayWindow;
+    private boolean mOverlayWindowApplied;
 
     protected int mDrawingThreadType = THREAD_TYPE_NORMAL_PRIORITY;
 
@@ -78,6 +82,7 @@ public class DanmakuSurfaceView extends SurfaceView implements IDanmakuView, IDa
             getClass().getMethod("setZOrderMediaOverlay", boolean.class)
                     .invoke(this, Boolean.TRUE);
         } catch (Throwable t) {
+            mNeedOverlayWindow = true;
         }
         setWillNotCacheDrawing(true);
         setDrawingCacheEnabled(false);
@@ -87,6 +92,81 @@ public class DanmakuSurfaceView extends SurfaceView implements IDanmakuView, IDa
         mSurfaceHolder.setFormat(PixelFormat.TRANSPARENT);
         DrawHelper.useDrawColorToClearCanvas(true, true);
 		mTouchHelper = DanmakuTouchHelper.instance(this);
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        applyOverlayWindowAfterAttach();
+    }
+
+    private void applyOverlayWindowAfterAttach() {
+        if (!mNeedOverlayWindow || mOverlayWindowApplied) return;
+        try {
+            Field wf = SurfaceView.class.getDeclaredField("mWindow");
+            wf.setAccessible(true);
+            if (wf.get(this) == null) {
+                android.util.Log.e("SurfaceLayer", "overlay window mWindow=null DanmakuSurfaceView");
+                return;
+            }
+            Field sf = SurfaceView.class.getDeclaredField("mSession");
+            sf.setAccessible(true);
+            Object session = sf.get(this);
+            Field lf = SurfaceView.class.getDeclaredField("mLayout");
+            lf.setAccessible(true);
+            Object layout = lf.get(this);
+            Field tf = layout.getClass().getField("type");
+            tf.setInt(layout, 1003);
+            Field vf = SurfaceView.class.getDeclaredField("mVisible");
+            vf.setAccessible(true);
+            boolean visible = vf.getBoolean(this);
+            Field cf = SurfaceView.class.getDeclaredField("mContentInsets");
+            cf.setAccessible(true);
+            Object insets = cf.get(this);
+
+            Class<?> iw = Class.forName("android.view.IWindow");
+            Class<?> lp = Class.forName("android.view.WindowManager$LayoutParams");
+            Class<?> rect = Class.forName("android.graphics.Rect");
+            Class<?> myWindow = Class.forName("android.view.SurfaceView$MyWindow");
+            java.lang.reflect.Constructor<?> ctor = myWindow.getDeclaredConstructor(SurfaceView.class);
+            ctor.setAccessible(true);
+            Object newWindow = ctor.newInstance(this);
+
+            session.getClass().getMethod("remove", iw).invoke(session, wf.get(this));
+            wf.set(this, null);
+            session.getClass().getMethod("add", iw, lp, int.class, rect)
+                    .invoke(session, newWindow, layout, Integer.valueOf(visible ? 0 : 8), insets);
+            wf.set(this, newWindow);
+            java.lang.reflect.Method update = SurfaceView.class
+                    .getDeclaredMethod("updateWindow", boolean.class);
+            update.setAccessible(true);
+            update.invoke(this, Boolean.TRUE);
+            mOverlayWindowApplied = true;
+            android.util.Log.e("SurfaceLayer", "overlay window re-added DanmakuSurfaceView");
+        } catch (Throwable t) {
+            android.util.Log.e("SurfaceLayer", "overlay window re-add failed DanmakuSurfaceView", t);
+        }
+    }
+
+    public static boolean isZOrderCompatSupported() {
+        try {
+            Surface.class.getMethod("setLayer", int.class);
+            SurfaceView.class.getDeclaredField("mSurface");
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private void applyZOrderCompat() {
+        try {
+            getClass().getMethod("setZOrderMediaOverlay", boolean.class)
+                    .invoke(this, Boolean.TRUE);
+            android.util.Log.e("SurfaceLayer", "mediaOverlay ok DanmakuSurfaceView");
+            return;
+        } catch (Throwable t) {
+            android.util.Log.e("SurfaceLayer", "mediaOverlay failed DanmakuSurfaceView", t);
+        }
     }
 
     public DanmakuSurfaceView(Context context, AttributeSet attrs) {
@@ -148,6 +228,12 @@ public class DanmakuSurfaceView extends SurfaceView implements IDanmakuView, IDa
     @Override
     public void surfaceCreated(SurfaceHolder surfaceHolder) {
         isSurfaceCreated = true;
+        applyZOrderCompat();
+        post(new Runnable() {
+            public void run() {
+                applyOverlayWindowAfterAttach();
+            }
+        });
         Canvas canvas = surfaceHolder.lockCanvas();
         if (canvas != null) {
             DrawHelper.clearCanvas(canvas);
@@ -157,6 +243,7 @@ public class DanmakuSurfaceView extends SurfaceView implements IDanmakuView, IDa
 
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        applyZOrderCompat();
         if (handler != null) {
             handler.notifyDispSizeChanged(width, height);
         }
