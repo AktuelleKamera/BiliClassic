@@ -175,24 +175,6 @@ public class PlayerAnimActivity extends Activity {
                         playWithBuiltinPlayer(videoUrl);
                         return;
                     }
-                    if (pref == SettingsActivity.PLAYER_OSTWIND) {
-                        // Ostwind 简易播放器（MediaPlayer+本地代理，兼容 2.2 以下）
-                        Intent wIntent = new Intent(PlayerAnimActivity.this,
-                                tv.biliclassic.player.OstwindPlayerActivity.class);
-                        wIntent.putExtra("video_url", videoUrl);
-                        String cookie = tv.biliclassic.util.CookieGenerator.getCookieString(true);
-                        if (cookie != null && cookie.length() > 0) {
-                            wIntent.putExtra("cookie", cookie);
-                        }
-                        wIntent.putExtra("agent", tv.biliclassic.util.NetWorkUtil.USER_AGENT_WEB);
-                        wIntent.putExtra("video_title", videoTitle);
-                        wIntent.putExtra("aid", aid);
-                        wIntent.putExtra("cid", cid);
-                        wIntent.putExtra("resume_position", resumePosition);
-                        startActivity(wIntent);
-                        finish();
-                        return;
-                    }
                     if (pref == 8) {
                         // 内置播放器：BiliPlayerActivity（在线直接播放，自带代理）
                         playWithBuiltinPlayer(videoUrl);
@@ -594,9 +576,6 @@ public class PlayerAnimActivity extends Activity {
             case 8:
                 tryBuiltinPlayerWithCache();
                 return;
-            case SettingsActivity.PLAYER_OSTWIND:
-                playWithOstwind();
-                return;
             default:
                 autoSelectPlayer();
                 return;
@@ -679,24 +658,6 @@ public class PlayerAnimActivity extends Activity {
         finish();
     }
 
-    /**
-     * 用缓存文件走 Ostwind 播放（本地文件无代理、无加载动画）
-     */
-    private void playWithOstwind() {
-        if (cacheFile == null || !cacheFile.exists() || cacheFile.length() == 0) {
-            Toast.makeText(this, this.getString(R.string.video_file_missing), Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
-        Intent wIntent = new Intent(this, tv.biliclassic.player.OstwindPlayerActivity.class);
-        wIntent.putExtra("video_url", cacheFile.getAbsolutePath());
-        wIntent.putExtra("video_title", videoTitle);
-        wIntent.putExtra("aid", aid);
-        wIntent.putExtra("cid", cid);
-        startActivity(wIntent);
-        finish();
-    }
-
     private void autoSelectPlayer() {
         hasShownPreferenceToast = false;
 
@@ -728,15 +689,9 @@ public class PlayerAnimActivity extends Activity {
             return;
         }
         // 2.1+ 优先使用内置东风播放器，而不是跳系统播放器
-        if (SdkHelper.getSdkInt() >= 7) {
-            playWithOstwind();
-            return;
-        }
-        if (trySystemPlayer()) {
-            return;
-        }
-        Toast.makeText(this, this.getString(R.string.no_player_found), Toast.LENGTH_LONG).show();
-        finish();
+        // 默认回退到内置系统 MediaPlayer 播放
+        playWithBuiltinPlayer(videoUrl);
+        return;
     }
 
     private boolean tryPlayWithPackageSilent(String packageName) {
