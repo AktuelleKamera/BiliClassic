@@ -40,6 +40,20 @@ public class DeviceUtils {
         return CpuAbi.supportsAbi(abi);
     }
 
+    public static boolean isModernCpu() {
+        if (CpuAbi.isLegacyArm()) return false;
+        if (CpuAbi.supportsAbi("armeabi-v7a") || CpuAbi.supportsAbi("arm64-v8a")
+                || CpuAbi.supportsAbi("x86") || CpuAbi.supportsAbi("x86_64")
+                || CpuAbi.supportsAbi("mips") || CpuAbi.supportsAbi("mips64")
+                || CpuAbi.supportsAbi("riscv64")) {
+            return true;
+        }
+        CpuAbi.Arch arch = CpuAbi.getArch();
+        return arch == CpuAbi.Arch.ARM64 || arch == CpuAbi.Arch.X86
+                || arch == CpuAbi.Arch.X86_64 || arch == CpuAbi.Arch.MIPS
+                || arch == CpuAbi.Arch.MIPS64 || arch == CpuAbi.Arch.RISCV64;
+    }
+
     public static boolean supportX86() {
         return CpuAbi.isX86();
     }

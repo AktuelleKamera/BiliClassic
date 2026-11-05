@@ -104,13 +104,13 @@ public class DecoderSettingsActivity extends BaseActivity {
         setupListClick(R.id.item_pictq_size, KEY_PICTQ_SIZE,
                 R.array.decoder_pictq_size_entries, R.array.decoder_pictq_size_values, "3", textPictqSize, "画面队列大小");
         setupListClick(R.id.item_maxfps, KEY_MAX_FPS,
-                R.array.decoder_maxfps_entries, R.array.decoder_maxfps_values, "30", textMaxFps, "最大帧率");
+                R.array.decoder_maxfps_entries, R.array.decoder_maxfps_values, defaultMaxFps(), textMaxFps, "最大帧率");
         setupListClick(R.id.item_framedrop, KEY_FRAMEDROP,
                 R.array.decoder_framedrop_entries, R.array.decoder_framedrop_values, "0", textFramedrop, "丢帧策略");
         setupListClick(R.id.item_skip_loop_filter, KEY_SKIP_LOOP_FILTER,
-                R.array.decoder_skip_loop_filter_entries, R.array.decoder_skip_loop_filter_values, "48", textSkipLoopFilter, "跳过循环滤波");
+                R.array.decoder_skip_loop_filter_entries, R.array.decoder_skip_loop_filter_values, defaultSkipLoopFilter(), textSkipLoopFilter, "跳过循环滤波");
         setupListClick(R.id.item_skip_frame, KEY_SKIP_FRAME,
-                R.array.decoder_skip_frame_entries, R.array.decoder_skip_frame_values, "8", textSkipFrame, "跳过非参考帧");
+                R.array.decoder_skip_frame_entries, R.array.decoder_skip_frame_values, defaultSkipFrame(), textSkipFrame, "跳过非参考帧");
     }
 
     private void initCheckBoxItems() {
@@ -205,13 +205,13 @@ public class DecoderSettingsActivity extends BaseActivity {
     private void updateAllDisplays() {
         updateOneList(KEY_PICTQ_SIZE, "3",
                 R.array.decoder_pictq_size_entries, R.array.decoder_pictq_size_values, textPictqSize);
-        updateOneList(KEY_MAX_FPS, "30",
+        updateOneList(KEY_MAX_FPS, defaultMaxFps(),
                 R.array.decoder_maxfps_entries, R.array.decoder_maxfps_values, textMaxFps);
         updateOneList(KEY_FRAMEDROP, "0",
                 R.array.decoder_framedrop_entries, R.array.decoder_framedrop_values, textFramedrop);
-        updateOneList(KEY_SKIP_LOOP_FILTER, "48",
+        updateOneList(KEY_SKIP_LOOP_FILTER, defaultSkipLoopFilter(),
                 R.array.decoder_skip_loop_filter_entries, R.array.decoder_skip_loop_filter_values, textSkipLoopFilter);
-        updateOneList(KEY_SKIP_FRAME, "8",
+        updateOneList(KEY_SKIP_FRAME, defaultSkipFrame(),
                 R.array.decoder_skip_frame_entries, R.array.decoder_skip_frame_values, textSkipFrame);
     }
 
@@ -228,12 +228,26 @@ public class DecoderSettingsActivity extends BaseActivity {
 
     // ---- 播放器 Static helpers ----
 
+    private static String defaultMaxFps() {
+        return tv.biliclassic.util.DeviceUtils.isModernCpu() ? "-1" : "30";
+    }
+
+    private static String defaultSkipLoopFilter() {
+        return tv.biliclassic.util.DeviceUtils.isModernCpu() ? "-16" : "48";
+    }
+
+    private static String defaultSkipFrame() {
+        return tv.biliclassic.util.DeviceUtils.isModernCpu() ? "-16" : "8";
+    }
+
     public static int getSkipLoopFilter() {
-        return parseInt(SharedPreferencesUtil.getString(KEY_SKIP_LOOP_FILTER, "48"), 48);
+        String def = defaultSkipLoopFilter();
+        return parseInt(SharedPreferencesUtil.getString(KEY_SKIP_LOOP_FILTER, def), parseInt(def, -16));
     }
 
     public static int getSkipFrame() {
-        return parseInt(SharedPreferencesUtil.getString(KEY_SKIP_FRAME, "8"), 8);
+        String def = defaultSkipFrame();
+        return parseInt(SharedPreferencesUtil.getString(KEY_SKIP_FRAME, def), parseInt(def, -16));
     }
 
     public static boolean isOpenSLESEnabled() {
@@ -245,7 +259,8 @@ public class DecoderSettingsActivity extends BaseActivity {
     }
 
     public static int getMaxFps() {
-        return parseInt(SharedPreferencesUtil.getString(KEY_MAX_FPS, "30"), 30);
+        String def = defaultMaxFps();
+        return parseInt(SharedPreferencesUtil.getString(KEY_MAX_FPS, def), parseInt(def, 30));
     }
 
     public static int getVideoPictqSize() {
