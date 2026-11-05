@@ -86,9 +86,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp">
             <TableRow>
-                <TextView
-                    style="@style/AboutTableText"
-                    android:text="@string/bili_about_9bishi" />
+
                 <TextView
                     style="@style/AboutTableText"
                     android:text="@string/credit_maoziqiu" />
