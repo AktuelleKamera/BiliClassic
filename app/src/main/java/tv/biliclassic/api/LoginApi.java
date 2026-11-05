@@ -493,7 +493,7 @@ public class LoginApi {
     /** 设备 id（PiliPlus LoginUtils.genDeviceId 同款算法） */
     private static String deviceName() {
         String model = DeviceUtils.getDeviceModel();
-        return model == null || model.length() == 0 ? "android" : model;
+        return model == null || model.length() == 0 ? "device" : model;
     }
 
     private static String devicePlatform() {
