@@ -3157,7 +3157,7 @@ public class BiliPlayerActivity extends Activity implements
         mSeekPending = false;
         if (completedTarget > 0) {
             mSeekDisplayTarget = completedTarget;
-            mSeekDisplayHoldUntil = android.os.SystemClock.elapsedRealtime() + 1500L;
+            mSeekDisplayHoldUntil = android.os.SystemClock.elapsedRealtime() + 2500L;
         }
         if (mStartAfterSeek) {
             mStartAfterSeek = false;
@@ -4504,9 +4504,12 @@ public class BiliPlayerActivity extends Activity implements
                 current = mSeekTarget;
             } else {
                 current = mStartAfterSeek ? mLastKnownPosition : mediaPlayer.getCurrentPosition();
-                if (mSeekDisplayHoldUntil > android.os.SystemClock.elapsedRealtime()
-                        && Math.abs(current - mSeekDisplayTarget) > 1000L) {
-                    current = mSeekDisplayTarget;
+                if (mSeekDisplayTarget > 0 && !mSeekPending) {
+                    if (current > 1000L) {
+                        mSeekDisplayTarget = 0;
+                    } else if (mSeekDisplayHoldUntil > android.os.SystemClock.elapsedRealtime()) {
+                        current = mSeekDisplayTarget;
+                    }
                 }
             }
             long duration = mediaPlayer.getDuration();
