@@ -2693,10 +2693,7 @@ public class BiliPlayerActivity extends Activity implements
             } else {
                 localProxy = new LocalStreamProxy(videoUrl, proxyHeaders);
             }
-            // IJK 自带 TLS 栈：让代理直接走远端原协议，跳过「先试明文 HTTP」的探测——该探测在
-            // 只支持 HTTPS 的直播 CDN 上会挂到超时，导致起播长时间停在「正在加载视频」。
-            // 系统解码器（老设备 TLS 只到 1.0）仍需明文优先，保持不变。
-            if (decoderType != DECODER_SYSTEM) {
+            if (tv.biliclassic.util.WolfTls.isAvailable()) {
                 localProxy.setPreferHttpsDirect();
             }
             try {
