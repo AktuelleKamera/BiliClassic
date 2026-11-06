@@ -26,7 +26,7 @@ public final class NfcSyncHelper {
         if (activity == null || SdkHelper.getSdkInt() < 9) return;
         NfcAdapter adapter = getAdapter(activity);
         if (adapter == null) return;
-        if (SdkHelper.getSdkInt() >= 14) {
+        if (SdkHelper.getSdkInt() >= 17) {
             NfcSyncHelper14.attach(adapter, activity, provider, listener);
             return;
         }
@@ -35,7 +35,7 @@ public final class NfcSyncHelper {
             if (payload == null || payload.length() == 0) return;
             Method method = NfcAdapter.class.getMethod("enableForegroundNdefPush",
                     Activity.class, NdefMessage.class);
-            method.invoke(adapter, activity, buildMessage(payload));
+            method.invoke(adapter, activity, buildMessage(payload, false));
         } catch (Throwable ignored) {
         }
     }
@@ -44,7 +44,7 @@ public final class NfcSyncHelper {
         if (activity == null || SdkHelper.getSdkInt() < 9) return;
         NfcAdapter adapter = getAdapter(activity);
         if (adapter == null) return;
-        if (SdkHelper.getSdkInt() >= 14) {
+        if (SdkHelper.getSdkInt() >= 17) {
             NfcSyncHelper14.detach(adapter, activity);
             return;
         }
@@ -57,6 +57,10 @@ public final class NfcSyncHelper {
     }
 
     static NdefMessage buildMessage(String payload) {
+        return buildMessage(payload, true);
+    }
+
+    static NdefMessage buildMessage(String payload, boolean includeAar) {
         try {
             byte[] uri = payload.getBytes("UTF-8");
             byte[] data = new byte[uri.length + 1];
@@ -64,6 +68,9 @@ public final class NfcSyncHelper {
             System.arraycopy(uri, 0, data, 1, uri.length);
             NdefRecord record = new NdefRecord(NdefRecord.TNF_WELL_KNOWN,
                     NdefRecord.RTD_URI, new byte[0], data);
+            if (!includeAar) {
+                return new NdefMessage(new NdefRecord[]{record});
+            }
             NdefRecord aar = new NdefRecord((short) 0x04,
                     "android.com:pkg".getBytes("US-ASCII"), new byte[0],
                     "tv.biliclassic".getBytes("UTF-8"));
