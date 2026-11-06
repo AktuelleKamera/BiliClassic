@@ -371,6 +371,10 @@ public class HistoryActivity extends BaseActivity {
                                     historyList.setSelection(0);
                                 }
                             } else {
+                                if (showLocalHistoryIfAvailable()) {
+                                    footerBar.hide();
+                                    return;
+                                }
                                 String msg = result.message;
                                 if (msg == null || msg.length() == 0) {
                                     msg = "加载失败";
@@ -392,6 +396,10 @@ public class HistoryActivity extends BaseActivity {
                         public void run() {
                             progressBar.hide();
                             isLoading = false;
+                            if (showLocalHistoryIfAvailable()) {
+                                footerBar.hide();
+                                return;
+                            }
                             String errMsg = e.getMessage();
                             if (errMsg == null || errMsg.length() == 0) {
                                 errMsg = "加载失败";

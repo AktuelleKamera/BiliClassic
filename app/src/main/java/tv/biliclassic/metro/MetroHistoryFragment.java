@@ -170,6 +170,12 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
         }
     }
 
+    private boolean showLocalHistoryIfAvailable() {
+        if (LocalHistoryStore.load().size() == 0) return false;
+        loadLocalHistory();
+        return true;
+    }
+
     private void rebuildList() {
         if (mAdapter == null) return;
         mAdapter.notifyDataSetChanged();
@@ -255,6 +261,10 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
                                     });
                                 }
                             } else {
+                                if (showLocalHistoryIfAvailable()) {
+                                    stopRefreshing();
+                                    return;
+                                }
                                 mHasError = true;
                                 mLoadingBar.showStatus(loadErrMsg(result.message) + "\n点击重试");
                             }
@@ -272,6 +282,10 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
                             }
                             mIsLoading = false;
                             mFirstLoad = false;
+                            if (showLocalHistoryIfAvailable()) {
+                                stopRefreshing();
+                                return;
+                            }
                             mHasError = true;
                             mLoadingBar.showStatus(loadErrMsg(e.getMessage()) + "\n点击重试");
                             stopRefreshing();
