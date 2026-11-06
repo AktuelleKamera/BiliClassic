@@ -151,15 +151,24 @@ public final class UiSkin {
     private static void applyBars(Activity a, boolean night, boolean trans) {
         try {
             View tb = a.findViewById(R.id.title_bar);
-            if (tb == null) {
-                return;
+            if (tb != null) {
+                if (night) {
+                    markBg(tb, 0xCC101010, 11);
+                } else if (trans) {
+                    markBg(tb, 0xCCFFFFFF, 12);
+                } else {
+                    restoreBg(tb);
+                }
             }
-            if (night) {
-                markBg(tb, 0xCC101010, 11);
-            } else if (trans) {
-                markBg(tb, 0xCCFFFFFF, 12);
-            } else {
-                restoreBg(tb);
+            View searchBar = a.findViewById(R.id.search_bar);
+            if (searchBar != null) {
+                if (night) {
+                    markBg(searchBar, 0xFF171717, 13);
+                } else if (trans) {
+                    markBg(searchBar, 0xCCFFFFFF, 14);
+                } else {
+                    restoreBg(searchBar);
+                }
             }
         } catch (Throwable t) {
         }

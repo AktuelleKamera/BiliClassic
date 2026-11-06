@@ -190,6 +190,9 @@ public class DynamicDetailActivity extends BaseActivity {
         TextView titleText = (TextView) findViewById(R.id.title_text);
         if (titleText != null) {
             titleText.setText("动态详情");
+            if (tv.biliclassic.util.UiSkin.isNight()) {
+                titleText.setTextColor(0xFFE6E6E6);
+            }
         }
 
         list = (ListView) findViewById(R.id.dd_list);
@@ -304,6 +307,11 @@ public class DynamicDetailActivity extends BaseActivity {
         name.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
         time.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
         content.setTextColor(night ? 0xFFB0B0B0 : 0xFF555555);
+        if (writeComment != null) {
+            tv.biliclassic.util.UiSkin.setBgColorKeepPadding(writeComment,
+                    night ? 0xFF2A2A2A : 0xFFF0F0F0);
+            writeComment.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
+        }
 
         ImageLoader.bind(avatar, d.avatar, R.drawable.bili_default_image_tv_with_bg, 48, 48);
         name.setText(d.uname != null ? d.uname : "");

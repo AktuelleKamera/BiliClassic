@@ -148,6 +148,13 @@ public class SearchActivity extends BaseActivity {
         titleSearchBox = findViewById(R.id.title_search_box);
         titleSpacer = findViewById(R.id.title_spacer);
         setupSortButton();
+        if (tv.biliclassic.util.UiSkin.isNight()) {
+            if (sortButtonText != null) sortButtonText.setTextColor(0xFFE6E6E6);
+            if (searchEdit != null) {
+                searchEdit.setTextColor(0xFFE6E6E6);
+                searchEdit.setHintTextColor(0xFF888888);
+            }
+        }
         View btnSearchTitle = findViewById(R.id.btn_search_title);
         if (btnSearchTitle != null) {
             btnSearchTitle.setOnClickListener(new View.OnClickListener() {
