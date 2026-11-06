@@ -308,16 +308,12 @@ public class TimelineFragment extends Fragment {
                 return null;
             }
 
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(new FileInputStream(jsonFile), "UTF-8"));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
+            String jsonStr = tv.biliclassic.util.LocalJsonCrypto.readText(jsonFile);
+            if (jsonStr == null || jsonStr.length() == 0) {
+                jsonFile.delete();
+                return null;
             }
-            reader.close();
-
-            return parsetimeline(sb.toString());
+            return parsetimeline(jsonStr);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -328,10 +324,7 @@ public class TimelineFragment extends Fragment {
         if (cacheDir == null || jsonStr == null) return;
         try {
             File jsonFile = new File(cacheDir, "data.json");
-            FileOutputStream fos = new FileOutputStream(jsonFile);
-            fos.write(jsonStr.getBytes("UTF-8"));
-            fos.flush();
-            fos.close();
+            tv.biliclassic.util.LocalJsonCrypto.writeText(jsonFile, jsonStr);
         } catch (Exception e) {
             e.printStackTrace();
         }

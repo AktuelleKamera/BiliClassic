@@ -58,7 +58,7 @@ public final class LocalHistoryStore {
             if (entry == null || same(entry, aid, cid)) continue;
             out.put(entry);
         }
-        SharedPreferencesUtil.putString(KEY, out.toString());
+        SharedPreferencesUtil.putString(KEY, LocalJsonCrypto.encrypt(out.toString()));
     }
 
     public static synchronized void updateProgress(long aid, long cid, int progressMs) {
@@ -85,7 +85,7 @@ public final class LocalHistoryStore {
             if (entry == null || same(entry, aid, cid)) continue;
             out.put(entry);
         }
-        SharedPreferencesUtil.putString(KEY, out.toString());
+        SharedPreferencesUtil.putString(KEY, LocalJsonCrypto.encrypt(out.toString()));
     }
 
     public static synchronized List<VideoCard> load() {
@@ -123,8 +123,13 @@ public final class LocalHistoryStore {
     private static JSONArray readArray() {
         String raw = SharedPreferencesUtil.getString(KEY, "");
         if (raw == null || raw.length() == 0) return new JSONArray();
+        String plain = LocalJsonCrypto.decrypt(raw);
+        if (plain == null) return new JSONArray();
+        if (!LocalJsonCrypto.isEncrypted(raw)) {
+            SharedPreferencesUtil.putString(KEY, LocalJsonCrypto.encrypt(plain));
+        }
         try {
-            return new JSONArray(raw);
+            return new JSONArray(plain);
         } catch (Exception ignored) {
             return new JSONArray();
         }

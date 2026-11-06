@@ -2549,9 +2549,7 @@ public class SettingsActivity extends BaseActivity {
         }
         try {
             File file = getCookieSaveFile();
-            java.io.FileWriter fw = new java.io.FileWriter(file);
-            fw.write(getCookieJson());
-            fw.close();
+            tv.biliclassic.util.LocalJsonCrypto.writeText(file, getCookieJson());
             Toast.makeText(this, "已保存到: " + file.getAbsolutePath(), Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             Toast.makeText(this, "保存失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -2575,14 +2573,12 @@ public class SettingsActivity extends BaseActivity {
             return;
         }
         try {
-            java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(file));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = br.readLine()) != null) {
-                sb.append(line);
+            String json = tv.biliclassic.util.LocalJsonCrypto.readText(file);
+            if (json == null) {
+                Toast.makeText(this, "读取失败", Toast.LENGTH_SHORT).show();
+                return;
             }
-            br.close();
-            applyCookieJson(sb.toString());
+            applyCookieJson(json);
         } catch (Exception e) {
             Toast.makeText(this, "读取失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }

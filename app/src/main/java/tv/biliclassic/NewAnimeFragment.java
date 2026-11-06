@@ -420,17 +420,14 @@ public class NewAnimeFragment extends Fragment {
                 return null;
             }
 
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(new FileInputStream(jsonFile), "UTF-8"));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
+            String jsonStr = tv.biliclassic.util.LocalJsonCrypto.readText(jsonFile);
+            if (jsonStr == null || jsonStr.length() == 0) {
+                jsonFile.delete();
+                return null;
             }
-            reader.close();
 
             try {
-                JSONObject root = new JSONObject(sb.toString());
+                JSONObject root = new JSONObject(jsonStr);
                 String version = root.optString("version");
                 if (version == null || version.length() == 0) {
                     jsonFile.delete();
@@ -448,7 +445,6 @@ public class NewAnimeFragment extends Fragment {
                 return null;
             }
 
-            String jsonStr = sb.toString();
             List<AnimeItem> items = parseAnimeJson(jsonStr);
 
             File coverDir = new File(cacheDir, "covers");
@@ -486,10 +482,7 @@ public class NewAnimeFragment extends Fragment {
         if (cacheDir == null || jsonStr == null) return;
         try {
             File jsonFile = new File(cacheDir, "data.json");
-            FileOutputStream fos = new FileOutputStream(jsonFile);
-            fos.write(jsonStr.getBytes("UTF-8"));
-            fos.flush();
-            fos.close();
+            tv.biliclassic.util.LocalJsonCrypto.writeText(jsonFile, jsonStr);
         } catch (Exception e) {
             e.printStackTrace();
         }
