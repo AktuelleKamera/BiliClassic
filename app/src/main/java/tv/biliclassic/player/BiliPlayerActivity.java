@@ -2696,9 +2696,6 @@ public class BiliPlayerActivity extends Activity implements
             } else {
                 localProxy = new LocalStreamProxy(videoUrl, proxyHeaders);
             }
-            if (tv.biliclassic.util.WolfTls.isAvailable()) {
-                localProxy.setPreferHttpsDirect();
-            }
             try {
                 actualUrl = localProxy.start();
             } catch (IOException e) {

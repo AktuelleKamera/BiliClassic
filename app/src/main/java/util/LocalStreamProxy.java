@@ -13,6 +13,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.security.cert.X509Certificate;
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.net.ssl.HostnameVerifier;
@@ -49,6 +50,8 @@ public class LocalStreamProxy {
     // 远端实际可用的协议（null=未探测）。mCDN/PCDN 节点（如 *.edge.mountaintoys.cn:443/4483）
     // 只接受 HTTPS，明文请求返回 400 + HTML 错误页；记住结论后后续 Range 请求直连 HTTPS
     private volatile Boolean remotePreferHttps;
+    private static final Map<String, Boolean> HTTP_SUPPORT =
+            new HashMap<String, Boolean>();
 
     // ===== 顺序预取缓冲 =====
     // OpenCore/PVPlayer 对数据供给延迟极其敏感：直通模式下每次 Range 请求都要
@@ -980,9 +983,28 @@ public class LocalStreamProxy {
             primary = "http://" + primary.substring("https://".length());
         }
 
+        if (remotePreferHttps == null && targetUrl != null
+                && targetUrl.startsWith("https://")) {
+            boolean httpSupported = probeHttpSupport(primary, targetUrl);
+            remotePreferHttps = Boolean.valueOf(!httpSupported);
+        }
+
         Boolean preferHttps = remotePreferHttps;
         if (preferHttps != null && preferHttps.booleanValue()) {
-            return openRemoteConnectionImpl(targetUrl, rangeHeader);
+            try {
+                return openRemoteConnectionImpl(targetUrl, rangeHeader);
+            } catch (IOException e) {
+                if (targetUrl != null && targetUrl.startsWith("https://")) {
+                    String fallback = "http://" + targetUrl.substring("https://".length());
+                    try {
+                        RemoteConn conn = openRemoteConnectionImpl(fallback, rangeHeader);
+                        remotePreferHttps = Boolean.FALSE;
+                        return conn;
+                    } catch (IOException ignored) {
+                    }
+                }
+                throw e;
+            }
         }
 
         try {
@@ -1009,6 +1031,41 @@ public class LocalStreamProxy {
             }
             throw e;
         }
+    }
+
+    private boolean probeHttpSupport(String httpUrl, String httpsUrl) {
+        String key = null;
+        try {
+            key = new URL(httpsUrl).getHost();
+        } catch (Throwable ignored) {
+        }
+        if (key == null) return false;
+        synchronized (HTTP_SUPPORT) {
+            Boolean cached = HTTP_SUPPORT.get(key);
+            if (cached != null) return cached.booleanValue();
+        }
+        boolean supported = false;
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(httpUrl);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(2500);
+            conn.setReadTimeout(2500);
+            conn.setInstanceFollowRedirects(false);
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Range", "bytes=0-0");
+            int code = conn.getResponseCode();
+            supported = (code >= 200 && code < 300) || code == 416;
+        } catch (Throwable ignored) {
+        } finally {
+            if (conn != null) {
+                try { conn.disconnect(); } catch (Throwable ignored) {}
+            }
+        }
+        synchronized (HTTP_SUPPORT) {
+            HTTP_SUPPORT.put(key, Boolean.valueOf(supported));
+        }
+        return supported;
     }
 
     private RemoteConn openRemoteConnectionImpl(String targetUrl, String rangeHeader) throws IOException {
