@@ -91,6 +91,8 @@ public class SimpleDanmakuEngine {
     private Map<String, WeakReference<Bitmap>> mBitmapPool = new HashMap<String, WeakReference<Bitmap>>();
     private int mBitmapMemory;
     private static final int MAX_BITMAP_MEMORY = 2 * 1024 * 1024;
+    private static final int MAX_TEXT_BITMAP_WIDTH = 2048;
+    private long mBitmapOomUntil;
     private final Object mPoolLock = new Object();
 
     private static class DanmakuItem {
@@ -489,6 +491,7 @@ public class SimpleDanmakuEngine {
 
     private void ensureBitmap(DanmakuItem item) {
         if (item.bitmap != null) return;
+        if (System.currentTimeMillis() < mBitmapOomUntil) return;
         synchronized (mPoolLock) {
             WeakReference<Bitmap> ref = mBitmapPool.get(item.text);
             if (ref != null && ref.get() != null) {
@@ -546,6 +549,7 @@ public class SimpleDanmakuEngine {
             int iw = (int) Math.ceil(w);
             int ih = (int) Math.ceil(h);
             if (iw <= 0 || ih <= 0) return null;
+            if (iw > MAX_TEXT_BITMAP_WIDTH) iw = MAX_TEXT_BITMAP_WIDTH;
 
             Bitmap bmp;
             try {
@@ -564,6 +568,10 @@ public class SimpleDanmakuEngine {
             mPaint.setColor(item.color);
             bc.drawText(item.text, 7, mTextSize + 3, mPaint);
             return bmp;
+        } catch (OutOfMemoryError e) {
+            mBitmapOomUntil = System.currentTimeMillis() + 5000L;
+            clearBitmaps();
+            return null;
         } catch (Exception e) {
             return null;
         }
