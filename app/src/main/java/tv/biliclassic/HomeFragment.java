@@ -876,7 +876,8 @@ public class HomeFragment extends Fragment {
 
         @Override
         public int getCount() {
-            return tids == null ? 0 : tids.length;
+            if (tids == null || names == null) return 0;
+            return Math.min(tids.length, names.length);
         }
 
         @Override
@@ -934,14 +935,16 @@ public class HomeFragment extends Fragment {
             }
 
             final View partitionCard = section.findViewById(R.id.partition_card);
-            partitionCard.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (fragment.getActivity() == null) return;
-                    Intent intent = PartitionDetailActivity.createIntent(fragment.getActivity(), tid);
-                    fragment.startActivity(intent);
-                }
-            });
+            if (partitionCard != null && fragment != null) {
+                partitionCard.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (fragment.getActivity() == null) return;
+                        Intent intent = PartitionDetailActivity.createIntent(fragment.getActivity(), tid);
+                        fragment.startActivity(intent);
+                    }
+                });
+            }
 
             ImageView[] previews = new ImageView[4];
             previews[0] = (ImageView) section.findViewById(R.id.video1_cover);
@@ -952,7 +955,9 @@ public class HomeFragment extends Fragment {
                 if (iv != null) iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
             }
 
-            fragment.loadThumbnails(section, tid, previews);
+            if (fragment != null) {
+                fragment.loadThumbnails(section, tid, previews);
+            }
 
             // 夜间模式：四张视频预览衬底原来是白色 bili_thumb_boarder，夜间改深灰
             boolean night = tv.biliclassic.metro.MetroTheme.isNight();
@@ -976,7 +981,9 @@ public class HomeFragment extends Fragment {
                 mNightApplied.put(section, Integer.valueOf(night ? 1 : 0));
             }
 
-            fragment.applyTabletLayout(section);
+            if (fragment != null) {
+                fragment.applyTabletLayout(section);
+            }
         }
     }
 }
