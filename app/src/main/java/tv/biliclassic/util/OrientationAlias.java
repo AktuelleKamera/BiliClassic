@@ -15,6 +15,8 @@ public final class OrientationAlias {
                     "tv.biliclassic.SearchActivityLandscape", "tv.biliclassic.SearchActivitySensor"},
             {"tv.biliclassic.VideoDetailActivity", "tv.biliclassic.VideoDetailActivity",
                     "tv.biliclassic.VideoDetailActivityLandscape", "tv.biliclassic.VideoDetailActivitySensor"},
+            {"tv.biliclassic.HistoryActivity", "tv.biliclassic.HistoryActivity",
+                    "tv.biliclassic.HistoryActivityLandscape", "tv.biliclassic.HistoryActivitySensor"},
             {"tv.biliclassic.WebViewActivity", "tv.biliclassic.WebViewActivity",
                     "tv.biliclassic.WebViewActivityLandscape", "tv.biliclassic.WebViewActivitySensor"},
             {"tv.biliclassic.OfflineActivity", "tv.biliclassic.OfflineActivity",

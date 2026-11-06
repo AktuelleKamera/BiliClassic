@@ -14,6 +14,8 @@
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
 
     <application
         android:name=".BiliApplication"
@@ -71,7 +73,7 @@
 
         <activity
             android:name=".WebViewActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
 
         <!-- MainActivity -->
         <activity
@@ -155,7 +157,7 @@
 
         <activity
             android:name=".SearchActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
 
         <activity
             android:name=".LiveInfoActivity"
@@ -178,7 +180,21 @@
 
         <activity
             android:name=".VideoDetailActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
+
+        <activity
+            android:name=".nfc.NfcSyncActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="biliclassic" android:host="sync" />
+            </intent-filter>
+        </activity>
 
         <activity
             android:name=".DeviceInfoActivity"
@@ -196,7 +212,18 @@
         <!-- 注册 HistoryActivity -->
         <activity
             android:name=".HistoryActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
+
+        <activity-alias
+            android:name=".HistoryActivityLandscape"
+            android:targetActivity=".HistoryActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".HistoryActivitySensor"
+            android:targetActivity=".HistoryActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
 
         <!-- 注册 FollowingListActivity（关注的人） -->
         <activity
@@ -227,7 +254,7 @@
         <!-- 注册 OfflineActivity -->
         <activity
             android:name=".OfflineActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
 
         <!-- 注册 LoginActivity -->
         <activity
@@ -259,7 +286,7 @@
 
         <activity
             android:name=".metro.MetroSetupActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
 
         <activity-alias
             android:name=".metro.MetroSetupActivityLandscape"
@@ -275,7 +302,7 @@
 
         <activity
             android:name=".metro.MetroHomeActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="unspecified" />
 
         <activity
             android:name=".player.BiliPlayerActivity"
