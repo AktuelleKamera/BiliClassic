@@ -13,7 +13,7 @@ android {
         applicationId "tv.biliclassic"
         minSdkVersion 1
         targetSdkVersion 29
-        versionCode 5111
+        versionCode 5112
         versionName "0.5.2-dev"
 
         ndk {

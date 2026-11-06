@@ -41,9 +41,10 @@
 - 夜间模式支持
 - 番剧播放
 - 迫真WebView
+- 自选清朝格式转码播放
 - Metro/Classic主题切换
 - 更换你喜欢的不明背景图片
-- 自选清朝格式转码播放
+- NFC零距同步（续播与登录）
 - 8K30/4K120 HDR DASH音视频播放（仅支持IJK播放器）
 - 视频播放（内置播放器 / MX Player / VLC / MoboPlayer / QQ影音等）
 - 弹幕引擎切换（完整版DanmakuFlameMaster / BT-5简易版）
@@ -93,9 +94,9 @@ BT-5弹幕引擎为本项目原创，为armeabi设备设计。通过预渲染Bit
 
 ## 播放器
 
-**Ostwind 播放器**是本项目为其他平台的设备专门设计的在线播放器。过去的安卓端版本基于系统MediaPlayer和MoboPlayer，通过本地HTTP代理携带B站防盗链请求头；也支持清朝B站风味控制栏、手势控制、弹幕与播放历史上报等功能，但安卓版由于彻底失去意义，已在0.5.2及之后版本删除（其实基本上本项目使用系统接口的播放器都是这个名字，所以目前其他平台的内置播放器都是叫Ostwind。
+**Ostwind播放器**是本项目为其他平台的设备专门设计的在线播放器。过去曾有安卓端版本，基于系统MediaPlayer和MoboPlayer；也支持清朝B站风味控制栏、手势控制、弹幕与播放历史上报等功能，但安卓版已经彻底失去意义，已在0.5.2及之后版本删除（其实基本上本项目使用系统接口的播放器都是这个名字，所以目前其他平台的内置播放器都是叫Ostwind。
 
-**IJK 播放器**基于ffmpeg/ffplay，支持软解与硬解切换，在Android设备上提供更完整的播放体验，包括手势缩放、清晰度切换、弹幕发送等完整控制器功能。但Android 1.0/1.1由于AudioTrack的缺失，本项目暂时无能为力修复这种情况下的音频软解，所以目前在API 3以下会使用MediaPlayer硬解音频。当然，本项目也对IJK播放器进行了魔改，否则是不会能在Android 1.0+运行的（
+**IJK V3播放器**基于ffmpeg/ffplay，支持软解与硬解切换，在Android设备上提供更完整的播放体验，包括手势缩放、清晰度切换、弹幕发送等完整控制器功能。但Android 1.0/1.1由于AudioTrack的缺失，本项目暂时无能为力修复这种情况下的音频软解，所以目前在API 3以下会使用MediaPlayer硬解音频。当然，本项目也对IJK播放器进行了魔改，否则是不会能在Android 1.0+运行的（
 
 ### (Ostwind 自行防空炮)
 <img width="610" height="458" alt="xrpaiYN" src="https://github.com/user-attachments/assets/02f6c6f1-0919-46a5-a66e-948d2c397501" />
