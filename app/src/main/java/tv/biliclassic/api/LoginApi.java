@@ -418,9 +418,16 @@ public class LoginApi {
             p.put("statistics", STATISTICS);
             p.put("tel", tel);
 
+            android.util.Log.d("BiliLogin", "device_name=[" + deviceName()
+                    + "] device_platform=[" + devicePlatform()
+                    + "] model=[" + DeviceUtils.getDeviceModel()
+                    + "] release=[" + DeviceUtils.getDeviceRelease()
+                    + "] manufacturer=[" + DeviceUtils.getDeviceManufacturer() + "]");
             JSONObject j = postForm(URL_SMS_LOGIN, appSign(p), appHeaders());
             r.code = j.optInt("code", -1);
             r.message = j.optString("message", "");
+            android.util.Log.d("BiliLogin", "loginBySms code=" + r.code
+                    + " message=" + r.message);
             if (r.code != 0) {
                 return r;
             }
@@ -492,21 +499,37 @@ public class LoginApi {
 
     /** 设备 id（PiliPlus LoginUtils.genDeviceId 同款算法） */
     private static String deviceName() {
-        String model = DeviceUtils.getDeviceModel();
-        return model == null || model.length() == 0 ? "device" : model;
+        String manufacturer = safeDevicePart(DeviceUtils.getDeviceManufacturer());
+        return manufacturer.length() == 0 ? "device" : manufacturer;
     }
 
     private static String devicePlatform() {
         StringBuilder sb = new StringBuilder("Android");
-        String release = DeviceUtils.getDeviceRelease();
-        if (release != null && release.length() > 0) {
-            sb.append(release);
+        String version = deviceVersion();
+        if (version.length() > 0) {
+            sb.append(version);
         }
-        String manufacturer = DeviceUtils.getDeviceManufacturer();
-        if (manufacturer != null && manufacturer.length() > 0) {
+        String manufacturer = safeDevicePart(DeviceUtils.getDeviceManufacturer());
+        if (manufacturer.length() > 0) {
             sb.append(manufacturer);
         }
         return sb.toString();
+    }
+
+    private static String deviceVersion() {
+        String release = DeviceUtils.getDeviceRelease();
+        if (release == null) return "";
+        try {
+            java.util.regex.Matcher matcher = java.util.regex.Pattern
+                    .compile("^[0-9]+").matcher(release.trim());
+            return matcher.find() ? matcher.group() : "";
+        } catch (Throwable ignored) {
+            return "";
+        }
+    }
+
+    private static String safeDevicePart(String value) {
+        return value == null ? "" : value.replaceAll("\\s+", "");
     }
 
     public static String deviceId() {
@@ -552,6 +575,11 @@ public class LoginApi {
 
     /** AppSign：加 appkey/ts → 按 key 字典序排序 → k=v&... + appsec → md5 */
     public static LinkedHashMap<String, String> appSign(LinkedHashMap<String, String> params) {
+        return appSign(params, true);
+    }
+
+    private static LinkedHashMap<String, String> appSign(LinkedHashMap<String, String> params,
+                                                        boolean encodeValues) {
         params.put("appkey", APP_KEY);
         params.put("ts", String.valueOf(System.currentTimeMillis() / 1000));
         TreeMap<String, String> sorted = new TreeMap<String, String>(params);
@@ -562,7 +590,7 @@ public class LoginApi {
             }
             sb.append(urlEncode(e.getKey()));
             sb.append('=');
-            sb.append(urlEncode(e.getValue()));
+            sb.append(encodeValues ? urlEncode(e.getValue()) : (e.getValue() == null ? "" : e.getValue()));
         }
         params.put("sign", md5Hex(sb.toString() + APP_SEC));
         return params;
