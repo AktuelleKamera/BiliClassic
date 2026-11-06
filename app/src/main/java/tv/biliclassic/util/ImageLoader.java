@@ -209,9 +209,7 @@ public class ImageLoader {
         if (!sameItem) {
             setPlaceholder(view, placeholderResId);
         }
-        Boolean isLoading = loadingMapGet(finalUrl);
-        if (isLoading == null || !isLoading) {
-            loadingMapPut(finalUrl, true);
+        if (beginLoading(finalUrl)) {
             ensureExecutor();
             executor.execute(new Runnable() {
                 @Override
@@ -256,6 +254,12 @@ public class ImageLoader {
 
     private static synchronized Boolean loadingMapGet(String k) {
         return loadingMap.get(k);
+    }
+
+    private static synchronized boolean beginLoading(String k) {
+        if (loadingMap.containsKey(k)) return false;
+        loadingMap.put(k, Boolean.TRUE);
+        return true;
     }
 
     private static synchronized void loadingMapPut(String k, Boolean v) {
@@ -309,7 +313,6 @@ public class ImageLoader {
 
     private static Bitmap downloadImage(Context context, String urlStr, int dpW, int dpH) {
         if (SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.NO_IMAGE_MODE, false)) return null;
-        // 本地文件（离线封面等）：直接解码，不联网
         if (urlStr.startsWith("file://")) {
             String path = urlStr.substring(7);
             java.io.File localFile = new java.io.File(path);
@@ -317,9 +320,16 @@ public class ImageLoader {
             float density = context.getResources().getDisplayMetrics().density;
             int decodeW = (int) (dpW * density + 0.5f);
             int decodeH = (int) (dpH * density + 0.5f);
-            int minScale = 1;
-            return GlobalImageCache.decodeFileSafely(localFile, decodeW, decodeH, minScale);
+            return GlobalImageCache.decodeFileSafely(localFile, decodeW, decodeH, 1);
         }
+        for (int attempt = 0; attempt < 3; attempt++) {
+            Bitmap bitmap = downloadImageHttp(context, urlStr, dpW, dpH);
+            if (bitmap != null && !bitmap.isRecycled()) return bitmap;
+        }
+        return null;
+    }
+
+    private static Bitmap downloadImageHttp(Context context, String urlStr, int dpW, int dpH) {
         HttpURLConnection conn = null;
         java.io.File tempFile = null;
         try {
@@ -333,21 +343,27 @@ public class ImageLoader {
             conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
             conn.connect();
 
-            tempFile = new java.io.File(context.getCacheDir(), "img_" + urlStr.hashCode() + ".tmp");
+            tempFile = java.io.File.createTempFile("img_", ".tmp", context.getCacheDir());
             InputStream is = conn.getInputStream();
             java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
+            long total = 0;
+            long expected = conn.getContentLength();
             byte[] buf = new byte[8192];
             int len;
             while ((len = is.read(buf)) != -1) {
                 fos.write(buf, 0, len);
+                total += len;
             }
             is.close();
+            fos.flush();
             fos.close();
 
-            if (!tempFile.exists() || tempFile.length() == 0) return null;
+            if (total <= 0 || (expected >= 0 && total != expected)) {
+                return null;
+            }
+            if (!tempFile.exists() || tempFile.length() != total) return null;
 
-            int minScale = 1;
-            return GlobalImageCache.decodeFileSafely(tempFile, decodeW, decodeH, minScale);
+            return GlobalImageCache.decodeFileSafely(tempFile, decodeW, decodeH, 1);
         } catch (Exception e) {
             return null;
         } finally {
@@ -356,7 +372,6 @@ public class ImageLoader {
         }
     }
 
-    /** 重新按当前线程数配置创建线程池（用户更改图片加载线程数后调用） */
     public static synchronized void reloadExecutor() {
         if (executor != null && !executor.isShutdown()) {
             executor.shutdownNow();
