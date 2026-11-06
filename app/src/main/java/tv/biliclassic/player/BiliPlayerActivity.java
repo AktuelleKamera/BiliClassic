@@ -3081,6 +3081,7 @@ public class BiliPlayerActivity extends Activity implements
         mp.start();
         isPlaying = true;
         startSplitAudioIfReady();
+        setupNfcSync();
         if (mDanmakuManager != null) mDanmakuManager.onVideoStarted();
         if (mDanmakuContainer != null) mDanmakuContainer.setVisibility(View.VISIBLE);
         if (mediaSessionHelper != null) {
@@ -3187,6 +3188,9 @@ public class BiliPlayerActivity extends Activity implements
             } else if (mDanmakuManager != null && !isPlaying) {
                 mDanmakuManager.pause();
             }
+        }
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
+            setupNfcSync();
         }
     }
 
@@ -4863,6 +4867,39 @@ public class BiliPlayerActivity extends Activity implements
         }
     }
 
+    private void setupNfcSync() {
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() < 9) return;
+        if (!tv.biliclassic.SettingsActivity.isNfcSyncEnabled()) {
+            tv.biliclassic.nfc.NfcSyncHelper.detach(this);
+            return;
+        }
+        tv.biliclassic.nfc.NfcSyncHelper.attach(this,
+                new tv.biliclassic.nfc.NfcSyncHelper.PayloadProvider() {
+                    public String getPayload() {
+                        if (mAid <= 0) return null;
+                        long position = 0;
+                        try {
+                            if (mediaPlayer != null && isPrepared) {
+                                position = mediaPlayer.getCurrentPosition();
+                            }
+                        } catch (Throwable ignored) {
+                        }
+                        int part = mCurrentPartIndex + 1;
+                        return tv.biliclassic.nfc.NfcSyncPayload.player(
+                                mAid, mCid, part, position);
+                    }
+                },
+                new tv.biliclassic.nfc.NfcSyncHelper.BeamListener() {
+                    public void onBeamStarted() {
+                        runOnUiThread(new Runnable() {
+                            public void run() {
+                                if (isPlaying) togglePlayPause();
+                            }
+                        });
+                    }
+                });
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
@@ -4878,6 +4915,7 @@ public class BiliPlayerActivity extends Activity implements
     @Override
     protected void onResume() {
         super.onResume();
+        setupNfcSync();
         // 息屏/切后台回来后，surface 有时并不重建（surfaceCreated 不触发），画面会保持错位/
         // 缩到角落。这里兜底按当前比例+缩放重设一次（surfaceCreated 那条是主路径）
         final View vv = videoView;
@@ -5035,6 +5073,9 @@ public class BiliPlayerActivity extends Activity implements
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
+            tv.biliclassic.nfc.NfcSyncHelper.detach(this);
+        }
         stopLoadingAnimation();
         handler.removeCallbacks(mRebufferWatchdog);
         if (localProxy != null) {

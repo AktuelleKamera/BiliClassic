@@ -350,6 +350,9 @@ public abstract class BaseActivity extends FragmentActivity {
             }
             mSkinReloader = null;
         }
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
+            tv.biliclassic.nfc.NfcSyncHelper.detach(this);
+        }
         super.onDestroy();
     }
 
@@ -374,6 +377,40 @@ public abstract class BaseActivity extends FragmentActivity {
         tv.biliclassic.util.BgUtil.applyWindowBackground(this);
         tv.biliclassic.util.UiSkin.apply(this);
         refreshNavBarPadding();
+        setupLoginNfcSync();
+    }
+
+    protected boolean supportsLoginNfcSync() {
+        return true;
+    }
+
+    private void setupLoginNfcSync() {
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() < 9) return;
+        if (!SettingsActivity.isNfcSyncEnabled()) {
+            tv.biliclassic.nfc.NfcSyncHelper.detach(this);
+            return;
+        }
+        if (!supportsLoginNfcSync()) {
+            tv.biliclassic.nfc.NfcSyncHelper.detach(this);
+            return;
+        }
+        String cookies = SharedPreferencesUtil.getString(SharedPreferencesUtil.cookies, "");
+        if (cookies == null || cookies.length() == 0) {
+            tv.biliclassic.nfc.NfcSyncHelper.detach(this);
+            return;
+        }
+        final String refreshToken = SharedPreferencesUtil.getString(
+                SharedPreferencesUtil.refresh_token, "");
+        tv.biliclassic.nfc.NfcSyncHelper.attach(this,
+                new tv.biliclassic.nfc.NfcSyncHelper.PayloadProvider() {
+                    public String getPayload() {
+                        String current = SharedPreferencesUtil.getString(
+                                SharedPreferencesUtil.cookies, "");
+                        if (current == null || current.length() == 0) return null;
+                        return tv.biliclassic.nfc.NfcSyncPayload.login(
+                                current, refreshToken);
+                    }
+                }, null);
     }
 
     /** 主题（夜间/背景）变化后重建当前 Activity，避免老 ROM 上列表不重刷。 */

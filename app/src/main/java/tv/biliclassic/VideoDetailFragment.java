@@ -89,6 +89,7 @@ public class VideoDetailFragment extends Fragment {
 
     private boolean mOfflineMode;
     private int mStartPart = 0;
+    private int mSyncResumePosition = 0;
     private boolean mAutoPlay = false;
     private boolean mAutoPlayConsumed = false;
 
@@ -141,6 +142,7 @@ public class VideoDetailFragment extends Fragment {
             bvid = args.getString("bvid");
             mOfflineMode = args.getBoolean("offline_mode", false);
             mStartPart = args.getInt("start_part", 0);
+        mSyncResumePosition = args.getInt("resume_position", 0);
             mAutoPlay = args.getBoolean("autoplay", false);
         }
 
@@ -1026,7 +1028,9 @@ public class VideoDetailFragment extends Fragment {
                                 if (!isAdded() || getActivity() == null) return;
                                 if (videoUrl != null && videoUrl.length() > 0) {
                                     int pref = tv.biliclassic.SettingsActivity.getPlayerPreference();
-                                        final int resumeMs = computeResumeMs(playerData, targetCid);
+                                        int syncResumeMs = takeSyncResumePosition();
+                                        final int resumeMs = syncResumeMs > 0
+                                                ? syncResumeMs : computeResumeMs(playerData, targetCid);
                                         boolean hasDashAudio = playerData.audioUrl != null
                                                 && playerData.audioUrl.length() > 0;
                                         // 内置播放器（PLAYER_BUILTIN）直接进 BiliPlayerActivity；
@@ -1139,7 +1143,9 @@ public class VideoDetailFragment extends Fragment {
                                     if (getActivity() instanceof VideoDetailActivity) {
                                         ((VideoDetailActivity) getActivity()).setPausingForTransient(true);
                                     }
-                                    final int resumeMs = computeResumeMs(playerData, targetCid);
+                                    int syncResumeMs = takeSyncResumePosition();
+                                final int resumeMs = syncResumeMs > 0
+                                        ? syncResumeMs : computeResumeMs(playerData, targetCid);
                                     Intent intent = new Intent(getActivity(), PlayerAnimActivity.class);
                                     intent.putExtra("video_url", videoUrl);
                                     if (playerData.audioUrl != null && playerData.audioUrl.length() > 0) {
@@ -1302,6 +1308,12 @@ public class VideoDetailFragment extends Fragment {
      * B 站 playurl 接口的 last_play_time 单位已是「毫秒」，
      * 这里直接作为毫秒进度返回，不再做任何换算。
      */
+    private int takeSyncResumePosition() {
+        int position = mSyncResumePosition;
+        mSyncResumePosition = 0;
+        return position;
+    }
+
     private int computeResumeMs(PlayerData playerData, long targetCid) {
         try {
             if (playerData == null || targetCid == 0) return 0;

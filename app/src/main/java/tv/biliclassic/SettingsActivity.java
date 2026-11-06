@@ -53,6 +53,7 @@ public class SettingsActivity extends BaseActivity {
     private static final String KEY_VIDEO_QUALITY_DASH = "video_quality_dash";
     private static final String KEY_MODERN_MODE = "modern_mode";
     private static final String KEY_PORTRAIT_MODE = "portrait_mode";
+    private static final String KEY_NFC_SYNC = "nfc_sync_enabled";
     public static final String KEY_DECODER_TYPE = "decoder_type";
     private static final String KEY_BUILTIN_PLAYER = "use_builtin_player";
     private static final String KEY_ONLINE_PLAY = "online_play";
@@ -272,6 +273,29 @@ public class SettingsActivity extends BaseActivity {
         }
 
         // 横屏模式开关
+        final CheckBox nfcSyncCheckbox = (CheckBox) findViewById(R.id.checkbox_nfc_sync);
+        LinearLayout nfcSyncItem = (LinearLayout) findViewById(R.id.nfc_sync_item);
+        if (nfcSyncCheckbox != null) {
+            nfcSyncCheckbox.setChecked(isNfcSyncEnabled());
+            nfcSyncCheckbox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                @Override
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    SharedPreferencesUtil.putBoolean(KEY_NFC_SYNC, isChecked);
+                    if (!isChecked && tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
+                        tv.biliclassic.nfc.NfcSyncHelper.detach(SettingsActivity.this);
+                    }
+                }
+            });
+            if (nfcSyncItem != null) {
+                nfcSyncItem.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        nfcSyncCheckbox.toggle();
+                    }
+                });
+            }
+        }
+
         final CheckBox landscapeCheckbox = (CheckBox) findViewById(R.id.checkbox_landscape);
         LinearLayout landscapeItem = (LinearLayout) findViewById(R.id.landscape_item);
 
@@ -1147,6 +1171,10 @@ public class SettingsActivity extends BaseActivity {
 
     public static boolean isPortraitModeEnabled() {
         return SharedPreferencesUtil.getBoolean(KEY_PORTRAIT_MODE, false);
+    }
+
+    public static boolean isNfcSyncEnabled() {
+        return SharedPreferencesUtil.getBoolean(KEY_NFC_SYNC, false);
     }
 
     // 获取放送时间表 API URL

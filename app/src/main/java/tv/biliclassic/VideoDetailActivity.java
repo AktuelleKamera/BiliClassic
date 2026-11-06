@@ -84,6 +84,7 @@ public class VideoDetailActivity extends BaseActivity {
     private boolean mOfflineMode;
     private int mStartPart = 0;
     private boolean mAutoPlay = false;
+    private int mNfcResumePosition = 0;
     private BangumiPagerAdapter mBangumiAdapter;
 
     // 下载对话框数据
@@ -155,6 +156,7 @@ public class VideoDetailActivity extends BaseActivity {
         fromBangumi = getIntent().getBooleanExtra("from_bangumi", false);
         mStartPart = getIntent().getIntExtra("p", 0);
         mAutoPlay = getIntent().getBooleanExtra("autoplay", false);
+        mNfcResumePosition = getIntent().getIntExtra("resume_position", 0);
 
         PagerTabStrip tabStrip = (PagerTabStrip) findViewById(R.id.pager_tab_strip);
         if (tabStrip != null) {
@@ -1366,11 +1368,15 @@ public class VideoDetailActivity extends BaseActivity {
             checkFavoriteState();
         }
         mIsDeleteDialogShowing = false;
+        setupNfcSync();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
+            tv.biliclassic.nfc.NfcSyncHelper.detach(this);
+        }
         cleanupHandler.removeCallbacksAndMessages(null);
         videoDetailFragment = null;
         fragmentReady = false;
@@ -2507,6 +2513,7 @@ public class VideoDetailActivity extends BaseActivity {
     public void setVideoDetailFragment(Fragment fragment) {
         this.videoDetailFragment = (VideoDetailFragment) fragment;
         this.fragmentReady = true;
+        setupNfcSync();
         // 等 fragment 的 view 布局完成后重建焦点列表（此时标签/分P 可能尚未加载，
         // 后续内容就绪时 updateTags → notifyTagsUpdated 会再次重建）
         if (fragment != null && fragment.getView() != null) {
@@ -2517,6 +2524,31 @@ public class VideoDetailActivity extends BaseActivity {
                 }
             });
         }
+    }
+
+    @Override
+    protected boolean supportsLoginNfcSync() {
+        return false;
+    }
+
+    private void setupNfcSync() {
+        if (mOfflineMode || tv.biliclassic.util.SdkHelper.getSdkInt() < 9) return;
+        if (!SettingsActivity.isNfcSyncEnabled()) {
+            tv.biliclassic.nfc.NfcSyncHelper.detach(this);
+            return;
+        }
+        tv.biliclassic.nfc.NfcSyncHelper.attach(this,
+                new tv.biliclassic.nfc.NfcSyncHelper.PayloadProvider() {
+                    public String getPayload() {
+                        long shareAid = getCorrectAid();
+                        if (shareAid <= 0) return null;
+                        int part = 1;
+                        if (videoDetailFragment != null) {
+                            part = videoDetailFragment.getCurrentPartIndex() + 1;
+                        }
+                        return tv.biliclassic.nfc.NfcSyncPayload.detail(shareAid, part);
+                    }
+                }, null);
     }
 
     private void parseExternalUri(Uri data) {
@@ -2572,6 +2604,9 @@ public class VideoDetailActivity extends BaseActivity {
                 }
                 args.putInt("start_part", mStartPart);
                 args.putBoolean("autoplay", mAutoPlay);
+                if (mNfcResumePosition > 0) {
+                    args.putInt("resume_position", mNfcResumePosition);
+                }
                 fragment.setArguments(args);
                 return fragment;
             } else {
@@ -2624,6 +2659,9 @@ public class VideoDetailActivity extends BaseActivity {
                 }
                 fragmentArgs.putInt("start_part", mStartPart);
                 fragmentArgs.putBoolean("autoplay", mAutoPlay);
+                if (mNfcResumePosition > 0) {
+                    fragmentArgs.putInt("resume_position", mNfcResumePosition);
+                }
                 fragment.setArguments(fragmentArgs);
                 return fragment;
             } else if (position == 1) {

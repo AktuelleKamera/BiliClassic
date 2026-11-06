@@ -712,4 +712,10 @@
     <string name="player_resume_from_start">從頭播放</string>
     <string name="decoder_title_split_audio">僅軟解影片</string>
     <string name="decoder_summary_split_audio">軟解時使用MediaPlayer播放影片音訊</string>
+    <string name="nfc_login_sync_title">同步登錄</string>
+    <string name="nfc_login_sync_message">檢測到已登錄設備，是否同步登錄状态？這將會覆蓋本機當前登錄信息。</string>
+    <string name="nfc_login_sync_done">登錄狀態已同步</string>
+    <string name="nfc_login_sync_failed">同步失敗：登錄信息無效</string>
+    <string name="nfc_sync_title">零距同步</string>
+    <string name="nfc_sync_summary">兩台支持NFC的設備碰一碰即可同步打開影片或登錄状态（實驗性）</string>
 </resources>

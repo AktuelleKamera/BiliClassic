@@ -712,4 +712,10 @@
     <string name="player_resume_from_start">从头播放</string>
     <string name="decoder_title_split_audio">仅软解视频</string>
     <string name="decoder_summary_split_audio">软解时使用MediaPlayer播放视频音频</string>
+    <string name="nfc_login_sync_title">同步登录</string>
+    <string name="nfc_login_sync_message">检测到已登录设备，是否同步登录状态？这会覆盖本机当前登录信息。</string>
+    <string name="nfc_login_sync_done">登录状态已同步</string>
+    <string name="nfc_login_sync_failed">同步失败：登录信息无效</string>
+    <string name="nfc_sync_title">零距同步</string>
+    <string name="nfc_sync_summary">两台支持NFC的设备碰一碰即可同步打开视频或登录状态（实验性）</string>
 </resources>
