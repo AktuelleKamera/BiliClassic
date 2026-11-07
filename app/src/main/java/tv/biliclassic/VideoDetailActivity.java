@@ -60,6 +60,7 @@ import tv.biliclassic.model.FavoriteFolder;
 import tv.biliclassic.model.VideoInfo;
 import tv.biliclassic.util.PermissionUtil;
 import tv.biliclassic.util.DialogUtil;
+import tv.biliclassic.util.LocalFavoriteStore;
 import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
@@ -815,6 +816,129 @@ public class VideoDetailActivity extends BaseActivity {
      * 菜单键：呼出操作菜单（下载/评论/收藏/分享/三连）。
      * 由 AlertDialog.setItems，Android 系统原生支持方向键/确认键导航。
      */
+    private void showLocalFavoriteDialog() {
+        final long finalAid = getCorrectAid();
+        if (finalAid <= 0L) {
+            Toast.makeText(this, getString(R.string.load_video_info_failed),
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final List<FavoriteFolder> folders = LocalFavoriteStore.getFolders();
+        String[] items = new String[folders.size() + 1];
+        for (int i = 0; i < folders.size(); i++) {
+            items[i] = folders.get(i).name;
+        }
+        items[folders.size()] = getString(R.string.local_favorite_new_folder);
+
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(
+                DialogUtil.wrap(this)))
+                .setTitle(getString(R.string.local_favorite_title))
+                .setItems(items, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (which == folders.size()) {
+                            showCreateLocalFolderDialog();
+                            return;
+                        }
+                        addLocalFavoriteToFolder(finalAid, folders.get(which).fid);
+                    }
+                })
+                .setNegativeButton(getString(R.string.videodetail_cancel), null)
+                .show();
+    }
+
+    private void showCreateLocalFolderDialog() {
+        final android.widget.EditText input = new android.widget.EditText(this);
+        input.setHint(R.string.local_favorite_folder_hint);
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(
+                DialogUtil.wrap(this)))
+                .setTitle(R.string.local_favorite_new_folder)
+                .setView(input)
+                .setPositiveButton(android.R.string.ok,
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                String name = input.getText().toString().trim();
+                                if (name.length() == 0) return;
+                                long folder = LocalFavoriteStore.createFolder(name);
+                                addLocalFavoriteToFolder(getCorrectAid(), folder);
+                            }
+                        })
+                .setNegativeButton(getString(R.string.videodetail_cancel), null)
+                .show();
+    }
+
+    private void addLocalFavoriteToFolder(final long aid, final long folder) {
+        final long cid = getCurrentCid();
+        String title = getCurrentTitle();
+        String cover = getCurrentCover();
+        String up = getCurrentUp();
+        if (title.length() > 0 && cover.length() > 0) {
+            saveLocalFavorite(aid, cid, title, cover, up, folder);
+            return;
+        }
+        new Thread(new Runnable() {
+            public void run() {
+                String title = getCurrentTitle();
+                String cover = getCurrentCover();
+                String up = getCurrentUp();
+                try {
+                    VideoInfo info = VideoInfoApi.getVideoInfo(aid);
+                    if (info != null) {
+                        if (info.title != null && info.title.length() > 0) title = info.title;
+                        if (info.cover != null && info.cover.length() > 0) cover = info.cover;
+                        if (info.staff != null && info.staff.size() > 0
+                                && info.staff.get(0).name != null) {
+                            up = info.staff.get(0).name;
+                        }
+                    }
+                } catch (Throwable ignored) {
+                }
+                final String finalTitle = title;
+                final String finalCover = cover;
+                final String finalUp = up;
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        saveLocalFavorite(aid, cid, finalTitle, finalCover,
+                                finalUp, folder);
+                    }
+                });
+            }
+        }, "LocalFavoriteInfo").start();
+    }
+
+    private void saveLocalFavorite(long aid, long cid, String title, String cover,
+                                   String up, long folder) {
+        boolean added = LocalFavoriteStore.toggleInFolder(
+                aid, cid, title, cover, up, folder);
+        Toast.makeText(this, added ? R.string.local_favorite_added
+                : R.string.local_favorite_removed, Toast.LENGTH_SHORT).show();
+        sendBroadcast(new Intent(BroadcastConstants.ACTION_FAVORITE_CHANGED));
+    }
+
+    private long getCurrentCid() {
+        VideoInfo info = videoDetailFragment == null ? null : videoDetailFragment.videoInfo;
+        if (info == null || info.cids == null || videoDetailFragment == null) {
+            return 0;
+        }
+        int part = videoDetailFragment.getCurrentPartIndex();
+        return part >= 0 && part < info.cids.size() ? info.cids.get(part) : 0;
+    }
+
+    private String getCurrentTitle() {
+        VideoInfo info = videoDetailFragment == null ? null : videoDetailFragment.videoInfo;
+        return info == null || info.title == null ? "" : info.title;
+    }
+
+    private String getCurrentCover() {
+        VideoInfo info = videoDetailFragment == null ? null : videoDetailFragment.videoInfo;
+        return info == null || info.cover == null ? "" : info.cover;
+    }
+
+    private String getCurrentUp() {
+        VideoInfo info = videoDetailFragment == null ? null : videoDetailFragment.videoInfo;
+        if (info == null || info.staff == null || info.staff.size() == 0) return "";
+        return info.staff.get(0).name == null ? "" : info.staff.get(0).name;
+    }
+
     private void showActionMenu() {
         final String[] items = {
                 getString(R.string.videodetail_download),
@@ -1255,7 +1379,7 @@ public class VideoDetailActivity extends BaseActivity {
                         long mid = SharedPreferencesUtil.getLong("mid", 0);
                         String cookies = SharedPreferencesUtil.getString("cookies", "");
                         if (mid == 0 || cookies == null || cookies.length() == 0) {
-                            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.favorite_need_login), Toast.LENGTH_SHORT).show();
+                            showLocalFavoriteDialog();
                             return;
                         }
                         showFavoriteDialog();

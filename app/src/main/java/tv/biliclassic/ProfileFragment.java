@@ -301,10 +301,6 @@ public class ProfileFragment extends Fragment {
         itemFavorites.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!isLoggedIn()) {
-                    Toast.makeText(getActivity(), getActivity().getString(R.string.please_login_first), Toast.LENGTH_SHORT).show();
-                    return;
-                }
                 Intent intent = new Intent(getActivity(), FavoriteFolderListActivity.class);
                 startActivity(intent);
             }

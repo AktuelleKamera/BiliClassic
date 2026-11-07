@@ -24,6 +24,7 @@ import tv.biliclassic.model.VideoCard;
 import tv.biliclassic.util.BroadcastConstants;
 import tv.biliclassic.util.SharedPreferencesUtil;
 import tv.biliclassic.util.NetWorkUtil;
+import tv.biliclassic.util.LocalFavoriteStore;
 import tv.biliclassic.widget.LoadingBarView;
 
 public class FavoriteFolderListActivity extends BaseActivity {
@@ -174,7 +175,7 @@ public class FavoriteFolderListActivity extends BaseActivity {
 
     // ===== 长按删除收藏夹 =====
     private void confirmDeleteFolder(final FavoriteFolder folder) {
-        if (folder == null) return;
+        if (folder == null || folder.fid < 0) return;
         new android.app.AlertDialog.Builder(
                 tv.biliclassic.util.SdkHelper.dialogContext(tv.biliclassic.util.DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.fav_delete_folder_title))
@@ -246,6 +247,15 @@ public class FavoriteFolderListActivity extends BaseActivity {
     }
 
     private void doCreateFolder(final String name) {
+        long mid = SharedPreferencesUtil.getLong("mid", 0);
+        String cookies = SharedPreferencesUtil.getString("cookies", "");
+        if (mid == 0 || cookies == null || cookies.length() == 0) {
+            LocalFavoriteStore.createFolder(name);
+            Toast.makeText(this, getString(R.string.fav_folder_created),
+                    Toast.LENGTH_SHORT).show();
+            loadFolders(false);
+            return;
+        }
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -389,6 +399,9 @@ public class FavoriteFolderListActivity extends BaseActivity {
         Intent intent = new Intent(FavoriteFolderListActivity.this, FavoriteVideoListActivity.class);
         intent.putExtra("fid", folder.fid);
         intent.putExtra("name", folder.name);
+        if (folder.fid < 0) {
+            intent.putExtra("local_favorites", true);
+        }
         startActivityForResult(intent, REQUEST_VIDEO_LIST);
     }
 
@@ -548,6 +561,7 @@ public class FavoriteFolderListActivity extends BaseActivity {
             if (folderList.size() != cachedFolders.size()) {
                 folderList.clear();
                 folderList.addAll(cachedFolders);
+                addLocalFolder();
                 adapter.notifyDataSetChanged();
             }
             listView.setVisibility(View.VISIBLE);
@@ -558,9 +572,7 @@ public class FavoriteFolderListActivity extends BaseActivity {
         final long mid = SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0L);
 
         if (mid == 0L) {
-            emptyView.setText(getString(R.string.favorites_need_login));
-            emptyView.setVisibility(View.VISIBLE);
-            listView.setVisibility(View.GONE);
+            showLocalFolderOnly();
             return;
         }
 
@@ -602,6 +614,7 @@ public class FavoriteFolderListActivity extends BaseActivity {
 
                                 folderList.clear();
                                 folderList.addAll(cachedFolders);
+                                addLocalFolder();
                                 adapter.notifyDataSetChanged();
                                 loadCoversInBackground();
                                 listView.setVisibility(View.VISIBLE);
@@ -611,10 +624,16 @@ public class FavoriteFolderListActivity extends BaseActivity {
                                     Toast.makeText(FavoriteFolderListActivity.this, FavoriteFolderListActivity.this.getString(R.string.refresh_ok), Toast.LENGTH_SHORT).show();
                                 }
                             } else {
-                                emptyView.setText(getString(R.string.no_favorite_folders));
-                                emptyView.setVisibility(View.VISIBLE);
-                                listView.setVisibility(View.GONE);
                                 folderList.clear();
+                                addLocalFolder();
+                                if (folderList.size() > 0) {
+                                    listView.setVisibility(View.VISIBLE);
+                                    emptyView.setVisibility(View.GONE);
+                                } else {
+                                    emptyView.setText(getString(R.string.no_favorite_folders));
+                                    emptyView.setVisibility(View.VISIBLE);
+                                    listView.setVisibility(View.GONE);
+                                }
                                 adapter.notifyDataSetChanged();
                                 if (forceRefresh) {
                                     Toast.makeText(FavoriteFolderListActivity.this, FavoriteFolderListActivity.this.getString(R.string.no_folders), Toast.LENGTH_SHORT).show();
@@ -642,6 +661,22 @@ public class FavoriteFolderListActivity extends BaseActivity {
         }).start();
     }
 
+    private void addLocalFolder() {
+        for (int i = folderList.size() - 1; i >= 0; i--) {
+            if (folderList.get(i).fid < 0) folderList.remove(i);
+        }
+        folderList.addAll(0, LocalFavoriteStore.getFolders());
+    }
+
+    private void showLocalFolderOnly() {
+        folderList.clear();
+        addLocalFolder();
+        adapter.notifyDataSetChanged();
+        hideAllLoading();
+        listView.setVisibility(View.VISIBLE);
+        emptyView.setVisibility(View.GONE);
+    }
+
     private void loadCoversInBackground() {
         new Thread(new Runnable() {
             @Override
@@ -664,6 +699,7 @@ public class FavoriteFolderListActivity extends BaseActivity {
                             boolean updated = false;
                             for (int i = 0; i < folderList.size(); i++) {
                                 FavoriteFolder folder = folderList.get(i);
+                                if (folder.fid < 0) continue;
                                 String cover = (String) coverMap.get(new Long(folder.fid));
                                 if (cover != null && cover.length() > 0 && !cover.equals(folder.cover)) {
                                     folder.cover = cover;

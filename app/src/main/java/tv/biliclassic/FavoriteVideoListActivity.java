@@ -19,10 +19,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import tv.biliclassic.api.FavoriteApi;
+import tv.biliclassic.api.VideoInfoApi;
 import tv.biliclassic.model.VideoCard;
+import tv.biliclassic.model.VideoInfo;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
+import tv.biliclassic.util.BroadcastConstants;
+import tv.biliclassic.util.LocalFavoriteStore;
 import tv.biliclassic.widget.LoadingBarView;
 
 public class FavoriteVideoListActivity extends BaseActivity {
@@ -38,6 +42,8 @@ public class FavoriteVideoListActivity extends BaseActivity {
 
     private long fid;
     private String folderName;
+    private boolean localFavorites;
+    private boolean localMetadataRefreshing;
     private int currentPage = 1;
     private boolean isLoading = false;
     private boolean isEnd = false;
@@ -63,6 +69,10 @@ public class FavoriteVideoListActivity extends BaseActivity {
         Intent intent = getIntent();
         fid = intent.getLongExtra("fid", 0L);
         folderName = intent.getStringExtra("name");
+        localFavorites = intent.getBooleanExtra("local_favorites", false);
+        if (localFavorites && (folderName == null || folderName.length() == 0)) {
+            folderName = getString(R.string.local_favorite_title);
+        }
 
         titleText = (TextView) findViewById(R.id.title_text);
         if (folderName != null) {
@@ -261,6 +271,22 @@ public class FavoriteVideoListActivity extends BaseActivity {
     }
 
     private void deleteVideo(final int position) {
+        if (localFavorites) {
+            VideoCard video = position >= 0 && position < videoList.size()
+                    ? videoList.get(position) : null;
+            if (video == null) return;
+            LocalFavoriteStore.remove(video.aid, video.cid);
+            videoList.remove(position);
+            adapter.notifyDataSetChanged();
+            if (videoList.size() == 0) {
+                emptyView.setText(R.string.local_favorite_empty);
+                emptyView.setVisibility(View.VISIBLE);
+                listView.setVisibility(View.GONE);
+            }
+            sendBroadcast(new Intent(BroadcastConstants.ACTION_FAVORITE_CHANGED));
+            setResult(RESULT_OK);
+            return;
+        }
         if (fid == 0) {
             Toast.makeText(this, this.getString(R.string.invalid_folder_id), Toast.LENGTH_SHORT).show();
             return;
@@ -327,7 +353,74 @@ public class FavoriteVideoListActivity extends BaseActivity {
 
     private void loadVideos() {
         retryCount = 0;
+        if (localFavorites) {
+            loadLocalVideos();
+            return;
+        }
         doLoadVideos();
+    }
+
+    private void loadLocalVideos() {
+        videoList.clear();
+        videoList.addAll(LocalFavoriteStore.load(fid));
+        hideAllLoading();
+        footerBar.hide();
+        isEnd = true;
+        adapter.notifyDataSetChanged();
+        if (videoList.size() == 0) {
+            emptyView.setText(R.string.local_favorite_empty);
+            emptyView.setVisibility(View.VISIBLE);
+            listView.setVisibility(View.GONE);
+        } else {
+            emptyView.setVisibility(View.GONE);
+            listView.setVisibility(View.VISIBLE);
+            refreshMissingLocalMetadata();
+        }
+    }
+
+    private void refreshMissingLocalMetadata() {
+        if (localMetadataRefreshing) return;
+        boolean missing = false;
+        for (VideoCard card : videoList) {
+            if (card == null) continue;
+            if (card.title == null || card.title.length() == 0
+                    || card.cover == null || card.cover.length() == 0) {
+                missing = true;
+                break;
+            }
+        }
+        if (!missing) return;
+        localMetadataRefreshing = true;
+        new Thread(new Runnable() {
+            public void run() {
+                boolean changed = false;
+                for (VideoCard card : videoList) {
+                    if (card == null) continue;
+                    if (card.title != null && card.title.length() > 0
+                            && card.cover != null && card.cover.length() > 0) {
+                        continue;
+                    }
+                    try {
+                        VideoInfo info = VideoInfoApi.getVideoInfo(card.aid);
+                        if (info != null) {
+                            String up = info.staff != null && info.staff.size() > 0
+                                    ? info.staff.get(0).name : "";
+                            LocalFavoriteStore.updateMetadata(card.aid, info.title,
+                                    info.cover, up);
+                            changed = true;
+                        }
+                    } catch (Throwable ignored) {
+                    }
+                }
+                final boolean updated = changed;
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        localMetadataRefreshing = false;
+                        if (updated && localFavorites) loadLocalVideos();
+                    }
+                });
+            }
+        }, "LocalFavoriteMetadata").start();
     }
 
     private void doLoadVideos() {
@@ -416,6 +509,7 @@ public class FavoriteVideoListActivity extends BaseActivity {
     }
 
     private void loadMoreVideos() {
+        if (localFavorites) return;
         if (isLoading || isEnd) return;
         if (videoList.size() == 0) return;
 
@@ -465,6 +559,14 @@ public class FavoriteVideoListActivity extends BaseActivity {
                 }
             }
         }).start();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (localFavorites) {
+            loadLocalVideos();
+        }
     }
 
     @Override

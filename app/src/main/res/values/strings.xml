@@ -718,4 +718,11 @@
     <string name="nfc_login_sync_failed">同步失败：登录信息无效</string>
     <string name="nfc_sync_title">零距同步</string>
     <string name="nfc_sync_summary">两台支持NFC的设备碰一碰即可同步打开视频或登录状态（实验性）</string>
+    <string name="local_favorite_title">本地收藏</string>
+    <string name="local_favorite_added">已加入本地收藏</string>
+    <string name="local_favorite_removed">已取消本地收藏</string>
+    <string name="local_favorite_empty">还没有本地收藏</string>
+    <string name="local_favorite_new_folder">新建收藏夹</string>
+    <string name="local_favorite_folder_hint">收藏夹名称</string>
+    <string name="local_favorite_default_folder">默认收藏夹</string>
 </resources>
