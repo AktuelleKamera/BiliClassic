@@ -148,16 +148,26 @@ public class PlayerApi {
             }
         }
         JSONObject fallback = null;
+        JSONObject avc = null;
         JSONObject hevc = null;
         for (int i = 0; i < n; i++) {
             JSONObject v = video.getJSONObject(i);
             if (v.optInt("id", -1) != bestId) continue;
             if (fallback == null) fallback = v;
             String codecs = v.optString("codecs", "");
-            if (codecs.startsWith("avc1") || codecs.startsWith("avc3")) return v;
-            if ((codecs.startsWith("hev1") || codecs.startsWith("hvc1")) && hevc == null) hevc = v;
+            boolean isAvc = codecs.startsWith("avc1") || codecs.startsWith("avc3");
+            boolean isHevc = codecs.startsWith("hev1") || codecs.startsWith("hvc1");
+            if (isAvc && avc == null) avc = v;
+            if (isHevc && hevc == null) hevc = v;
         }
-        if (hevc != null) return hevc;
+        boolean preferHevc = tv.biliclassic.SettingsActivity.getDashCodec() == 1;
+        if (preferHevc) {
+            if (hevc != null) return hevc;
+            if (avc != null) return avc;
+        } else {
+            if (avc != null) return avc;
+            if (hevc != null) return hevc;
+        }
         return fallback;
     }
 

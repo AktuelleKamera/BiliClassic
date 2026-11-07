@@ -54,6 +54,8 @@ public class SettingsActivity extends BaseActivity {
     private static final String KEY_MODERN_MODE = "modern_mode";
     private static final String KEY_PORTRAIT_MODE = "portrait_mode";
     private static final String KEY_NFC_SYNC = "nfc_sync_enabled";
+    private static final String KEY_NFC_TRANSPORT = "nfc_transport_mode";
+    private static final String KEY_DASH_CODEC = "dash_video_codec";
     public static final String KEY_DECODER_TYPE = "decoder_type";
     private static final String KEY_BUILTIN_PLAYER = "use_builtin_player";
     private static final String KEY_ONLINE_PLAY = "online_play";
@@ -133,6 +135,10 @@ public class SettingsActivity extends BaseActivity {
     private TextView decoderChoiceText;
     private LinearLayout playStreamFormatItem;
     private TextView playStreamFormatText;
+    private LinearLayout dashCodecItem;
+    private TextView dashCodecText;
+    private LinearLayout nfcTransportItem;
+    private TextView nfcTransportText;
     private LinearLayout convertFormatItem;
     private TextView convertFormatText;
     private LinearLayout defaultTabItem;
@@ -281,7 +287,15 @@ public class SettingsActivity extends BaseActivity {
                 @Override
                 public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                     SharedPreferencesUtil.putBoolean(KEY_NFC_SYNC, isChecked);
-                    if (!isChecked && tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
+                    if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 19
+                            && getNfcTransportMode() == 1) {
+                        if (isChecked) {
+                            tv.biliclassic.nfc.NfcSyncReader.attach(SettingsActivity.this);
+                        } else {
+                            tv.biliclassic.nfc.NfcSyncReader.detach(SettingsActivity.this);
+                        }
+                    } else if (!isChecked
+                            && tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
                         tv.biliclassic.nfc.NfcSyncHelper.detach(SettingsActivity.this);
                     }
                 }
@@ -291,6 +305,44 @@ public class SettingsActivity extends BaseActivity {
                     @Override
                     public void onClick(View v) {
                         nfcSyncCheckbox.toggle();
+                    }
+                });
+            }
+        }
+
+        LinearLayout nfcSendItem = (LinearLayout) findViewById(R.id.nfc_sync_send_item);
+        if (nfcSendItem != null) {
+            if (tv.biliclassic.util.SdkHelper.getSdkInt() < 29) {
+                nfcSendItem.setVisibility(View.GONE);
+            } else {
+                nfcSendItem.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (!isNfcSyncEnabled()) {
+                            Toast.makeText(SettingsActivity.this,
+                                    getString(R.string.nfc_sync_need_enable),
+                                    Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        startActivity(new Intent(SettingsActivity.this,
+                                tv.biliclassic.nfc.NfcSyncSenderActivity.class));
+                    }
+                });
+            }
+        }
+
+        nfcTransportItem = (LinearLayout) findViewById(R.id.nfc_transport_item);
+        nfcTransportText = (TextView) findViewById(R.id.nfc_transport_text);
+        if (nfcTransportItem != null && nfcTransportText != null) {
+            if (tv.biliclassic.util.SdkHelper.getSdkInt() < 19
+                    || tv.biliclassic.util.SdkHelper.getSdkInt() >= 34) {
+                nfcTransportItem.setVisibility(View.GONE);
+            } else {
+                updateNfcTransportDisplay();
+                nfcTransportItem.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showNfcTransportDialog();
                     }
                 });
             }
@@ -662,6 +714,18 @@ public class SettingsActivity extends BaseActivity {
                 @Override
                 public void onClick(View v) {
                     showPlayStreamFormatDialog();
+                }
+            });
+        }
+
+        dashCodecItem = (LinearLayout) findViewById(R.id.dash_codec_item);
+        dashCodecText = (TextView) findViewById(R.id.dash_codec_text);
+        if (dashCodecItem != null) {
+            updateDashCodecDisplay();
+            dashCodecItem.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showDashCodecDialog();
                 }
             });
         }
@@ -1485,6 +1549,81 @@ public class SettingsActivity extends BaseActivity {
         if (playStreamFormatText == null) return;
         int f = getPlayStreamFormat();
         playStreamFormatText.setText(f == 16 ? "DASH" : "MP4");
+        updateDashCodecDisplay();
+    }
+
+    private void updateDashCodecDisplay() {
+        if (dashCodecItem == null || dashCodecText == null) return;
+        boolean dash = getPlayStreamFormat() == 16;
+        dashCodecItem.setVisibility(dash ? View.VISIBLE : View.GONE);
+        dashCodecText.setText(getDashCodec() == 1
+                ? getString(R.string.dash_codec_h265)
+                : getString(R.string.dash_codec_h264));
+    }
+
+    private void updateNfcTransportDisplay() {
+        if (nfcTransportText == null) return;
+        nfcTransportText.setText(getNfcTransportMode() == 1
+                ? getString(R.string.nfc_transport_reader)
+                : getString(R.string.nfc_transport_beam));
+    }
+
+    private void showNfcTransportDialog() {
+        final String[] modes = {getString(R.string.nfc_transport_beam),
+                getString(R.string.nfc_transport_reader)};
+        final int[] values = {0, 1};
+        final int current = getNfcTransportMode();
+        int checked = current == 1 ? 1 : 0;
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
+                .setTitle(getString(R.string.nfc_transport_title))
+                .setSingleChoiceItems(modes, checked,
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                SharedPreferencesUtil.putInt(KEY_NFC_TRANSPORT, values[which]);
+                                updateNfcTransportDisplay();
+                                if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 19) {
+                                    tv.biliclassic.nfc.NfcSyncReader.detach(SettingsActivity.this);
+                                }
+                                if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
+                                    tv.biliclassic.nfc.NfcSyncHelper.detach(SettingsActivity.this);
+                                }
+                                Toast.makeText(SettingsActivity.this,
+                                        R.string.nfc_transport_changed,
+                                        Toast.LENGTH_SHORT).show();
+                                dialog.dismiss();
+                            }
+                        })
+                .setNegativeButton(getString(R.string.videodetail_cancel), null)
+                .show();
+    }
+
+    private void showDashCodecDialog() {
+        final String[] modes = {getString(R.string.dash_codec_h264),
+                getString(R.string.dash_codec_h265)};
+        final int[] values = {0, 1};
+        int checked = getDashCodec() == 1 ? 1 : 0;
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
+                .setTitle(getString(R.string.dash_codec_title))
+                .setSingleChoiceItems(modes, checked,
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                SharedPreferencesUtil.putInt(KEY_DASH_CODEC, values[which]);
+                                updateDashCodecDisplay();
+                                dialog.dismiss();
+                            }
+                        })
+                .setNegativeButton(getString(R.string.videodetail_cancel), null)
+                .show();
+    }
+
+    public static int getDashCodec() {
+        return SharedPreferencesUtil.getInt(KEY_DASH_CODEC, 0);
+    }
+
+    public static int getNfcTransportMode() {
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 34) return 1;
+        int def = tv.biliclassic.util.SdkHelper.getSdkInt() >= 29 ? 1 : 0;
+        return SharedPreferencesUtil.getInt(KEY_NFC_TRANSPORT, def);
     }
 
     public static int getPlayStreamFormat() {
