@@ -828,7 +828,7 @@ public class VideoDetailActivity extends BaseActivity {
         for (int i = 0; i < folders.size(); i++) {
             items[i] = folders.get(i).name;
         }
-        items[folders.size()] = getString(R.string.local_favorite_new_folder);
+        items[folders.size()] = getString(R.string.fav_create_folder);
 
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(
                 DialogUtil.wrap(this)))
@@ -848,10 +848,10 @@ public class VideoDetailActivity extends BaseActivity {
 
     private void showCreateLocalFolderDialog() {
         final android.widget.EditText input = new android.widget.EditText(this);
-        input.setHint(R.string.local_favorite_folder_hint);
+        input.setHint(R.string.fav_folder_name_hint);
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(
                 DialogUtil.wrap(this)))
-                .setTitle(R.string.local_favorite_new_folder)
+                .setTitle(R.string.fav_create_folder)
                 .setView(input)
                 .setPositiveButton(android.R.string.ok,
                         new DialogInterface.OnClickListener() {
@@ -2657,6 +2657,11 @@ public class VideoDetailActivity extends BaseActivity {
 
     private void setupNfcSync() {
         if (mOfflineMode || tv.biliclassic.util.SdkHelper.getSdkInt() < 9) return;
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 19
+                && SettingsActivity.getNfcTransportMode() == 1) {
+            tv.biliclassic.nfc.NfcSyncHelper.detach(this);
+            return;
+        }
         if (!SettingsActivity.isNfcSyncEnabled()) {
             tv.biliclassic.nfc.NfcSyncHelper.detach(this);
             return;

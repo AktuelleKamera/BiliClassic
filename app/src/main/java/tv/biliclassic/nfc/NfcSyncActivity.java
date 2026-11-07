@@ -32,6 +32,10 @@ public class NfcSyncActivity extends Activity {
             handleLogin(uri);
             return;
         }
+        if ("data".equals(from)) {
+            handleData(uri);
+            return;
+        }
         long aid = NfcSyncPayload.getLong(uri, "aid", 0);
         if (aid <= 0) {
             finish();
@@ -58,6 +62,22 @@ public class NfcSyncActivity extends Activity {
         finish();
     }
 
+    private void handleData(Uri uri) {
+        String json = NfcSyncPayload.decodeGzipBase64(
+                NfcSyncPayload.getString(uri, "d", ""));
+        if (json == null || json.length() == 0) {
+            Toast.makeText(this, R.string.nfc_sync_failed, Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+        showDataDialog(json, null, null);
+    }
+
+    private void showDataDialog(final String json, final String cookies,
+                               final String refreshToken) {
+        NfcSyncOptionsDialog.show(this, json, cookies, refreshToken);
+    }
+
     private void handleLogin(Uri uri) {
         String encoded = NfcSyncPayload.getString(uri, "cookie", "");
         final String cookies = NfcSyncPayload.decodeBase64(encoded);
@@ -67,6 +87,12 @@ public class NfcSyncActivity extends Activity {
         }
         final String refreshToken = NfcSyncPayload.decodeBase64(
                 NfcSyncPayload.getString(uri, "rt", ""));
+        String dataJson = NfcSyncPayload.decodeGzipBase64(
+                NfcSyncPayload.getString(uri, "d", ""));
+        if (dataJson != null && dataJson.length() > 0) {
+            showDataDialog(dataJson, cookies, refreshToken);
+            return;
+        }
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(
                 tv.biliclassic.util.DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.nfc_login_sync_title))

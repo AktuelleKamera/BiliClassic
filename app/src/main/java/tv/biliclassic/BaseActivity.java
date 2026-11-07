@@ -140,6 +140,7 @@ public abstract class BaseActivity extends FragmentActivity {
         }
 
         // 布局延伸到系统栏
+        applyDisplayCutout();
         applyEdgeToEdge();
 
         // 虚拟三键导航会盖住页面底部
@@ -207,6 +208,20 @@ public abstract class BaseActivity extends FragmentActivity {
      * 同时底部在 API 28+ 延伸到手势区（LAYOUT_HIDE_NAVIGATION），
      * 并把内容顶部下移状态栏高度，顶部标题不会被状态栏遮挡；导航栏透明。
      */
+    private void applyDisplayCutout() {
+        if (SdkHelper.getSdkInt() < 28) return;
+        try {
+            android.view.WindowManager.LayoutParams attrs = getWindow().getAttributes();
+            java.lang.reflect.Field field = android.view.WindowManager.LayoutParams.class
+                    .getField("layoutInDisplayCutoutMode");
+            if (field.getInt(attrs) != 1) {
+                field.setInt(attrs, 1);
+                getWindow().setAttributes(attrs);
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
     protected void applyEdgeToEdge() {
         if (SdkHelper.getSdkInt() < 21) return; // 状态栏透明/背景延伸需要 API 21+
         try {
@@ -292,6 +307,10 @@ public abstract class BaseActivity extends FragmentActivity {
         if (decor == null || mNavBarPadListener == null) {
             return;
         }
+        // API 28 ????????????????? padding ??????????
+        if (SdkHelper.getSdkInt() < 28) {
+            return;
+        }
         try {
             android.graphics.Rect r = new android.graphics.Rect();
             android.view.View.class
@@ -305,6 +324,14 @@ public abstract class BaseActivity extends FragmentActivity {
             }
             android.view.View c = decor.findViewById(android.R.id.content);
             if (c == null) {
+                return;
+            }
+            // ???????????????? padding???????????
+            if (c.getBottom() <= r.bottom + 1) {
+                if (c.getPaddingBottom() != 0) {
+                    c.setPadding(c.getPaddingLeft(), c.getPaddingTop(),
+                            c.getPaddingRight(), 0);
+                }
                 return;
             }
             int pad = diff > 0 ? diff : 0;
@@ -333,7 +360,17 @@ public abstract class BaseActivity extends FragmentActivity {
     }
 
     @Override
+    protected void onPause() {
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 19) {
+            tv.biliclassic.nfc.NfcSyncReader.detach(this);
+        }
+        super.onPause();
+    }
+
     protected void onDestroy() {
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 19) {
+            tv.biliclassic.nfc.NfcSyncReader.detach(this);
+        }
         if (mNavBarPadListener != null) {
             try {
                 getWindow().getDecorView().getViewTreeObserver()
@@ -386,6 +423,17 @@ public abstract class BaseActivity extends FragmentActivity {
 
     private void setupLoginNfcSync() {
         if (tv.biliclassic.util.SdkHelper.getSdkInt() < 9) return;
+        int transport = SettingsActivity.getNfcTransportMode();
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 34) transport = 1;
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 19 && transport == 1) {
+            tv.biliclassic.nfc.NfcSyncHceService.setEnabled(this, false);
+            if (SettingsActivity.isNfcSyncEnabled()) {
+                tv.biliclassic.nfc.NfcSyncReader.attach(this);
+            } else {
+                tv.biliclassic.nfc.NfcSyncReader.detach(this);
+            }
+            return;
+        }
         if (!SettingsActivity.isNfcSyncEnabled()) {
             tv.biliclassic.nfc.NfcSyncHelper.detach(this);
             return;
@@ -395,20 +443,29 @@ public abstract class BaseActivity extends FragmentActivity {
             return;
         }
         String cookies = SharedPreferencesUtil.getString(SharedPreferencesUtil.cookies, "");
-        if (cookies == null || cookies.length() == 0) {
-            tv.biliclassic.nfc.NfcSyncHelper.detach(this);
-            return;
-        }
         final String refreshToken = SharedPreferencesUtil.getString(
                 SharedPreferencesUtil.refresh_token, "");
+        if (cookies == null || cookies.length() == 0) {
+            tv.biliclassic.nfc.NfcSyncHelper.attach(this,
+                    new tv.biliclassic.nfc.NfcSyncHelper.PayloadProvider() {
+                        public String getPayload() {
+                            String data = tv.biliclassic.nfc.NfcSyncData.build(
+                                    tv.biliclassic.nfc.NfcSyncData.ALL);
+                            return tv.biliclassic.nfc.NfcSyncPayload.data(data);
+                        }
+                    }, null);
+            return;
+        }
         tv.biliclassic.nfc.NfcSyncHelper.attach(this,
                 new tv.biliclassic.nfc.NfcSyncHelper.PayloadProvider() {
                     public String getPayload() {
                         String current = SharedPreferencesUtil.getString(
                                 SharedPreferencesUtil.cookies, "");
                         if (current == null || current.length() == 0) return null;
+                        String data = tv.biliclassic.nfc.NfcSyncData.build(
+                                tv.biliclassic.nfc.NfcSyncData.ALL);
                         return tv.biliclassic.nfc.NfcSyncPayload.login(
-                                current, refreshToken);
+                                current, refreshToken, data);
                     }
                 }, null);
     }
@@ -574,12 +631,12 @@ public abstract class BaseActivity extends FragmentActivity {
             boolean night = tv.biliclassic.util.UiSkin.isNight();
             XmlResourceParser xp = getResources().getXml(R.menu.main_menu);
             String ns = "http://schemas.android.com/apk/res/android";
-            int[] ids = new int[8];
-            String[] titles = new String[8];
+            int[] ids = new int[12];
+            String[] titles = new String[12];
             int n = 0;
             if (includeDefaultOverflowMenu()) {
                 int event = xp.getEventType();
-                while (event != XmlResourceParser.END_DOCUMENT && n < 8) {
+                while (event != XmlResourceParser.END_DOCUMENT && n < ids.length) {
                     if (event == XmlResourceParser.START_TAG
                             && "item".equals(xp.getName())) {
                         int mid = xp.getAttributeResourceValue(ns, "id", 0);

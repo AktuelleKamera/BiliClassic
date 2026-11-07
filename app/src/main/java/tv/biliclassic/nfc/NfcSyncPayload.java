@@ -3,6 +3,11 @@ package tv.biliclassic.nfc;
 import android.net.Uri;
 import android.util.Base64;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
+
 public final class NfcSyncPayload {
 
     public static final String SCHEME = "biliclassic";
@@ -19,7 +24,54 @@ public final class NfcSyncPayload {
         return build("player", aid, cid, part, positionMs);
     }
 
+    public static String data(String json) {
+        if (json == null || json.length() == 0) return null;
+        Uri.Builder builder = new Uri.Builder();
+        builder.scheme(SCHEME).authority(HOST);
+        builder.appendQueryParameter("from", "data");
+        String data = encodeData(json);
+        if (data == null) return null;
+        builder.appendQueryParameter("d", data);
+        return builder.build().toString();
+    }
+
+    private static String encodeData(String json) {
+        if (json == null || json.length() == 0) return null;
+        try {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            GZIPOutputStream gzip = new GZIPOutputStream(bytes);
+            gzip.write(json.getBytes("UTF-8"));
+            gzip.close();
+            return Base64.encodeToString(bytes.toByteArray(), Base64.NO_WRAP);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    public static String decodeGzipBase64(String value) {
+        if (value == null || value.length() == 0) return null;
+        try {
+            byte[] compressed = Base64.decode(value, Base64.NO_WRAP);
+            GZIPInputStream gzip = new GZIPInputStream(
+                    new ByteArrayInputStream(compressed));
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            int count;
+            while ((count = gzip.read(buffer)) != -1) {
+                out.write(buffer, 0, count);
+            }
+            gzip.close();
+            return new String(out.toByteArray(), "UTF-8");
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
     public static String login(String cookies, String refreshToken) {
+        return login(cookies, refreshToken, null);
+    }
+
+    public static String login(String cookies, String refreshToken, String dataJson) {
         Uri.Builder builder = new Uri.Builder();
         builder.scheme(SCHEME).authority(HOST);
         builder.appendQueryParameter("from", "login");
@@ -29,6 +81,10 @@ public final class NfcSyncPayload {
             if (refreshToken != null && refreshToken.length() > 0) {
                 builder.appendQueryParameter("rt", Base64.encodeToString(
                         refreshToken.getBytes("UTF-8"), Base64.NO_WRAP));
+            }
+            String data = encodeData(dataJson);
+            if (data != null && data.length() > 0) {
+                builder.appendQueryParameter("d", data);
             }
         } catch (Throwable ignored) {
             return null;

@@ -39,6 +39,9 @@ public class BiliApplication extends Application {
     public void onCreate() {
         super.onCreate();
         SharedPreferencesUtil.init(this);
+        if (SdkHelper.getSdkInt() >= 19) {
+            tv.biliclassic.nfc.NfcSyncHceService.setEnabled(this, false);
+        }
         LocaleHelper.init(this);
         if (SdkHelper.getSdkInt() < 17) {
             LocaleHelper.updateResourcesLocale(this);
