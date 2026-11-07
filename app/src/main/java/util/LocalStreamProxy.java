@@ -3,6 +3,7 @@ package util;
 import android.util.Log;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -50,6 +51,12 @@ public class LocalStreamProxy {
     // 远端实际可用的协议（null=未探测）。mCDN/PCDN 节点（如 *.edge.mountaintoys.cn:443/4483）
     // 只接受 HTTPS，明文请求返回 400 + HTML 错误页；记住结论后后续 Range 请求直连 HTTPS
     private volatile Boolean remotePreferHttps;
+    private static final int LOOP_CACHE_BYTES = 2 * 1024 * 1024;
+    private volatile byte[] mLoopVideoCache;
+    private volatile byte[] mLoopAudioCache;
+    private volatile long mLoopVideoTotal = -1;
+    private volatile long mLoopAudioTotal = -1;
+    private volatile boolean mLoopPrefetchStarted;
     private static final Map<String, Boolean> HTTP_SUPPORT =
             new HashMap<String, Boolean>();
 
@@ -320,6 +327,24 @@ public class LocalStreamProxy {
         remotePreferHttps = Boolean.TRUE;
     }
 
+    public void preloadLoopStart() {
+        synchronized (this) {
+            if (mLoopPrefetchStarted) return;
+            mLoopPrefetchStarted = true;
+        }
+        Thread t = new Thread(new Runnable() {
+            public void run() {
+                Thread.currentThread().setPriority(Thread.MIN_PRIORITY);
+                loadLoopCache(remoteUrl, true);
+                if (audioUrl != null && audioUrl.length() > 0) {
+                    loadLoopCache(audioUrl, false);
+                }
+            }
+        }, "LoopPrefetch");
+        t.setDaemon(true);
+        t.start();
+    }
+
     public String start() throws IOException {
         // 监听所有接口（0.0.0.0），URL 用本机局域网 IP 而非 127.0.0.1：
         // Android 4.x 上系统 MediaPlayer 的 native 层（mediaserver 进程）连 loopback
@@ -457,7 +482,9 @@ public class LocalStreamProxy {
 
     private void serveTo(Socket client, String targetUrl, String requestLine, String rangeHeader) throws IOException {
         OutputStream out = client.getOutputStream();
-        serveRaw(out, targetUrl, requestLine, rangeHeader);
+        if (!serveLoopCache(out, targetUrl, rangeHeader)) {
+            serveRaw(out, targetUrl, requestLine, rangeHeader);
+        }
         out.flush();
         out.close();
     }
@@ -955,6 +982,102 @@ public class LocalStreamProxy {
             } finally {
                 try { remoteIn.close(); } catch (Throwable ignored) {}
                 try { conn.disconnect(); } catch (Throwable ignored) {}
+            }
+        }
+    }
+
+    private void loadLoopCache(String url, boolean video) {
+        RemoteConn conn = null;
+        InputStream in = null;
+        try {
+            conn = openRemoteConnection(url, "bytes=0-" + (LOOP_CACHE_BYTES - 1));
+            int code = conn.getResponseCode();
+            if (code < 200 || code >= 300) return;
+            long total = parseTotalFromContentRange(conn.getHeaderField("Content-Range"));
+            if (total <= 0) total = conn.getContentLength();
+            in = conn.getInputStream();
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buf = new byte[16384];
+            int n;
+            int read = 0;
+            while (read < LOOP_CACHE_BYTES && (n = in.read(buf, 0,
+                    Math.min(buf.length, LOOP_CACHE_BYTES - read))) != -1) {
+                out.write(buf, 0, n);
+                read += n;
+            }
+            if (read <= 0) return;
+            byte[] data = out.toByteArray();
+            if (video) {
+                mLoopVideoCache = data;
+                mLoopVideoTotal = total;
+            } else {
+                mLoopAudioCache = data;
+                mLoopAudioTotal = total;
+            }
+        } catch (Throwable ignored) {
+        } finally {
+            try { if (in != null) in.close(); } catch (Throwable ignored) {}
+            if (conn != null) {
+                try { conn.disconnect(); } catch (Throwable ignored) {}
+            }
+        }
+    }
+
+    private boolean serveLoopCache(OutputStream out, String targetUrl, String rangeHeader)
+            throws IOException {
+        boolean video = targetUrl == remoteUrl
+                || (targetUrl != null && targetUrl.equals(remoteUrl));
+        byte[] data = video ? mLoopVideoCache : mLoopAudioCache;
+        long total = video ? mLoopVideoTotal : mLoopAudioTotal;
+        if (data == null || data.length == 0 || total <= 0) return false;
+        long start = 0;
+        long end = total - 1;
+        if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
+            String[] seg = rangeHeader.substring(6).split("-");
+            try { start = Long.parseLong(seg[0].trim()); } catch (Exception ignored) {}
+            if (seg.length > 1 && seg[1].trim().length() > 0) {
+                try { end = Long.parseLong(seg[1].trim()); } catch (Exception ignored) {}
+            }
+        }
+        if (start != 0 || start > end) return false;
+        if (end >= total) end = total - 1;
+        long cacheEnd = Math.min(end + 1, data.length);
+        RemoteConn suffix = null;
+        InputStream suffixIn = null;
+        try {
+            if (end >= data.length) {
+                suffix = openRemoteConnection(targetUrl,
+                        "bytes=" + data.length + "-" + end);
+                int code = suffix.getResponseCode();
+                if (code < 200 || code >= 300) return false;
+                suffixIn = suffix.getInputStream();
+            }
+            StringBuilder resp = new StringBuilder();
+            resp.append("HTTP/1.0 206 Partial Content\r\n");
+            resp.append("Accept-Ranges: bytes\r\n");
+            resp.append("Content-Range: bytes ").append(start).append("-")
+                    .append(end).append("/").append(total).append("\r\n");
+            resp.append("Content-Type: video/mp4\r\n");
+            resp.append("Content-Length: ").append(end - start + 1).append("\r\n");
+            resp.append("Connection: close\r\n\r\n");
+            out.write(resp.toString().getBytes());
+            out.write(data, (int) start, (int) (cacheEnd - start));
+            if (suffixIn != null) {
+                long remain = end + 1 - cacheEnd;
+                byte[] buf = new byte[BUFFER_SIZE];
+                int n;
+                while (remain > 0 && (n = suffixIn.read(buf, 0,
+                        (int) Math.min(buf.length, remain))) != -1) {
+                    out.write(buf, 0, n);
+                    remain -= n;
+                }
+            }
+            out.flush();
+            return true;
+        } finally {
+            try { if (suffixIn != null) suffixIn.close(); } catch (Throwable ignored) {}
+            if (suffix != null) {
+                try { suffix.disconnect(); } catch (Throwable ignored) {}
             }
         }
     }

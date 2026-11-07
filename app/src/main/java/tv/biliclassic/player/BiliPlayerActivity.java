@@ -4273,6 +4273,16 @@ public class BiliPlayerActivity extends Activity implements
         if (mediaPlayer != null && isPrepared && isPlaying && !isLiveStream) {
             updateTimeDisplay();
             syncSplitAudio();
+            if (completionAction == COMPLETION_ACTION_LOOP
+                    && localProxy != null && mDuration > 8000) {
+                try {
+                    long position = mediaPlayer.getCurrentPosition();
+                    if (position > mDuration - 5000) {
+                        localProxy.preloadLoopStart();
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
             handler.sendEmptyMessageDelayed(MSG_UPDATE_PROGRESS, PROGRESS_UPDATE_INTERVAL);
         }
     }
