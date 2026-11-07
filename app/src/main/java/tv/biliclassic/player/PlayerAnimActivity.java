@@ -110,6 +110,13 @@ public class PlayerAnimActivity extends Activity {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         }
         setContentView(R.layout.activity_player_anim);
+        if (SdkHelper.getSdkInt() >= 11
+                && SdkHelper.getSdkInt() < 21) {
+            View content = findViewById(android.R.id.content);
+            if (content != null) {
+                content.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+            }
+        }
 
         ivTvAnim = (ImageView) findViewById(R.id.iv_tv_anim);
         progressBar = (ProgressBar) findViewById(R.id.progress_bar);
@@ -364,6 +371,13 @@ public class PlayerAnimActivity extends Activity {
     }
 
     private void startTvAnimation() {
+        if (ivTvAnim != null) {
+            ivTvAnim.setImageResource(animDrawables[0]);
+            if (SdkHelper.getSdkInt() >= 11
+                    && SdkHelper.getSdkInt() < 21) {
+                ivTvAnim.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+            }
+        }
         animHandler.postDelayed(new Runnable() {
             @Override
             public void run() {

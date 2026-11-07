@@ -781,9 +781,21 @@ public class BiliPlayerActivity extends Activity implements
         mLoadingOverlay.setLayoutParams(new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         mLoadingIcon = (ImageView) mLoadingOverlay.findViewById(R.id.tv_chan_animation);
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 11
+                && SdkHelper.getSdkInt() < 21) {
+            mLoadingOverlay.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+            if (mLoadingIcon != null) {
+                mLoadingIcon.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+            }
+        }
         // 两阶段加载状态：都放在左下角状态栏（样式与「正在加载…」一致），
         // 第一行"获取播放地址"显示在第二行"正在加载视频"上方。
         mLoadingStep1 = (TextView) mLoadingOverlay.findViewById(R.id.video_preloading_status_bar);
+        if (mLoadingStep1 != null
+                && tv.biliclassic.util.SdkHelper.getSdkInt() >= 11
+                && tv.biliclassic.util.SdkHelper.getSdkInt() < 21) {
+            mLoadingStep1.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        }
         // preloading 布局里用不到的杂项元素（重试/返回/随机提示等）一律隐藏，
         // 加载失败由本 Activity 自己的逻辑处理
         hidePreloadingExtraViews(mLoadingOverlay);
@@ -3027,7 +3039,6 @@ public class BiliPlayerActivity extends Activity implements
         isPrepared = true;
         markLoadingStep2Done();
         showBuffering(false);
-        hideLoadingOverlay();
 
         // 启动缓冲水位看门狗
         handler.removeCallbacks(mRebufferWatchdog);
@@ -3043,6 +3054,25 @@ public class BiliPlayerActivity extends Activity implements
         if (tvTotalTime != null) {
             tvTotalTime.setText(formatTime(mDuration));
         }
+
+        int initialTarget = mSeekWhenPrepared;
+        if (initialTarget > 0 && mDuration > 0 && initialTarget <= mDuration) {
+            mInitialSeekTarget = initialTarget;
+            mSeekDisplayTarget = initialTarget;
+            mSeekDisplayHoldUntil = android.os.SystemClock.elapsedRealtime() + 2500L;
+            mLastKnownPosition = initialTarget;
+            if (seekBar != null) {
+                seekBar.setProgress((int) (1000L * initialTarget / mDuration));
+            }
+            if (tvCurrentTime != null) {
+                tvCurrentTime.setText(formatTime(initialTarget));
+            }
+        } else {
+            mLastKnownPosition = 0;
+            if (seekBar != null) seekBar.setProgress(0);
+            if (tvCurrentTime != null) tvCurrentTime.setText("00:00");
+        }
+        hideLoadingOverlay();
 
         if (mGestureController != null) {
             mGestureController.setDuration(mDuration);
@@ -3074,6 +3104,14 @@ public class BiliPlayerActivity extends Activity implements
             mSeekDisplayTarget = mSeekWhenPrepared;
             mSeekDisplayHoldUntil = android.os.SystemClock.elapsedRealtime() + 2500L;
             if (mDanmakuManager != null) mDanmakuManager.seekTo(mSeekWhenPrepared);
+            if (decoderType == DECODER_SYSTEM) {
+                try {
+                    mSeekPending = true;
+                    mSeekTarget = mSeekWhenPrepared;
+                    mp.seekTo(mSeekWhenPrepared);
+                } catch (Throwable ignored) {
+                }
+            }
         }
         mp.start();
         isPlaying = true;
@@ -4876,6 +4914,17 @@ public class BiliPlayerActivity extends Activity implements
 
     private void setupNfcSync() {
         if (tv.biliclassic.util.SdkHelper.getSdkInt() < 9) return;
+        int transport = tv.biliclassic.SettingsActivity.getNfcTransportMode();
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 34) transport = 1;
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 19 && transport == 1) {
+            tv.biliclassic.nfc.NfcSyncHceService.setEnabled(this, false);
+            if (tv.biliclassic.SettingsActivity.isNfcSyncEnabled()) {
+                tv.biliclassic.nfc.NfcSyncReader.attach(this);
+            } else {
+                tv.biliclassic.nfc.NfcSyncReader.detach(this);
+            }
+            return;
+        }
         if (!tv.biliclassic.SettingsActivity.isNfcSyncEnabled()) {
             tv.biliclassic.nfc.NfcSyncHelper.detach(this);
             return;
@@ -4909,6 +4958,9 @@ public class BiliPlayerActivity extends Activity implements
 
     @Override
     protected void onPause() {
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 19) {
+            tv.biliclassic.nfc.NfcSyncReader.detach(this);
+        }
         super.onPause();
         if (mediaPlayer != null && isPlaying) {
             mediaPlayer.pause();
