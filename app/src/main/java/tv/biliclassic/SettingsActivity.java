@@ -1501,7 +1501,7 @@ public class SettingsActivity extends BaseActivity {
     private static final String[] CONVERT_FORMATS = {
             "h264", "mpeg4", "3gp"};
     private static final String[] CONVERT_FORMAT_LABELS = {
-            "240P H.264", "MPEG-4 SP", "3GP H.263"};
+            "H.264 Baseline", "MPEG-4 SP", "3GP H.263"};
 
     private void showConvertFormatDialog() {
         String current = getConvertFormat();

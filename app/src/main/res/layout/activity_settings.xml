@@ -564,7 +564,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginRight="8dp"
                     android:layout_gravity="center_vertical"
-                    android:text="240P H.264"
+                    android:text="H.264 Baseline"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
