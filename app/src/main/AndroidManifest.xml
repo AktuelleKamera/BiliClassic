@@ -401,6 +401,236 @@
             android:targetActivity=".metro.MetroHomeActivity"
             android:exported="false"
             android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".AboutActivityLandscape"
+            android:targetActivity=".AboutActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".AboutActivitySensor"
+            android:targetActivity=".AboutActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".ArticleActivityLandscape"
+            android:targetActivity=".ArticleActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".ArticleActivitySensor"
+            android:targetActivity=".ArticleActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".CrashReportActivityLandscape"
+            android:targetActivity=".CrashReportActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".CrashReportActivitySensor"
+            android:targetActivity=".CrashReportActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".CropActivityLandscape"
+            android:targetActivity=".CropActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".CropActivitySensor"
+            android:targetActivity=".CropActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".DeviceInfoActivityLandscape"
+            android:targetActivity=".DeviceInfoActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".DeviceInfoActivitySensor"
+            android:targetActivity=".DeviceInfoActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".DynamicDetailActivityLandscape"
+            android:targetActivity=".DynamicDetailActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".DynamicDetailActivitySensor"
+            android:targetActivity=".DynamicDetailActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".FavoriteFolderListActivityLandscape"
+            android:targetActivity=".FavoriteFolderListActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".FavoriteFolderListActivitySensor"
+            android:targetActivity=".FavoriteFolderListActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".FavoriteVideoListActivityLandscape"
+            android:targetActivity=".FavoriteVideoListActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".FavoriteVideoListActivitySensor"
+            android:targetActivity=".FavoriteVideoListActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".FollowingListActivityLandscape"
+            android:targetActivity=".FollowingListActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".FollowingListActivitySensor"
+            android:targetActivity=".FollowingListActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".HelpListActivityLandscape"
+            android:targetActivity=".HelpListActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".HelpListActivitySensor"
+            android:targetActivity=".HelpListActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".ImageViewerActivityLandscape"
+            android:targetActivity=".ImageViewerActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".ImageViewerActivitySensor"
+            android:targetActivity=".ImageViewerActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".KeyBindingSetupActivityLandscape"
+            android:targetActivity=".KeyBindingSetupActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".KeyBindingSetupActivitySensor"
+            android:targetActivity=".KeyBindingSetupActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".LiveInfoActivityLandscape"
+            android:targetActivity=".LiveInfoActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".LiveInfoActivitySensor"
+            android:targetActivity=".LiveInfoActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".LiveRoomListActivityLandscape"
+            android:targetActivity=".LiveRoomListActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".LiveRoomListActivitySensor"
+            android:targetActivity=".LiveRoomListActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".LoginActivityLandscape"
+            android:targetActivity=".LoginActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".LoginActivitySensor"
+            android:targetActivity=".LoginActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".PartitionDetailActivityLandscape"
+            android:targetActivity=".PartitionDetailActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".PartitionDetailActivitySensor"
+            android:targetActivity=".PartitionDetailActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".PrivateMsgActivityLandscape"
+            android:targetActivity=".PrivateMsgActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".PrivateMsgActivitySensor"
+            android:targetActivity=".PrivateMsgActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".PrivateMsgListActivityLandscape"
+            android:targetActivity=".PrivateMsgListActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".PrivateMsgListActivitySensor"
+            android:targetActivity=".PrivateMsgListActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".ReplyListActivityLandscape"
+            android:targetActivity=".ReplyListActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".ReplyListActivitySensor"
+            android:targetActivity=".ReplyListActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".SettingsActivityLandscape"
+            android:targetActivity=".SettingsActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".SettingsActivitySensor"
+            android:targetActivity=".SettingsActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".UserProfileActivityLandscape"
+            android:targetActivity=".UserProfileActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".UserProfileActivitySensor"
+            android:targetActivity=".UserProfileActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".subsettings.DecoderSettingsActivityLandscape"
+            android:targetActivity=".subsettings.DecoderSettingsActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".subsettings.DecoderSettingsActivitySensor"
+            android:targetActivity=".subsettings.DecoderSettingsActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".player.AudioPlayerActivityLandscape"
+            android:targetActivity=".player.AudioPlayerActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".player.AudioPlayerActivitySensor"
+            android:targetActivity=".player.AudioPlayerActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
     </application>
 
 </manifest>
