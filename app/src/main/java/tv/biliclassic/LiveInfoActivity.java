@@ -17,6 +17,7 @@ import tv.biliclassic.model.LivePlayInfo;
 import tv.biliclassic.model.LiveRoom;
 import tv.biliclassic.model.UserInfo;
 import tv.biliclassic.player.BiliPlayerActivity;
+import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.ImageLoader;
 import tv.biliclassic.util.MsgUtil;
 import tv.biliclassic.util.SdkHelper;
@@ -408,7 +409,7 @@ public class LiveInfoActivity extends BaseActivity {
         for (int i = 0; i < qList.size(); i++) {
             names[i] = (String) qList.get(i)[1];
         }
-        AlertDialog.Builder builder = new AlertDialog.Builder(SdkHelper.dialogContext(this));
+        AlertDialog.Builder builder = new AlertDialog.Builder(SdkHelper.dialogContext(DialogUtil.wrap(this)));
         builder.setTitle(getString(R.string.live_info_quality_title));
         builder.setSingleChoiceItems(names, selectedQualityPos, new android.content.DialogInterface.OnClickListener() {
             @Override
@@ -467,7 +468,7 @@ public class LiveInfoActivity extends BaseActivity {
         for (int i = 0; i < routeCount; i++) {
             names[i] = getString(R.string.live_info_route) + (i + 1);
         }
-        AlertDialog.Builder builder = new AlertDialog.Builder(SdkHelper.dialogContext(this));
+        AlertDialog.Builder builder = new AlertDialog.Builder(SdkHelper.dialogContext(DialogUtil.wrap(this)));
         builder.setTitle(getString(R.string.live_info_route_title));
         builder.setSingleChoiceItems(names, selectedRoute, new android.content.DialogInterface.OnClickListener() {
             @Override

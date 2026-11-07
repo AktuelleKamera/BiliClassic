@@ -67,7 +67,8 @@ public class NfcSyncActivity extends Activity {
         }
         final String refreshToken = NfcSyncPayload.decodeBase64(
                 NfcSyncPayload.getString(uri, "rt", ""));
-        new AlertDialog.Builder(this)
+        new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(
+                tv.biliclassic.util.DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.nfc_login_sync_title))
                 .setMessage(getString(R.string.nfc_login_sync_message))
                 .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
