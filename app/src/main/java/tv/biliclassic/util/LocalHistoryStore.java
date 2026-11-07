@@ -120,6 +120,39 @@ public final class LocalHistoryStore {
         return result;
     }
 
+    public static synchronized String exportData() {
+        return readArray().toString();
+    }
+
+    public static synchronized void importData(String json) {
+        if (json == null || json.length() == 0) return;
+        try {
+            JSONArray remote = new JSONArray(json);
+            JSONArray existing = readArray();
+            JSONArray out = new JSONArray();
+            for (int i = 0; i < remote.length(); i++) {
+                JSONObject item = remote.optJSONObject(i);
+                if (item == null) continue;
+                long aid = item.optLong("aid", 0);
+                long cid = item.optLong("cid", 0);
+                if (aid <= 0 && cid <= 0) continue;
+                if (find(existing, aid, cid) != null || find(out, aid, cid) != null) {
+                    continue;
+                }
+                out.put(item);
+            }
+            for (int i = 0; i < existing.length() && out.length() < MAX_ENTRIES; i++) {
+                JSONObject item = existing.optJSONObject(i);
+                if (item != null) out.put(item);
+            }
+            while (out.length() > MAX_ENTRIES) {
+                out.remove(out.length() - 1);
+            }
+            SharedPreferencesUtil.putString(KEY, LocalJsonCrypto.encrypt(out.toString()));
+        } catch (Throwable ignored) {
+        }
+    }
+
     private static JSONArray readArray() {
         String raw = SharedPreferencesUtil.getString(KEY, "");
         if (raw == null || raw.length() == 0) return new JSONArray();

@@ -4,7 +4,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import tv.biliclassic.model.FavoriteFolder;
 import tv.biliclassic.model.VideoCard;
@@ -193,6 +195,117 @@ public final class LocalFavoriteStore {
             out.put(item);
         }
         writeArray(out);
+    }
+
+    public static synchronized String exportData() {
+        getFolders();
+        JSONObject root = new JSONObject();
+        try {
+            root.put("folders", readFolders());
+            root.put("items", readArray());
+        } catch (Exception ignored) {
+            return null;
+        }
+        return root.toString();
+    }
+
+    public static synchronized void importData(String json) {
+        if (json == null || json.length() == 0) return;
+        try {
+            JSONObject root = new JSONObject(json);
+            JSONArray remoteFolders = root.optJSONArray("folders");
+            JSONArray remoteItems = root.optJSONArray("items");
+            getFolders();
+            JSONArray localFolders = readFolders();
+            Map<Long, Long> folderMap = new HashMap<Long, Long>();
+            folderMap.put(DEFAULT_FOLDER, DEFAULT_FOLDER);
+            if (remoteFolders != null) {
+                for (int i = 0; i < remoteFolders.length(); i++) {
+                    JSONObject item = remoteFolders.optJSONObject(i);
+                    if (item == null) continue;
+                    long remoteFid = item.optLong("fid", DEFAULT_FOLDER);
+                    if (remoteFid == DEFAULT_FOLDER) continue;
+                    String name = item.optString("name", "");
+                    long localFid = findFolderByFid(localFolders, remoteFid);
+                    if (localFid == 0) {
+                        localFid = findFolderByName(localFolders, name);
+                    }
+                    if (localFid == 0) {
+                        localFid = nextFolderId(localFolders);
+                        JSONObject folder = new JSONObject();
+                        folder.put("fid", localFid);
+                        folder.put("name", name);
+                        localFolders.put(folder);
+                    }
+                    folderMap.put(remoteFid, localFid);
+                }
+                writeFolders(localFolders);
+            }
+            if (remoteItems == null) return;
+            JSONArray existing = readArray();
+            JSONArray out = new JSONArray();
+            for (int i = 0; i < remoteItems.length(); i++) {
+                JSONObject item = remoteItems.optJSONObject(i);
+                if (item == null) continue;
+                long aid = item.optLong("aid", 0);
+                long cid = item.optLong("cid", 0);
+                if (aid <= 0 && cid <= 0) continue;
+                if (find(existing, aid, cid) != null || find(out, aid, cid) != null) {
+                    continue;
+                }
+                long remoteFid = item.optLong("folder", DEFAULT_FOLDER);
+                Long mapped = folderMap.get(remoteFid);
+                long folder = mapped == null ? DEFAULT_FOLDER : mapped.longValue();
+                JSONObject copy = new JSONObject();
+                copy.put("aid", aid);
+                copy.put("cid", cid);
+                copy.put("folder", folder);
+                copy.put("title", item.optString("title", ""));
+                copy.put("cover", item.optString("cover", ""));
+                copy.put("up", item.optString("up", ""));
+                copy.put("saved_at", item.optLong("saved_at", System.currentTimeMillis()));
+                out.put(copy);
+            }
+            for (int i = 0; i < existing.length() && out.length() < MAX_ENTRIES; i++) {
+                JSONObject item = existing.optJSONObject(i);
+                if (item != null) out.put(item);
+            }
+            while (out.length() > MAX_ENTRIES) {
+                out.remove(out.length() - 1);
+            }
+            writeArray(out);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static long findFolderByFid(JSONArray folders, long fid) {
+        for (int i = 0; i < folders.length(); i++) {
+            JSONObject item = folders.optJSONObject(i);
+            if (item != null && item.optLong("fid", 0) == fid) {
+                return item.optLong("fid", 0);
+            }
+        }
+        return 0;
+    }
+
+    private static long findFolderByName(JSONArray folders, String name) {
+        if (name == null || name.length() == 0) return 0;
+        for (int i = 0; i < folders.length(); i++) {
+            JSONObject item = folders.optJSONObject(i);
+            if (item != null && name.equals(item.optString("name", ""))) {
+                return item.optLong("fid", DEFAULT_FOLDER);
+            }
+        }
+        return 0;
+    }
+
+    private static long nextFolderId(JSONArray folders) {
+        long min = -1;
+        for (int i = 0; i < folders.length(); i++) {
+            JSONObject item = folders.optJSONObject(i);
+            if (item != null) min = Math.min(min, item.optLong("fid", -1));
+        }
+        return min - 1;
     }
 
     private static List<FavoriteFolder> parseFolders(JSONArray folders) {
