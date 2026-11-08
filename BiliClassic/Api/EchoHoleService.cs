@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.IO;
+using System.Net;
+using System.Threading;
 
 namespace BiliClassic.Api
 {
@@ -14,7 +17,8 @@ namespace BiliClassic.Api
 
     public static class EchoHoleService
     {
-        private const string Url = "http://www.biliclassic.cn/api/echo.json";
+        public const string Url = "http://www.biliclassic.cn/api/echo.json";
+        public const string Post_Url = "http://oldpods.cn/biliclassic_echo.php";
 
         private static readonly Random Rnd = new Random();
 
@@ -91,6 +95,103 @@ namespace BiliClassic.Api
                 }
             }
             return items;
+        }
+
+
+        //下面是投稿回声洞的部分
+        
+        public static string SendEchoHole(string context, string name, string device, string date)
+        {
+            string res_html = "";
+            string return_string = "";
+            string body = "content=" + HttpUtility.UrlEncode(context) + "&sign=" + HttpUtility.UrlEncode(name) + "&model=" + HttpUtility.UrlEncode(device) + "&date=" + HttpUtility.UrlEncode(date);
+            try
+            {
+                System.Diagnostics.Debug.WriteLine(111);
+                res_html = Post(Post_Url, body);
+                System.Diagnostics.Debug.WriteLine(222);
+                return_string = EatHtml(res_html);
+                System.Diagnostics.Debug.WriteLine(333);
+            }
+            catch (Exception ex)
+            {
+                return_string = "E" + ex.Message;
+            }
+
+
+            return return_string;
+        }
+
+        public static string EatHtml(string html)//<--好土的名字（
+        {
+            string return_string = "";
+            const string Err_Div = "<div class=\"flash err\">";
+            const string OK_Div = "<div class=\"flash ok\">";
+            const string Div = "</div>";
+
+            if (html.Contains(Err_Div))
+            {
+                string[] html_split_1 = html.Split(new[] { Err_Div }, StringSplitOptions.None);
+                string[] html_split_2 = html_split_1[1].Split(new[] { Div }, StringSplitOptions.None);
+                return_string = "E" + html_split_2[0];
+            }
+            else if (html.Contains(OK_Div))
+            {
+                string[] html_split_1 = html.Split(new[] { OK_Div }, StringSplitOptions.None);
+                string[] html_split_2 = html_split_1[1].Split(new[] { Div }, StringSplitOptions.None);
+                return_string = "O" + html_split_2[0];
+            }
+            else
+            {
+                return_string = "E未知的错误";
+            }
+            return return_string;
+        }
+
+        public static string Post(string url, string body)
+        {
+            string result = null;
+            Exception exception = null;
+            AutoResetEvent waitHandle = new AutoResetEvent(false);
+
+            WebClient client = new WebClient();
+
+            client.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
+
+            client.UploadStringCompleted += (sender, e) =>
+            {
+                if (e.Error != null)
+                {
+                    exception = e.Error;
+                }
+                else if (e.Cancelled)
+                {
+                    exception = new Exception("请求被取消");
+                }
+                else
+                {
+                    result = e.Result;
+                }
+                waitHandle.Set();
+            };
+
+            //client.DownloadStringAsync(new Uri(url));
+            System.Diagnostics.Debug.WriteLine(body);
+
+            client.UploadStringAsync(new Uri(url), "POST", body);
+
+            if (!waitHandle.WaitOne(30000))
+            {
+                client.CancelAsync();
+                throw new TimeoutException("请求超时");
+            }
+
+            if (exception != null)
+            {
+                throw exception;
+            }
+
+            return result;
         }
     }
 }

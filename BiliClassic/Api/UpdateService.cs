@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Reflection;
 
 namespace BiliClassic.Api
 {
@@ -18,11 +19,64 @@ namespace BiliClassic.Api
     {
         private const string ManifestUrl = "http://www.biliclassic.cn/wp/api/version.json";
 
-        public const string VersionNumber = "0.3.1.0";
+        public static string VersionNumber
+        {
+            get
+            {
+                try
+                {
+                    int[] asmTemp = GetAssemblyCode();
+                    return asmTemp[0] + "." + asmTemp[1] + "." + asmTemp[2] + "." + asmTemp[3];
+                }
+                catch
+                {
+                    return "NAN";
+                }
+            }
+        }
 
-        public const string DisplayVersion = "0.3.1";
+        public static string DisplayVersion
+        {
+            get
+            {
+                try
+                {
+                    int[] asmTemp = GetAssemblyCode();
+                    return asmTemp[0] + "." + asmTemp[1] + "." + asmTemp[2];
+                }
+                catch
+                {
+                    return "NAN";
+                }
+            }
+        }
 
-        public const int VersionCode = 310;
+        public static int VersionCode
+        {
+            get
+            {
+                try
+                {
+                    int[] asmTemp = GetAssemblyCode();
+                    System.Diagnostics.Debug.WriteLine(int.Parse(asmTemp[1] + "" + asmTemp[2] + "" + asmTemp[3]));
+                    return int.Parse(asmTemp[1] + "" + asmTemp[2] + "" + asmTemp[3]);
+                }
+                catch
+                {
+                    return 000;
+                }
+            }
+        }
+
+        public static int[] GetAssemblyCode()
+        {
+            Assembly asm = Assembly.GetExecutingAssembly();
+            string[] parts1 = asm.FullName.Split(',');
+            string[] parts2 = parts1[1].Split('=');
+            string[] parts3 = parts2[1].Split('.');
+            int[] returnTemp = new int[] { int.Parse(parts3[0]), int.Parse(parts3[1]), int.Parse(parts3[2]), int.Parse(parts3[3]) };
+            return returnTemp;
+        }
 
         public static void Check(Action<UpdateInfo> onDone)
         {

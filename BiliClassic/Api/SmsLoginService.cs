@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
-using Microsoft.Phone.Info;
 
 namespace BiliClassic.Api
 {
@@ -44,25 +43,6 @@ namespace BiliClassic.Api
             + " mobi_app/android_hd build/2001100 channel/master innerVer/2001100 osVer/15 network/2";
 
         private const string Statistics = "{\"appId\":5,\"platform\":3,\"version\":\"2.0.1\",\"abtest\":\"\"}";
-
-        // 不要再假装成某个安卓品牌，机型/厂商直接从系统读
-        // （WP7.0 profile 没有 DeviceStatus，只能用 DeviceExtendedProperties）
-        private static string SystemDeviceInfo(string key, string fallback)
-        {
-            try
-            {
-                object value = DeviceExtendedProperties.GetValue(key);
-                string text = value as string;
-                if (!string.IsNullOrEmpty(text))
-                {
-                    return text.Trim();
-                }
-            }
-            catch (Exception)
-            {
-            }
-            return fallback;
-        }
 
         private const string SendUrl = "https://passport.bilibili.com/x/passport-login/sms/send";
         private const string LoginUrl = "https://passport.bilibili.com/x/passport-login/login/sms";
@@ -152,18 +132,14 @@ namespace BiliClassic.Api
             parameters["build"] = "2001100";
             parameters["buvid"] = buvid;
             parameters["c_locale"] = "zh_CN";
+            parameters["captcha_key"] = captchaKey ?? "";
             parameters["channel"] = "master";
             parameters["cid"] = "86";
             parameters["code"] = code;
             parameters["device"] = "phone";
             parameters["device_id"] = deviceId;
-            if (!string.IsNullOrEmpty(captchaKey))
-            {
-                // 为空就别塞进签名，服务端会把空参数丢掉，签名就对不上了
-                parameters["captcha_key"] = captchaKey;
-            }
-            parameters["device_name"] = DeviceName();
-            parameters["device_platform"] = DevicePlatform();
+            parameters["device_name"] = "vivo";
+            parameters["device_platform"] = "Android14vivo";
             parameters["disable_rcmd"] = "0";
             parameters["from_pv"] = "main.my-information.my-login.0.click";
             parameters["from_url"] = "bilibili://user_center/mine";
@@ -213,19 +189,6 @@ namespace BiliClassic.Api
         }
 
 
-        // 登录请求里报给服务端的设备名，比如 "Lumia 920" / "RM-820_nam_att_100"
-        private static string DeviceName()
-        {
-            return SystemDeviceInfo("DeviceName", "Windows Phone");
-        }
-
-        // 原先是 "Android14vivo" 这种「平台+版本+品牌」，这里换成系统厂商
-        private static string DevicePlatform()
-        {
-            string maker = SystemDeviceInfo("DeviceManufacturer", "");
-            return maker.Length > 0 ? "WindowsPhone " + maker : "WindowsPhone";
-        }
-
         private static void EnsureBuvid(Action<string> onDone)
         {
             string cached = CookieGenerator.GetBuvid3();
@@ -255,11 +218,70 @@ namespace BiliClassic.Api
         }
 
 
-        // 签名/编码统一走 AppSign，别在本地再抄一份（抄的版本空格编成 '+'，
-        // 服务端按 %20 重算会对不上，报 -3）
         private static string SignAndBuildBody(Dictionary<string, string> parameters)
         {
-            return AppSign.BuildBody(parameters, AppKey, AppSec);
+            parameters["appkey"] = AppKey;
+            parameters["ts"] = CurrentUnixSeconds().ToString();
+
+            List<string> keys = new List<string>(parameters.Keys);
+            keys.Sort(StringComparer.Ordinal);
+
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < keys.Count; i++)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append('&');
+                }
+                sb.Append(FormEncode(keys[i])).Append('=').Append(FormEncode(parameters[keys[i]]));
+            }
+
+            parameters["sign"] = Md5Util.Hex(sb.ToString() + AppSec);
+            return BuildBody(parameters);
+        }
+
+        private static string BuildBody(Dictionary<string, string> parameters)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (KeyValuePair<string, string> pair in parameters)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append('&');
+                }
+                sb.Append(FormEncode(pair.Key)).Append('=').Append(FormEncode(pair.Value));
+            }
+            return sb.ToString();
+        }
+
+        private static string FormEncode(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return "";
+            }
+
+            StringBuilder sb = new StringBuilder();
+            byte[] bytes = Encoding.UTF8.GetBytes(value);
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                char c = (char)bytes[i];
+                if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+                    || c == '-' || c == '_' || c == '.' || c == '*')
+                {
+                    sb.Append(c);
+                }
+                else if (c == ' ')
+                {
+                    sb.Append('+');
+                }
+                else
+                {
+                    sb.Append('%');
+                    sb.Append(bytes[i].ToString("X2"));
+                }
+            }
+            return sb.ToString();
         }
 
         private static Dictionary<string, string> AppHeaders(string buvid)
@@ -334,6 +356,12 @@ namespace BiliClassic.Api
             }
             s = s.Replace("\r", " ").Replace("\n", " ");
             return s.Length <= max ? s : s.Substring(0, max) + "…";
+        }
+
+        private static long CurrentUnixSeconds()
+        {
+            DateTime epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            return (long)DateTime.UtcNow.Subtract(epoch).TotalSeconds;
         }
 
     }

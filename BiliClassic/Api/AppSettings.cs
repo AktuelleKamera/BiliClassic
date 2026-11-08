@@ -1,4 +1,6 @@
-﻿namespace BiliClassic.Api
+﻿using System;
+
+namespace BiliClassic.Api
 {
     public static class AppSettings
     {
@@ -12,6 +14,9 @@
         private const string XiNaoEnabledKey = "xinao_enabled";//洗脑循环
         private const string ZiDongEnabledKey = "zidong_enabled";//自动播放
         private const string YinLiangValueKey = "yinliang_value";//音量
+        //这个也是我加的（
+        private const string LockCiTieValueKey = "lockcitie_value";
+        private const string HideCiTieValueKey = "hidecitie_value";
 
 
         public static int PlayQuality
@@ -38,6 +43,15 @@
             set { LocalStore.Set(OfflinePlaybackKey, value ? "1" : "0"); }
         }
 
+        public static bool DashSupported
+        {
+            get
+            {
+                Version version = Environment.OSVersion.Version;
+                return version.Major > 7 || (version.Major == 7 && version.Minor >= 1);
+            }
+        }
+
         public static bool DashPlayback
         {
             get { return LocalStore.Get(DashPlaybackKey) == "1"; }
@@ -54,6 +68,18 @@
         {
             get { return LocalStore.Get(DanmakuEnabledKey) != "0"; }
             set { LocalStore.Set(DanmakuEnabledKey, value ? "1" : "0"); }
+        }
+
+        public static bool LockCiTieEnabled
+        {
+            get { return LocalStore.Get(LockCiTieValueKey) == "1"; }
+            set { LocalStore.Set(LockCiTieValueKey, value ? "1" : "0"); }
+        }
+
+        public static bool HideCiTieEnabled
+        {
+            get { return LocalStore.Get(HideCiTieValueKey) == "1"; }
+            set { LocalStore.Set(HideCiTieValueKey, value ? "1" : "0"); }
         }
 
         public static bool XiNaoEnabled
