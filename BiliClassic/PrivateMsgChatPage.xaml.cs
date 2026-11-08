@@ -32,8 +32,6 @@ namespace BiliClassic
         {
             InitializeComponent();
             ThemeHelper.ApplyPage(this);
-            // 发送按钮在旧版是默认无填色的，黑主题下还原
-            ThemeHelper.ApplyAccentButtons(this);
             MessageList.ItemsSource = _messages;
         }
 

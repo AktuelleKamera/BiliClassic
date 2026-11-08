@@ -13,6 +13,7 @@ using System.Windows.Threading;
 using BiliClassic.Api;
 using BiliClassic.Danmaku;
 using Microsoft.Phone.Controls;
+using Microsoft.Phone.Info;
 
 namespace BiliClassic
 {
@@ -87,9 +88,6 @@ namespace BiliClassic
 
         private int _dashQuality;
 
-        // 实际拿到的清晰度（qn），0 表示还不知道
-        private int _actualQuality;
-
         private string _dashNote = "";
 
         private string _dashDetail = "";
@@ -121,6 +119,7 @@ namespace BiliClassic
         private bool _videoOpened;
         private bool _audioOpened;
         private DispatcherTimer _syncTimer;
+        private DispatcherTimer _clockTimer;
 
         private double _syncLastPosition = -1;
 
@@ -163,9 +162,32 @@ namespace BiliClassic
 
         private double _resumeSeconds;
 
+        private void ClockTimer(object sender, EventArgs e)
+        {
+            TimeT.Text = DateTime.Now.ToString("HH:mm");
+            /*
+            object powerSource = DeviceExtendedProperties.GetValue("PowerSource");
+            if (powerSource != null && powerSource.ToString() == "External")
+            {
+                // 当前已连接外部电源（充电中）
+                PowerI.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Icon/charging.png", UriKind.Relative));
+            }
+            else
+            {
+                // 当前正在使用电池供电
+                PowerI.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Icon/battery.png", UriKind.Relative));
+            }
+             */
+        }
+
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+
+            _clockTimer = new System.Windows.Threading.DispatcherTimer();
+            _clockTimer.Interval = TimeSpan.FromSeconds(1);
+            _clockTimer.Tick += new EventHandler(ClockTimer);
+            _clockTimer.Start();
 
             HideQBars.Begin();
             HideVBar.Begin();
@@ -248,7 +270,7 @@ namespace BiliClassic
                 return;
             }
 
-            if (AppSettings.DashPlayback && !OfflineMode)
+            if (AppSettings.DashPlayback && AppSettings.DashSupported && !OfflineMode)
             {
                 FetchDash();
                 return;
@@ -357,9 +379,7 @@ namespace BiliClassic
                         return;
                     }
 
-                    _actualQuality = play.Quality;
                     SetAvailableQualities(play.AcceptQuality);
-                    UpdateQualityButtonText();
 
                     _candidates.Clear();
                     _candidates.AddRange(play.Urls);
@@ -675,9 +695,7 @@ namespace BiliClassic
 
             if (play.Ok)
             {
-                _actualQuality = play.Quality;
                 SetAvailableQualities(play.AcceptQuality);
-                UpdateQualityButtonText();
                 _candidates.Clear();
                 _candidates.AddRange(play.Urls);
                 _candidateIndex = 0;
@@ -720,10 +738,8 @@ namespace BiliClassic
             _dashMode = false;
             _dashActive = true;
             _dashQuality = play.Quality;
-            _actualQuality = play.Quality;
             _dashNote = "";
             SetAvailableQualities(play.AcceptQuality);
-            UpdateQualityButtonText();
 
             _dashVideo.Clear();
             _dashVideo.AddRange(play.DashVideoUrls);
@@ -1440,9 +1456,7 @@ namespace BiliClassic
 
 
 
-                // 勾在实际拿到的清晰度上，设置值只当"想播哪个"
-                int current = _actualQuality > 0 ? _actualQuality : AppSettings.PlayQuality;
-                button.Content = (quality == current ? "● " : "    ")
+                button.Content = (quality == AppSettings.PlayQuality ? "● " : "    ")
                     + PlayUrlService.Describe(quality);
             }
         }
@@ -1523,9 +1537,7 @@ namespace BiliClassic
 
         private void UpdateQualityButtonText()
         {
-            // 显示实际播的清晰度；还没取到地址时才显示设置里的
-            int quality = _actualQuality > 0 ? _actualQuality : AppSettings.PlayQuality;
-            QualityButton.Content = PlayUrlService.Describe(quality);
+            QualityButton.Content = PlayUrlService.Describe(AppSettings.PlayQuality);
         }
 
         private void ReloadForQuality()
@@ -1564,7 +1576,7 @@ namespace BiliClassic
                 return;
             }
 
-            if (AppSettings.DashPlayback)
+            if (AppSettings.DashPlayback && AppSettings.DashSupported)
             {
                 _dashMode = false;
                 _dashVideoIndex = 0;

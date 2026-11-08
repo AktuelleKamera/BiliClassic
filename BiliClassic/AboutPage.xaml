@@ -50,7 +50,7 @@
 
         <ScrollViewer Grid.Row="1">
             <StackPanel Margin="12,0,12,0">
-                <TextBlock x:Name="PlatformText" Text="哔哩经典 for WP"
+                <TextBlock x:Name="PlatformText" Text="哔哩经典 for WP7.0+"
                            Style="{StaticResource PhoneTextTitle3Style}"/>
                 <TextBlock x:Name="VersionText" Text="" Margin="12,4,0,0"
                            Style="{StaticResource PhoneTextSubtleStyle}"/>
@@ -66,7 +66,19 @@
                 <TextBlock x:Name="PrivacyText" Margin="12,24,0,0" TextWrapping="Wrap"
                            Style="{StaticResource PhoneTextSubtleStyle}"
                            Text="你是那1%的用户吗？"/>
-                <TextBlock Name="textBlock1" Margin="12,24,0,0" Style="{StaticResource PhoneTextSubtleStyle}" Text="开发者：一只毛子球、WindowsVistaSP" TextWrapping="Wrap" />
+                <TextBlock Name="textBlock1" Margin="12,24,0,0" Style="{StaticResource PhoneTextSubtleStyle}" Text="开发者：一只毛子球、WindowsVistaSP" TextWrapping="Wrap" Visibility="Collapsed" />
+                <TextBlock Name="textBlock4" Style="{StaticResource PhoneTextTitle3Style}" Text="开发者：" Margin="12,24,12,0" />
+                <Grid Height="81" Name="grid1" Margin="12,10,0,0">
+                    <Image Height="65" HorizontalAlignment="Left" Margin="6,6,0,0" Name="image1" Stretch="Fill" VerticalAlignment="Top" Width="65" Source="/BiliClassic;component/Res/maoziqiu.jpg" />
+                    <TextBlock HorizontalAlignment="Left" Margin="77,6,0,0" Name="textBlock2" Text="一只毛子球" VerticalAlignment="Top" FontSize="26" />
+                    <TextBlock Name="textBlock3" Style="{StaticResource PhoneTextSubtleStyle}" Text="主要开发者，参与全版本开发" TextWrapping="Wrap" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="77,44,0,0" />
+                </Grid>
+                <Grid Height="81" Name="grid2" Margin="12,0,0,0">
+                    <Image Height="65" HorizontalAlignment="Left" Margin="6,6,0,0" Name="image2" Source="/BiliClassic;component/Res/wvsp.jpg" Stretch="Fill" VerticalAlignment="Top" Width="65" />
+                    <TextBlock FontSize="26" HorizontalAlignment="Left" Margin="77,6,0,0" Name="textBlock5" Text="WindowsVistaSP" VerticalAlignment="Top" />
+                    <TextBlock HorizontalAlignment="Left" Margin="77,44,0,0" Name="textBlock6" Style="{StaticResource PhoneTextSubtleStyle}" Text="Windows Phone版副开发" TextWrapping="Wrap" VerticalAlignment="Top" />
+                </Grid>
+                <Button Content="Button" Height="71" Name="button1" Width="160" Click="button1_Click" Visibility="Collapsed" />
             </StackPanel>
         </ScrollViewer>
     </Grid>

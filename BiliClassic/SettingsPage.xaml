@@ -49,53 +49,69 @@
         </StackPanel>
 
         <ScrollViewer Grid.Row="1">
-        <StackPanel Margin="12,0,12,0">
-            <CheckBox x:Name="OfflinePlaybackCheck" Content="离线播放"
+            <StackPanel Margin="12,0,12,0">
+                <CheckBox x:Name="OfflinePlaybackCheck" Content="离线播放"
                       Checked="OfflinePlayback_Changed"
                       Unchecked="OfflinePlayback_Changed"/>
-            <TextBlock Margin="12,0,0,0" TextWrapping="Wrap"
+                <TextBlock Margin="12,0,0,0" TextWrapping="Wrap"
                        Style="{StaticResource PhoneTextSubtleStyle}"
                        Text="打开后将不再在线播放视频，只要还能播放就建议不要开启的说！"/>
 
-            <CheckBox x:Name="DashPlaybackCheck" Content="DASH 播放（试验）"
+                <CheckBox x:Name="DashPlaybackCheck" Content="DASH 播放"
                       Margin="0,20,0,0"
                       Checked="DashPlayback_Changed"
                       Unchecked="DashPlayback_Changed"/>
+                <!--
+                <TextBlock x:Name="DashHintText" Margin="12,0,0,0" TextWrapping="Wrap"
+                       Style="{StaticResource PhoneTextSubtleStyle}"
+                       Text="仅支持WP7.1+"/>-->
 
                 <CheckBox x:Name="DanmakuCheck" Content="弹幕"
                       Margin="0,20,0,0" Unchecked="Danmaku_Changed" Checked="Danmaku_Changed" />
+                
+                <CheckBox x:Name="HideCiTieCheck" Content="隐藏磁贴图标"
+                      Margin="0,20,0,0" Checked="HideCiTieCheck_Changed" Unchecked="HideCiTieCheck_Changed" />
+
+                <!--被误触惹毛了说是-->
+                <CheckBox x:Name="LockCiTieCheck" Content="强制锁定主页磁贴"
+                      Margin="0,20,0,0" Checked="LockCiTieCheck_Changed" Unchecked="LockCiTieCheck_Changed" />
+
+                <TextBlock x:Name="LockHintText" Margin="12,0,0,0" TextWrapping="Wrap"
+                       Style="{StaticResource PhoneTextSubtleStyle}"
+                       Text="开启后长按主页磁贴将没有反应"/>
+
 
                 <CheckBox x:Name="XiNaoCheck" Content="洗脑循环"
                       Margin="0,20,0,0" Checked="XiNaoCheck_Changed" Unchecked="XiNaoCheck_Changed" />
-            
+
                 <CheckBox x:Name="ZiDongCheck" Content="自动播放"
                       Margin="0,20,0,0" Checked="ZiDongCheck_Changed" Unchecked="ZiDongCheck_Changed" />
 
                 <!-- 清晰度：Tag里放接口的qn值 -->
-            <TextBlock Text="播放清晰度" Margin="0,20,0,0"
+                <TextBlock Text="播放清晰度" Margin="0,20,0,0"
                        Style="{StaticResource PhoneTextSubtleStyle}"/>
-            <RadioButton x:Name="Quality16" Content="流畅 360P" Tag="16"
+                <RadioButton x:Name="Quality16" Content="流畅 360P" Tag="16"
                          GroupName="Quality" Checked="Quality_Changed"/>
-            <RadioButton x:Name="Quality32" Content="清晰 480P" Tag="32"
+                <RadioButton x:Name="Quality32" Content="清晰 480P" Tag="32"
                          GroupName="Quality" Checked="Quality_Changed"/>
-            <RadioButton x:Name="Quality64" Content="高清 720P" Tag="64"
+                <RadioButton x:Name="Quality64" Content="高清 720P" Tag="64"
                          GroupName="Quality" Checked="Quality_Changed"/>
-            <RadioButton x:Name="Quality80" Content="超清 1080P" Tag="80"
+                <RadioButton x:Name="Quality80" Content="超清 1080P" Tag="80"
                          GroupName="Quality" Checked="Quality_Changed"/>
 
-            <CheckBox x:Name="AutoCheckUpdateCheck" Content="自动检查更新"
+                <CheckBox x:Name="AutoCheckUpdateCheck" Content="自动检查更新"
                       Margin="0,20,0,0"
                       Checked="AutoCheckUpdate_Changed"
                       Unchecked="AutoCheckUpdate_Changed"/>
-            <Button x:Name="CheckUpdateButton" Content="检查更新"
+                <Button x:Name="CheckUpdateButton" Content="检查更新"
                     Margin="0,4,0,0" Click="CheckUpdate_Click" Background="#D86DA5" Foreground="White" BorderThickness="0"/>
 
-            <!-- 清除缓存 -->
-            <Button x:Name="ClearCacheButton" Content="清除离线缓存"
+                <!-- 清除缓存 -->
+                <Button x:Name="ClearCacheButton" Content="清除离线缓存"
                     Margin="0,10,0,0" Click="ClearCache_Click" Background="#D86DA5" Foreground="White" BorderThickness="0"/>
-            <TextBlock x:Name="StatusText" TextWrapping="Wrap" Margin="0,8,0,0"
+                <TextBlock x:Name="StatusText" TextWrapping="Wrap" Margin="0,8,0,0"
                        Style="{StaticResource PhoneTextSubtleStyle}"/>
-        </StackPanel>
+            </StackPanel>
         </ScrollViewer>
     </Grid>
 

@@ -1,0 +1,387 @@
+﻿<phone:PhoneApplicationPage 
+    x:Class="BiliClassic.WelcomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:phone="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone"
+    xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:toolkit="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls.Toolkit"
+    FontFamily="{StaticResource PhoneFontFamilyNormal}"
+    FontSize="{StaticResource PhoneFontSizeNormal}"
+    Foreground="{StaticResource PhoneForegroundBrush}"
+    SupportedOrientations="Portrait" Orientation="Portrait"
+    mc:Ignorable="d" d:DesignHeight="768" d:DesignWidth="480"
+    shell:SystemTray.IsVisible="True">
+	<phone:PhoneApplicationPage.Resources>
+		<Storyboard x:Name="AgreementShow">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="AgreementPageG">
+				<EasingDoubleKeyFrame KeyTime="0" Value="570">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.4" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="AgreementHide">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="AgreementPageG">
+				<EasingDoubleKeyFrame KeyTime="0" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.4" Value="-570">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="WelcomeShow">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="WelcomePageG">
+				<EasingDoubleKeyFrame KeyTime="0" Value="570">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.4" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+			<ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.Visibility)" Storyboard.TargetName="G1">
+				<DiscreteObjectKeyFrame KeyTime="0">
+					<DiscreteObjectKeyFrame.Value>
+						<Visibility>Collapsed</Visibility>
+					</DiscreteObjectKeyFrame.Value>
+				</DiscreteObjectKeyFrame>
+				<DiscreteObjectKeyFrame KeyTime="0:0:0.3">
+					<DiscreteObjectKeyFrame.Value>
+						<Visibility>Visible</Visibility>
+					</DiscreteObjectKeyFrame.Value>
+				</DiscreteObjectKeyFrame>
+			</ObjectAnimationUsingKeyFrames>
+			<ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.Visibility)" Storyboard.TargetName="G2">
+				<DiscreteObjectKeyFrame KeyTime="0">
+					<DiscreteObjectKeyFrame.Value>
+						<Visibility>Collapsed</Visibility>
+					</DiscreteObjectKeyFrame.Value>
+				</DiscreteObjectKeyFrame>
+				<DiscreteObjectKeyFrame KeyTime="0:0:0.3">
+					<DiscreteObjectKeyFrame.Value>
+						<Visibility>Visible</Visibility>
+					</DiscreteObjectKeyFrame.Value>
+				</DiscreteObjectKeyFrame>
+			</ObjectAnimationUsingKeyFrames>
+			<ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.Visibility)" Storyboard.TargetName="G3">
+				<DiscreteObjectKeyFrame KeyTime="0">
+					<DiscreteObjectKeyFrame.Value>
+						<Visibility>Collapsed</Visibility>
+					</DiscreteObjectKeyFrame.Value>
+				</DiscreteObjectKeyFrame>
+				<DiscreteObjectKeyFrame KeyTime="0:0:0.3">
+					<DiscreteObjectKeyFrame.Value>
+						<Visibility>Visible</Visibility>
+					</DiscreteObjectKeyFrame.Value>
+				</DiscreteObjectKeyFrame>
+			</ObjectAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="WelcomeHide">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="WelcomePageG">
+				<EasingDoubleKeyFrame KeyTime="0" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.4" Value="-570">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="FinishShow">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="FinishPageG">
+				<EasingDoubleKeyFrame KeyTime="0" Value="570">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.4" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="FinishHide">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="FinishPageG">
+				<EasingDoubleKeyFrame KeyTime="0" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.4" Value="-570">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="G1Show">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="G1">
+				<EasingDoubleKeyFrame KeyTime="0" Value="570">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.4" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="G1Hide">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="G1">
+				<EasingDoubleKeyFrame KeyTime="0" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.4" Value="-570">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="G2Show">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="G2">
+				<EasingDoubleKeyFrame KeyTime="0" Value="570">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.4" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="G2Hide">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="G2">
+				<EasingDoubleKeyFrame KeyTime="0" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.4" Value="-570">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="G3Show">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="G3">
+				<EasingDoubleKeyFrame KeyTime="0" Value="570">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.4" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="G3Hide">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateX)" Storyboard.TargetName="G3">
+				<EasingDoubleKeyFrame KeyTime="0" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.4" Value="-570">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<SineEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+	</phone:PhoneApplicationPage.Resources>
+
+    <toolkit:TransitionService.NavigationInTransition>
+        <toolkit:NavigationInTransition>
+            <toolkit:NavigationInTransition.Backward>
+                <toolkit:SwivelTransition Mode="BackwardIn"/>
+            </toolkit:NavigationInTransition.Backward>
+            <toolkit:NavigationInTransition.Forward>
+                <toolkit:SwivelTransition Mode="ForwardIn"/>
+            </toolkit:NavigationInTransition.Forward>
+        </toolkit:NavigationInTransition>
+    </toolkit:TransitionService.NavigationInTransition>
+
+    <toolkit:TransitionService.NavigationOutTransition>
+        <toolkit:NavigationOutTransition>
+            <toolkit:NavigationOutTransition.Backward>
+                <toolkit:SwivelTransition Mode="BackwardOut"/>
+            </toolkit:NavigationOutTransition.Backward>
+            <toolkit:NavigationOutTransition.Forward>
+                <toolkit:SwivelTransition Mode="ForwardOut"/>
+            </toolkit:NavigationOutTransition.Forward>
+        </toolkit:NavigationOutTransition>
+    </toolkit:TransitionService.NavigationOutTransition>
+
+    <!--LayoutRoot 是包含所有页面内容的根网格-->
+    <Grid x:Name="LayoutRoot" Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!--TitlePanel 包含应用程序的名称和页标题-->
+        <StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,28">
+            <TextBlock x:Name="ApplicationTitle" Text="哔哩经典" Style="{StaticResource PhoneTextNormalStyle}"/>
+            <TextBlock x:Name="PageTitle" Text="欢迎" Margin="9,-7,0,0" Style="{StaticResource PhoneTextTitle1Style}"/>
+        </StackPanel>
+        
+        <Image Height="597" HorizontalAlignment="Left" Margin="-9,69,0,0" Name="BcgImage" Stretch="Fill" VerticalAlignment="Top" Width="601" Source="/BiliClassic;component/Res/Icon/bilibili_tv.png" Grid.Row="1" />
+
+
+        <!--协议-->
+        <Grid x:Name="AgreementPageG" Grid.Row="1" Margin="12,0,12,0" RenderTransformOrigin="0.5,0.5" d:IsHidden="True">
+        	<Grid.RenderTransform>
+        		<CompositeTransform/>
+        	</Grid.RenderTransform>
+            <Button Background="#D86DA5" BorderThickness="0" Content="同意并继续" Foreground="White" HorizontalContentAlignment="Center" Margin="279,0,0,25" Name="button2" Padding="5" VerticalContentAlignment="Top" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="button2_Click" />
+            <Button Background="Gray" BorderThickness="0" Foreground="White" HorizontalContentAlignment="Center" Margin="87,0,0,25" Name="button1" Padding="5" VerticalContentAlignment="Top" HorizontalAlignment="Left" VerticalAlignment="Bottom" Content="不同意并退出" Click="button1_Click" />
+            <!--<TextBlock HorizontalAlignment="Left" Margin="9,6,0,0" Text="用户协议" VerticalAlignment="Top" FontSize="40" />-->
+            <ScrollViewer Height="460" HorizontalAlignment="Left" Margin="12,12,0,0" Name="scrollViewer1" VerticalAlignment="Top" Width="428">
+                <StackPanel Name="stackPanel1" HorizontalAlignment="Stretch" VerticalAlignment="Top">
+                    <TextBlock Name="textBlock2" Text="欢迎使用哔哩经典！" TextWrapping="Wrap" Padding="0,2,0,15" />
+                    <TextBlock Name="textBlock3" Text="本应用是第三方非官方哔哩哔哩客户端，与哔哩哔哩官方没有任何隶属关系。" TextWrapping="Wrap" Padding="0,2,0,15" />
+                    <TextBlock Name="textBlock5" Text="使用须知" TextWrapping="Wrap" Padding="0,2,0,15" />
+                    <TextBlock Name="textBlock6" Text="- 本应用本体完全免费，且永久免费于http://www.biliclassic.cn。如果你是花钱买到的，说明你被倒卖的神秘人物坑了，请立即退款！" TextWrapping="Wrap" Padding="15,2,0,15" />
+                    <TextBlock Name="textBlock7" Text="- 软件内含部分未经过审查的AI生成代码，如你认为这很有问题，请勿使用的说~" TextWrapping="Wrap" Padding="15,2,0,15" />
+                    <TextBlock Name="textBlock8" Text="- 请使用自己的账号登录，妥善保管Cookie和登录凭证，不要分享给他人。" TextWrapping="Wrap" Padding="15,2,0,15" />
+                    <TextBlock Name="textBlock9" Text="- 应用会访问哔哩哔哩接口并处理你主动提供的内容；播放历史、Cookie等数据按应用设置仅保存在本地。" TextWrapping="Wrap" Padding="15,2,0,15" />
+                    <TextBlock Name="textBlock10" Text="- 应用按现状提供，不对第三方接口的可用性、内容准确性作保证，也不提供任何破解或绕过官方付费内容的功能。" TextWrapping="Wrap" Padding="15,2,0,15" />
+                    <TextBlock Name="textBlock11" Text="- 开发团队不对用户在不恰当时间（如上课、上班摸鱼等）使用本应用造成的任何损失（包括但不限于设备被没收、扣学分、扣工资等）负责喵~" TextWrapping="Wrap" Padding="15,2,0,15" />
+                    <TextBlock Name="textBlock12" Text="- 请遵守当地法律法规和哔哩哔哩社区规则。" TextWrapping="Wrap" Padding="15,2,0,15" />
+                    <TextBlock Name="textBlock13" Text="继续使用即表示你已阅读并同意以上条款。" TextWrapping="Wrap" Padding="0,2,0,15" />
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!--欢迎-->
+        <Grid x:Name="WelcomePageG" Grid.Row="1" Margin="12,0,12,0" RenderTransformOrigin="0.5,0.5">
+        	<Grid.RenderTransform>
+        		<CompositeTransform/>
+        	</Grid.RenderTransform>
+            <!--<Button Background="#D86DA5" BorderThickness="0" Content="下一步" Foreground="White" HorizontalContentAlignment="Center" Margin="279,0,0,25" Name="button3" Padding="5" VerticalContentAlignment="Top" HorizontalAlignment="Right" VerticalAlignment="Bottom" Click="button3_Click" />
+            <Button Background="Gray" BorderThickness="0" Foreground="White" HorizontalContentAlignment="Center" Margin="0,0,116,25" Name="button4" Padding="5" VerticalContentAlignment="Top" HorizontalAlignment="Right" VerticalAlignment="Bottom" Content="上一步" Click="button4_Click" />-->
+
+            <!--欢迎-->
+            <Grid Height="488" HorizontalAlignment="Left" Name="G1" VerticalAlignment="Top" Width="456" RenderTransformOrigin="0.5,0.5">
+            	<Grid.RenderTransform>
+            		<CompositeTransform/>
+            	</Grid.RenderTransform>
+                <!--<TextBlock HorizontalAlignment="Left" Margin="6,6,0,0" Text="初次见面" VerticalAlignment="Top" FontSize="40" />-->
+                <TextBlock HorizontalAlignment="Center" Margin="0,244,0,0" Text="欢迎使用BiliClassic" VerticalAlignment="Top" FontSize="24" />
+            </Grid>
+            
+            <!--更新-->
+            <Grid Height="488" HorizontalAlignment="Left" Name="G2" VerticalAlignment="Top" Width="456" RenderTransformOrigin="0.5,0.5">
+            	<Grid.RenderTransform>
+            		<CompositeTransform/>
+            	</Grid.RenderTransform>
+                <!--<TextBlock HorizontalAlignment="Left" Margin="6,6,0,0" Text="检查更新" VerticalAlignment="Top" FontSize="40" />-->
+                <ScrollViewer Height="222" HorizontalAlignment="Stretch" Margin="12,112,0,0" Name="scrollViewer3" VerticalAlignment="Top">
+                    <TextBlock FontSize="24" Text="---" TextWrapping="Wrap" Name="NewInfo" VerticalAlignment="Top" />
+                </ScrollViewer>
+                <TextBlock FontSize="24" Margin="12,10,0,446" Name="V1" Text="当前版本：" />
+                <TextBlock FontSize="24" Margin="12,42,0,414" Name="V2" Text="最新版本：" />
+                <TextBlock FontSize="24" Margin="12,74,0,382" Text="新版本更新内容：" Name="NewInfoLabel" />
+                <Button Background="#D86DA5" BorderThickness="0" Content="重新检查" Foreground="White" HorizontalAlignment="Right" HorizontalContentAlignment="Center" Margin="12,0,6,6" Name="button7" Padding="5" VerticalAlignment="Bottom" VerticalContentAlignment="Top" Width="450" Click="button7_Click" />
+                <Button Background="#D86DA5" BorderThickness="0" Content="立即更新！" Foreground="White" HorizontalAlignment="Right" HorizontalContentAlignment="Center" Margin="12,0,6,80" Name="button6" Padding="5" VerticalAlignment="Bottom" VerticalContentAlignment="Top" Width="450" Click="button6_Click" />
+            </Grid>
+
+            <!--设置-->
+            <Grid Height="488" HorizontalAlignment="Left" Name="G3" VerticalAlignment="Top" Width="456" RenderTransformOrigin="0.5,0.5">
+            	<Grid.RenderTransform>
+            		<CompositeTransform/>
+            	</Grid.RenderTransform>
+                <!--<TextBlock HorizontalAlignment="Left" Margin="6,6,0,0" Text="设置" VerticalAlignment="Top" FontSize="40" />-->
+                <TextBlock HorizontalAlignment="Center" Margin="12,10,60,0" Text="你可以先在这里进行一些基本的设置" VerticalAlignment="Top" FontSize="24" />
+                <ScrollViewer Height="419" HorizontalAlignment="Left" Margin="0,69,0,0" Name="scrollViewer2" VerticalAlignment="Top" Width="456">
+                    <StackPanel Name="stackPanel2" VerticalAlignment="Top">
+                        <CheckBox x:Name="DanmakuCheck" Content="弹幕"
+                      Margin="0,20,0,0" Unchecked="Danmaku_Changed" Checked="Danmaku_Changed" />
+                        <CheckBox x:Name="HideCiTieCheck" Content="隐藏磁贴图标"
+                      Margin="0,20,0,0" Checked="HideCiTieCheck_Changed" Unchecked="HideCiTieCheck_Changed" />
+                        <CheckBox x:Name="LockCiTieCheck" Content="强制锁定主页磁贴"
+                      Margin="0,20,0,0" Checked="LockCiTieCheck_Changed" Unchecked="LockCiTieCheck_Changed" />
+                        <TextBlock x:Name="LockHintText" Margin="12,0,0,0" TextWrapping="Wrap"
+                       Style="{StaticResource PhoneTextSubtleStyle}"
+                       Text="开启后长按主页磁贴将没有反应"/>
+                        <CheckBox x:Name="XiNaoCheck" Content="洗脑循环"
+                      Margin="0,20,0,0" Checked="XiNaoCheck_Changed" Unchecked="XiNaoCheck_Changed" />
+                        <CheckBox x:Name="ZiDongCheck" Content="自动播放"
+                      Margin="0,20,0,0" Checked="ZiDongCheck_Changed" Unchecked="ZiDongCheck_Changed" />
+                        <!-- 清晰度：Tag里放接口的qn值 -->
+                        <TextBlock Text="播放清晰度" Margin="0,20,0,0"
+                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+                        <RadioButton x:Name="Quality16" Content="流畅 360P" Tag="16"
+                         GroupName="Quality" Checked="Quality_Changed"/>
+                        <RadioButton x:Name="Quality32" Content="清晰 480P" Tag="32"
+                         GroupName="Quality" Checked="Quality_Changed"/>
+                        <RadioButton x:Name="Quality64" Content="高清 720P" Tag="64"
+                         GroupName="Quality" Checked="Quality_Changed"/>
+                        <RadioButton x:Name="Quality80" Content="超清 1080P" Tag="80"
+                         GroupName="Quality" Checked="Quality_Changed"/>
+                        <CheckBox x:Name="AutoCheckUpdateCheck" Content="自动检查更新"
+                      Margin="0,20,0,0"
+                      Checked="AutoCheckUpdate_Changed"
+                      Unchecked="AutoCheckUpdate_Changed"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+            <HyperlinkButton Content="下一步" Height="30" HorizontalAlignment="Right" Margin="0,0,31,34" Name="button3" VerticalAlignment="Bottom" Foreground="#FFD86DA5" Click="button3_Click" />
+        </Grid>
+
+        <!--完成-->
+        <Grid x:Name="FinishPageG" Grid.Row="1" RenderTransformOrigin="0.5,0.5" d:IsHidden="True">
+        	<Grid.RenderTransform>
+        		<CompositeTransform/>
+        	</Grid.RenderTransform>
+            <Button Background="#D86DA5" BorderThickness="0" Content="完成" Foreground="White" HorizontalContentAlignment="Center" Margin="0,0,0,25" Name="button5" Padding="5" VerticalContentAlignment="Top" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" Click="button5_Click" />
+
+            <!--<TextBlock HorizontalAlignment="Left" Margin="6,6,0,0" Text="完成" VerticalAlignment="Top" FontSize="40" />-->
+            <TextBlock HorizontalAlignment="Center" Margin="0,196,0,0" Text="所有设置均已完成！" VerticalAlignment="Top" FontSize="24" />
+            <TextBlock FontSize="24" HorizontalAlignment="Center" Margin="0,234,0,0" Text="现在你可以使用BiliClassic了！" VerticalAlignment="Top" />
+        </Grid>
+    </Grid>
+ 
+    <!--演示 ApplicationBar 用法的示例代码-->
+    <!--<phone:PhoneApplicationPage.ApplicationBar>
+        <shell:ApplicationBar IsVisible="True" IsMenuEnabled="True">
+            <shell:ApplicationBarIconButton IconUri="/Images/appbar_button1.png" Text="按钮 1"/>
+            <shell:ApplicationBarIconButton IconUri="/Images/appbar_button2.png" Text="按钮 2"/>
+            <shell:ApplicationBar.MenuItems>
+                <shell:ApplicationBarMenuItem Text="菜单项 1"/>
+                <shell:ApplicationBarMenuItem Text="菜单项 2"/>
+            </shell:ApplicationBar.MenuItems>
+        </shell:ApplicationBar>
+    </phone:PhoneApplicationPage.ApplicationBar>-->
+
+</phone:PhoneApplicationPage>

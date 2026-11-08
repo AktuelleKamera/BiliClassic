@@ -109,8 +109,8 @@
                             <Border Tag="private" Style="{StaticResource MineTileBcg}"
                                     Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
                                 <Grid Style="{StaticResource MineTile}">
-                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/xiaoxi.png" />
-                                    <TextBlock Text="信息通知" Style="{StaticResource MineTileText}"/>
+                                    <Image x:Name="Image1" Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/xiaoxi.png" />
+                                    <TextBlock Text="消息通知" Style="{StaticResource MineTileText}" Name="MessegeN" />
                                     <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
                                 </Grid>
                             </Border>
@@ -118,8 +118,8 @@
                             <Border Tag="follow" Style="{StaticResource MineTileBcg}"
                                     Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
                                 <Grid Style="{StaticResource MineTile}">
-                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/dongtai.png" />
-                                    <TextBlock Text="关注动态" Style="{StaticResource MineTileText}"/>
+                                    <Image x:Name="Image2" Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/dongtai.png" />
+                                    <TextBlock Text="关注动态" Style="{StaticResource MineTileText}" Name="DynamicsN" />
                                     <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
                                 </Grid>
                             </Border>
@@ -127,7 +127,7 @@
                             <Border Tag="local" Style="{StaticResource MineTileBcg}"
                                     Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
                                 <Grid Style="{StaticResource MineTile}">
-                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/bendi.png" />
+                                    <Image x:Name="Image3" Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/bendi.png" />
                                     <TextBlock Text="本地视频" Style="{StaticResource MineTileText}"/>
                                     <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
                                 </Grid>
@@ -136,7 +136,7 @@
                             <Border Tag="history" Style="{StaticResource MineTileBcg}"
                                     Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
                                 <Grid Style="{StaticResource MineTile}">
-                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/lishi.png" />
+                                    <Image x:Name="Image4" Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/lishi.png" />
                                     <TextBlock Text="播放历史" Style="{StaticResource MineTileText}"/>
                                     <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
                                 </Grid>
@@ -145,7 +145,7 @@
                             <Border Tag="fav" Style="{StaticResource MineTileBcg}"
                                     Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
                                 <Grid Style="{StaticResource MineTile}">
-                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/shoucang.png" />
+                                    <Image x:Name="Image5" Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/shoucang.png" />
                                     <TextBlock Text="收藏视频" Style="{StaticResource MineTileText}"/>
                                     <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
                                 </Grid>
@@ -154,7 +154,7 @@
                             <Border Tag="bangumi" Style="{StaticResource MineTileBcg}"
                                     Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
                                 <Grid Style="{StaticResource MineTile}">
-                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/zhuifan.png" />
+                                    <Image x:Name="Image6" Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/zhuifan.png" />
                                     <TextBlock Text="我的追番" Style="{StaticResource MineTileText}"/>
                                     <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
                                 </Grid>
@@ -163,7 +163,7 @@
                             <Border Tag="watchlater" Style="{StaticResource MineTileBcg}"
                                     Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
                                 <Grid Style="{StaticResource MineTile}">
-                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/shaohou.png" />
+                                    <Image x:Name="Image7" Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/shaohou.png" />
                                     <TextBlock Text="稍后再看" Style="{StaticResource MineTileText}"/>
                                     <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
                                 </Grid>
@@ -172,7 +172,7 @@
                             <Border Tag="rank" Style="{StaticResource MineTileBcg}"
                                     Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
                                 <Grid Style="{StaticResource MineTile}">
-                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/paihang.png" />
+                                    <Image x:Name="Image8" Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/paihang.png" />
                                     <TextBlock Text="排行榜" Style="{StaticResource MineTileText}"/>
                                     <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
                                 </Grid>
@@ -181,7 +181,7 @@
                             <Border Tag="random" Style="{StaticResource MineTileBcg}"
                                     Margin="0,0,12,12" toolkit:TiltEffect.IsTiltEnabled="True">
                                 <Grid Style="{StaticResource MineTile}">
-                                    <Image Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/yunqi.png" />
+                                    <Image x:Name="Image9" Stretch="UniformToFill" Source="/BiliClassic;component/Res/Tile/yunqi.png" />
                                     <TextBlock Text="手气不错" Style="{StaticResource MineTileText}"/>
                                     <Polygon Fill="{StaticResource PhoneAccentBrush}" Stroke="{x:Null}" StrokeThickness="0" Points="50,0 50,50 0,50" Width="50" Height="50" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0" Visibility="Collapsed" />
                                 </Grid>

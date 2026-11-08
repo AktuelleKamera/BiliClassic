@@ -16,6 +16,7 @@ namespace BiliClassic
 
         private bool _loading;
         private bool _loaded;
+        App app = Application.Current as App;
 
         public PrivateMsgPage()
         {
@@ -27,6 +28,26 @@ namespace BiliClassic
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+
+            app.Is_DY_Reading = true;
+            PrivateMsgService.FetchSessions(delegate(List<PrivateMsgSession> sessions, string error)
+            {
+                if (!(!string.IsNullOrEmpty(error) || sessions.Count == 0))
+                {
+                    int msn_temp = 0;
+                    string msi_temp = "";
+                    for (int i = 0; i < sessions.Count; i++)
+                    {
+                        msn_temp += sessions[i].Unread;
+                        if (sessions[i].Unread != 0 && msi_temp == "")
+                        {
+                            msi_temp = sessions[i].Preview;
+                        }
+                    }
+                    Api.DynamicsMessegeTemp.MSN = msn_temp;
+                    Api.DynamicsMessegeTemp.MSI = msi_temp;
+                }
+            });
 
             if (!_loaded)
             {

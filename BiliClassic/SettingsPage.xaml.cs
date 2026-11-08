@@ -15,8 +15,6 @@ namespace BiliClassic
         {
             InitializeComponent();
             ThemeHelper.ApplyPage(this);
-            // 这两个按钮在旧版是默认无填色的，黑主题下还原
-            ThemeHelper.ApplyAccentButtons(this);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -30,8 +28,16 @@ namespace BiliClassic
             XiNaoCheck.IsChecked = AppSettings.XiNaoEnabled;
             ZiDongCheck.IsChecked = AppSettings.ZiDongEnabled;
             AutoCheckUpdateCheck.IsChecked = AppSettings.AutoCheckUpdate;
+            LockCiTieCheck.IsChecked = AppSettings.LockCiTieEnabled;
+            HideCiTieCheck.IsChecked = AppSettings.HideCiTieEnabled;
             LoadQuality(AppSettings.PlayQuality);
             _loading = false;
+
+            if (!AppSettings.DashSupported)
+            {
+                DashPlaybackCheck.Visibility = Visibility.Collapsed;
+                //DashHintText.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void LoadQuality(int quality)
@@ -114,6 +120,28 @@ namespace BiliClassic
             AppSettings.ZiDongEnabled = ZiDongCheck.IsChecked == true;
         }
 
+
+
+        private void LockCiTieCheck_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            AppSettings.LockCiTieEnabled = LockCiTieCheck.IsChecked == true;
+        }
+
+        private void HideCiTieCheck_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            AppSettings.HideCiTieEnabled = HideCiTieCheck.IsChecked == true;
+        }
+
         private void AutoCheckUpdate_Changed(object sender, RoutedEventArgs e)
         {
             if (_loading)
@@ -149,6 +177,8 @@ namespace BiliClassic
                 ? "已打开离线播放：播放时会先下载到本机。"
                 : "已关闭离线播放：播放时直接在线播放。";
         }
+
+
 
         private void ClearCache_Click(object sender, RoutedEventArgs e)
         {

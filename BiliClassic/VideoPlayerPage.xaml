@@ -180,12 +180,14 @@
         		<CompositeTransform/>
         	</Grid.RenderTransform>
             <Rectangle Height="90" HorizontalAlignment="Left" Name="rectangle1" Stroke="{x:Null}" StrokeThickness="1" VerticalAlignment="Top" Width="800" Fill="#CC000000" />
-            <TextBlock x:Name="TitleText" VerticalAlignment="Top" Margin="12,12,13,0"
-                   Foreground="White" TextWrapping="Wrap" MaxHeight="50" RenderTransformOrigin="0.5,0.5" Text="" Width="775">
+            <TextBlock x:Name="TitleText" VerticalAlignment="Top" Margin="12,12,96,0"
+                   Foreground="White" TextWrapping="Wrap" MaxHeight="50" RenderTransformOrigin="0.5,0.5" Text="">
         	<TextBlock.RenderTransform>
         		<CompositeTransform/>
         	</TextBlock.RenderTransform>
             </TextBlock>
+            <TextBlock Height="30" HorizontalAlignment="Right" Margin="0,5,8,0" Name="TimeT" Text="88:88" VerticalAlignment="Top" />
+            <Image Height="20" HorizontalAlignment="Right" Margin="0,43,17,0" Name="PowerI" Stretch="Fill" VerticalAlignment="Top" Width="30" Source="/BiliClassic;component/Res/Icon/charging.png" Visibility="Collapsed" />
         </Grid>
         
         <!-- 底部 -->
@@ -249,9 +251,8 @@
                             </Rectangle>
                         </Button>
                         <!-- 右下角：点开清晰度选单 -->
-                        <!-- 宽100是固定的，边框和padding占掉就放不下"1080P"了 -->
                         <Button x:Name="QualityButton" Content="720P"
-                                MinWidth="0" Padding="6,2" BorderThickness="0"
+                                MinWidth="0" Padding="12,2"
                                 Click="QualityButton_Click" BorderBrush="Transparent" FontSize="20" Foreground="White" HorizontalAlignment="Right" Width="100" />
                         <Button Background="Transparent" BorderThickness="0" MinWidth="0" Name="SoundButton" Padding="8,4" HorizontalAlignment="Right" Width="80" Margin="0,0,180,0" BorderBrush="{x:Null}" Foreground="{x:Null}" HorizontalContentAlignment="Left" VerticalContentAlignment="Top" Click="SoundButton_Click">
                             <Rectangle Fill="White" Height="40" Name="rectangle2" Width="40">

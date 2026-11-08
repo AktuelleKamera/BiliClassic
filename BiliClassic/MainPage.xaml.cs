@@ -18,6 +18,8 @@ using Microsoft.Phone.Shell;
 using Microsoft.Phone.Tasks;
 using System.Windows.Shapes;
 using Microsoft.Xna.Framework.GamerServices;
+using System.ComponentModel;
+using System.Threading;
 
 namespace BiliClassic
 {
@@ -70,13 +72,31 @@ namespace BiliClassic
             ApplyTileOrder();
         }
 
+        App app = Application.Current as App;
+        private static bool isLoaded = false;
+
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
 
+            if (!IsFirstLoad.IsLoaded && !isLoaded)
+            {
+                isLoaded = true;
+                NavigationService.Navigate(new Uri("/WelcomePage.xaml", UriKind.Relative));
+            }
+            isLoaded = true;
+
             RestoreDefaultTransitions();
 
             bool now = BiliSession.IsLoggedIn;
+            Is_Updating = true;
+            app.Is_DY_Reading = false;
+            app.Is_MS_Reading = false;
+
+
+            LoadCiTie();
+            UpdateNDMModel();
+
             if (now != _loggedIn)
             {
                 _loggedIn = now;
@@ -94,8 +114,203 @@ namespace BiliClassic
             {
                 ShowNextNotice();
             }
+
         }
 
+        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+
+            Is_Updating = false;
+        }
+
+        protected override void OnBackKeyPress(System.ComponentModel.CancelEventArgs e)
+        {
+            /*
+            if (MessageBox.Show("", "确认退出哔哩经典？", MessageBoxButton.OKCancel) == MessageBoxResult.OK)
+            {
+                throw new Exception();
+            }
+            else
+            {
+                e.Cancel = true;
+            }
+            */
+
+            e.Cancel = true;
+            throw new Exception();//WP7.0原生不支持清除导航栈
+        }
+
+        public void LoadCiTie()//初始化磁贴
+        {
+            if (AppSettings.HideCiTieEnabled)
+            {
+                if (!_mineLoaded || !BiliSession.IsLoggedIn)
+                {
+                    AvatarImage.Source = null;
+                }
+                Image1.Source = null;
+                Image2.Source = null;
+                Image3.Source = null;
+                Image4.Source = null;
+                Image5.Source = null;
+                Image6.Source = null;
+                Image7.Source = null;
+                Image8.Source = null;
+                Image9.Source = null;
+                if (Api.DynamicsMessegeTemp.DYN != 0 && BiliSession.IsLoggedIn)
+                {
+                    DynamicsN.Text = "关注动态(" + Api.DynamicsMessegeTemp.DYN + ")";
+                }
+                else
+                {
+                    DynamicsN.Text = "关注动态";
+                }
+                if (Api.DynamicsMessegeTemp.MSN != 0 && BiliSession.IsLoggedIn)
+                {
+                    MessegeN.Text = "消息通知(" + Api.DynamicsMessegeTemp.MSN + ")";
+                }
+                else
+                {
+                    MessegeN.Text = "消息通知";
+                }
+
+            }
+            else
+            {
+                if (!_mineLoaded || !BiliSession.IsLoggedIn)
+                {
+                    AvatarImage.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/user.png", UriKind.Relative));
+                }
+                if (Api.DynamicsMessegeTemp.MSN != 0 && BiliSession.IsLoggedIn)
+                {
+                    Image1.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/xiaoxin.png", UriKind.Relative));
+                    MessegeN.Text = "消息通知(" + Api.DynamicsMessegeTemp.MSN + ")";
+                }
+                else
+                {
+                    Image1.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/xiaoxi.png", UriKind.Relative));
+                    MessegeN.Text = "消息通知";
+                }
+                if (Api.DynamicsMessegeTemp.DYN != 0 && BiliSession.IsLoggedIn)
+                {
+                    Image2.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/dongtain.png", UriKind.Relative));
+                    DynamicsN.Text = "关注动态(" + Api.DynamicsMessegeTemp.DYN + ")";
+                }
+                else
+                {
+                    Image2.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/dongtai.png", UriKind.Relative));
+                    DynamicsN.Text = "关注动态";
+                }
+                Image3.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/bendi.png", UriKind.Relative));
+                Image4.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/lishi.png", UriKind.Relative));
+                Image5.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/shoucang.png", UriKind.Relative));
+                Image6.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/zhuifan.png", UriKind.Relative));
+                Image7.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/shaohou.png", UriKind.Relative));
+                Image8.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/paihang.png", UriKind.Relative));
+                Image9.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/yunqi.png", UriKind.Relative));
+            }
+        }
+
+        public void UpdateNewDynamicsMessege()
+        {
+            DynamicService.FetchFeed("", delegate(List<VideoItem> items, string nextOffset, string error)
+            {
+                if (!app.Is_DY_Reading)
+                {
+                    if (!(!string.IsNullOrEmpty(error) || items.Count == 0))
+                    {
+                        if (Api.DynamicsMessegeTemp.DYI != items[0].Title)
+                        {
+                            int dyn_temp = 0;
+                            for (int i = 0; i < items.Count; i++)
+                            {
+                                dyn_temp++;
+                                if (Api.DynamicsMessegeTemp.DYI == items[0].Title)
+                                {
+                                    break;
+                                }
+                            }
+                            Api.DynamicsMessegeTemp.DYN = dyn_temp;
+                            Api.DynamicsMessegeTemp.DYI = items[0].Title;
+                        }
+                        //Api.DynamicsMessegeTemp.DYI = items[0].Title;
+                    }
+                }
+                else
+                {
+                    Api.DynamicsMessegeTemp.DYN = 0;
+                }
+            });
+            PrivateMsgService.FetchSessions(delegate(List<PrivateMsgSession> sessions, string error)
+            {
+                if (!(!string.IsNullOrEmpty(error) || sessions.Count == 0))
+                {
+                    int msn_temp = 0;
+                    string msi_temp = "";
+                    for (int i = 0; i < sessions.Count; i++)
+                    {
+                        msn_temp += sessions[i].Unread;
+                        if (sessions[i].Unread != 0 && msi_temp == "")
+                        {
+                            msi_temp = sessions[i].Preview;
+                        }
+                        System.Diagnostics.Debug.WriteLine("FetchSessions " + sessions[i].Unread + " " + sessions[i].Preview + " " + msn_temp);
+                    }
+                    Api.DynamicsMessegeTemp.MSN = msn_temp;
+                    Api.DynamicsMessegeTemp.MSI = msi_temp;
+                }
+            });
+
+            System.Diagnostics.Debug.WriteLine("BBB " + Api.DynamicsMessegeTemp.DYN + " " + Api.DynamicsMessegeTemp.DYI + " " + Api.DynamicsMessegeTemp.MSN + " " + Api.DynamicsMessegeTemp.MSI);
+            Deployment.Current.Dispatcher.BeginInvoke(() =>
+            {
+                if (Api.DynamicsMessegeTemp.DYN != 0 && BiliSession.IsLoggedIn)
+                {
+                    if (!AppSettings.HideCiTieEnabled)
+                    {
+                        Image2.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/dongtain.png", UriKind.Relative));
+                    }
+                    DynamicsN.Text = "关注动态(" + Api.DynamicsMessegeTemp.DYN + ")";
+                }
+                else
+                {
+                    if (!AppSettings.HideCiTieEnabled)
+                    {
+                        Image2.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/dongtai.png", UriKind.Relative));
+                    }
+                    DynamicsN.Text = "关注动态";
+                }
+                if (Api.DynamicsMessegeTemp.MSN != 0 && BiliSession.IsLoggedIn)
+                {
+                    if (!AppSettings.HideCiTieEnabled)
+                    {
+                        Image1.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/xiaoxin.png", UriKind.Relative));
+                    }
+                    MessegeN.Text = "消息通知(" + Api.DynamicsMessegeTemp.MSN + ")";
+                }
+                else
+                {
+                    if (!AppSettings.HideCiTieEnabled)
+                    {
+                        Image1.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/xiaoxi.png", UriKind.Relative));
+                    }
+                    MessegeN.Text = "消息通知";
+                }
+            });
+        }
+        private bool Is_Updating = true;
+        public void UpdateNDMModel()
+        {
+            System.Threading.ThreadPool.QueueUserWorkItem((state) =>
+            {
+                while (Is_Updating)
+                {
+                    UpdateNewDynamicsMessege();
+                    Thread.Sleep(15000);
+                }
+            });
+        }
 
         private int _logoClicks;
         private DispatcherTimer _logoResetTimer;
@@ -473,7 +688,7 @@ namespace BiliClassic
             TransitionService.SetNavigationInTransition(this, inTransition);
         }
 
-        private void BuildAppBar()
+        private void BuildAppBar()//额啊，为啥要写在这，直接在xaml上写不香吗（
         {
             ApplicationBar bar = new ApplicationBar();
             bar.IsVisible = true;
@@ -488,6 +703,7 @@ namespace BiliClassic
                 loggedIn ? "登出" : "登录", LoginButton_Click);
 
             bar.MenuItems.Add(MakeMenu("回声洞", EchoHoleMenuItem_Click));
+            bar.MenuItems.Add(MakeMenu("投稿回声洞", AddEchoHoleMenuItem_Click));
             bar.MenuItems.Add(MakeMenu("关于", AboutMenuItem_Click));
 
             ApplicationBar = bar;
@@ -545,6 +761,11 @@ namespace BiliClassic
         private void SettingsMenuItem_Click(object sender, EventArgs e)
         {
             NavigateWithSwivel("/SettingsPage.xaml");
+        }
+
+        private void AddEchoHoleMenuItem_Click(object sender, EventArgs e)
+        {
+            NavigateWithSwivel("/SendHuiYinDong.xaml");
         }
 
         private void EchoHoleMenuItem_Click(object sender, EventArgs e)
@@ -653,7 +874,14 @@ namespace BiliClassic
             MineName.Text = "未登录";
             MineStatus.Text = "";
             //AvatarImage.Source = null;
-            AvatarImage.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/user.png", UriKind.Relative)); ;
+            if (AppSettings.HideCiTieEnabled)
+            {
+                AvatarImage.Source = null;
+            }
+            else
+            {
+                AvatarImage.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Tile/user.png", UriKind.Relative)); ;
+            }
         }
 
 
@@ -788,7 +1016,7 @@ namespace BiliClassic
         private void LongPressTick(object sender, EventArgs e)
         {
             _longPressTimer.Stop();
-            if (_arrangeMode)
+            if (_arrangeMode || AppSettings.LockCiTieEnabled)
             {
                 return;
             }

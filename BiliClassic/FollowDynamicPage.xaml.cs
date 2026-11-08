@@ -36,10 +36,15 @@ namespace BiliClassic
             BottomAutoLoader.Attach(UserList, delegate { LoadMoreUsers(); });
             BottomAutoLoader.Attach(DynamicList, delegate { LoadMoreDynamics(); });
         }
+        App app = Application.Current as App;
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+
+            app.Is_DY_Reading = true;
+            Api.DynamicsMessegeTemp.DYN = 0;
+
             if (FollowPivot.SelectedIndex == 0)
             {
                 if (!_userLoaded)

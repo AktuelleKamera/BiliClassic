@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
@@ -45,8 +45,6 @@ namespace BiliClassic
         {
             ShowAccount();
             ShowStatus(BiliSession.IsLoggedIn ? "就绪（已登录）" : "就绪");
-            // 登录页的按钮在旧版是默认无填色的，黑主题下还原
-            ThemeHelper.ApplyAccentButtons(this);
         }
 
         private void LoginPivot_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -77,12 +75,6 @@ namespace BiliClassic
             {
                 ShowAccount();
             }
-
-            // Pivot 内容是按需生成的，切过去之后再刷一遍按钮样式
-            Dispatcher.BeginInvoke(new Action(delegate
-            {
-                ThemeHelper.ApplyAccentButtons(this);
-            }));
         }
 
         private void ShowAccount()
@@ -142,7 +134,7 @@ namespace BiliClassic
                         QrImage.Source = Render(matrix, QrScale);
 
                         //QrFrame.Visibility = Visibility.Visible;
-                        ShowStatus("请用B站手机客户端扫码登录");
+                        ShowStatus("请用 B站手机客户端扫码登录");
                         StartPolling();
                     }
                     catch (Exception ex)
@@ -181,7 +173,7 @@ namespace BiliClassic
                     switch (result.State)
                     {
                         case QrLoginState.NotScanned:
-                            ShowStatus("请用B站手机客户端扫码登录");
+                            ShowStatus("请用 B站手机客户端扫码登录");
                             break;
                         case QrLoginState.Scanned:
                             ShowStatus("已扫码，请在手机上确认登录");
@@ -211,12 +203,12 @@ namespace BiliClassic
             string text = (CookieBox.Text ?? "").Trim();
             if (text.Length == 0)
             {
-                ShowStatus("请先粘贴Cookie");
+                ShowStatus("请先粘贴 Cookie");
                 return;
             }
 
             LoginService.LoginWithCookie(text);
-            ShowStatus("已保存Cookie，正在验证…");
+            ShowStatus("已保存 Cookie，正在验证…");
             VerifySession();
         }
 
@@ -233,7 +225,7 @@ namespace BiliClassic
                     else
                     {
                         ShowAccount();
-                        ShowStatus("凭证已保存，但nav验证未通过");
+                        ShowStatus("凭证已保存，但 nav 验证没通过 —— 多半是 cookie 没真正发出去");
                     }
                 }));
             });
@@ -276,7 +268,7 @@ namespace BiliClassic
                         _captchaKey = result.CaptchaKey;
                         ShowStatus(result.CaptchaKey.Length > 0
                             ? "验证码已发送，请查收短信"
-                            : "接口返回成功，但无captcha_key，短信可能并未真正发出");
+                            : "接口返回成功，但没给 captcha_key，短信可能并未真正发出");
                     }
                     else
                     {

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -83,9 +83,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Api\DynamicsMessegeTemp.cs" />
+    <Compile Include="Api\TXT_File.cs" />
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
+    <Compile Include="IsFirstLoad.cs" />
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
     </Compile>
@@ -94,6 +97,9 @@
     </Compile>
     <Compile Include="LoginPage.xaml.cs">
       <DependentUpon>LoginPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="SendHuiYinDong.xaml.cs">
+      <DependentUpon>SendHuiYinDong.xaml</DependentUpon>
     </Compile>
     <Compile Include="VideoDetailPage.xaml.cs">
       <DependentUpon>VideoDetailPage.xaml</DependentUpon>
@@ -190,6 +196,9 @@
     <Compile Include="Api\SmsLoginService.cs" />
     <Compile Include="Api\WbiSigner.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="WelcomePage.xaml.cs">
+      <DependentUpon>WelcomePage.xaml</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
@@ -205,6 +214,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="LoginPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="SendHuiYinDong.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -264,6 +277,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="WelcomePage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <None Include="Properties\AppManifest.xml" />
@@ -277,6 +294,13 @@
     <Content Include="Background.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Resource Include="Res\Icon\bilibili_tv.png" />
+    <Resource Include="Res\maoziqiu.jpg" />
+    <Resource Include="Res\wvsp.jpg" />
+    <Resource Include="Res\Tile\dongtain.png" />
+    <Resource Include="Res\Tile\xiaoxin.png" />
+    <Resource Include="Res\Icon\battery.png" />
+    <Resource Include="Res\Icon\charging.png" />
     <Content Include="SplashScreenImage.jpg" />
     <!-- 应用栏用的图标，来自 Res\Icon -->
     <Resource Include="Res\Tile\bendi.png" />

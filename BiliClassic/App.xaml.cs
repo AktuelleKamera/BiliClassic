@@ -12,6 +12,8 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Microsoft.Phone.Controls;
 using Microsoft.Phone.Shell;
+using System.Threading;
+using BiliClassic.Api;
 
 namespace BiliClassic
 {
@@ -37,8 +39,11 @@ namespace BiliClassic
             }
 
         }
-
         private const int SplashDelayMilliseconds = 750;
+        public bool Is_DY_Reading = false;
+        public bool Is_MS_Reading = false;
+
+        
 
         private void Application_Launching(object sender, LaunchingEventArgs e)
         {
