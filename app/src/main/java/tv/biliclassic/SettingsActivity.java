@@ -1355,7 +1355,8 @@ public class SettingsActivity extends BaseActivity {
         int defaultDecoder;
         if (isIjkHardwareSupported()) {
             defaultDecoder = DECODER_IJK_HARD;
-        } else if (DeviceUtils.hasHardwareVideoDsp()) {
+        } else if (DeviceUtils.hasHardwareVideoDsp()
+                || isConvertPlayEnabled()) {
             defaultDecoder = DECODER_SYSTEM;
         } else {
             defaultDecoder = DECODER_IJK_SOFT;
