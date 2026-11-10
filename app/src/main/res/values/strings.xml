@@ -197,6 +197,8 @@
     <string name="videodetail_delete">删除</string>
     <string name="videodetail_cancel">取消</string>
     <string name="videodetail_action_menu">操作</string>
+    <string name="videodetail_copy_title">复制标题</string>
+    <string name="videodetail_view_cover">查看封面</string>
     <string name="videodetail_tag_choice">标签</string>
     <string name="videodetail_q_480p">480P 清晰</string>
     <string name="videodetail_this_video">该视频</string>

@@ -100,6 +100,7 @@ public class VideoDetailFragment extends Fragment {
 
     // Android 2.x 上 setImageResource 每次可能重新解码资源图，缓存默认 Drawable 实例复用
     private static android.graphics.drawable.Drawable sDefaultCoverDrawable;
+    private String mCoverUrl;
 
     private void setDefaultCover(ImageView iv) {
         if (iv == null) return;
@@ -131,6 +132,20 @@ public class VideoDetailFragment extends Fragment {
         btnPlay = (Button) view.findViewById(R.id.btn_play);
         lvParts = (ObservableListView) view.findViewById(R.id.lv_parts);
         tagsContainer = (LinearLayout) view.findViewById(R.id.tags_container);
+
+        tvTitle.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                copyCurrentTitle();
+                return true;
+            }
+        });
+        ivCover.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openCoverViewer();
+            }
+        });
 
         int underlineColor = 0xFFFF6699;
         tvUpNameNew.setPaintFlags(tvUpNameNew.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
@@ -854,11 +869,15 @@ public class VideoDetailFragment extends Fragment {
 
     private void loadCoverImage(String url) {
         if (!isAdded() || getActivity() == null) return;
-        if (url == null || url.length() == 0) return;
+        if (url == null || url.length() == 0) {
+            mCoverUrl = null;
+            return;
+        }
         if (url.startsWith("https://")) {
             url = "http://" + url.substring(8);
         }
         final String finalUrl = url;
+        mCoverUrl = finalUrl;
 
         // 内存缓存命中：直接显示，不再重新下载解码
         Bitmap cached = GlobalImageCache.getInstance().get(finalUrl);
@@ -896,6 +915,33 @@ public class VideoDetailFragment extends Fragment {
                 });
             }
         }).start();
+    }
+
+    private void copyCurrentTitle() {
+        if (!isAdded() || getActivity() == null || videoInfo == null) return;
+        String title = videoInfo.title;
+        if (title == null || title.length() == 0) return;
+        try {
+            android.text.ClipboardManager cm = (android.text.ClipboardManager)
+                    getActivity().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+            if (cm != null) {
+                cm.setText(title);
+                Toast.makeText(getActivity(), getActivity().getString(
+                        R.string.videodetail_toast_copied, title), Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(getActivity(), getString(R.string.copy_failed), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void openCoverViewer() {
+        if (!isAdded() || getActivity() == null || mCoverUrl == null || mCoverUrl.length() == 0) return;
+        ArrayList<String> images = new ArrayList<String>();
+        images.add(mCoverUrl);
+        Intent intent = new Intent(getActivity(), ImageViewerActivity.class);
+        intent.putStringArrayListExtra("imageList", images);
+        intent.putExtra("index", 0);
+        startActivity(intent);
     }
 
     private Bitmap downloadCover(String urlStr, java.io.File diskFile) {

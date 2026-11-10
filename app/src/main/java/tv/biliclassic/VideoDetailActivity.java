@@ -945,7 +945,9 @@ public class VideoDetailActivity extends BaseActivity {
                 getString(R.string.videodetail_tab_comment),
                 getString(R.string.videodetail_favorite),
                 getString(R.string.videodetail_share),
-                getString(R.string.videodetail_triple)
+                getString(R.string.videodetail_triple),
+                getString(R.string.videodetail_copy_title),
+                getString(R.string.videodetail_view_cover)
         };
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.videodetail_action_menu))
@@ -962,6 +964,10 @@ public class VideoDetailActivity extends BaseActivity {
                             shareVideo();
                         } else if (which == 4) {
                             showInteractionMenu();
+                        } else if (which == 5) {
+                            copyCurrentTitleToClipboard();
+                        } else if (which == 6) {
+                            openCurrentCover();
                         }
                     }
                 })
@@ -1579,6 +1585,32 @@ public class VideoDetailActivity extends BaseActivity {
                     }
                 })
                 .show();
+    }
+
+    private void copyCurrentTitleToClipboard() {
+        String title = getCurrentTitle();
+        if (title == null || title.length() == 0) {
+            Toast.makeText(this, this.getString(R.string.cannot_copy), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        copyToClipboard(title);
+        Toast.makeText(this, getString(R.string.videodetail_toast_copied, title),
+                Toast.LENGTH_SHORT).show();
+    }
+
+    private void openCurrentCover() {
+        String cover = getCurrentCover();
+        if (cover == null || cover.length() == 0) {
+            Toast.makeText(this, this.getString(R.string.load_video_info_failed),
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ArrayList<String> images = new ArrayList<String>();
+        images.add(cover);
+        Intent intent = new Intent(this, ImageViewerActivity.class);
+        intent.putStringArrayListExtra("imageList", images);
+        intent.putExtra("index", 0);
+        startActivity(intent);
     }
 
     private void copyToClipboard(String text) {

@@ -51,6 +51,7 @@ public class BangumiDetailFragment extends Fragment {
     private Handler mHandler = new Handler();
     private int selectedEpisodePosition = -1;
     private View mRootView;
+    private String mCoverUrl;
 
     private boolean mIsFollowing = false;
     private boolean mIsFollowLoading = false;
@@ -97,6 +98,19 @@ public class BangumiDetailFragment extends Fragment {
         tvDescExpand = (TextView) view.findViewById(R.id.tv_desc_expand);
         tvEpisodeCount = (TextView) view.findViewById(R.id.tv_episode_count);
         ivCover = (ImageView) view.findViewById(R.id.iv_cover);
+        ivCover.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openCoverViewer();
+            }
+        });
+        tvTitle.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                copyCurrentTitle();
+                return true;
+            }
+        });
         lvEpisodes = (tv.biliclassic.ObservableListView) view.findViewById(R.id.lv_episodes);
 
         adapter = new EpisodeAdapter(getActivity(), episodeList);
@@ -437,7 +451,35 @@ public class BangumiDetailFragment extends Fragment {
     }
 
     private void loadCover(String url) {
+        mCoverUrl = url;
         ImageLoader.bind(ivCover, url, 0, 120, 160);
+    }
+
+    private void copyCurrentTitle() {
+        if (!isAdded() || getActivity() == null || tvTitle == null) return;
+        String title = tvTitle.getText().toString();
+        if (title == null || title.length() == 0) return;
+        try {
+            android.text.ClipboardManager cm = (android.text.ClipboardManager)
+                    getActivity().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+            if (cm != null) {
+                cm.setText(title);
+                Toast.makeText(getActivity(), getActivity().getString(
+                        R.string.videodetail_toast_copied, title), Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(getActivity(), getString(R.string.copy_failed), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void openCoverViewer() {
+        if (!isAdded() || getActivity() == null || mCoverUrl == null || mCoverUrl.length() == 0) return;
+        ArrayList<String> images = new ArrayList<String>();
+        images.add(mCoverUrl);
+        Intent intent = new Intent(getActivity(), ImageViewerActivity.class);
+        intent.putStringArrayListExtra("imageList", images);
+        intent.putExtra("index", 0);
+        startActivity(intent);
     }
 
     private void showLoading(boolean show) {
