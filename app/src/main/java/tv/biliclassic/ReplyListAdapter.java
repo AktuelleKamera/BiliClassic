@@ -131,7 +131,10 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
                                     if (!hideHighlight && h.position == selectedPosition) {
                                         tv.biliclassic.util.UiSkin.setBgColorKeepPadding(rowView, 0x66D86DA5);
                                     } else {
-                                        tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(rowView, R.drawable.item_click_effect_white);
+                                        tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(rowView,
+                                                tv.biliclassic.metro.MetroTheme.isNight()
+                                                        ? R.drawable.item_click_effect_grey
+                                                        : R.drawable.item_click_effect_white);
                                     }
                                     vibrateLongPress();
                                     final long itemMid = h.mid;
@@ -170,7 +173,9 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
                                 tv.biliclassic.util.UiSkin.setBgColorKeepPadding(v, 0x66D86DA5);
                             } else {
                                 tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(v,
-                                        R.drawable.item_click_effect_white);
+                                        tv.biliclassic.metro.MetroTheme.isNight()
+                                                ? R.drawable.item_click_effect_grey
+                                                : R.drawable.item_click_effect_white);
                             }
                             break;
                     }

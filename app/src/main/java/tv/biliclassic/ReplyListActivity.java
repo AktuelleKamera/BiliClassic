@@ -65,6 +65,7 @@ public class ReplyListActivity extends BaseActivity {
     private Set<String> loadingUrls = new HashSet<String>();
     private ListView lv;
     private TextView tvTitle;
+    private TextView tvPageTitle;
     private TextView tvEmpty;
     private View rootCommentView;
     private LinearLayout mRootPictureContainer;
@@ -102,6 +103,7 @@ public class ReplyListActivity extends BaseActivity {
     private int mNavIndex = -1;
     private boolean mKeyNavActive = false;
     private boolean mNavOnRoot = false;
+    private boolean mNight;
 
     @Override
     public boolean dispatchKeyEvent(android.view.KeyEvent event) {
@@ -177,7 +179,7 @@ public class ReplyListActivity extends BaseActivity {
             if (mNavOnRoot) {
                 rootCommentView.setBackgroundColor(0x66D86DA5);
             } else {
-                rootCommentView.setBackgroundResource(R.drawable.item_click_effect_white);
+                setRootNormalBackground(rootCommentView);
             }
         }
         if (adapter != null) {
@@ -206,9 +208,11 @@ public class ReplyListActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_reply_list);
+        mNight = tv.biliclassic.util.UiSkin.isNight();
         initRoundTitleBar();
 
         tvTitle = (TextView) findViewById(R.id.tv_reply_list_title);
+        tvPageTitle = (TextView) findViewById(R.id.tv_page_title);
         lv = (ListView) findViewById(R.id.lv_replies);
         tvEmpty = (TextView) findViewById(R.id.tv_empty);
         rootCommentView = findViewById(R.id.root_comment);
@@ -257,6 +261,7 @@ public class ReplyListActivity extends BaseActivity {
                                 public void run() {
                                     tvTitle.setText(getString(R.string.all_replies));
                                     initViews();
+                                    applyNightColors();
                                     loadReplies();
                                 }
                             });
@@ -286,7 +291,48 @@ public class ReplyListActivity extends BaseActivity {
 
         tvTitle.setText(getString(R.string.all_replies));
         initViews();
+        applyNightColors();
         loadReplies();
+    }
+
+    private void setRootNormalBackground(View v) {
+        tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(v,
+                mNight ? R.drawable.item_click_effect_grey : R.drawable.item_click_effect_white);
+    }
+
+    private void applyNightColors() {
+        if (!mNight) {
+            return;
+        }
+        if (tvTitle != null) {
+            tvTitle.setTextColor(0xFFE6E6E6);
+        }
+        if (tvPageTitle != null) {
+            tvPageTitle.setTextColor(0xFFE6E6E6);
+        }
+        if (tvEmpty != null) {
+            tvEmpty.setTextColor(0xFFCCCCCC);
+        }
+        View gap = findViewById(R.id.reply_separator_gap);
+        if (gap != null) {
+            gap.setBackgroundColor(0xFF2A2A2A);
+        }
+        View line = findViewById(R.id.reply_separator_line);
+        if (line != null) {
+            line.setBackgroundColor(0xFF333333);
+        }
+        if (lv != null) {
+            lv.setBackgroundColor(0xFF171717);
+            lv.setDivider(new android.graphics.drawable.ColorDrawable(0x33FFFFFF));
+            lv.setDividerHeight(1);
+        }
+        View root = findViewById(R.id.reply_root);
+        if (root != null) {
+            root.setBackgroundResource(R.drawable.bili_texture_background_night);
+        }
+        if (rootCommentView != null) {
+            tv.biliclassic.util.UiSkin.recolorItem(rootCommentView);
+        }
     }
 
     private void initViews() {
@@ -414,7 +460,7 @@ public class ReplyListActivity extends BaseActivity {
                                     if (mNavOnRoot && mKeyNavActive) {
                                         rootView.setBackgroundColor(0x66D86DA5);
                                     } else {
-                                        rootView.setBackgroundResource(R.drawable.item_click_effect_white);
+                                        setRootNormalBackground(rootView);
                                     }
                                     final String text = rootCommentMessage;
                                     if (text != null && text.length() > 0) {
@@ -460,7 +506,7 @@ public class ReplyListActivity extends BaseActivity {
                             if (mNavOnRoot && mKeyNavActive) {
                                 v.setBackgroundColor(0x66D86DA5);
                             } else {
-                                v.setBackgroundResource(R.drawable.item_click_effect_white);
+                                setRootNormalBackground(v);
                             }
                             break;
                     }
