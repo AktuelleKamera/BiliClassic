@@ -150,10 +150,25 @@ public class SearchActivity extends BaseActivity {
         setupSortButton();
         if (tv.biliclassic.util.UiSkin.isNight()) {
             if (sortButtonText != null) sortButtonText.setTextColor(0xFFE6E6E6);
+            if (sortButton != null) {
+                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(sortButton, 0xFF2A2A2A);
+            }
             if (searchEdit != null) {
                 searchEdit.setTextColor(0xFFE6E6E6);
                 searchEdit.setHintTextColor(0xFF888888);
+                android.view.View searchField = (android.view.View) searchEdit.getParent();
+                if (searchField != null) {
+                    tv.biliclassic.util.UiSkin.setBgColorKeepPadding(searchField, 0xFF2A2A2A);
+                }
             }
+            if (searchAction != null) {
+                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(searchAction, 0xFF2A2A2A);
+                searchAction.setColorFilter(0xFFCCCCCC);
+            }
+            ImageView searchIcon = (ImageView) findViewById(R.id.search_icon);
+            if (searchIcon != null) searchIcon.setColorFilter(0xFFCCCCCC);
+            ImageView searchClear = (ImageView) findViewById(R.id.search_clear);
+            if (searchClear != null) searchClear.setColorFilter(0xFFCCCCCC);
         }
         View btnSearchTitle = findViewById(R.id.btn_search_title);
         if (btnSearchTitle != null) {

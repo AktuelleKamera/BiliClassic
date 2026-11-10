@@ -458,7 +458,7 @@ public final class UiSkin {
         if (!night) {
             return c;
         }
-        if (c == 0xFF000000 || c == 0xFF333333) {
+        if (c == 0xFF000000 || c == 0xFF333333 || c == 0xFF525252) {
             return 0xFFE6E6E6;
         }
         if (c == 0xFF555555 || c == 0xFF666666 || c == 0xFF999999) {
