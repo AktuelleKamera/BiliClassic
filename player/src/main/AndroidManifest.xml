@@ -3,5 +3,6 @@
     package="tv.danmaku.ijk.media.player"
     android:versionCode="1"
     android:versionName="1.0">
-    <uses-sdk android:minSdkVersion="4" android:targetSdkVersion="17" />
+    <uses-sdk android:minSdkVersion="1"
+              android:targetSdkVersion="29" />
 </manifest>
