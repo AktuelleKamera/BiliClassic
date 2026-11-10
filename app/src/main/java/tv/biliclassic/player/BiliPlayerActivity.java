@@ -156,6 +156,8 @@ public class BiliPlayerActivity extends Activity implements
     private static final int SWIPE_THRESHOLD = 200;
 
     private View videoView;
+    private android.widget.ImageView mBufferingSnapshot;
+    private android.graphics.Bitmap mBufferingSnapshotBitmap;
     private SurfaceHolder surfaceHolder;
     private FrameLayout mDanmakuContainer;
     private FrameLayout mResetScaleContainer;
@@ -1321,6 +1323,7 @@ public class BiliPlayerActivity extends Activity implements
 
         videoView.setKeepScreenOn(true);
         container.addView(videoView, 0);
+        ensureBufferingSnapshot(container);
     }
 
     private void setDisplayOnPlayer() {
@@ -2474,6 +2477,7 @@ public class BiliPlayerActivity extends Activity implements
 
         videoView.setKeepScreenOn(true);
         container.addView(videoView, 0);
+        ensureBufferingSnapshot(container);
     }
 
     private boolean tryLoadIjkLibrary() {
@@ -4736,6 +4740,66 @@ public class BiliPlayerActivity extends Activity implements
         }
         if (bufferingView != null) {
             bufferingView.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+        if (show) {
+            captureBufferingFrame();
+        } else {
+            hideBufferingFrame();
+        }
+    }
+
+    private void ensureBufferingSnapshot(FrameLayout container) {
+        if (container == null) return;
+        if (mRendererType != RENDERER_TEXTUREVIEW
+                || tv.biliclassic.util.SdkHelper.getSdkInt() < 14) {
+            return;
+        }
+        if (mBufferingSnapshot != null && mBufferingSnapshot.getParent() == container) {
+            return;
+        }
+        mBufferingSnapshot = new android.widget.ImageView(this);
+        mBufferingSnapshot.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        mBufferingSnapshot.setBackgroundColor(0xFF000000);
+        mBufferingSnapshot.setVisibility(View.GONE);
+        container.addView(mBufferingSnapshot, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    private void captureBufferingFrame() {
+        if (mRendererType != RENDERER_TEXTUREVIEW || videoView == null
+                || mBufferingSnapshot == null) {
+            return;
+        }
+        int width = videoView.getWidth();
+        int height = videoView.getHeight();
+        if (width <= 0 || height <= 0) return;
+        try {
+            Object value = videoView.getClass()
+                    .getMethod("getBitmap", int.class, int.class)
+                    .invoke(videoView, Integer.valueOf(width), Integer.valueOf(height));
+            if (!(value instanceof android.graphics.Bitmap)) return;
+            android.graphics.Bitmap bitmap = (android.graphics.Bitmap) value;
+            if (bitmap == null) return;
+            if (mBufferingSnapshotBitmap != null
+                    && mBufferingSnapshotBitmap != bitmap) {
+                mBufferingSnapshotBitmap.recycle();
+            }
+            mBufferingSnapshotBitmap = bitmap;
+            mBufferingSnapshot.setImageBitmap(bitmap);
+            mBufferingSnapshot.setVisibility(View.VISIBLE);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void hideBufferingFrame() {
+        if (mBufferingSnapshot != null) {
+            mBufferingSnapshot.setVisibility(View.GONE);
+            mBufferingSnapshot.setImageDrawable(null);
+        }
+        if (mBufferingSnapshotBitmap != null) {
+            mBufferingSnapshotBitmap.recycle();
+            mBufferingSnapshotBitmap = null;
         }
     }
 
