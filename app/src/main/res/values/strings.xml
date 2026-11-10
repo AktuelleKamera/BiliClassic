@@ -748,4 +748,5 @@
     <string name="dash_codec_desc">选择DASH视频流编码</string>
     <string name="dash_codec_h264">H.264 (AVC)</string>
     <string name="dash_codec_h265">H.265 (HEVC)</string>
+    <string name="device_report_url" translatable="false">https://status.awmc233.cn/device_report.php</string>
 </resources>

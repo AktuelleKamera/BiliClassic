@@ -605,6 +605,29 @@ public class NetWorkUtil {
         return post(url, data, headers, "application/x-www-form-urlencoded");
     }
 
+    public static void postNoReply(String url, String data, List headers, String contentType) throws IOException {
+        HttpURLConnection conn = null;
+        try {
+            conn = createConnection(url, "POST", headers);
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            conn.setRequestProperty("Content-Type", contentType + "; charset=utf-8");
+            OutputStream os = conn.getOutputStream();
+            os.write(data.getBytes("UTF-8"));
+            os.flush();
+            os.close();
+            int responseCode = conn.getResponseCode();
+            InputStream is = responseCode >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            if (is != null) {
+                is.close();
+            }
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
     public static String postJson(String url, String data, List headers) throws IOException {
         return post(url, data, headers, "application/json");
     }

@@ -101,6 +101,7 @@ public abstract class BaseActivity extends FragmentActivity {
         if (appContext == null) {
             appContext = getApplicationContext();
         }
+        tv.biliclassic.util.DeviceReportUtil.reportIfNeeded(this);
 
         // 屏幕方向设置
         // TV 模式：横屏
