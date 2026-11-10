@@ -167,7 +167,8 @@ public class DynamicDetailActivity extends BaseActivity {
                 android.graphics.drawable.GradientDrawable focus =
                         new android.graphics.drawable.GradientDrawable();
                 focus.setColor(0x00000000);
-                focus.setStroke(3, 0xFFD86DA5);
+                focus.setStroke(tv.biliclassic.util.DeviceUtil.dpToPx(2), 0xFFD86DA5);
+                focus.setCornerRadius(tv.biliclassic.util.DeviceUtil.dpToPx(3));
                 target.setBackgroundDrawable(focus);
             }
         });
@@ -197,7 +198,10 @@ public class DynamicDetailActivity extends BaseActivity {
 
         list = (ListView) findViewById(R.id.dd_list);
         list.setSelector(new android.graphics.drawable.ColorDrawable(0x00000000));
+        list.setCacheColorHint(0x00000000);
         list.setItemsCanFocus(false);
+        list.setFocusable(false);
+        list.setFocusableInTouchMode(false);
         list.setDrawSelectorOnTop(false);
         loading = (tv.biliclassic.widget.LoadingBarView) findViewById(R.id.dd_loading);
 
@@ -294,6 +298,12 @@ public class DynamicDetailActivity extends BaseActivity {
 
         // 夜间：头部/卡片/转发/正文显式套色（列表项/头部动态创建，UiSkin 覆盖不到）
         final boolean night = tv.biliclassic.metro.MetroTheme.isNight();
+        if (list != null) {
+            list.setBackgroundColor(night ? 0xFF171717 : 0x00000000);
+        }
+        if (header != null) {
+            header.setBackgroundColor(night ? 0xFF171717 : 0x00000000);
+        }
         View headerRow = header.findViewById(R.id.dd_header_row);
         if (headerRow != null) {
             tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(headerRow, night
