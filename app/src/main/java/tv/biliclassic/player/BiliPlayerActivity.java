@@ -500,7 +500,6 @@ public class BiliPlayerActivity extends Activity implements
         getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF000000));
         // API 21+ 消费所有系统窗口插入，防止旋转后安全区/挖孔推回布局
         // （WindowInsets 为 API 20+ 类，同样必须经 PlayerCompat 反射）
-        PlayerCompat.consumeSystemWindowInsets(getWindow());
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         setContentView(R.layout.bili_app_player_view_new);

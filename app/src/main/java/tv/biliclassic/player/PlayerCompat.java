@@ -205,7 +205,6 @@ public final class PlayerCompat {
         }
     }
 
-    /** View.isAttachedToWindow()（API 19+）；低版本返回 false */
     public static boolean isAttachedToWindow(View v) {
         try {
             Object r = View.class.getMethod("isAttachedToWindow").invoke(v);
