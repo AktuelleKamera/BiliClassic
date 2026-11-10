@@ -172,10 +172,30 @@ public class SearchActivity extends BaseActivity {
         }
         View btnSearchTitle = findViewById(R.id.btn_search_title);
         if (btnSearchTitle != null) {
+            btnSearchTitle.setFocusableInTouchMode(true);
             btnSearchTitle.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     showSearchBox();
+                }
+            });
+            btnSearchTitle.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v, android.view.MotionEvent event) {
+                    if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+                        v.performClick();
+                    }
+                    return true;
+                }
+            });
+        }
+
+        View leftSearchIcon = findViewById(R.id.search_icon);
+        if (leftSearchIcon != null) {
+            leftSearchIcon.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    performSearch();
                 }
             });
         }
@@ -274,10 +294,20 @@ public class SearchActivity extends BaseActivity {
             });
         }
 
+        searchAction.setFocusableInTouchMode(true);
         searchAction.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 performSearch();
+            }
+        });
+        searchAction.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, android.view.MotionEvent event) {
+                if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+                    v.performClick();
+                }
+                return true;
             }
         });
 
@@ -1201,6 +1231,23 @@ public class SearchActivity extends BaseActivity {
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getKeyCode() == KeyEvent.KEYCODE_BACK
                 && titleSearchBox != null && titleSearchBox.getVisibility() == View.VISIBLE && hasSearched) {
             hideSearchBox();
+            return true;
+        }
+        if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0
+                && event.getKeyCode() == KeyEvent.KEYCODE_SEARCH) {
+            if (titleSearchBox != null && titleSearchBox.getVisibility() == View.VISIBLE) {
+                performSearch();
+            } else {
+                showSearchBox();
+            }
+            return true;
+        }
+        if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0
+                && (event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                || event.getKeyCode() == KeyEvent.KEYCODE_NUMPAD_ENTER)
+                && titleSearchBox != null && titleSearchBox.getVisibility() == View.VISIBLE
+                && searchEdit != null && searchEdit.hasFocus()) {
+            performSearch();
             return true;
         }
         if (handleRemoteKey(event)) {

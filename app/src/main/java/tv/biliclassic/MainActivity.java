@@ -284,10 +284,29 @@ public class MainActivity extends BaseActivity {
 
         ImageView btnSearch = (ImageView) findViewById(R.id.btn_search);
         if (btnSearch != null) {
+            btnSearch.setFocusableInTouchMode(true);
             btnSearch.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     expandTitleSearch();
+                }
+            });
+            btnSearch.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v, android.view.MotionEvent event) {
+                    if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+                        v.performClick();
+                    }
+                    return true;
+                }
+            });
+        }
+        View titleSearchIcon = findViewById(R.id.title_search_icon);
+        if (titleSearchIcon != null) {
+            titleSearchIcon.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    submitTitleSearch();
                 }
             });
         }
