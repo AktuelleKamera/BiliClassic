@@ -1,4 +1,4 @@
-package util;
+package tv.biliclassic.util;
 
 import android.app.Activity;
 import android.view.LayoutInflater;

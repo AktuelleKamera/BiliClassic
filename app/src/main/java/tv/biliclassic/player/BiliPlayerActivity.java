@@ -86,7 +86,7 @@ import tv.biliclassic.widget.BatteryView2;
 import tv.biliclassic.util.DeviceUtils;
 import tv.biliclassic.util.FileProviderCompat;
 import tv.biliclassic.util.MediaSessionHelper;
-import util.LocalStreamProxy;
+import tv.biliclassic.util.LocalStreamProxy;
 
 import tv.biliclassic.util.DialogUtil;
 import tv.biliclassic.util.SdkHelper;

@@ -10,7 +10,7 @@ import android.os.Looper;
 import java.util.HashMap;
 import java.util.Map;
 
-import util.LocalStreamProxy;
+import tv.biliclassic.util.LocalStreamProxy;
 
 /**
  * 外部播放器（系统播放器/第三方 App）在线播放用本地代理持有者。

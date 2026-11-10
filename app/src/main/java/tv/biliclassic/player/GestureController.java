@@ -19,8 +19,8 @@ import android.widget.TextView;
 
 import tv.biliclassic.R;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
-import util.AudioManagerHelper;
-import util.BrightnessHelper;
+import tv.biliclassic.util.AudioManagerHelper;
+import tv.biliclassic.util.BrightnessHelper;
 import tv.biliclassic.util.SdkHelper;
 
 public class GestureController {
@@ -1064,7 +1064,7 @@ public class GestureController {
         if (mToastViewHolder == null && !mToastViewHolderChecked) {
             mToastViewHolderChecked = true;
             try {
-                mToastViewHolder = Class.forName("util.PlayerToastMessageViewHolder").newInstance();
+                mToastViewHolder = Class.forName("tv.biliclassic.util.PlayerToastMessageViewHolder").newInstance();
                 Log.d(TAG, "PlayerToastMessageViewHolder 反射初始化成功");
             } catch (Throwable t) {
                 Log.w(TAG, "PlayerToastMessageViewHolder 反射初始化失败: " + t.getMessage());
@@ -1078,7 +1078,7 @@ public class GestureController {
         if (mResumeToastViewHolder == null && !mResumeToastViewHolderChecked) {
             mResumeToastViewHolderChecked = true;
             try {
-                mResumeToastViewHolder = Class.forName("util.PlayerToastMessageViewHolder")
+                mResumeToastViewHolder = Class.forName("tv.biliclassic.util.PlayerToastMessageViewHolder")
                         .getConstructor(boolean.class).newInstance(Boolean.TRUE);
                 Log.d(TAG, "PlayerToastMessageViewHolder resume init ok");
             } catch (Throwable t) {

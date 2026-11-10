@@ -1,4 +1,4 @@
-package util;
+package tv.biliclassic.util;
 
 import android.content.Context;
 import android.media.AudioManager;
