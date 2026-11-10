@@ -124,7 +124,7 @@ public class BiliPlayerActivity extends Activity implements
     private static final int MSG_HIDE_CONTROLS = 1;
     private static final int MSG_UPDATE_PROGRESS = 2;
     private static final int MSG_UPDATE_TIME = 3;
-    private static final int CONTROL_HIDE_DELAY = 3000;
+    private static final int CONTROL_HIDE_DELAY = 5000;
     private static final int PROGRESS_UPDATE_INTERVAL = 500;
     private static final int TIME_UPDATE_INTERVAL = 30000;
     // 凉腕播放器返回播放进度（测试用）
@@ -1387,6 +1387,10 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         // 选集按钮
+        if (tvCurrentTime != null) tvCurrentTime.setSingleLine(true);
+        if (tvTotalTime != null) tvTotalTime.setSingleLine(true);
+        applyCompactControllerIfNeeded(controllerView);
+
         View pageListSelector = controllerView != null ? controllerView.findViewById(R.id.page_list_selector) : null;
         if (pageListSelector != null) {
             if (mCids != null && mCids.length > 1) {
@@ -4603,6 +4607,102 @@ public class BiliPlayerActivity extends Activity implements
             mSubtitleView.setVisibility(View.VISIBLE);
         } else {
             mSubtitleView.setVisibility(View.GONE);
+        }
+    }
+
+    private void applyCompactControllerIfNeeded(View controllerView) {
+        if (controllerView == null) return;
+        android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+        float density = dm.density <= 0 ? 1f : dm.density;
+        float minDp = Math.min(dm.widthPixels, dm.heightPixels) / density;
+        if (minDp > 360f) return;
+
+        View group = controllerView.findViewById(R.id.bottom_controllers_group);
+        if (group != null && group.getLayoutParams() != null) {
+            group.getLayoutParams().height = tv.biliclassic.util.DeviceUtil.dpToPx(44);
+            group.requestLayout();
+        }
+        float widthDp = dm.widthPixels / density;
+        int gapDp = 2;
+        int timeReserveDp = 72;
+        int buttonDp = (int) ((widthDp - gapDp * 5 - timeReserveDp) / 5f);
+        if (buttonDp < 40) buttonDp = 40;
+        if (buttonDp > 64) buttonDp = 64;
+        int shortW = tv.biliclassic.util.DeviceUtil.dpToPx(buttonDp);
+        int normalW = shortW;
+        int icon = tv.biliclassic.util.DeviceUtil.dpToPx(24);
+        int gap = tv.biliclassic.util.DeviceUtil.dpToPx(gapDp);
+        int[] normalIds = {R.id.toggle_aspect_ratio_button,
+                R.id.toggle_danmaku_button, R.id.send_danmaku};
+        int[] shortIds = {R.id.play_pause, R.id.lock_player};
+        for (int id : normalIds) {
+            View v = controllerView.findViewById(id);
+            if (v == null) continue;
+            android.view.ViewGroup.LayoutParams lp = v.getLayoutParams();
+            if (lp != null) {
+                lp.width = normalW;
+                if (lp instanceof android.widget.LinearLayout.LayoutParams) {
+                    ((android.widget.LinearLayout.LayoutParams) lp).rightMargin = gap;
+                }
+                v.setLayoutParams(lp);
+            }
+            v.requestLayout();
+            if (v instanceof TextView) {
+                compactTextButton((TextView) v, icon);
+            }
+        }
+        for (int id : shortIds) {
+            View v = controllerView.findViewById(id);
+            if (v == null) continue;
+            android.view.ViewGroup.LayoutParams lp = v.getLayoutParams();
+            if (lp != null) {
+                lp.width = shortW;
+                if (lp instanceof android.widget.LinearLayout.LayoutParams) {
+                    ((android.widget.LinearLayout.LayoutParams) lp).rightMargin = gap;
+                }
+                v.setLayoutParams(lp);
+            }
+            v.requestLayout();
+            if (v instanceof TextView) {
+                compactTextButton((TextView) v, icon);
+            }
+        }
+        View playMode = controllerView.findViewById(R.id.play_mode);
+        if (playMode != null) {
+            android.widget.LinearLayout.LayoutParams lp =
+                    (android.widget.LinearLayout.LayoutParams) playMode.getLayoutParams();
+            lp.leftMargin = tv.biliclassic.util.DeviceUtil.dpToPx(8);
+            playMode.setLayoutParams(lp);
+        }
+        if (tvCurrentTime != null) {
+            tvCurrentTime.setSingleLine(true);
+            tvCurrentTime.setTextSize(9);
+        }
+        if (tvTotalTime != null) {
+            tvTotalTime.setSingleLine(true);
+            tvTotalTime.setTextSize(9);
+        }
+        if (seekBar != null) {
+            int pad = tv.biliclassic.util.DeviceUtil.dpToPx(16);
+            int vpad = tv.biliclassic.util.DeviceUtil.dpToPx(4);
+            seekBar.setPadding(pad, vpad, pad, vpad);
+        }
+    }
+
+    private void compactTextButton(TextView v, int icon) {
+        if (v == null) return;
+        v.setTextSize(8);
+        v.setGravity(android.view.Gravity.CENTER);
+        v.setPadding(0, tv.biliclassic.util.DeviceUtil.dpToPx(1), 0, 0);
+        v.setCompoundDrawablePadding(tv.biliclassic.util.DeviceUtil.dpToPx(1));
+        v.setMinWidth(0);
+        v.setMinimumWidth(0);
+        v.setMinHeight(0);
+        v.setMinimumHeight(0);
+        android.graphics.drawable.Drawable[] ds = v.getCompoundDrawables();
+        if (ds != null && ds.length >= 4) {
+            if (ds[1] != null) ds[1].setBounds(0, 0, icon, icon);
+            v.setCompoundDrawables(ds[0], ds[1], ds[2], ds[3]);
         }
     }
 
