@@ -402,6 +402,15 @@ public class BiliPlayerActivity extends Activity implements
     // 加载动画（preloading 布局，动画由 AnimationDrawable 自动播放）
     private View mLoadingOverlay;
     private ImageView mLoadingIcon;
+    private int mLoadingFrameIndex;
+    private Runnable mLoadingFrameRunnable;
+    private static final int[] LOADING_FRAMES = {
+            R.drawable.bili_anim_tv_chan_1,
+            R.drawable.bili_anim_tv_chan_3,
+            R.drawable.bili_anim_tv_chan_5,
+            R.drawable.bili_anim_tv_chan_7,
+            R.drawable.bili_anim_tv_chan_9
+    };
     // 两阶段加载状态：都在左下角状态栏上，第一行（获取播放地址）显示在第二行（正在加载视频）上方
     private TextView mLoadingStep1;
     private String mLoadStep1Text;
@@ -781,6 +790,9 @@ public class BiliPlayerActivity extends Activity implements
         mLoadingOverlay.setLayoutParams(new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         mLoadingIcon = (ImageView) mLoadingOverlay.findViewById(R.id.tv_chan_animation);
+        if (mLoadingIcon != null) {
+            mLoadingIcon.setBackgroundColor(0x00000000);
+        }
         if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 11
                 && SdkHelper.getSdkInt() < 21) {
             mLoadingOverlay.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
@@ -791,6 +803,12 @@ public class BiliPlayerActivity extends Activity implements
         // 两阶段加载状态：都放在左下角状态栏（样式与「正在加载…」一致），
         // 第一行"获取播放地址"显示在第二行"正在加载视频"上方。
         mLoadingStep1 = (TextView) mLoadingOverlay.findViewById(R.id.video_preloading_status_bar);
+        if (tv.biliclassic.util.UiSkin.isNight()) {
+            mLoadingOverlay.setBackgroundColor(0xFF171717);
+            if (mLoadingStep1 != null) {
+                mLoadingStep1.setTextColor(0xFFE6E6E6);
+            }
+        }
         if (mLoadingStep1 != null
                 && tv.biliclassic.util.SdkHelper.getSdkInt() >= 11
                 && tv.biliclassic.util.SdkHelper.getSdkInt() < 21) {
@@ -813,14 +831,28 @@ public class BiliPlayerActivity extends Activity implements
 
     private void startLoadingAnimation() {
         try {
-            if (mLoadingIcon != null) {
-                mLoadingIcon.setImageResource(R.anim.bili_loading_tv_chan);
-                android.graphics.drawable.AnimationDrawable ad =
-                        (android.graphics.drawable.AnimationDrawable) mLoadingIcon.getDrawable();
-                if (ad != null) {
-                    ad.stop();
-                    ad.start();
-                }
+            if (mLoadingIcon == null) return;
+            if (tv.biliclassic.util.SdkHelper.getSdkInt() < 11) {
+                mLoadingFrameIndex = 0;
+                mLoadingIcon.setImageResource(LOADING_FRAMES[0]);
+                mLoadingFrameRunnable = new Runnable() {
+                    public void run() {
+                        if (mLoadingIcon == null) return;
+                        mLoadingFrameIndex = (mLoadingFrameIndex + 1)
+                                % LOADING_FRAMES.length;
+                        mLoadingIcon.setImageResource(LOADING_FRAMES[mLoadingFrameIndex]);
+                        handler.postDelayed(this, 100L);
+                    }
+                };
+                handler.postDelayed(mLoadingFrameRunnable, 100L);
+                return;
+            }
+            mLoadingIcon.setImageResource(R.anim.bili_loading_tv_chan);
+            android.graphics.drawable.AnimationDrawable ad =
+                    (android.graphics.drawable.AnimationDrawable) mLoadingIcon.getDrawable();
+            if (ad != null) {
+                ad.stop();
+                ad.start();
             }
         } catch (Throwable t) {
         }
@@ -828,6 +860,10 @@ public class BiliPlayerActivity extends Activity implements
 
     private void stopLoadingAnimation() {
         try {
+            if (mLoadingFrameRunnable != null) {
+                handler.removeCallbacks(mLoadingFrameRunnable);
+                mLoadingFrameRunnable = null;
+            }
             if (mLoadingIcon != null) {
                 android.graphics.drawable.Drawable d = mLoadingIcon.getDrawable();
                 if (d instanceof android.graphics.drawable.AnimationDrawable) {
@@ -870,10 +906,32 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     private void hideLoadingOverlay() {
-        if (mLoadingOverlay != null && mLoadingOverlay.getVisibility() == View.VISIBLE) {
-            stopLoadingAnimation();
-            mLoadingOverlay.setVisibility(View.GONE);
+        final View overlay = mLoadingOverlay;
+        View legacyOverlay = findViewById(R.id.preloading_view);
+        if (legacyOverlay != null && legacyOverlay != overlay) {
+            legacyOverlay.setVisibility(View.GONE);
         }
+        if (overlay == null) return;
+        stopLoadingAnimation();
+        if (mLoadingIcon != null) {
+            mLoadingIcon.setImageDrawable(null);
+            if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 11) {
+                mLoadingIcon.setLayerType(View.LAYER_TYPE_NONE, null);
+            }
+        }
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 11) {
+            overlay.setLayerType(View.LAYER_TYPE_NONE, null);
+        }
+        overlay.setVisibility(View.GONE);
+        android.view.ViewParent parent = overlay.getParent();
+        if (parent instanceof android.view.ViewGroup) {
+            ((android.view.ViewGroup) parent).removeView(overlay);
+        }
+        View content = findViewById(android.R.id.content);
+        if (content != null) content.invalidate();
+        mLoadingOverlay = null;
+        mLoadingIcon = null;
+        mLoadingStep1 = null;
     }
 
     private void initGestureController() {
@@ -3480,6 +3538,7 @@ public class BiliPlayerActivity extends Activity implements
                 if (mDanmakuManager != null && isPlaying) mDanmakuManager.resume();
                 break;
             case IMediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START:
+                hideLoadingOverlay();
                 showBuffering(false);
                 if (!aspectRatioFixed) {
                     aspectRatioFixed = true;
