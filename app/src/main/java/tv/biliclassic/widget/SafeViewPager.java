@@ -21,6 +21,8 @@ public class SafeViewPager extends ViewPager {
             return super.onInterceptTouchEvent(ev);
         } catch (IndexOutOfBoundsException e) {
             return false;
+        } catch (IllegalArgumentException e) {
+            return false;
         }
     }
 
@@ -29,6 +31,8 @@ public class SafeViewPager extends ViewPager {
         try {
             return super.onTouchEvent(ev);
         } catch (IndexOutOfBoundsException e) {
+            return false;
+        } catch (IllegalArgumentException e) {
             return false;
         }
     }
