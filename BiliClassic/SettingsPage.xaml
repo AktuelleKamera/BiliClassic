@@ -103,6 +103,19 @@
                       Margin="0,20,0,0"
                       Checked="AutoCheckUpdate_Changed"
                       Unchecked="AutoCheckUpdate_Changed"/>
+                <CheckBox x:Name="NfcSyncCheck"
+                      Content="NFC 零距同步（实验）"
+                      Margin="0,20,0,0" Visibility="Collapsed"
+                      Checked="NfcSync_Changed" Unchecked="NfcSync_Changed"/>
+                <TextBlock Margin="12,0,0,0" TextWrapping="Wrap"
+                       Style="{StaticResource PhoneTextSubtleStyle}"
+                       Text="保持页面打开，与安卓设备碰一碰"/>
+                <Button x:Name="NfcSendButton"
+                    Content="NFC 发送登录信息"
+                    Margin="0,4,0,0" Visibility="Collapsed"
+                    Click="NfcSend_Click" Background="#D86DA5"
+                    Foreground="White" BorderThickness="0"/>
+
                 <Button x:Name="CheckUpdateButton" Content="检查更新"
                     Margin="0,4,0,0" Click="CheckUpdate_Click" Background="#D86DA5" Foreground="White" BorderThickness="0"/>
 

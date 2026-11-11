@@ -11,6 +11,7 @@
         //这仨是我加的——WinVistaSP
         private const string XiNaoEnabledKey = "xinao_enabled";//洗脑循环
         private const string ZiDongEnabledKey = "zidong_enabled";//自动播放
+        private const string NfcSyncEnabledKey = "nfc_sync_enabled";
         private const string YinLiangValueKey = "yinliang_value";//音量
         //这个也是我加的（
         private const string LockCiTieValueKey = "lockcitie_value";
@@ -39,6 +40,12 @@
         {
             get { return LocalStore.Get(OfflinePlaybackKey) == "1"; }
             set { LocalStore.Set(OfflinePlaybackKey, value ? "1" : "0"); }
+        }
+
+        public static bool NfcSyncEnabled
+        {
+            get { return LocalStore.Get(NfcSyncEnabledKey) == "1"; }
+            set { LocalStore.Set(NfcSyncEnabledKey, value ? "1" : "0"); }
         }
 
         public static bool DashPlayback

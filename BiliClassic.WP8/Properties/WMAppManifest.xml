@@ -16,6 +16,7 @@
            少一条就是立刻MediaFailed，不是连不上 -->
       <Capability Name="ID_CAP_MEDIALIB_AUDIO"/>
       <Capability Name="ID_CAP_MEDIALIB_PLAYBACK"/>
+      <Capability Name="ID_CAP_PROXIMITY"/>
     </Capabilities>
     <!-- Tasks 必须排在 Tokens 前面，8.1 的 XSD 是定序的 -->
     <Tasks>

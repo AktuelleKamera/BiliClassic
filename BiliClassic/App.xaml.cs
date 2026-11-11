@@ -54,12 +54,14 @@ namespace BiliClassic
 
             ThemeHelper.AutoApply();
             LoadSession();
+            StartNfcIfEnabled();
         }
 
         private void Application_Activated(object sender, ActivatedEventArgs e)
         {
             ThemeHelper.AutoApply();
             LoadSession();
+            StartNfcIfEnabled();
         }
 
         private static void LoadSession()
@@ -67,6 +69,18 @@ namespace BiliClassic
             BiliClassic.Api.BiliSession.Load();
 
             BiliClassic.Api.CookieGenerator.Ensure(null);
+        }
+
+        /// <summary>NFC 零距同步开了就全局订阅，任何页面都能碰</summary>
+        private static void StartNfcIfEnabled()
+        {
+#if WP81
+            if (!BiliClassic.Api.AppSettings.NfcSyncEnabled)
+            {
+                return;
+            }
+            BiliClassic.Api.NfcSync.StartWithPrompt();
+#endif
         }
 
         private void Application_Deactivated(object sender, DeactivatedEventArgs e)

@@ -15,6 +15,11 @@ namespace BiliClassic
         {
             InitializeComponent();
             ThemeHelper.ApplyPage(this);
+            // 这两个按钮在旧版是默认无填色的，黑主题下还原
+            ThemeHelper.ApplyAccentButtons(this);
+#if WP81
+            InitNfcUi();
+#endif
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -31,6 +36,9 @@ namespace BiliClassic
             LockCiTieCheck.IsChecked = AppSettings.LockCiTieEnabled;
             HideCiTieCheck.IsChecked = AppSettings.HideCiTieEnabled;
             LoadQuality(AppSettings.PlayQuality);
+#if WP81
+            NfcSyncCheck.IsChecked = AppSettings.NfcSyncEnabled;
+#endif
             _loading = false;
         }
 
@@ -172,7 +180,57 @@ namespace BiliClassic
                 : "已关闭离线播放：播放时直接在线播放。";
         }
 
+        private void NfcSync_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_loading)
+            {
+                return;
+            }
+#if WP81
+            AppSettings.NfcSyncEnabled = NfcSyncCheck.IsChecked == true;
+            if (AppSettings.NfcSyncEnabled)
+            {
+                StartNfc();
+            }
+            else
+            {
+                StopNfc();
+            }
+#endif
+        }
 
+        private void NfcSend_Click(object sender, RoutedEventArgs e)
+        {
+#if WP81
+            StatusText.Text = NfcSync.SendLogin()
+                    ? "NFC 正在发送登录信息"
+                    : "没有可发送的登录信息或 NFC 不可用";
+#endif
+        }
+
+#if WP81
+        private void InitNfcUi()
+        {
+            if (!NfcSync.Available)
+            {
+                return;
+            }
+            NfcSyncCheck.Visibility = Visibility.Visible;
+            NfcSendButton.Visibility = Visibility.Visible;
+        }
+
+        private void StartNfc()
+        {
+            StatusText.Text = NfcSync.StartWithPrompt()
+                    ? "NFC 已开启，等待另一台设备碰一碰"
+                    : "当前设备不支持 NFC";
+        }
+
+        private void StopNfc()
+        {
+            NfcSync.Stop();
+        }
+#endif
 
         private void ClearCache_Click(object sender, RoutedEventArgs e)
         {
