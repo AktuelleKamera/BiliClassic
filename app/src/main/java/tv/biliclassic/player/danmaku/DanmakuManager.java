@@ -70,6 +70,9 @@ public class DanmakuManager {
     private static final String KEY_BLOCK_GUEST = "danmaku_block_guest";
     private static final String KEY_BLOCK_COLORFUL = "danmaku_block_colorful";
     private static final String KEY_DUP_MERGE = "danmaku_duplicate_merge";
+    private static final float DEFAULT_TEXT_SIZE = 1.8f;
+    public static final String KEY_ENGINE_MANUAL = "danmaku_engine_mode_manual";
+
     private static final String KEY_RENDER_MODE = "danmaku_render_mode";
 
     // 直播弹幕轮询间隔（gethistory 拉取周期）
@@ -139,6 +142,9 @@ public class DanmakuManager {
 
     public static boolean isSimpleEngineEnabled() {
         int mode = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, -1);
+        if (SharedPreferencesUtil.getBoolean(KEY_ENGINE_MANUAL, false)) {
+            return mode == 1;
+        }
         String abi = getCpuAbi();
         boolean isLegacyCpu = tv.biliclassic.util.CpuAbi.isLegacyArm();
         boolean hasDsp = tv.biliclassic.util.DeviceUtils.hasHardwareVideoDsp();
@@ -153,6 +159,11 @@ public class DanmakuManager {
         }
         if (hasDsp && !SharedPreferencesUtil.getBoolean(migratedKey, false)) {
             SharedPreferencesUtil.putBoolean(migratedKey, true);
+        }
+        if (tv.biliclassic.SettingsActivity.isConvertPlayEnabled()
+                && tv.biliclassic.SettingsActivity.getDecoderType() == 0) {
+            mode = 0;
+            SharedPreferencesUtil.putInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, mode);
         }
         return mode == 1;
     }

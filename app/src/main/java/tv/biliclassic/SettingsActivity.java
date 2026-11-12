@@ -1723,7 +1723,10 @@ public class SettingsActivity extends BaseActivity {
 
     // 弹幕引擎选择
     private void showDanmakuEngineDialog(final TextView textView) {
-        final String[] modes = {"完整版（DanmakuFlameMaster）", "简易版（BT-5弹幕引擎）"};
+        final String[] modes = {
+                getString(R.string.danmaku_engine_full),
+                getString(R.string.danmaku_engine_simple)
+        };
         int current = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, 0);
         int checkedIndex = Math.min(current, 1);
 
@@ -1733,20 +1736,24 @@ public class SettingsActivity extends BaseActivity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         SharedPreferencesUtil.putInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, which);
+                        SharedPreferencesUtil.putBoolean(
+                                tv.biliclassic.player.danmaku.DanmakuManager.KEY_ENGINE_MANUAL, true);
                         updateDanmakuEngineDisplay(textView);
                         Toast.makeText(SettingsActivity.this,
-                                "已切换为: " + modes[which],
+                                getString(R.string.common_switched_to_fmt, modes[which]),
                                 Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
                     }
                 })
-                .setNegativeButton("取消", null)
+                .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }
 
     private void updateDanmakuEngineDisplay(TextView textView) {
-        int mode = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DANMAKU_ENGINE_MODE, 0);
-        textView.setText(mode == 1 ? "简易版（BT-5弹幕引擎）" : "完整版");
+        boolean simple = tv.biliclassic.player.danmaku.DanmakuManager.isSimpleEngineEnabled();
+        textView.setText(simple
+                ? R.string.danmaku_engine_simple
+                : R.string.danmaku_engine_full);
     }
 
     // 弹幕渲染方式
