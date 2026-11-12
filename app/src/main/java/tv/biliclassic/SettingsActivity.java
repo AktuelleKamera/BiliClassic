@@ -1448,13 +1448,13 @@ public class SettingsActivity extends BaseActivity {
     public static int getVideoQuality() {
         if (getPlayStreamFormat() == 16) {
             if (!SharedPreferencesUtil.contains(KEY_VIDEO_QUALITY_DASH)) {
-                int old = SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY, QUALITY_1080P);
+                int old = SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY, QUALITY_480P);
                 int dashDefault = old == QUALITY_1080P_PLUS || old == QUALITY_1080P60
                         || old == QUALITY_4K || old == QUALITY_8K
-                        ? old : QUALITY_1080P;
+                        ? old : QUALITY_480P;
                 SharedPreferencesUtil.putInt(KEY_VIDEO_QUALITY_DASH, dashDefault);
             }
-            return SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY_DASH, QUALITY_1080P);
+            return SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY_DASH, QUALITY_480P);
         }
         int quality = SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY, QUALITY_360P);
         return quality > QUALITY_1080P ? QUALITY_1080P : quality;
