@@ -85,10 +85,17 @@ namespace BiliClassic
 
         private void Application_Deactivated(object sender, DeactivatedEventArgs e)
         {
+#if WP81
+            // 挂起后订阅会失效，先放掉，回到前台再按开关重新订阅
+            BiliClassic.Api.NfcSync.Stop();
+#endif
         }
 
         private void Application_Closing(object sender, ClosingEventArgs e)
         {
+#if WP81
+            BiliClassic.Api.NfcSync.Stop();
+#endif
         }
 
         private void RootFrame_Navigating(object sender, NavigatingCancelEventArgs e)
