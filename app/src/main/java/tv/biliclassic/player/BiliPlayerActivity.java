@@ -4633,13 +4633,14 @@ public class BiliPlayerActivity extends Activity implements
         }
         float widthDp = dm.widthPixels / density;
         int gapDp = 2;
-        int timeReserveDp = 72;
+        int timeReserveDp = 84;
         int buttonDp = (int) ((widthDp - gapDp * 5 - timeReserveDp) / 5f);
         if (buttonDp < 40) buttonDp = 40;
         if (buttonDp > 64) buttonDp = 64;
         int shortW = tv.biliclassic.util.DeviceUtil.dpToPx(buttonDp);
         int normalW = shortW;
-        int icon = tv.biliclassic.util.DeviceUtil.dpToPx(24);
+        int iconDp = buttonDp < 44 ? 16 : 18;
+        int iconHeight = tv.biliclassic.util.DeviceUtil.dpToPx(iconDp);
         int gap = tv.biliclassic.util.DeviceUtil.dpToPx(gapDp);
         int[] normalIds = {R.id.toggle_aspect_ratio_button,
                 R.id.toggle_danmaku_button, R.id.send_danmaku};
@@ -4657,7 +4658,7 @@ public class BiliPlayerActivity extends Activity implements
             }
             v.requestLayout();
             if (v instanceof TextView) {
-                compactTextButton((TextView) v, icon);
+                compactTextButton((TextView) v, iconHeight);
             }
         }
         for (int id : shortIds) {
@@ -4673,7 +4674,7 @@ public class BiliPlayerActivity extends Activity implements
             }
             v.requestLayout();
             if (v instanceof TextView) {
-                compactTextButton((TextView) v, icon);
+                compactTextButton((TextView) v, iconHeight);
             }
         }
         View playMode = controllerView.findViewById(R.id.play_mode);
@@ -4710,7 +4711,17 @@ public class BiliPlayerActivity extends Activity implements
         v.setMinimumHeight(0);
         android.graphics.drawable.Drawable[] ds = v.getCompoundDrawables();
         if (ds != null && ds.length >= 4) {
-            if (ds[1] != null) ds[1].setBounds(0, 0, icon, icon);
+            if (ds[1] != null) {
+                int intrinsicW = ds[1].getIntrinsicWidth();
+                int intrinsicH = ds[1].getIntrinsicHeight();
+                int drawableW = iconHeight;
+                int drawableH = iconHeight;
+                if (intrinsicW > 0 && intrinsicH > 0) {
+                    drawableW = Math.max(1, Math.round(
+                            iconHeight * (float) intrinsicW / intrinsicH));
+                }
+                ds[1].setBounds(0, 0, drawableW, drawableH);
+            }
             v.setCompoundDrawables(ds[0], ds[1], ds[2], ds[3]);
         }
     }
