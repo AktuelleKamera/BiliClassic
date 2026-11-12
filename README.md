@@ -1,6 +1,8 @@
-﻿# BiliClassic for Windows Phone
+# BiliClassic for Windows Phone
 
-一个面向Windows Phone设备的第三方哔哩哔哩客户端，让被遗忘在抽屉里的Windows Phone设备重新获得观看哔哩哔哩视频的能力。
+<img width="1280" height="720" alt="aa6c89c8a32ea0118588cea08fabc963" src="https://github.com/user-attachments/assets/aba21e9f-1273-410a-80ec-3ad5383e184a" />
+
+一个面向Windows Phone设备的第三方哔哩哔哩客户端，让1%的Windows Phone设备重新获得观看哔哩哔哩视频的能力。
 
 ## 免责声明
 
@@ -16,7 +18,7 @@
 
 ## 当前版本
 
-**0.3.0 (Phi)**
+**0.4.0 (Arrow)**
 
 ## 技术路线
 
@@ -57,5 +59,5 @@ GPLv3保证您有以下自由：
 
 ## 下载与反馈
 
-- GitHub: https://github.com/AktuelleKamera/BiliClassic/tree/wp (Windows Phone 分支)
+- GitHub: https://github.com/AktuelleKamera/BiliClassic/tree/wp (Windows Phone分支)
 - 反馈 Issue: https://github.com/AktuelleKamera/BiliClassic/issues
