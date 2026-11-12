@@ -55,6 +55,7 @@ namespace BiliClassic
             ThemeHelper.AutoApply();
             LoadSession();
             StartNfcIfEnabled();
+            BiliClassic.Api.DeviceReport.ReportIfNeeded();
         }
 
         private void Application_Activated(object sender, ActivatedEventArgs e)
@@ -62,6 +63,7 @@ namespace BiliClassic
             ThemeHelper.AutoApply();
             LoadSession();
             StartNfcIfEnabled();
+            BiliClassic.Api.DeviceReport.ReportIfNeeded();
         }
 
         private static void LoadSession()
