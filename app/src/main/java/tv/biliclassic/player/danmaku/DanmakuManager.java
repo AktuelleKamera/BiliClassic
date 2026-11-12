@@ -419,15 +419,12 @@ public class DanmakuManager {
      *     —— 禁止 Texture：这个组合没测过，先不开放（懒得测了）。
      */
     private String resolveRenderMode() {
-        if (SdkHelper.getSdkInt() < 3
-                || (SdkHelper.getSdkInt() < 5 && !DanmakuSurfaceView.isZOrderCompatSupported())) {
-            return "view";
-        }
         if (isVideoTextureView()) {
             String mode = SharedPreferencesUtil.getString(KEY_RENDER_MODE, "view");
             return "texture".equals(mode) ? "texture" : "view";
         }
-        String mode = SharedPreferencesUtil.getString(KEY_RENDER_MODE, "surface");
+        String defaultMode = SdkHelper.getSdkInt() < 5 ? "view" : "surface";
+        String mode = SharedPreferencesUtil.getString(KEY_RENDER_MODE, defaultMode);
         return "view".equals(mode) ? "view" : "surface";
     }
 

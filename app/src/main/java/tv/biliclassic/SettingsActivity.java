@@ -1764,9 +1764,6 @@ public class SettingsActivity extends BaseActivity {
                 tv.biliclassic.util.SdkHelper.getSdkInt() >= 14 && getRendererType() == 1;
         final String[] labels;
         final String[] values;
-        // 只列出与当前视频渲染方式安全的弹幕宿主：
-        //   视频=TextureView → View / TextureView（Surface 弹幕会挖黑视频）
-        //   视频=SurfaceView → SurfaceView / View（Texture 组合没测过，先不提供）
         if (videoTexture) {
             labels = new String[]{"View", "TextureView"};
             values = new String[]{"view", "texture"};
@@ -1774,7 +1771,8 @@ public class SettingsActivity extends BaseActivity {
             labels = new String[]{"SurfaceView", "View"};
             values = new String[]{"surface", "view"};
         }
-        String def = videoTexture ? "view" : "surface";
+        String def = videoTexture || tv.biliclassic.util.SdkHelper.getSdkInt() < 5
+                ? "view" : "surface";
         String current = SharedPreferencesUtil.getString(KEY_DANMAKU_RENDER_MODE, def);
         int checkedIndex = 0;
         for (int i = 0; i < values.length; i++) {
@@ -1787,16 +1785,36 @@ public class SettingsActivity extends BaseActivity {
                 .setTitle(getString(R.string.danmaku_render_method))
                 .setSingleChoiceItems(labels, checkedIndex, new DialogInterface.OnClickListener() {
                     @Override
-                    public void onClick(DialogInterface dialog, int which) {
+                    public void onClick(final DialogInterface dialog, final int which) {
+                        if ("surface".equals(values[which])
+                                && tv.biliclassic.util.SdkHelper.getSdkInt() < 5) {
+                            dialog.dismiss();
+                            new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(SettingsActivity.this)))
+                                    .setTitle(R.string.danmaku_surface_warning_title)
+                                    .setMessage(R.string.danmaku_surface_warning_message)
+                                    .setPositiveButton(R.string.danmaku_surface_warning_confirm, new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface d, int w) {
+                                            SharedPreferencesUtil.putString(KEY_DANMAKU_RENDER_MODE, "surface");
+                                            updateDanmakuRenderModeDisplay(textView);
+                                            Toast.makeText(SettingsActivity.this,
+                                                    getString(R.string.common_switched_to_fmt, labels[which]),
+                                                    Toast.LENGTH_SHORT).show();
+                                        }
+                                    })
+                                    .setNegativeButton(android.R.string.cancel, null)
+                                    .show();
+                            return;
+                        }
                         SharedPreferencesUtil.putString(KEY_DANMAKU_RENDER_MODE, values[which]);
                         updateDanmakuRenderModeDisplay(textView);
                         Toast.makeText(SettingsActivity.this,
-                                "已切换为: " + labels[which],
+                                getString(R.string.common_switched_to_fmt, labels[which]),
                                 Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
                     }
                 })
-                .setNegativeButton("取消", null)
+                .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }
 
@@ -1806,7 +1824,8 @@ public class SettingsActivity extends BaseActivity {
         boolean videoTexture =
                 tv.biliclassic.util.SdkHelper.getSdkInt() >= 14 && getRendererType() == 1;
         String mode = SharedPreferencesUtil.getString(KEY_DANMAKU_RENDER_MODE,
-                videoTexture ? "view" : "surface");
+                videoTexture || tv.biliclassic.util.SdkHelper.getSdkInt() < 5
+                        ? "view" : "surface");
         String label;
         if ("surface".equals(mode)) {
             label = "SurfaceView";
