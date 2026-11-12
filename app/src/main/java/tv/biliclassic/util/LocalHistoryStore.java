@@ -145,8 +145,12 @@ public final class LocalHistoryStore {
                 JSONObject item = existing.optJSONObject(i);
                 if (item != null) out.put(item);
             }
-            while (out.length() > MAX_ENTRIES) {
-                out.remove(out.length() - 1);
+            if (out.length() > MAX_ENTRIES) {
+                JSONArray trimmed = new JSONArray();
+                for (int i = 0; i < MAX_ENTRIES; i++) {
+                    trimmed.put(out.opt(i));
+                }
+                out = trimmed;
             }
             SharedPreferencesUtil.putString(KEY, LocalJsonCrypto.encrypt(out.toString()));
         } catch (Throwable ignored) {

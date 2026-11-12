@@ -73,8 +73,12 @@ public final class LocalFavoriteStore {
             return false;
         }
         out.put(item);
-        while (out.length() > MAX_ENTRIES) {
-            out.remove(out.length() - 1);
+        if (out.length() > MAX_ENTRIES) {
+            JSONArray trimmed = new JSONArray();
+            for (int i = 0; i < MAX_ENTRIES; i++) {
+                trimmed.put(out.opt(i));
+            }
+            out = trimmed;
         }
         writeArray(out);
         return true;
@@ -270,8 +274,12 @@ public final class LocalFavoriteStore {
                 JSONObject item = existing.optJSONObject(i);
                 if (item != null) out.put(item);
             }
-            while (out.length() > MAX_ENTRIES) {
-                out.remove(out.length() - 1);
+            if (out.length() > MAX_ENTRIES) {
+                JSONArray trimmed = new JSONArray();
+                for (int i = 0; i < MAX_ENTRIES; i++) {
+                    trimmed.put(out.opt(i));
+                }
+                out = trimmed;
             }
             writeArray(out);
         } catch (Throwable ignored) {
