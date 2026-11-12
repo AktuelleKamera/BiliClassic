@@ -76,29 +76,9 @@ public final class DeviceReportUtil {
             headers.add("X-Skip-Cookie");
             headers.add("1");
             String body = buildBody(context, key);
-            try {
-                int code = NetWorkUtil.postNoReply(reportUrl, body, headers,
-                        "application/x-www-form-urlencoded");
-                if (code >= 200 && code < 300) {
-                    return true;
-                }
-            } catch (Throwable ignored) {
-            }
-            String fallbackUrl = null;
-            if (reportUrl.startsWith("http://")) {
-                fallbackUrl = "https://" + reportUrl.substring("http://".length());
-            } else if (reportUrl.startsWith("https://")) {
-                fallbackUrl = "http://" + reportUrl.substring("https://".length());
-            }
-            if (fallbackUrl != null) {
-                try {
-                    int code = NetWorkUtil.postNoReply(fallbackUrl, body, headers,
-                            "application/x-www-form-urlencoded");
-                    return code >= 200 && code < 300;
-                } catch (Throwable ignored) {
-                }
-            }
-            return false;
+            int code = NetWorkUtil.postNoReply(reportUrl, body, headers,
+                    "application/x-www-form-urlencoded");
+            return code >= 200 && code < 300;
         } catch (Throwable t) {
             return false;
         }
