@@ -605,7 +605,7 @@ public class NetWorkUtil {
         return post(url, data, headers, "application/x-www-form-urlencoded");
     }
 
-    public static void postNoReply(String url, String data, List headers, String contentType) throws IOException {
+    public static int postNoReply(String url, String data, List headers, String contentType) throws IOException {
         HttpURLConnection conn = null;
         try {
             conn = createConnection(url, "POST", headers);
@@ -621,6 +621,7 @@ public class NetWorkUtil {
             if (is != null) {
                 is.close();
             }
+            return responseCode;
         } finally {
             if (conn != null) {
                 conn.disconnect();

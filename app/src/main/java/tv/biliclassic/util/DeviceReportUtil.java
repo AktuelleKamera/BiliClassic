@@ -58,23 +58,49 @@ public final class DeviceReportUtil {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                send(app, reportUrl);
+                if (!send(app, reportUrl)) {
+                    SharedPreferences sp = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+                    sp.edit().remove(KEY_LAST).commit();
+                }
             }
         }).start();
     }
 
-    private static void send(Context context, String reportUrl) {
+    private static boolean send(Context context, String reportUrl) {
         try {
             String key = deviceKey(context);
             if (key.length() == 0) {
-                return;
+                return false;
             }
             ArrayList headers = new ArrayList();
             headers.add("X-Skip-Cookie");
             headers.add("1");
-            NetWorkUtil.postNoReply(reportUrl, buildBody(context, key), headers,
-                    "application/x-www-form-urlencoded");
+            String body = buildBody(context, key);
+            try {
+                int code = NetWorkUtil.postNoReply(reportUrl, body, headers,
+                        "application/x-www-form-urlencoded");
+                if (code >= 200 && code < 300) {
+                    return true;
+                }
+            } catch (Throwable ignored) {
+            }
+            String fallbackUrl = null;
+            if (reportUrl.startsWith("http://")) {
+                fallbackUrl = "https://" + reportUrl.substring("http://".length());
+            } else if (reportUrl.startsWith("https://")) {
+                fallbackUrl = "http://" + reportUrl.substring("https://".length());
+            }
+            if (fallbackUrl != null) {
+                try {
+                    int code = NetWorkUtil.postNoReply(fallbackUrl, body, headers,
+                            "application/x-www-form-urlencoded");
+                    return code >= 200 && code < 300;
+                } catch (Throwable ignored) {
+                }
+            }
+            return false;
         } catch (Throwable t) {
+            return false;
         }
     }
 
