@@ -390,6 +390,8 @@ public class DanmakuManager {
 
     private void initSimpleEngine() {
         mSimpleEngine = new SimpleDanmakuEngine(mActivity);
+        mSimpleEngine.setScaleTextSize(
+                SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE));
         mContainer.removeAllViews();
         String mode = resolveRenderMode();
         View host;
@@ -472,7 +474,7 @@ public class DanmakuManager {
             }
         });
 
-        float textSize = SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, 0.9f);
+        float textSize = SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE);
         float transparency = SharedPreferencesUtil.getFloat(KEY_TRANSPARENCY, 0.4f);
         float speed = SharedPreferencesUtil.getFloat(KEY_SPEED, 1.0f);
         int maxScreen = SharedPreferencesUtil.getInt(KEY_MAX_SCREEN, -1);
@@ -1260,7 +1262,7 @@ public class DanmakuManager {
 
         hideSectionHeaders(panel);
 
-        float textScale = SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, 0.9f);
+        float textScale = SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE);
         float speed = SharedPreferencesUtil.getFloat(KEY_SPEED, 1.0f);
         float alpha = 1.0f - SharedPreferencesUtil.getFloat(KEY_TRANSPARENCY, 0.4f);
         int maxScreen = SharedPreferencesUtil.getInt(KEY_MAX_SCREEN, 50);
