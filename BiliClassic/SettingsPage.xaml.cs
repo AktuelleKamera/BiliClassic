@@ -211,12 +211,15 @@ namespace BiliClassic
 #if WP81
         private void InitNfcUi()
         {
-            if (!NfcSync.Available)
-            {
-                return;
-            }
+            // 开关一直显示，设备不支持 NFC 就置灰说明原因
             NfcSyncCheck.Visibility = Visibility.Visible;
             NfcSendButton.Visibility = Visibility.Visible;
+            if (!NfcSync.Available)
+            {
+                NfcSyncCheck.IsEnabled = false;
+                NfcSendButton.IsEnabled = false;
+                StatusText.Text = "当前设备不支持 NFC";
+            }
         }
 
         private void StartNfc()
