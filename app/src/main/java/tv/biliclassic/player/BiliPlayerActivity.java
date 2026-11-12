@@ -3114,6 +3114,7 @@ public class BiliPlayerActivity extends Activity implements
     @Override
     public void onPrepared(IMediaPlayer mp) {
         isPrepared = true;
+        if (mGestureController != null) mGestureController.setPrepared(true);
         markLoadingStep2Done();
         showBuffering(false);
 
@@ -5480,6 +5481,7 @@ public class BiliPlayerActivity extends Activity implements
         if (clearState) {
             isPrepared = false;
             isPlaying = false;
+            if (mGestureController != null) mGestureController.setPrepared(false);
         }
     }
 

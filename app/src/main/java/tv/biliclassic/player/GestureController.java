@@ -114,11 +114,12 @@ public class GestureController {
     private boolean mIsAdjustingBrightness = false;
     private boolean mIsAdjustingVolume = false;
     private boolean mIsLongPressing = false;
+    private boolean mPrepared = false;
 
     private Runnable mLongPressRunnable = new Runnable() {
         @Override
         public void run() {
-            if (!enableGesture || mIsScaling || mIsPinching || mIsSeeking ||
+            if (!mPrepared || !enableGesture || mIsScaling || mIsPinching || mIsSeeking ||
                     mIsAdjustingBrightness || mIsAdjustingVolume ||
                     mInHorizontalMoving || mInVerticalMoving) {
                 return;
@@ -347,6 +348,13 @@ public class GestureController {
             mIsDragging = false;
             mIsPinching = false;
             mIsScaling = false;
+        }
+    }
+
+    public void setPrepared(boolean prepared) {
+        mPrepared = prepared;
+        if (!prepared) {
+            cancelLongPress();
         }
     }
 
@@ -665,7 +673,9 @@ public class GestureController {
             startVolumeChange();
             mLongPressHandler.removeCallbacks(mLongPressRunnable);
             mIsLongPressed = false;
-            mLongPressHandler.postDelayed(mLongPressRunnable, LONG_PRESS_TIMEOUT);
+            if (mPrepared) {
+                mLongPressHandler.postDelayed(mLongPressRunnable, LONG_PRESS_TIMEOUT);
+            }
             return true;
         }
 
