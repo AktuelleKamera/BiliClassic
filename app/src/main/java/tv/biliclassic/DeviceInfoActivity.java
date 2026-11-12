@@ -4,7 +4,6 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -13,8 +12,8 @@ import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.lang.reflect.Field;
 
+import tv.biliclassic.util.DeviceUtils;
 import tv.biliclassic.util.DialogUtil;
 
 public class DeviceInfoActivity extends BaseActivity {
@@ -63,15 +62,15 @@ public class DeviceInfoActivity extends BaseActivity {
     private String getDeviceInfoSafe() {
         StringBuilder sb = new StringBuilder();
 
-        String manufacturer = getBuildField("MANUFACTURER");
-        String model = getBuildField("MODEL");
-        String device = getBuildField("DEVICE");
-        String product = getBuildField("PRODUCT");
+        String manufacturer = DeviceUtils.getDeviceManufacturer();
+        String model = DeviceUtils.getDeviceModel();
+        String device = DeviceUtils.getDevice();
+        String product = DeviceUtils.getProduct();
         String cpuAbi = tv.biliclassic.util.CpuAbi.getCpuAbi();
         String cpuAbi2 = tv.biliclassic.util.CpuAbi.getCpuAbi2();
-        String release = getBuildFieldStatic("VERSION", "RELEASE");
-        String sdk = getBuildFieldStatic("VERSION", "SDK");
-        String sdkInt = getBuildFieldStaticInt("VERSION", "SDK_INT");
+        String release = DeviceUtils.getDeviceRelease();
+        String sdk = DeviceUtils.getSdk();
+        String sdkInt = String.valueOf(DeviceUtils.getSdkInt());
 
         sb.append("=== 硬件信息 ===\n");
         sb.append("CPU架构: ").append(cpuAbi != null ? cpuAbi : "未知").append("\n");
@@ -110,49 +109,6 @@ public class DeviceInfoActivity extends BaseActivity {
         sb.append("Java堆内存: ").append(javaHeapMB).append(" MB\n");
 
         return sb.toString();
-    }
-
-    /**
-     * 通过反射获取 Build 类的静态字段（非内部类）
-     */
-    private String getBuildField(String fieldName) {
-        try {
-            Field field = Build.class.getField(fieldName);
-            Object value = field.get(null);
-            return value != null ? value.toString() : "";
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /**
-     * 通过反射获取 Build 内部类的静态字段
-     */
-    private String getBuildFieldStatic(String innerClassName, String fieldName) {
-        try {
-            Class innerClass = Class.forName("android.os.Build$" + innerClassName);
-            Field field = innerClass.getField(fieldName);
-            Object value = field.get(null);
-            return value != null ? value.toString() : "";
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /**
-     * 通过反射获取 Build 内部类的 int 静态字段
-     */
-    private String getBuildFieldStaticInt(String innerClassName, String fieldName) {
-        try {
-            Class innerClass = Class.forName("android.os.Build$" + innerClassName);
-            Field field = innerClass.getField(fieldName);
-            Object value = field.get(null);
-            if (value != null) {
-                return String.valueOf(value);
-            }
-        } catch (Exception e) {
-        }
-        return null;
     }
 
     private long getTotalRam() {
@@ -194,13 +150,8 @@ public class DeviceInfoActivity extends BaseActivity {
 
     private String getEasterEggComment() {
         try {
-            String version = null;
-            try {
-                Class versionClass = Class.forName("android.os.Build$VERSION");
-                Object release = versionClass.getField("RELEASE").get(null);
-                version = release != null ? release.toString() : null;
-            } catch (Exception ignored) {}
-            if (version == null) version = "未知";
+            String version = DeviceUtils.getDeviceRelease();
+            if (version.length() == 0) version = "未知";
 
             String abi = null;
             try {

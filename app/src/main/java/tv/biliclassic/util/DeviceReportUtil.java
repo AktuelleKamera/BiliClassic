@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.os.Build;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
 
@@ -83,11 +82,16 @@ public final class DeviceReportUtil {
         StringBuilder body = new StringBuilder();
         add(body, "device_key", key);
         add(body, "platform", "android");
-        add(body, "brand", buildField("BRAND"));
-        add(body, "manufacturer", buildField("MANUFACTURER"));
-        add(body, "model", buildField("MODEL"));
-        add(body, "os_version", Build.VERSION.RELEASE);
-        add(body, "sdk_int", String.valueOf(SdkHelper.getSdkInt()));
+        String brand = DeviceUtils.getDeviceBrand();
+        String manufacturer = DeviceUtils.getDeviceManufacturer();
+        if (manufacturer.length() == 0) manufacturer = brand;
+        String model = DeviceUtils.getDeviceModel();
+        String osVersion = DeviceUtils.getAndroidVersion();
+        add(body, "brand", brand);
+        add(body, "manufacturer", manufacturer);
+        add(body, "model", model);
+        add(body, "os_version", osVersion);
+        add(body, "sdk_int", String.valueOf(DeviceUtils.getSdkInt()));
         add(body, "locale", Locale.getDefault().toString());
 
         String versionName = "";
@@ -108,15 +112,6 @@ public final class DeviceReportUtil {
         } catch (Throwable t) {
         }
         return body.toString();
-    }
-
-    private static String buildField(String name) {
-        try {
-            Object value = Build.class.getField(name).get(null);
-            return value == null ? "" : String.valueOf(value);
-        } catch (Throwable t) {
-            return "";
-        }
     }
 
     private static void add(StringBuilder body, String name, String value) {

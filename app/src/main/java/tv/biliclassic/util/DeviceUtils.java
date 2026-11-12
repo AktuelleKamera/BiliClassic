@@ -12,16 +12,108 @@ public class DeviceUtils {
         catch (Exception e) { return null; }
     }
 
+    private static String getBuildFieldStatic(String innerClassName, String fieldName) {
+        try {
+            Class<?> innerClass = Class.forName("android.os.Build$" + innerClassName);
+            return (String) innerClass.getField(fieldName).get(null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public static String getDeviceModel() {
-        return getBuildField("MODEL");
+        String value = getBuildField("MODEL");
+        if (value == null || value.length() == 0) value = getDevice();
+        if (value == null || value.length() == 0) value = getProduct();
+        return value == null ? "" : value;
     }
 
     public static String getDeviceRelease() {
-        return getBuildField("RELEASE");
+        String value = getBuildFieldStatic("VERSION", "RELEASE");
+        return value == null ? "" : value;
     }
 
     public static String getDeviceManufacturer() {
-        return getBuildField("MANUFACTURER");
+        String value = getBuildField("MANUFACTURER");
+        return value == null ? "" : value;
+    }
+
+    public static String getDeviceBrand() {
+        String value = getBuildField("BRAND");
+        if (value == null || value.length() == 0) value = getDeviceManufacturer();
+        return value == null ? "" : value;
+    }
+
+    public static String getDevice() {
+        String value = getBuildField("DEVICE");
+        return value == null ? "" : value;
+    }
+
+    public static String getProduct() {
+        String value = getBuildField("PRODUCT");
+        return value == null ? "" : value;
+    }
+
+    public static String getSdk() {
+        String value = getBuildFieldStatic("VERSION", "SDK");
+        return value == null ? "" : value;
+    }
+
+    public static int getSdkInt() {
+        String value = getBuildFieldStatic("VERSION", "SDK_INT");
+        if (value != null && value.length() > 0) {
+            try { return Integer.parseInt(value); }
+            catch (Exception e) {}
+        }
+        return SdkHelper.getSdkInt();
+    }
+
+    public static String getAndroidVersion() {
+        String value = getDeviceRelease();
+        if (value.length() > 0) return value;
+        return androidVersion(getSdkInt());
+    }
+
+    private static String androidVersion(int sdk) {
+        switch (sdk) {
+            case 1: return "1.0";
+            case 2: return "1.1";
+            case 3: return "1.5";
+            case 4: return "1.6";
+            case 5: return "2.0";
+            case 6: return "2.0.1";
+            case 7: return "2.1";
+            case 8: return "2.2";
+            case 9: return "2.3";
+            case 10: return "2.3.3";
+            case 11: return "3.0";
+            case 12: return "3.1";
+            case 13: return "3.2";
+            case 14: return "4.0";
+            case 15: return "4.0.3";
+            case 16: return "4.1";
+            case 17: return "4.2";
+            case 18: return "4.3";
+            case 19: return "4.4";
+            case 20: return "4.4W";
+            case 21: return "5.0";
+            case 22: return "5.1";
+            case 23: return "6.0";
+            case 24: return "7.0";
+            case 25: return "7.1";
+            case 26: return "8.0";
+            case 27: return "8.1";
+            case 28: return "9";
+            case 29: return "10";
+            case 30: return "11";
+            case 31: return "12";
+            case 32: return "12L";
+            case 33: return "13";
+            case 34: return "14";
+            case 35: return "15";
+            case 36: return "16";
+            default: return "API " + sdk;
+        }
     }
 
     public static CpuAbi.Arch getMyCpuArch() {
