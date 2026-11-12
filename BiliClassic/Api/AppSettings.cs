@@ -16,6 +16,7 @@
         //这个也是我加的（
         private const string LockCiTieValueKey = "lockcitie_value";
         private const string HideCiTieValueKey = "hidecitie_value";
+        //Very Cool——毛子球
 
 
         public static int PlayQuality

@@ -57,14 +57,14 @@
                        Style="{StaticResource PhoneTextSubtleStyle}"
                        Text="打开后将不再在线播放视频，只要还能播放就建议不要开启的说！"/>
 
-                <CheckBox x:Name="DashPlaybackCheck" Content="DASH 播放"
+                <CheckBox x:Name="DashPlaybackCheck" Content="DASH播放"
                       Margin="0,20,0,0"
                       Checked="DashPlayback_Changed"
                       Unchecked="DashPlayback_Changed"/>
-                <!--
+                <!-- 我想大约并不需要7.5罢
                 <TextBlock x:Name="DashHintText" Margin="12,0,0,0" TextWrapping="Wrap"
                        Style="{StaticResource PhoneTextSubtleStyle}"
-                       Text="仅支持WP7.1+"/>-->
+                       Text="仅支持WP7.5+"/>-->
 
                 <CheckBox x:Name="DanmakuCheck" Content="弹幕"
                       Margin="0,20,0,0" Unchecked="Danmaku_Changed" Checked="Danmaku_Changed" />
@@ -87,7 +87,7 @@
                 <CheckBox x:Name="ZiDongCheck" Content="自动播放"
                       Margin="0,20,0,0" Checked="ZiDongCheck_Changed" Unchecked="ZiDongCheck_Changed" />
 
-                <!-- 清晰度：Tag里放接口的qn值 -->
+                <!-- 清晰度：Tag接口的qn值 -->
                 <TextBlock Text="播放清晰度" Margin="0,20,0,0"
                        Style="{StaticResource PhoneTextSubtleStyle}"/>
                 <RadioButton x:Name="Quality16" Content="流畅 360P" Tag="16"

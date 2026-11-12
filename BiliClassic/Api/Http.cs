@@ -25,7 +25,7 @@ namespace BiliClassic.Api
         public const string UserAgent =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.6261.95 Safari/537.36";
 
-        // 【重要】播放地址/图片都要它，缺了 CDN 直接 403，喵
+        // 【重要】播放地址/图片都要它，缺了CDN直接 403，喵
         public const string Referer = "https://www.bilibili.com/";
 
         public const string Origin = "https://www.bilibili.com";
