@@ -406,6 +406,7 @@ public class BiliPlayerActivity extends Activity implements
     private ImageView mLoadingIcon;
     private int mLoadingFrameIndex;
     private Runnable mLoadingFrameRunnable;
+    private android.graphics.drawable.Drawable[] mLoadingFrameDrawables;
     private static final int[] LOADING_FRAMES = {
             R.drawable.bili_anim_tv_chan_1,
             R.drawable.bili_anim_tv_chan_3,
@@ -835,17 +836,18 @@ public class BiliPlayerActivity extends Activity implements
             if (mLoadingIcon == null) return;
             if (tv.biliclassic.util.SdkHelper.getSdkInt() < 11) {
                 mLoadingFrameIndex = 0;
-                mLoadingIcon.setImageResource(LOADING_FRAMES[0]);
+                mLoadingIcon.setImageDrawable(getLoadingFrame(0));
                 mLoadingFrameRunnable = new Runnable() {
                     public void run() {
                         if (mLoadingIcon == null) return;
                         mLoadingFrameIndex = (mLoadingFrameIndex + 1)
                                 % LOADING_FRAMES.length;
-                        mLoadingIcon.setImageResource(LOADING_FRAMES[mLoadingFrameIndex]);
-                        handler.postDelayed(this, 100L);
+                        mLoadingIcon.setImageDrawable(getLoadingFrame(mLoadingFrameIndex));
+                        mLoadingIcon.invalidate();
+                        handler.postDelayed(this, 220L);
                     }
                 };
-                handler.postDelayed(mLoadingFrameRunnable, 100L);
+                handler.postDelayed(mLoadingFrameRunnable, 220L);
                 return;
             }
             mLoadingIcon.setImageResource(R.anim.bili_loading_tv_chan);
@@ -857,6 +859,16 @@ public class BiliPlayerActivity extends Activity implements
             }
         } catch (Throwable t) {
         }
+    }
+
+    private android.graphics.drawable.Drawable getLoadingFrame(int index) {
+        if (mLoadingFrameDrawables == null) {
+            mLoadingFrameDrawables = new android.graphics.drawable.Drawable[LOADING_FRAMES.length];
+            for (int i = 0; i < LOADING_FRAMES.length; i++) {
+                mLoadingFrameDrawables[i] = getResources().getDrawable(LOADING_FRAMES[i]);
+            }
+        }
+        return mLoadingFrameDrawables[index];
     }
 
     private void stopLoadingAnimation() {
