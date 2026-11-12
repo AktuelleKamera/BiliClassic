@@ -765,7 +765,7 @@ namespace BiliClassic
 
         private void AddEchoHoleMenuItem_Click(object sender, EventArgs e)
         {
-            NavigateWithSwivel("/SendHuiYinDong.xaml");
+            NavigateWithSwivel("/SendEcho.xaml");
         }
 
         private void EchoHoleMenuItem_Click(object sender, EventArgs e)

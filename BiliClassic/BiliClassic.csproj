@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -98,8 +98,8 @@
     <Compile Include="LoginPage.xaml.cs">
       <DependentUpon>LoginPage.xaml</DependentUpon>
     </Compile>
-    <Compile Include="SendHuiYinDong.xaml.cs">
-      <DependentUpon>SendHuiYinDong.xaml</DependentUpon>
+    <Compile Include="SendEcho.xaml.cs">
+      <DependentUpon>SendEcho.xaml</DependentUpon>
     </Compile>
     <Compile Include="VideoDetailPage.xaml.cs">
       <DependentUpon>VideoDetailPage.xaml</DependentUpon>
@@ -217,7 +217,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="SendHuiYinDong.xaml">
+    <Page Include="SendEcho.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
