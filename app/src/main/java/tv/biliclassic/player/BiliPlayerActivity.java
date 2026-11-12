@@ -4699,9 +4699,12 @@ public class BiliPlayerActivity extends Activity implements
         }
     }
 
-    private void compactTextButton(TextView v, int icon) {
+    private void compactTextButton(TextView v, int iconHeight) {
         if (v == null) return;
-        v.setTextSize(8);
+        float density = getResources().getDisplayMetrics().density;
+        if (density <= 0) density = 1f;
+        float textSp = Math.max(7f, iconHeight / density * 0.5f);
+        v.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, textSp);
         v.setGravity(android.view.Gravity.CENTER);
         v.setPadding(0, tv.biliclassic.util.DeviceUtil.dpToPx(1), 0, 0);
         v.setCompoundDrawablePadding(tv.biliclassic.util.DeviceUtil.dpToPx(1));
