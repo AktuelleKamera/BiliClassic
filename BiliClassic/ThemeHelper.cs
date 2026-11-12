@@ -109,19 +109,30 @@ namespace BiliClassic
             ApplyAccentButtonsCore(root);
         }
 
+        // 想在黑主题下保留粉色实心的按钮，在 XAML 里加 Tag="accent_keep"
+        public const string KeepAccentTag = "accent_keep";
+
         private static void ApplyAccentButtonsCore(DependencyObject root)
         {
             Button button = root as Button;
             if (button != null)
             {
-                SolidColorBrush brush = button.Background as SolidColorBrush;
-                if (brush != null && brush.Color == AccentButtonColor)
+                object tag = button.Tag;
+                if (tag != null && KeepAccentTag.Equals(tag))
                 {
-                    // 清掉本地值，让它退回默认模板（透明底 + 前景色边框）
-                    button.ClearValue(Control.BackgroundProperty);
-                    button.ClearValue(Control.BorderBrushProperty);
-                    button.ClearValue(Control.BorderThicknessProperty);
-                    button.ClearValue(Control.ForegroundProperty);
+                    // 特例：保持粉色，但子元素还是要继续遍历
+                }
+                else
+                {
+                    SolidColorBrush brush = button.Background as SolidColorBrush;
+                    if (brush != null && brush.Color == AccentButtonColor)
+                    {
+                        // 清掉本地值，让它退回默认模板（透明底 + 前景色边框）
+                        button.ClearValue(Control.BackgroundProperty);
+                        button.ClearValue(Control.BorderBrushProperty);
+                        button.ClearValue(Control.BorderThicknessProperty);
+                        button.ClearValue(Control.ForegroundProperty);
+                    }
                 }
             }
 
