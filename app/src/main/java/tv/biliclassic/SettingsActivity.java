@@ -290,9 +290,9 @@ public class SettingsActivity extends BaseActivity {
                     if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 19
                             && getNfcTransportMode() == 1) {
                         if (isChecked) {
-                            tv.biliclassic.nfc.NfcSyncReader.attach(SettingsActivity.this);
+                            tv.biliclassic.nfc.NfcSyncCompat.attachReader(SettingsActivity.this);
                         } else {
-                            tv.biliclassic.nfc.NfcSyncReader.detach(SettingsActivity.this);
+                            tv.biliclassic.nfc.NfcSyncCompat.detachReader(SettingsActivity.this);
                         }
                     } else if (!isChecked
                             && tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
@@ -324,8 +324,7 @@ public class SettingsActivity extends BaseActivity {
                                     Toast.LENGTH_SHORT).show();
                             return;
                         }
-                        startActivity(new Intent(SettingsActivity.this,
-                                tv.biliclassic.nfc.NfcSyncSenderActivity.class));
+                        tv.biliclassic.nfc.NfcSyncCompat.startSender(SettingsActivity.this);
                     }
                 });
             }
@@ -1583,7 +1582,7 @@ public class SettingsActivity extends BaseActivity {
                                 SharedPreferencesUtil.putInt(KEY_NFC_TRANSPORT, values[which]);
                                 updateNfcTransportDisplay();
                                 if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 19) {
-                                    tv.biliclassic.nfc.NfcSyncReader.detach(SettingsActivity.this);
+                                    tv.biliclassic.nfc.NfcSyncCompat.detachReader(SettingsActivity.this);
                                 }
                                 if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 9) {
                                     tv.biliclassic.nfc.NfcSyncHelper.detach(SettingsActivity.this);

@@ -40,7 +40,7 @@ public class BiliApplication extends Application {
         super.onCreate();
         SharedPreferencesUtil.init(this);
         if (SdkHelper.getSdkInt() >= 19) {
-            tv.biliclassic.nfc.NfcSyncHceService.setEnabled(this, false);
+            tv.biliclassic.nfc.NfcSyncCompat.setHceEnabled(this, false);
         }
         LocaleHelper.init(this);
         if (SdkHelper.getSdkInt() < 17) {

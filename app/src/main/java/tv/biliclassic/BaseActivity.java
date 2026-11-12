@@ -363,14 +363,14 @@ public abstract class BaseActivity extends FragmentActivity {
     @Override
     protected void onPause() {
         if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 19) {
-            tv.biliclassic.nfc.NfcSyncReader.detach(this);
+            tv.biliclassic.nfc.NfcSyncCompat.detachReader(this);
         }
         super.onPause();
     }
 
     protected void onDestroy() {
         if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 19) {
-            tv.biliclassic.nfc.NfcSyncReader.detach(this);
+            tv.biliclassic.nfc.NfcSyncCompat.detachReader(this);
         }
         if (mNavBarPadListener != null) {
             try {
@@ -427,11 +427,11 @@ public abstract class BaseActivity extends FragmentActivity {
         int transport = SettingsActivity.getNfcTransportMode();
         if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 34) transport = 1;
         if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 19 && transport == 1) {
-            tv.biliclassic.nfc.NfcSyncHceService.setEnabled(this, false);
+            tv.biliclassic.nfc.NfcSyncCompat.setHceEnabled(this, false);
             if (SettingsActivity.isNfcSyncEnabled()) {
-                tv.biliclassic.nfc.NfcSyncReader.attach(this);
+                tv.biliclassic.nfc.NfcSyncCompat.attachReader(this);
             } else {
-                tv.biliclassic.nfc.NfcSyncReader.detach(this);
+                tv.biliclassic.nfc.NfcSyncCompat.detachReader(this);
             }
             return;
         }
