@@ -128,7 +128,7 @@
                 android:id="@+id/btn_exit"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/keybinding_exit"
+                android:text="@string/common_exit"
                 android:textSize="@dimen/setup_button_text_size"
                 android:textColor="#D86DA5"
                 android:background="#FFFFFF"

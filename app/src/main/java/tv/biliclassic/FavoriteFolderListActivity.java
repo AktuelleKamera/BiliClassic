@@ -158,7 +158,7 @@ public class FavoriteFolderListActivity extends BaseActivity {
     @Override
     protected int onAppendOverflowItems(int[] ids, String[] titles, int n) {
             if (n < ids.length) { ids[n] = R.id.menu_fav_create_folder; titles[n] = getString(R.string.fav_create_folder); n++; }
-        if (n < ids.length) { ids[n] = R.id.menu_fav_video; titles[n] = getString(R.string.fav_tab_videos); n++; }
+        if (n < ids.length) { ids[n] = R.id.menu_fav_video; titles[n] = getString(R.string.common_favorite_videos); n++; }
         if (n < ids.length) { ids[n] = R.id.menu_fav_later; titles[n] = getString(R.string.fav_tab_watch_later); n++; }
         if (n < ids.length) { ids[n] = R.id.menu_fav_bangumi; titles[n] = getString(R.string.fav_tab_bangumi); n++; }
         return n;
@@ -213,7 +213,7 @@ public class FavoriteFolderListActivity extends BaseActivity {
                     @Override
                     public void run() {
                         if (code == 0) {
-                            Toast.makeText(FavoriteFolderListActivity.this, getString(R.string.fav_folder_deleted), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(FavoriteFolderListActivity.this, getString(R.string.common_deleted), Toast.LENGTH_SHORT).show();
                             loadFolders(true);
                         } else {
                             Toast.makeText(FavoriteFolderListActivity.this,
@@ -228,7 +228,7 @@ public class FavoriteFolderListActivity extends BaseActivity {
     // ===== 创建收藏夹 =====
     private void showCreateFolderDialog() {
         final android.widget.EditText input = new android.widget.EditText(this);
-        input.setHint(getString(R.string.fav_folder_name_hint));
+        input.setHint(getString(R.string.common_favorite_folder_name));
         input.setSingleLine(true);
         new android.app.AlertDialog.Builder(
                 tv.biliclassic.util.SdkHelper.dialogContext(tv.biliclassic.util.DialogUtil.wrap(this)))

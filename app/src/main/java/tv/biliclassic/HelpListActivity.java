@@ -136,7 +136,7 @@ public class HelpListActivity extends BaseActivity {
         if (loadingNow) return;
         loadingNow = true;
         if (empty != null) {
-            empty.setText(R.string.help_loading);
+            empty.setText(R.string.common_loading);
             empty.setVisibility(View.VISIBLE);
         }
         loading.showLoading();

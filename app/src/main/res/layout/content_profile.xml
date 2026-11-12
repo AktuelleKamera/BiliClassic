@@ -175,7 +175,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="30dp"
                         android:background="#DDDDDD"
-                        android:text="@string/keybinding_exit"
+                        android:text="@string/common_exit"
                         android:textColor="#666666"
                         android:textSize="12sp"
                         android:paddingLeft="12dp"

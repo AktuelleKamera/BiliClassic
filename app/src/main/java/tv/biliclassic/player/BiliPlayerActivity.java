@@ -4553,9 +4553,9 @@ public class BiliPlayerActivity extends Activity implements
         String[] values = new String[count + 2];
         String[] labels = new String[count + 2];
         values[0] = "";
-        labels[0] = getString(R.string.player_subtitle_off);
+        labels[0] = getString(R.string.common_close);
         values[1] = "auto";
-        labels[1] = getString(R.string.player_subtitle_auto);
+        labels[1] = getString(R.string.common_auto);
         int selected = mSubtitleLan == null || mSubtitleLan.length() == 0 ? 0 : 1;
         for (int i = 0; i < count; i++) {
             JSONObject item = mSubtitleList.optJSONObject(i);

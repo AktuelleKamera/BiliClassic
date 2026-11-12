@@ -1659,7 +1659,7 @@ public class SettingsActivity extends BaseActivity {
                                 CONVERT_FORMATS[which]);
                         updateConvertFormatDisplay();
                         Toast.makeText(SettingsActivity.this,
-                                getString(R.string.settingsactivity_toast_convert_format,
+                                getString(R.string.common_switched_to_fmt,
                                         CONVERT_FORMAT_LABELS[which]),
                                 Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
@@ -2001,14 +2001,14 @@ public class SettingsActivity extends BaseActivity {
         if (value >= 1 && value <= 5) {
             textView.setText(getString(R.string.recommend_columns_value, value));
         } else {
-            textView.setText(getString(R.string.recommend_columns_auto));
+            textView.setText(getString(R.string.common_auto));
         }
     }
 
     private void showRecommendColumnsDialog(final TextView textView) {
         final int current = SharedPreferencesUtil.getInt(SharedPreferencesUtil.RECOMMEND_COLUMNS, 0);
         final Context ctx = SdkHelper.dialogContext(DialogUtil.wrap(this));
-        final String auto = getString(R.string.recommend_columns_auto);
+        final String auto = getString(R.string.common_auto);
         if (SdkHelper.getSdkInt() >= 11) {
             try {
                 final Class<?> pickerClass = Class.forName("android.widget.NumberPicker");

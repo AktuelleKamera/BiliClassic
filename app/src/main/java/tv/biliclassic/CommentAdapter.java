@@ -667,7 +667,7 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
                                     list.remove(pos);
                                     notifyDataSetChanged();
                                 }
-                                Toast.makeText(context, context.getString(R.string.deleted), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(context, context.getString(R.string.common_deleted), Toast.LENGTH_SHORT).show();
                             }
                         });
                     } else {

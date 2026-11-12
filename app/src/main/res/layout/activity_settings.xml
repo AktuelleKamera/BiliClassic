@@ -1227,7 +1227,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
                     android:layout_marginRight="8dp"
-                    android:text="@string/render_surface_view"
+                    android:text="@string/common_surface_view"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
@@ -1481,7 +1481,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
                     android:layout_marginRight="8dp"
-                    android:text="@string/recommend_columns_auto"
+                    android:text="@string/common_auto"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 

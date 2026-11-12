@@ -848,7 +848,7 @@ public class VideoDetailActivity extends BaseActivity {
 
     private void showCreateLocalFolderDialog() {
         final android.widget.EditText input = new android.widget.EditText(this);
-        input.setHint(R.string.fav_folder_name_hint);
+        input.setHint(R.string.common_favorite_folder_name);
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(
                 DialogUtil.wrap(this)))
                 .setTitle(R.string.fav_create_folder)
@@ -1943,7 +1943,7 @@ public class VideoDetailActivity extends BaseActivity {
                 android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
                 android.widget.FrameLayout.LayoutParams.WRAP_CONTENT));
         builder.setView(scroll);
-        builder.setPositiveButton(getString(R.string.videodetail_close_dialog), null);
+        builder.setPositiveButton(getString(R.string.common_close), null);
         builder.show();
     }
 
@@ -2234,7 +2234,7 @@ public class VideoDetailActivity extends BaseActivity {
                                                 new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(VideoDetailActivity.this)))
                                                         .setTitle(getString(R.string.remove_favorite))
                                                         .setMessage(getString(R.string.remove_from_folder_ask))
-                                                        .setPositiveButton(getString(R.string.videodetail_delete), new DialogInterface.OnClickListener() {
+                                                        .setPositiveButton(getString(R.string.common_delete), new DialogInterface.OnClickListener() {
                                                             @Override
                                                             public void onClick(DialogInterface delDialog, int delWhich) {
                                                                 removeFromFolder(finalAid, fid);
@@ -2370,7 +2370,7 @@ public class VideoDetailActivity extends BaseActivity {
         new AlertDialog.Builder(tv.biliclassic.util.SdkHelper.dialogContext(DialogUtil.wrap(this)))
                 .setTitle(getString(R.string.videodetailactivity_settitle_5220_1))
                 .setMessage(getString(R.string.videodetail_confirm_delete_cache, title))
-                .setPositiveButton(getString(R.string.videodetail_delete), new DialogInterface.OnClickListener() {
+                .setPositiveButton(getString(R.string.common_delete), new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         deleteOfflineVideo();

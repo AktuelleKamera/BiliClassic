@@ -985,7 +985,7 @@ public class ReplyListActivity extends BaseActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.deleted), Toast.LENGTH_SHORT).show();
+                                Toast.makeText(ReplyListActivity.this, ReplyListActivity.this.getString(R.string.common_deleted), Toast.LENGTH_SHORT).show();
                                 finish();
                             }
                         });

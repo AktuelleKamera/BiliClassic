@@ -35,7 +35,7 @@
             android:maxWidth="240dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="@string/live_room_list_title"
+            android:text="@string/common_live_broadcast"
             android:textSize="18dp"
             android:textColor="#616161" />
 

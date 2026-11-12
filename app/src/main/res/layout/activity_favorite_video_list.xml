@@ -37,7 +37,7 @@
             android:maxWidth="240dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="@string/favorite_videos"
+            android:text="@string/common_favorite_videos"
             android:textSize="18dp"
             android:textColor="#616161" />
 
