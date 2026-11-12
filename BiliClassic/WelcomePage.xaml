@@ -263,7 +263,7 @@
         	<Grid.RenderTransform>
         		<CompositeTransform/>
         	</Grid.RenderTransform>
-            <Button Background="#D86DA5" BorderThickness="0" Content="同意并继续" Foreground="White" HorizontalContentAlignment="Center" Margin="279,0,0,25" Name="button2" Padding="5" VerticalContentAlignment="Top" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="button2_Click" />
+            <Button Background="#D86DA5" BorderThickness="0" Content="同意并继续" Foreground="White" HorizontalContentAlignment="Center" Margin="279,0,0,25" Name="button2" Padding="5" VerticalContentAlignment="Top" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="button2_Click" Tag="accent_keep" />
             <Button Background="Gray" BorderThickness="0" Foreground="White" HorizontalContentAlignment="Center" Margin="87,0,0,25" Name="button1" Padding="5" VerticalContentAlignment="Top" HorizontalAlignment="Left" VerticalAlignment="Bottom" Content="不同意并退出" Click="button1_Click" />
             <!--<TextBlock HorizontalAlignment="Left" Margin="9,6,0,0" Text="用户协议" VerticalAlignment="Top" FontSize="40" />-->
             <ScrollViewer Height="460" HorizontalAlignment="Left" Margin="12,12,0,0" Name="scrollViewer1" VerticalAlignment="Top" Width="428">

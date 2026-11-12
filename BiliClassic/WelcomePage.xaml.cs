@@ -27,6 +27,8 @@ namespace BiliClassic
         {
             InitializeComponent();
             ThemeHelper.ApplyPage(this);
+            // 黑主题下把粉色实心按钮还原成无填色
+            ThemeHelper.ApplyAccentButtons(this);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
