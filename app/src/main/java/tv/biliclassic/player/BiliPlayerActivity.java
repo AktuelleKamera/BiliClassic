@@ -4686,11 +4686,15 @@ public class BiliPlayerActivity extends Activity implements
         }
         if (tvCurrentTime != null) {
             tvCurrentTime.setSingleLine(true);
-            tvCurrentTime.setTextSize(9);
+            tvCurrentTime.setTextSize(12);
         }
         if (tvTotalTime != null) {
             tvTotalTime.setSingleLine(true);
-            tvTotalTime.setTextSize(9);
+            tvTotalTime.setTextSize(12);
+        }
+        View splitView = controllerView.findViewById(R.id.split_view);
+        if (splitView instanceof TextView) {
+            ((TextView) splitView).setTextSize(12);
         }
         if (seekBar != null) {
             int pad = tv.biliclassic.util.DeviceUtil.dpToPx(16);
