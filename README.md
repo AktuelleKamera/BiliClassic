@@ -20,7 +20,7 @@
 
 ## 技术路线
 
-- 基于 Sliverlight 4 开发
+- 基于 Silverlight 4 开发
 - 使用 Visual Studio 2010/Visual Studio 2015 构建
 
 ## 本项目是如何出现的？
