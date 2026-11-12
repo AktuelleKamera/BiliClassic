@@ -163,12 +163,12 @@ public class SearchActivity extends BaseActivity {
             }
             if (searchAction != null) {
                 tv.biliclassic.util.UiSkin.setBgColorKeepPadding(searchAction, 0xFF2A2A2A);
-                searchAction.setColorFilter(0xFFCCCCCC);
+                searchAction.setColorFilter(0xFFCCCCCC, android.graphics.PorterDuff.Mode.SRC_IN);
             }
             ImageView searchIcon = (ImageView) findViewById(R.id.search_icon);
-            if (searchIcon != null) searchIcon.setColorFilter(0xFFCCCCCC);
+            if (searchIcon != null) searchIcon.setColorFilter(0xFFCCCCCC, android.graphics.PorterDuff.Mode.SRC_IN);
             ImageView searchClear = (ImageView) findViewById(R.id.search_clear);
-            if (searchClear != null) searchClear.setColorFilter(0xFFCCCCCC);
+            if (searchClear != null) searchClear.setColorFilter(0xFFCCCCCC, android.graphics.PorterDuff.Mode.SRC_IN);
         }
         View btnSearchTitle = findViewById(R.id.btn_search_title);
         if (btnSearchTitle != null) {
