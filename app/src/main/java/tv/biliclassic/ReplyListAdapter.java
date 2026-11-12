@@ -451,6 +451,7 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
         holder.message.setTextColor(night ? 0xFFB0B0B0 : 0xFF555555);
         if (holder.time != null) holder.time.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
         if (holder.likeCount != null) holder.likeCount.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
+        tv.biliclassic.util.UiSkin.recolorItem(convertView);
 
         return convertView;
     }

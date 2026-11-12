@@ -331,6 +331,8 @@ public class ReplyListActivity extends BaseActivity {
             root.setBackgroundResource(R.drawable.bili_texture_background_night);
         }
         if (rootCommentView != null) {
+            tv.biliclassic.util.UiSkin.setBgResourceKeepPadding(rootCommentView,
+                    R.drawable.item_click_effect_grey);
             tv.biliclassic.util.UiSkin.recolorItem(rootCommentView);
         }
     }
