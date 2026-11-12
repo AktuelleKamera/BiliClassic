@@ -121,6 +121,15 @@ public final class PlayerCompat {
     }
 
     /** View.setAlpha(float)（API 11+），入参为 0~255 透明度；低版本 no-op */
+    public static void setLayerType(View v, int layerType) {
+        if (v == null) return;
+        try {
+            View.class.getMethod("setLayerType", int.class, android.graphics.Paint.class)
+                    .invoke(v, Integer.valueOf(layerType), null);
+        } catch (Throwable t) {
+        }
+    }
+
     public static void setAlpha(View v, int alpha255) {
         try {
             v.getClass().getMethod("setAlpha", float.class)

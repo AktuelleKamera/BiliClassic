@@ -114,7 +114,7 @@ public class PlayerAnimActivity extends Activity {
                 && SdkHelper.getSdkInt() < 21) {
             View content = findViewById(android.R.id.content);
             if (content != null) {
-                content.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+                PlayerCompat.setLayerType(content, View.LAYER_TYPE_SOFTWARE);
             }
         }
 
@@ -375,7 +375,7 @@ public class PlayerAnimActivity extends Activity {
             ivTvAnim.setImageResource(animDrawables[0]);
             if (SdkHelper.getSdkInt() >= 11
                     && SdkHelper.getSdkInt() < 21) {
-                ivTvAnim.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+                PlayerCompat.setLayerType(ivTvAnim, View.LAYER_TYPE_SOFTWARE);
             }
         }
         animHandler.postDelayed(new Runnable() {

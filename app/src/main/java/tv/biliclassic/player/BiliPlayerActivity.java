@@ -796,9 +796,9 @@ public class BiliPlayerActivity extends Activity implements
         }
         if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 11
                 && SdkHelper.getSdkInt() < 21) {
-            mLoadingOverlay.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+            PlayerCompat.setLayerType(mLoadingOverlay, View.LAYER_TYPE_SOFTWARE);
             if (mLoadingIcon != null) {
-                mLoadingIcon.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+                PlayerCompat.setLayerType(mLoadingIcon, View.LAYER_TYPE_SOFTWARE);
             }
         }
         // 两阶段加载状态：都放在左下角状态栏（样式与「正在加载…」一致），
@@ -813,7 +813,7 @@ public class BiliPlayerActivity extends Activity implements
         if (mLoadingStep1 != null
                 && tv.biliclassic.util.SdkHelper.getSdkInt() >= 11
                 && tv.biliclassic.util.SdkHelper.getSdkInt() < 21) {
-            mLoadingStep1.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+            PlayerCompat.setLayerType(mLoadingStep1, View.LAYER_TYPE_SOFTWARE);
         }
         // preloading 布局里用不到的杂项元素（重试/返回/随机提示等）一律隐藏，
         // 加载失败由本 Activity 自己的逻辑处理
@@ -917,11 +917,11 @@ public class BiliPlayerActivity extends Activity implements
         if (mLoadingIcon != null) {
             mLoadingIcon.setImageDrawable(null);
             if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 11) {
-                mLoadingIcon.setLayerType(View.LAYER_TYPE_NONE, null);
+                PlayerCompat.setLayerType(mLoadingIcon, View.LAYER_TYPE_NONE);
             }
         }
         if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 11) {
-            overlay.setLayerType(View.LAYER_TYPE_NONE, null);
+            PlayerCompat.setLayerType(overlay, View.LAYER_TYPE_NONE);
         }
         overlay.setVisibility(View.GONE);
         android.view.ViewParent parent = overlay.getParent();
