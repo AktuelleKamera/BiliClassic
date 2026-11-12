@@ -3190,6 +3190,7 @@ public class BiliPlayerActivity extends Activity implements
                 }
             }
         }
+        applyVideoScale(1.0f, 0, 0);
         mp.start();
         isPlaying = true;
         startSplitAudioIfReady();
@@ -3225,9 +3226,6 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         mTextureViewConfigured = false;
-
-        // 应用缩放
-        applyVideoScale(1.0f, 0, 0);
 
         if (!isLiveStream) {
             handler.sendEmptyMessage(MSG_UPDATE_PROGRESS);
