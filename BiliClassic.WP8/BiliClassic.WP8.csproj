@@ -183,6 +183,31 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="..\BiliClassic\SendEcho.xaml">
+      <Link>SendEcho.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\WelcomePage.xaml">
+      <Link>WelcomePage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\ArticlePage.xaml">
+      <Link>ArticlePage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\ImageViewerPage.xaml">
+      <Link>ImageViewerPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="..\BiliClassic\DynamicDetailPage.xaml">
+      <Link>DynamicDetailPage.xaml</Link>
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <None Include="Properties\AppManifest.xml" />
@@ -207,7 +232,8 @@
     <Content Include="..\BiliClassic\SplashScreenImage.jpg">
       <Link>SplashScreenImage.jpg</Link>
     </Content>
-    <Content Include="..\BiliClassic\Res\*.png">
+    <Content Include="..\BiliClassic\Res\*.png"
+             Exclude="..\BiliClassic\Res\qrcode_loading.png">
       <Link>Res\%(Filename)%(Extension)</Link>
     </Content>
     <!-- Res\Icon 是子目录，*.png 通配不递归，逐个收 -->
@@ -231,12 +257,6 @@
     </Content>
     <Content Include="..\BiliClassic\Res\Icon\pause.png">
       <Link>Res\Icon\pause.png</Link>
-    </Content>
-    <Content Include="..\BiliClassic\Res\Icon\danmuon.png">
-      <Link>Res\Icon\danmuon.png</Link>
-    </Content>
-    <Content Include="..\BiliClassic\Res\Icon\danmuoff.png">
-      <Link>Res\Icon\danmuoff.png</Link>
     </Content>
     <Content Include="..\BiliClassic\Res\Icon\comment_icon.png">
       <Link>Res\Icon\comment_icon.png</Link>
@@ -274,6 +294,48 @@
       <Link>AppResLib.dll.0804.mui</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <!-- ;component 引用的图片必须是 Resource 才进程序集 -->
+  <ItemGroup>
+    <Resource Include="..\BiliClassic\Res\Tile\*.png">
+      <Link>Res\Tile\%(Filename)%(Extension)</Link>
+    </Resource>
+    <Resource Include="..\BiliClassic\Res\maoziqiu.jpg">
+      <Link>Res\maoziqiu.jpg</Link>
+    </Resource>
+    <Resource Include="..\BiliClassic\Res\wvsp.jpg">
+      <Link>Res\wvsp.jpg</Link>
+    </Resource>
+    <Resource Include="..\BiliClassic\Res\qrcode_loading.png">
+      <Link>Res\qrcode_loading.png</Link>
+    </Resource>
+    <Resource Include="..\BiliClassic\Res\Icon\bilibili_tv.png">
+      <Link>Res\Icon\bilibili_tv.png</Link>
+    </Resource>
+    <Resource Include="..\BiliClassic\Res\Icon\battery.png">
+      <Link>Res\Icon\battery.png</Link>
+    </Resource>
+    <Resource Include="..\BiliClassic\Res\Icon\charging.png">
+      <Link>Res\Icon\charging.png</Link>
+    </Resource>
+    <Resource Include="..\BiliClassic\Res\Icon\sound0.png">
+      <Link>Res\Icon\sound0.png</Link>
+    </Resource>
+    <Resource Include="..\BiliClassic\Res\Icon\sound1.png">
+      <Link>Res\Icon\sound1.png</Link>
+    </Resource>
+    <Resource Include="..\BiliClassic\Res\Icon\sound2.png">
+      <Link>Res\Icon\sound2.png</Link>
+    </Resource>
+    <Resource Include="..\BiliClassic\Res\Icon\sound3.png">
+      <Link>Res\Icon\sound3.png</Link>
+    </Resource>
+    <Resource Include="..\BiliClassic\Res\Icon\danmuon.png">
+      <Link>Res\Icon\danmuon.png</Link>
+    </Resource>
+    <Resource Include="..\BiliClassic\Res\Icon\danmuoff.png">
+      <Link>Res\Icon\danmuoff.png</Link>
+    </Resource>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\$(TargetFrameworkIdentifier)\$(TargetFrameworkVersion)\Microsoft.$(TargetFrameworkIdentifier).$(TargetFrameworkVersion).Overrides.targets" />
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\$(TargetFrameworkIdentifier)\$(TargetFrameworkVersion)\Microsoft.$(TargetFrameworkIdentifier).CSharp.targets" />
