@@ -15,11 +15,15 @@ namespace BiliClassic
         {
             InitializeComponent();
             ThemeHelper.ApplyPage(this);
-            // 这两个按钮在旧版是默认无填色的，黑主题下还原
-            ThemeHelper.ApplyAccentButtons(this);
 #if WP81
             InitNfcUi();
 #endif
+        }
+
+        private void SettingsPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            // 可视化树这时才建好，黑色主题下把粉色实心按钮还原成空心
+            ThemeHelper.ApplyAccentButtons(this);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -203,30 +207,34 @@ namespace BiliClassic
         {
 #if WP81
             StatusText.Text = NfcSync.SendLogin()
-                    ? "NFC 正在发送登录信息"
-                    : "没有可发送的登录信息或 NFC 不可用";
+                    ? "NFC正在发送登录信息"
+                    : "没有可发送的登录信息或NFC不可用";
 #endif
         }
 
 #if WP81
         private void InitNfcUi()
         {
-            // 开关一直显示，设备不支持 NFC 就置灰说明原因
             NfcSyncCheck.Visibility = Visibility.Visible;
-            NfcSendButton.Visibility = Visibility.Visible;
             if (!NfcSync.Available)
             {
                 NfcSyncCheck.IsEnabled = false;
-                NfcSendButton.IsEnabled = false;
-                StatusText.Text = "当前设备不支持 NFC";
+                NfcSendButton.Visibility = Visibility.Collapsed;
+                NfcUnsupportedText.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                NfcSendButton.Visibility = Visibility.Visible;
+                NfcUnsupportedText.Visibility = Visibility.Collapsed;
             }
         }
 
         private void StartNfc()
         {
-            StatusText.Text = NfcSync.StartWithPrompt()
-                    ? "NFC 已开启，等待另一台设备碰一碰"
-                    : "当前设备不支持 NFC";
+            if (NfcSync.StartWithPrompt())
+            {
+                StatusText.Text = "NFC已开启，等待另一台设备碰一碰";
+            }
         }
 
         private void StopNfc()

@@ -67,13 +67,17 @@ namespace BiliClassic
                 HistoryPanel.Visibility =
                     _historycount > 0 ? Visibility.Visible : Visibility.Collapsed;
                 _loaded = true;
-                ShowHideInfo();
             }
             else
             {
                 HistoryPanel.Visibility = Visibility.Collapsed;
-                ShowHideInfo();
             }
+
+            // 黑主题下把粉色实心按钮还原成空心
+            Dispatcher.BeginInvoke(new Action(delegate
+            {
+                ThemeHelper.ApplyAccentButtons(this);
+            }));
         }
 
         private void SearchButton_Click(object sender, RoutedEventArgs e)
@@ -119,7 +123,6 @@ namespace BiliClassic
 
             AddHistory(keyword);
             HistoryPanel.Visibility = Visibility.Collapsed;
-            ShowHideInfo();
 
             if ((DateTime.Now - _lastSearchAt).TotalMilliseconds < 800)
             {
@@ -492,7 +495,6 @@ namespace BiliClassic
             _historycount = history.Count;
             HistoryPanel.Visibility =
                 _historycount > 0 ? Visibility.Visible : Visibility.Collapsed;
-            ShowHideInfo();
         }
 
         private void HistoryList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -505,7 +507,6 @@ namespace BiliClassic
             HistoryList.SelectedIndex = -1;
             KeywordBox.Text = keyword;
             HistoryPanel.Visibility = Visibility.Collapsed;
-            ShowHideInfo();
             StartNewSearch();
         }
 
@@ -529,7 +530,6 @@ namespace BiliClassic
             else
             {
                 HistoryPanel.Visibility = Visibility.Collapsed;
-                ShowHideInfo();
             }
         }
 
@@ -583,39 +583,9 @@ namespace BiliClassic
             StatusText.Visibility = Visibility.Visible;
         }
 
-        private void ShowHideInfo()
-        {
-            //System.Diagnostics.Debug.WriteLine(HistoryPanel.Visibility + "" + _historycount);
-            if (HistoryPanel.Visibility == Visibility.Collapsed)// && _historycount > 0)
-            {
-                //HistoryPanel.Visibility = Visibility.Visible;
-                InfoButton.Content = "展开";
-            }
-            else
-            {
-                //HistoryPanel.Visibility = Visibility.Collapsed;
-                InfoButton.Content = "收起";
-            }
-        }
-
         private void KeywordBox_LostFocus(object sender, RoutedEventArgs e)
         {
             //HistoryPanel.Visibility = Visibility.Collapsed;
-        }
-
-        private void InfoButton_Click(object sender, RoutedEventArgs e)
-        {
-            //ShowHideInfo();
-            if (HistoryPanel.Visibility == Visibility.Collapsed && _historycount > 0)
-            {
-                HistoryPanel.Visibility = Visibility.Visible;
-                InfoButton.Content = "收起";
-            }
-            else
-            {
-                HistoryPanel.Visibility = Visibility.Collapsed;
-                InfoButton.Content = "展开";
-            }
         }
     }
 }

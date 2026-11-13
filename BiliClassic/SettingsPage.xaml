@@ -12,7 +12,8 @@
     FontSize="{StaticResource PhoneFontSizeNormal}"
     Foreground="{StaticResource PhoneForegroundBrush}"
     SupportedOrientations="Portrait" Orientation="Portrait"
-    shell:SystemTray.IsVisible="True">
+    shell:SystemTray.IsVisible="True"
+    Loaded="SettingsPage_Loaded">
 
     <!-- 转场 -->
     <toolkit:TransitionService.NavigationInTransition>
@@ -107,6 +108,9 @@
                       Content="NFC零距同步"
                       Margin="0,20,0,0" Visibility="Collapsed"
                       Checked="NfcSync_Changed" Unchecked="NfcSync_Changed"/>
+                <TextBlock x:Name="NfcUnsupportedText" Text="当前设备不支持NFC"
+                      Margin="28,2,0,0" Visibility="Collapsed"
+                      Style="{StaticResource PhoneTextSubtleStyle}"/>
                 <Button x:Name="NfcSendButton"
                     Content="NFC发送登录信息"
                     Margin="0,4,0,0" Visibility="Collapsed"
