@@ -66,10 +66,12 @@ namespace BiliClassic.Api
                     MessageBoxResult answer = MessageBox.Show(
                             "收到零距同步数据，是否导入？", "零距同步",
                             MessageBoxButton.OKCancel);
-                    if (answer == MessageBoxResult.OK)
+                    if (answer != MessageBoxResult.OK)
                     {
-                        Apply(value);
+                        return;
                     }
+                    string result = Apply(value);
+                    MessageBox.Show(result, "零距同步", MessageBoxButton.OK);
                 });
             });
         }
@@ -114,17 +116,20 @@ namespace BiliClassic.Api
             {
                 return "空数据";
             }
-            Uri uri;
-            if (!Uri.TryCreate(value, UriKind.Absolute, out uri)
-                    || uri.Scheme != "biliclassic" || uri.Host != "sync")
+            if (!value.StartsWith("biliclassic://sync", StringComparison.OrdinalIgnoreCase))
             {
                 return "不是零距同步数据";
             }
 
-            string from = GetParameter(uri, "from");
+            string from = GetRawParameter(value, "from");
             if (from == "login")
             {
-                string cookie = DecodeBase64(GetParameter(uri, "cookie"));
+                string cookie = DecodeBase64(GetRawParameter(value, "cookie"));
+                if (string.IsNullOrEmpty(cookie))
+                {
+                    // 退回 d 里的 login.cookies
+                    cookie = ExtractLoginCookie(DecodeGzipBase64(GetRawParameter(value, "d")));
+                }
                 if (string.IsNullOrEmpty(cookie))
                 {
                     return "登录信息无效";
@@ -135,7 +140,7 @@ namespace BiliClassic.Api
             }
             if (from == "data")
             {
-                string json = DecodeGzipBase64(GetParameter(uri, "d"));
+                string json = DecodeGzipBase64(GetRawParameter(value, "d"));
                 if (string.IsNullOrEmpty(json))
                 {
                     return "同步数据无效";
@@ -172,6 +177,17 @@ namespace BiliClassic.Api
                 changed++;
             }
             return changed > 0 ? "设置已同步" : "没有可导入的设置";
+        }
+
+        /// <summary>从 d 的 JSON 里取 login.cookies</summary>
+        private static string ExtractLoginCookie(string json)
+        {
+            if (string.IsNullOrEmpty(json))
+            {
+                return "";
+            }
+            Match match = Regex.Match(json, "\"cookies\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
+            return match.Success ? JsonText.Unescape(match.Groups[1].Value) : "";
         }
 
         private static void OnMessage(ProximityDevice sender, ProximityMessage message)
@@ -316,27 +332,41 @@ namespace BiliClassic.Api
             }
         }
 
-        private static string GetParameter(Uri uri, string key)
+        private static string GetRawParameter(string uri, string key)
         {
-            string query = uri == null ? "" : uri.Query;
-            if (query.StartsWith("?"))
+            if (string.IsNullOrEmpty(uri))
             {
-                query = query.Substring(1);
+                return "";
             }
+            int question = uri.IndexOf('?');
+            if (question < 0 || question + 1 >= uri.Length)
+            {
+                return "";
+            }
+            string query = uri.Substring(question + 1);
             string[] pairs = query.Split('&');
             for (int i = 0; i < pairs.Length; i++)
             {
                 int eq = pairs[i].IndexOf('=');
                 string name = eq >= 0 ? pairs[i].Substring(0, eq) : pairs[i];
-                if (Uri.UnescapeDataString(name) != key)
+                if (string.Equals(Unescape(name), key, StringComparison.Ordinal))
                 {
-                    continue;
+                    return eq >= 0 ? Unescape(pairs[i].Substring(eq + 1)) : "";
                 }
-                return eq >= 0
-                        ? Uri.UnescapeDataString(pairs[i].Substring(eq + 1))
-                        : "";
             }
             return "";
+        }
+
+        private static string Unescape(string value)
+        {
+            try
+            {
+                return Uri.UnescapeDataString(value);
+            }
+            catch (Exception)
+            {
+                return value;
+            }
         }
 
         private static string DecodeBase64(string value)
