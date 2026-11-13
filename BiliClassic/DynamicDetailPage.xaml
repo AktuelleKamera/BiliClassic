@@ -1,0 +1,287 @@
+<phone:PhoneApplicationPage
+    x:Class="BiliClassic.DynamicDetailPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:phone="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone"
+    xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
+    xmlns:toolkit="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls.Toolkit"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="768"
+    FontFamily="{StaticResource PhoneFontFamilyNormal}"
+    FontSize="{StaticResource PhoneFontSizeNormal}"
+    Foreground="{StaticResource PhoneForegroundBrush}"
+    SupportedOrientations="Portrait" Orientation="Portrait"
+    shell:SystemTray.IsVisible="True">
+
+    <toolkit:TransitionService.NavigationInTransition>
+        <toolkit:NavigationInTransition>
+            <toolkit:NavigationInTransition.Backward>
+                <toolkit:TurnstileTransition Mode="BackwardIn"/>
+            </toolkit:NavigationInTransition.Backward>
+            <toolkit:NavigationInTransition.Forward>
+                <toolkit:TurnstileTransition Mode="ForwardIn"/>
+            </toolkit:NavigationInTransition.Forward>
+        </toolkit:NavigationInTransition>
+    </toolkit:TransitionService.NavigationInTransition>
+
+    <toolkit:TransitionService.NavigationOutTransition>
+        <toolkit:NavigationOutTransition>
+            <toolkit:NavigationOutTransition.Backward>
+                <toolkit:TurnstileTransition Mode="BackwardOut"/>
+            </toolkit:NavigationOutTransition.Backward>
+            <toolkit:NavigationOutTransition.Forward>
+                <toolkit:TurnstileTransition Mode="ForwardOut"/>
+            </toolkit:NavigationOutTransition.Forward>
+        </toolkit:NavigationOutTransition>
+    </toolkit:TransitionService.NavigationOutTransition>
+
+    <phone:PhoneApplicationPage.Resources>
+        <Style x:Key="PlainButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </phone:PhoneApplicationPage.Resources>
+
+    <Grid x:Name="LayoutRoot" Background="Transparent">
+        <ScrollViewer>
+            <StackPanel Margin="12,12,12,0">
+
+                <!-- 作者 -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Style="{StaticResource PlainButtonStyle}"
+                            Click="Author_Click" Tag="{Binding Mid}"
+                            MinWidth="0" MinHeight="0" Padding="0"
+                            HorizontalAlignment="Left" VerticalAlignment="Top">
+                        <Border Width="52" Height="52" Background="#22FFFFFF"
+                                BorderBrush="{StaticResource PhoneSubtleBrush}"
+                                BorderThickness="2">
+                            <Border.Clip>
+                                <RectangleGeometry Rect="0,0,52,52"/>
+                            </Border.Clip>
+                            <Grid Width="46" Height="46">
+                                <Image Stretch="UniformToFill" Source="/Res/Icon/NoAvatar.png"/>
+                                <Image Stretch="UniformToFill" Source="{Binding Avatar}"/>
+                            </Grid>
+                        </Border>
+                    </Button>
+                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                        <Button Style="{StaticResource PlainButtonStyle}"
+                                Click="Author_Click" Tag="{Binding Mid}"
+                                MinWidth="0" MinHeight="0" Padding="0"
+                                HorizontalAlignment="Left"
+                                HorizontalContentAlignment="Left">
+                            <TextBlock Text="{Binding Author}" TextWrapping="NoWrap"
+                                       Style="{StaticResource PhoneTextNormalStyle}"/>
+                        </Button>
+                        <TextBlock Text="{Binding PubTime}"
+                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- 正文 -->
+                <TextBlock Text="{Binding Content}" TextWrapping="Wrap"
+                           LineHeight="30" Margin="0,10,0,0"
+                           Visibility="{Binding ContentVisibility}"
+                           Style="{StaticResource PhoneTextNormalStyle}"/>
+
+                <!-- 图片 -->
+                <ItemsControl ItemsSource="{Binding Pics}"
+                              Visibility="{Binding PicsVisibility}"
+                              Margin="0,10,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <toolkit:WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Style="{StaticResource PlainButtonStyle}"
+                                    Click="Picture_Click"
+                                    Width="140" Height="140" Margin="0,0,6,6">
+                                <Border Background="#22FFFFFF"
+                                        BorderBrush="{StaticResource PhoneSubtleBrush}"
+                                        BorderThickness="1">
+                                    <Grid>
+                                        <Image Stretch="Uniform" VerticalAlignment="Center"
+                                               Source="/Res/Icon/localcover.png"/>
+                                        <Image Stretch="UniformToFill" Source="{Binding Image}"/>
+                                    </Grid>
+                                </Border>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- 卡片 -->
+                <Button Style="{StaticResource PlainButtonStyle}"
+                        Click="Card_Click" Margin="0,10,0,0"
+                        Visibility="{Binding CardVisibility}">
+                    <Border Background="#22FFFFFF"
+                            BorderBrush="{StaticResource PhoneSubtleBrush}"
+                            BorderThickness="1" Padding="6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="160" Height="90" Background="#11FFFFFF">
+                                <Grid>
+                                    <Image Stretch="Uniform" VerticalAlignment="Center"
+                                           Source="/Res/Icon/localcover.png"/>
+                                    <Image Stretch="UniformToFill" Source="{Binding CardCover}"/>
+                                </Grid>
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding CardTitle}" TextWrapping="Wrap"
+                                           LineHeight="30" MaxHeight="90"
+                                           Style="{StaticResource PhoneTextNormalStyle}"/>
+                                <TextBlock Text="{Binding CardInfo}"
+                                           Style="{StaticResource PhoneTextSubtleStyle}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Button>
+
+                <!-- 转发 -->
+                <Button Style="{StaticResource PlainButtonStyle}"
+                        Click="Forward_Click" Margin="0,10,0,0"
+                        Visibility="{Binding ForwardVisibility}">
+                    <Border Background="#11FFFFFF"
+                            BorderBrush="{StaticResource PhoneSubtleBrush}"
+                            BorderThickness="1" Padding="8">
+                        <StackPanel>
+                            <TextBlock Text="{Binding ForwardAuthorLine}"
+                                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+                            <TextBlock Text="{Binding Forward.Content}" TextWrapping="Wrap"
+                                       LineHeight="30" Margin="0,2,0,0"
+                                       Visibility="{Binding Forward.ContentVisibility}"
+                                       Style="{StaticResource PhoneTextNormalStyle}"/>
+                            <TextBlock Text="{Binding Forward.CardTitle}" TextWrapping="Wrap"
+                                       LineHeight="30" Margin="0,4,0,0"
+                                       Visibility="{Binding Forward.CardVisibility}"
+                                       Style="{StaticResource PhoneTextNormalStyle}"/>
+                        </StackPanel>
+                    </Border>
+                </Button>
+
+                <!-- 赞 -->
+                <TextBlock Text="{Binding FooterText}"
+                           Visibility="{Binding FooterVisibility}"
+                           Margin="0,8,0,0"
+                           Style="{StaticResource PhoneTextSubtleStyle}"/>
+
+                <Border Height="1" Background="#33FFFFFF" Margin="0,14,0,0"/>
+
+                <TextBlock Text="评论" Margin="0,10,0,4"
+                           Style="{StaticResource PhoneTextNormalStyle}"/>
+
+                <ItemsControl x:Name="CommentList" Margin="0,0,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Button Style="{StaticResource PlainButtonStyle}"
+                                        Click="Author_Click" Tag="{Binding Author.Mid}"
+                                        MinWidth="0" MinHeight="0" Padding="0"
+                                        HorizontalAlignment="Left" VerticalAlignment="Top">
+                                    <Border Width="56" Height="56" Background="#22FFFFFF"
+                                            BorderBrush="{StaticResource PhoneSubtleBrush}"
+                                            BorderThickness="2">
+                                        <Border.Clip>
+                                            <RectangleGeometry Rect="0,0,56,56"/>
+                                        </Border.Clip>
+                                        <Grid Width="50" Height="50">
+                                            <Image Stretch="UniformToFill"
+                                                   Source="/Res/Icon/NoAvatar.png"/>
+                                            <Image Stretch="UniformToFill"
+                                                   Source="{Binding Author.Avatar}"/>
+                                        </Grid>
+                                    </Border>
+                                </Button>
+
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                    <TextBlock Text="{Binding Author.Name}" TextWrapping="Wrap"
+                                               Margin="0"
+                                               Style="{StaticResource PhoneTextNormalStyle}"/>
+                                    <TextBlock Text="{Binding Message}" TextWrapping="Wrap"
+                                               Margin="0,2,0,0"
+                                               Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                    <ItemsControl ItemsSource="{Binding Thumbs}"
+                                                  Visibility="{Binding ThumbsVisibility}"
+                                                  Margin="0,6,0,0">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <toolkit:WrapPanel/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Style="{StaticResource PlainButtonStyle}"
+                                                        Click="Picture_Click"
+                                                        Width="72" Height="72" Margin="0,0,6,6">
+                                                    <Border Background="#22FFFFFF"
+                                                            BorderBrush="{StaticResource PhoneSubtleBrush}"
+                                                            BorderThickness="1">
+                                                        <Grid>
+                                                            <Image Stretch="Uniform"
+                                                                   VerticalAlignment="Center"
+                                                                   Source="/Res/Icon/localcover.png"/>
+                                                            <Image Stretch="UniformToFill"
+                                                                   Source="{Binding Image}"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="{Binding InfoLine}" Margin="0,4,0,0"
+                                               Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Button x:Name="MoreCommentButton" Content="加载更多评论"
+                        Visibility="Collapsed" Click="MoreCommentButton_Click"
+                        Margin="0,4,0,8"/>
+
+                <TextBlock x:Name="StatusText" Text="正在加载动态…"
+                           TextWrapping="Wrap" Margin="0,4,0,16"
+                           Style="{StaticResource PhoneTextSubtleStyle}"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+
+    <phone:PhoneApplicationPage.ApplicationBar>
+        <shell:ApplicationBar IsVisible="True" IsMenuEnabled="True">
+            <shell:ApplicationBar.Buttons>
+                <shell:ApplicationBarIconButton IconUri="/Res/Icon/refresh.png"
+                                                Text="刷新" Click="Refresh_Click"/>
+            </shell:ApplicationBar.Buttons>
+        </shell:ApplicationBar>
+    </phone:PhoneApplicationPage.ApplicationBar>
+
+</phone:PhoneApplicationPage>
