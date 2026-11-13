@@ -37,6 +37,26 @@
         </toolkit:NavigationOutTransition>
     </toolkit:TransitionService.NavigationOutTransition>
 
+    <phone:PhoneApplicationPage.Resources>
+        <Style x:Key="PlainButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </phone:PhoneApplicationPage.Resources>
+
     <Grid x:Name="LayoutRoot" Background="Transparent">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -113,31 +133,150 @@
                         </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid Margin="0,0,0,14">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Width="160" Height="90"
-                                            Margin="0,0,12,0" Background="#22FFFFFF"
+                                <Grid Margin="0,0,0,16">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- 作者 -->
+                                    <Grid Grid.Row="0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Style="{StaticResource PlainButtonStyle}"
+                                                Click="Author_Click" Tag="{Binding Mid}"
+                                                MinWidth="0" MinHeight="0" Padding="0"
+                                                HorizontalAlignment="Left" VerticalAlignment="Top">
+                                            <Border Width="44" Height="44" Background="#22FFFFFF"
+                                                    BorderBrush="{StaticResource PhoneSubtleBrush}"
+                                                    BorderThickness="2">
+                                                <Border.Clip>
+                                                    <RectangleGeometry Rect="0,0,44,44"/>
+                                                </Border.Clip>
+                                                <Grid Width="38" Height="38">
+                                                    <Image Stretch="UniformToFill"
+                                                           Source="/Res/Icon/NoAvatar.png"/>
+                                                    <Image Stretch="UniformToFill"
+                                                           Source="{Binding Avatar}"/>
+                                                </Grid>
+                                            </Border>
+                                        </Button>
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0"
+                                                    VerticalAlignment="Center">
+                                            <Button Style="{StaticResource PlainButtonStyle}"
+                                                    Click="Author_Click" Tag="{Binding Mid}"
+                                                    MinWidth="0" MinHeight="0" Padding="0"
+                                                    HorizontalAlignment="Left"
+                                                    HorizontalContentAlignment="Left">
+                                                <TextBlock Text="{Binding Author}" TextWrapping="NoWrap"
+                                                           Style="{StaticResource PhoneTextNormalStyle}"/>
+                                            </Button>
+                                            <TextBlock Text="{Binding PubTime}"
+                                                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- 正文 -->
+                                    <TextBlock Grid.Row="1" Text="{Binding Content}"
+                                               TextWrapping="Wrap" LineHeight="30" MaxHeight="210"
+                                               Margin="0,8,0,0"
+                                               Visibility="{Binding ContentVisibility}"
+                                               Style="{StaticResource PhoneTextNormalStyle}"/>
+
+                                    <!-- 图片 -->
+                                    <ItemsControl Grid.Row="2" ItemsSource="{Binding Pics}"
+                                                  Visibility="{Binding PicsVisibility}"
+                                                  Margin="0,8,0,0">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <toolkit:WrapPanel/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Style="{StaticResource PlainButtonStyle}"
+                                                        Click="DynamicPicture_Click"
+                                                        Width="96" Height="96" Margin="0,0,6,6">
+                                                    <Border Background="#22FFFFFF"
+                                                            BorderBrush="{StaticResource PhoneSubtleBrush}"
+                                                            BorderThickness="1">
+                                                        <Grid>
+                                                            <Image Stretch="Uniform"
+                                                                   VerticalAlignment="Center"
+                                                                   Source="/Res/Icon/localcover.png"/>
+                                                            <Image Stretch="UniformToFill"
+                                                                   Source="{Binding Image}"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <!-- 卡片 -->
+                                    <Border Grid.Row="3" Margin="0,8,0,0" Padding="6"
+                                            Background="#22FFFFFF"
                                             BorderBrush="{StaticResource PhoneSubtleBrush}"
-                                            BorderThickness="2">
-                                        <Border.Clip>
-                                            <RectangleGeometry Rect="0,0,160,90"/>
-                                        </Border.Clip>
+                                            BorderThickness="1"
+                                            Visibility="{Binding CardVisibility}">
                                         <Grid>
-                                            <Image Stretch="Uniform" VerticalAlignment="Center"
-                                                   Source="/Res/Icon/localcover.png"/>
-                                            <Image Stretch="UniformToFill" Source="{Binding Cover}"/>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Width="128" Height="72" Background="#11FFFFFF">
+                                                <Grid>
+                                                    <Image Stretch="Uniform"
+                                                           VerticalAlignment="Center"
+                                                           Source="/Res/Icon/localcover.png"/>
+                                                    <Image Stretch="UniformToFill"
+                                                           Source="{Binding CardCover}"/>
+                                                </Grid>
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="8,0,0,0"
+                                                        VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding CardTitle}"
+                                                           TextWrapping="Wrap" LineHeight="30" MaxHeight="60"
+                                                           Style="{StaticResource PhoneTextNormalStyle}"/>
+                                                <TextBlock Text="{Binding CardInfo}"
+                                                           Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                            </StackPanel>
                                         </Grid>
                                     </Border>
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Top">
-                                        <TextBlock Text="{Binding Title}" TextWrapping="Wrap"
-                                                   LineHeight="30" MaxHeight="60"
-                                                   Style="{StaticResource PhoneTextNormalStyle}"/>
-                                        <TextBlock Text="{Binding InfoLine}"
-                                                   Style="{StaticResource PhoneTextSubtleStyle}"/>
-                                    </StackPanel>
+
+                                    <!-- 转发 -->
+                                    <Border Grid.Row="4" Margin="0,8,0,0" Padding="8"
+                                            Background="#11FFFFFF"
+                                            BorderBrush="{StaticResource PhoneSubtleBrush}"
+                                            BorderThickness="1"
+                                            Visibility="{Binding ForwardVisibility}">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding ForwardAuthorLine}"
+                                                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                            <TextBlock Text="{Binding Forward.Content}"
+                                                       TextWrapping="Wrap" LineHeight="30" MaxHeight="90"
+                                                       Margin="0,2,0,0"
+                                                       Visibility="{Binding Forward.ContentVisibility}"
+                                                       Style="{StaticResource PhoneTextNormalStyle}"/>
+                                            <TextBlock Text="{Binding Forward.CardTitle}"
+                                                       TextWrapping="Wrap" LineHeight="30" MaxHeight="60"
+                                                       Margin="0,4,0,0"
+                                                       Visibility="{Binding Forward.CardVisibility}"
+                                                       Style="{StaticResource PhoneTextNormalStyle}"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- 赞 -->
+                                    <TextBlock Grid.Row="5" Text="{Binding FooterText}"
+                                               Visibility="{Binding FooterVisibility}"
+                                               Margin="0,6,0,0"
+                                               Style="{StaticResource PhoneTextSubtleStyle}"/>
                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

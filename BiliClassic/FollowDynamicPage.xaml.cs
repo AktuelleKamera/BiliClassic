@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using BiliClassic.Api;
 using Microsoft.Phone.Controls;
+using Microsoft.Phone.Tasks;
 
 namespace BiliClassic
 {
@@ -13,8 +15,8 @@ namespace BiliClassic
     {
         private readonly ObservableCollection<UserItem> _users =
             new ObservableCollection<UserItem>();
-        private readonly ObservableCollection<VideoItem> _dynamics =
-            new ObservableCollection<VideoItem>();
+        private readonly ObservableCollection<DynamicItem> _dynamics =
+            new ObservableCollection<DynamicItem>();
 
         private bool _userLoading;
         private bool _userLoaded;
@@ -192,13 +194,17 @@ namespace BiliClassic
                 ShowStatus("正在加载动态…");
             }
 
-            DynamicService.FetchFeed("", delegate(List<VideoItem> items, string nextOffset, string error)
+            DynamicService.FetchFeed("", delegate(List<DynamicItem> items, string nextOffset, string error)
             {
                 Dispatcher.BeginInvoke(new Action(delegate
                 {
                     _dynamicLoading = false;
                     _dynamics.Clear();
                     AppendDynamics(items);
+                    if (_dynamics.Count > 0)
+                    {
+                        Api.DynamicsMessegeTemp.DYI = _dynamics[0].DynamicId;
+                    }
                     _dynamicOffset = nextOffset ?? "";
                     _dynamicHasMore = _dynamicOffset.Length > 0;
 
@@ -229,7 +235,7 @@ namespace BiliClassic
             }
 
             _dynamicLoading = true;
-            DynamicService.FetchFeed(_dynamicOffset, delegate(List<VideoItem> items, string nextOffset, string error)
+            DynamicService.FetchFeed(_dynamicOffset, delegate(List<DynamicItem> items, string nextOffset, string error)
             {
                 Dispatcher.BeginInvoke(new Action(delegate
                 {
@@ -246,7 +252,7 @@ namespace BiliClassic
             });
         }
 
-        private void AppendDynamics(List<VideoItem> items)
+        private void AppendDynamics(List<DynamicItem> items)
         {
             if (items == null)
             {
@@ -255,24 +261,131 @@ namespace BiliClassic
             for (int i = 0; i < items.Count; i++)
             {
                 _dynamics.Add(items[i]);
-                CoverLoader.Request(items[i]);
+                RequestImages(items[i]);
+            }
+        }
+
+        private void RequestImages(DynamicItem item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(item.AvatarUrl))
+            {
+                ImageLoader.Load(item.AvatarUrl,
+                    delegate(BitmapImage bitmap) { item.Avatar = bitmap; });
+            }
+
+            for (int i = 0; i < item.Pics.Count; i++)
+            {
+                PictureItem picture = item.Pics[i];
+                ImageLoader.Load(VideoItem.BuildThumbUrl(picture.Url, 240, 240),
+                    delegate(BitmapImage bitmap) { picture.Image = bitmap; });
+            }
+
+            if (!string.IsNullOrEmpty(item.CardCoverUrl))
+            {
+                ImageLoader.Load(VideoItem.BuildThumbUrl(item.CardCoverUrl, 320, 180),
+                    delegate(BitmapImage bitmap) { item.CardCover = bitmap; });
             }
         }
 
         private void DynamicList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            VideoItem item = DynamicList.SelectedItem as VideoItem;
+            DynamicItem item = DynamicList.SelectedItem as DynamicItem;
             if (item == null)
             {
                 return;
             }
             DynamicList.SelectedIndex = -1;
 
-            if (!string.IsNullOrEmpty(item.Bvid))
+            if (string.IsNullOrEmpty(item.DynamicId))
+            {
+                return;
+            }
+            NavigationService.Navigate(new Uri(
+                "/DynamicDetailPage.xaml?id=" + item.DynamicId, UriKind.Relative));
+        }
+
+        private void DynamicPicture_Click(object sender, RoutedEventArgs e)
+        {
+            FrameworkElement element = sender as FrameworkElement;
+            PictureItem picture = element == null ? null : element.DataContext as PictureItem;
+            if (picture == null || picture.Group == null || picture.Group.Count == 0)
+            {
+                return;
+            }
+            ImageViewerPage.Show(picture.Group, picture.Group.IndexOf(picture));
+        }
+
+        private void Author_Click(object sender, RoutedEventArgs e)
+        {
+            FrameworkElement element = sender as FrameworkElement;
+            if (element == null)
+            {
+                return;
+            }
+
+            string mid = element.Tag as string;
+            if (string.IsNullOrEmpty(mid))
+            {
+                return;
+            }
+
+            NavigationService.Navigate(new Uri(
+                "/UserProfilePage.xaml?mid=" + mid, UriKind.Relative));
+        }
+
+        private void OpenDynamic(DynamicItem item)
+        {
+            DynamicItem card = item;
+            if (string.IsNullOrEmpty(card.CardBvid)
+                && string.IsNullOrEmpty(card.CardAid)
+                && card.Forward != null)
+            {
+                card = card.Forward;
+            }
+
+            if (!string.IsNullOrEmpty(card.CardBvid))
             {
                 NavigationService.Navigate(new Uri(
-                    "/VideoDetailPage.xaml?bvid=" + item.Bvid, UriKind.Relative));
+                    "/VideoDetailPage.xaml?bvid=" + card.CardBvid, UriKind.Relative));
+                return;
             }
+            if (!string.IsNullOrEmpty(card.CardAid))
+            {
+                OpenWeb("https://www.bilibili.com/video/av" + card.CardAid);
+                return;
+            }
+            if (!string.IsNullOrEmpty(card.CardEpid))
+            {
+                NavigationService.Navigate(new Uri(
+                    "/BangumiDetailPage.xaml?ep=" + card.CardEpid, UriKind.Relative));
+                return;
+            }
+            if (!string.IsNullOrEmpty(card.CardRoomId))
+            {
+                OpenWeb("https://live.bilibili.com/" + card.CardRoomId);
+                return;
+            }
+            if (!string.IsNullOrEmpty(card.CardArticleId))
+            {
+                NavigationService.Navigate(new Uri(
+                    "/ArticlePage.xaml?id=" + card.CardArticleId, UriKind.Relative));
+            }
+        }
+
+        private void OpenWeb(string url)
+        {
+            WebBrowserTask task = new WebBrowserTask();
+#if WP8
+            task.Uri = new Uri(url);
+#else
+            task.URL = url;
+#endif
+            task.Show();
         }
 
 
