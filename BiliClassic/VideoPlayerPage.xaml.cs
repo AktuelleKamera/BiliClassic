@@ -1378,7 +1378,7 @@ namespace BiliClassic
                 YinLiangMask.ImageSource = null;
                 YinLiangMask.ImageSource = new BitmapImage(new Uri("/BiliClassic;component/Res/Icon/sound3.png", UriKind.Relative));
             }
-            AudioPlayer.Volume = yinliang * 10;
+            AudioPlayer.Volume = yinliang;
             Player.Volume = yinliang;
         }
 
