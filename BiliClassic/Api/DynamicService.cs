@@ -1,63 +1,58 @@
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
+using System.Text;
 
 namespace BiliClassic.Api
 {
     public static class DynamicService
     {
         private const string FeedUrl =
-            "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all?type=all";
+            "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all";
 
-        private static readonly Regex IdRegex = new Regex(@"""id_str"":\s*""(\d+)""");
-        private static readonly Regex TypeRegex = new Regex(@"""type"":\s*""([^""]+)""");
-        private static readonly Regex NameRegex = new Regex(@"""name"":\s*""((?:[^""\\]|\\.)*)""");
-        private static readonly Regex FaceRegex = new Regex(@"""face"":\s*""([^""]+)""");
-        private static readonly Regex PubTimeRegex = new Regex(@"""pub_time"":\s*""([^""]*)""");
-        private static readonly Regex TextRegex = new Regex(@"""text"":\s*""((?:[^""\\]|\\.)*)""");
-        private static readonly Regex CoverRegex = new Regex(@"""cover"":\s*""([^""]+)""");
-        private static readonly Regex PicRegex = new Regex(@"""src"":\s*""([^""]+)""");
-        private static readonly Regex BvidRegex = new Regex(@"""bvid"":\s*""([^""]+)""");
-        private static readonly Regex RoomIdRegex = new Regex(@"""room_id"":\s*(\d+)");
-        private static readonly Regex OffsetRegex = new Regex(@"""offset"":\s*""([^""]*)""");
-        private static readonly Regex HasMoreRegex = new Regex(@"""has_more"":\s*(true|false)");
+        private const string DetailUrl =
+            "https://api.bilibili.com/x/polymer/web-dynamic/v1/detail";
+
+        private const string Features =
+            "itemOpusStyle,listOnlyfans,opusBigCover,onlyfansVote,forwardListHidden,"
+            + "decorationCard,commentsNewVersion,onlyfansAssetsV2,ugcDelete";
 
         public static void FetchFeed(string offset,
-            Action<List<VideoItem>, string, string> onDone)
+            Action<List<DynamicItem>, string, string> onDone)
         {
-            string plain = FeedUrl;
-            if (!string.IsNullOrEmpty(offset))
-            {
-                plain += "&offset=" + Uri.EscapeDataString(offset);
-            }
-
             WbiSigner.EnsureReady(delegate(string keyError)
             {
-                string url = plain;
-                if (string.IsNullOrEmpty(keyError))
+                if (!string.IsNullOrEmpty(keyError))
                 {
-                    try
+                    onDone(new List<DynamicItem>(), "", keyError);
+                    return;
+                }
+
+                Dictionary<string, string> parameters = new Dictionary<string, string>();
+                parameters["type"] = "all";
+                parameters["features"] = Features;
+                if (!string.IsNullOrEmpty(offset))
+                {
+                    parameters["offset"] = offset;
+                }
+                DmImgParam.AddTo(parameters);
+
+                string url;
+                try
+                {
+                    url = WbiSigner.Shared.SignUrl(FeedUrl, parameters);
+                }
+                catch (Exception)
+                {
+                    url = FeedUrl + "?type=all&features=" + Features;
+                    if (!string.IsNullOrEmpty(offset))
                     {
-                        System.Collections.Generic.Dictionary<string, string> parameters =
-                            new System.Collections.Generic.Dictionary<string, string>();
-                        parameters["type"] = "all";
-                        if (!string.IsNullOrEmpty(offset))
-                        {
-                            parameters["offset"] = offset;
-                        }
-                        url = WbiSigner.Shared.SignUrl(
-                            "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all",
-                            parameters);
-                    }
-                    catch (Exception)
-                    {
-                        url = plain;
+                        url += "&offset=" + Uri.EscapeDataString(offset);
                     }
                 }
 
                 Http.GetText(url, Http.Referer, delegate(HttpResult http)
                 {
-                    List<VideoItem> items = new List<VideoItem>();
+                    List<DynamicItem> items = new List<DynamicItem>();
                     string nextOffset = "";
                     string error = Parse(http, items, out nextOffset);
                     onDone(items, nextOffset, error);
@@ -65,7 +60,80 @@ namespace BiliClassic.Api
             });
         }
 
-        private static string Parse(HttpResult http, List<VideoItem> items, out string nextOffset)
+        public static void FetchDetail(string id, Action<DynamicItem, string> onDone)
+        {
+            long dynamicId;
+            if (!long.TryParse(id, out dynamicId) || dynamicId <= 0)
+            {
+                onDone(null, "缺少动态 ID");
+                return;
+            }
+
+            WbiSigner.EnsureReady(delegate(string keyError)
+            {
+                if (!string.IsNullOrEmpty(keyError))
+                {
+                    onDone(null, keyError);
+                    return;
+                }
+
+                Dictionary<string, string> parameters = new Dictionary<string, string>();
+                parameters["id"] = id;
+                parameters["features"] = Features;
+                DmImgParam.AddTo(parameters);
+
+                string url;
+                try
+                {
+                    url = WbiSigner.Shared.SignUrl(DetailUrl, parameters);
+                }
+                catch (Exception)
+                {
+                    url = DetailUrl + "?id=" + id + "&features=" + Features;
+                }
+
+                Http.GetText(url, Http.Referer, delegate(HttpResult http)
+                {
+                    DynamicItem item;
+                    string error = ParseDetail(http, out item);
+                    onDone(item, error);
+                });
+            });
+        }
+
+        private static string ParseDetail(HttpResult http, out DynamicItem item)
+        {
+            item = null;
+            if (http == null || string.IsNullOrEmpty(http.Body))
+            {
+                return string.IsNullOrEmpty(http.Error) ? "没有返回内容" : http.Error;
+            }
+
+            JsonValue root = JsonValue.Parse(http.Body);
+            int code = root["code"].AsInt();
+            if (code != 0)
+            {
+                string message = root["message"].AsString();
+                return "接口返回 code=" + code + (message.Length > 0 ? " " + message : "");
+            }
+
+            JsonValue itemJson = root["data"]["item"];
+            if (!itemJson.IsObject || itemJson.Count == 0)
+            {
+                return "动态不存在或已被删除";
+            }
+
+            DynamicItem dynamicItem = ParseItem(itemJson);
+            if (dynamicItem == null || dynamicItem.Type == "DYNAMIC_TYPE_NONE")
+            {
+                return "动态不存在或已被删除";
+            }
+
+            item = dynamicItem;
+            return "";
+        }
+
+        private static string Parse(HttpResult http, List<DynamicItem> items, out string nextOffset)
         {
             nextOffset = "";
             if (http == null || string.IsNullOrEmpty(http.Body))
@@ -73,135 +141,243 @@ namespace BiliClassic.Api
                 return string.IsNullOrEmpty(http.Error) ? "没有返回内容" : http.Error;
             }
 
-            string body = http.Body;
-            Match code = Regex.Match(body, @"""code"":\s*(-?\d+)");
-            if (code.Success && code.Groups[1].Value != "0")
+            JsonValue root = JsonValue.Parse(http.Body);
+            int code = root["code"].AsInt();
+            if (code != 0)
             {
-                string message = JsonText.ReadString(body, "message");
-                return "接口返回 code=" + code.Groups[1].Value
-                    + (message.Length > 0 ? " " + message : "");
+                string message = root["message"].AsString();
+                return "接口返回 code=" + code + (message.Length > 0 ? " " + message : "");
             }
 
-            Match more = HasMoreRegex.Match(body);
-            if (more.Success && more.Groups[1].Value == "true")
+            JsonValue data = root["data"];
+            if (data["has_more"].AsBool())
             {
-                nextOffset = JsonText.ReadString(body, "offset");
+                nextOffset = data["offset"].AsString();
             }
 
-            MatchCollection ids = IdRegex.Matches(body);
-            for (int i = 0; i < ids.Count; i++)
+            JsonValue list = data["items"];
+            for (int i = 0; i < list.Count; i++)
             {
-                int start = ids[i].Index;
-                int end = (i + 1 < ids.Count) ? ids[i + 1].Index : body.Length;
-                int window = Math.Min(end - start, 4000);
-                string region = body.Substring(start, window);
-
-                VideoItem item = BuildItem(region);
-                if (item != null)
+                try
                 {
-                    items.Add(item);
+                    DynamicItem item = ParseItem(list[i]);
+                    if (item != null && item.DynamicId.Length > 0
+                        && item.Type != "DYNAMIC_TYPE_NONE")
+                    {
+                        items.Add(item);
+                    }
+                }
+                catch (Exception)
+                {
                 }
             }
-
             return "";
         }
 
-        private static VideoItem BuildItem(string region)
+        private static DynamicItem ParseItem(JsonValue item)
         {
-            string type = FirstGroup(TypeRegex, region);
-            if (type == "DYNAMIC_TYPE_NONE")
+            if (item == null || !item.IsObject)
             {
                 return null;
             }
 
-            string author = JsonText.Unescape(FirstGroup(NameRegex, region));
-            string pubTime = JsonText.Unescape(FirstGroup(PubTimeRegex, region));
+            DynamicItem d = new DynamicItem();
+            d.DynamicId = item["id_str"].AsString();
+            d.Type = item["type"].AsString();
 
-            string text = ExtractDescText(region);
-
-            string bvid = FirstGroup(BvidRegex, region);
-            string cover = "";
-            string cardLabel = "";
-            long roomId = 0;
-
-            if (bvid.Length > 0)
+            JsonValue basic = item["basic"];
+            d.CommentId = basic["comment_id_str"].AsString();
+            int commentType = basic["comment_type"].AsInt();
+            d.CommentType = commentType > 0 ? commentType : 17;
+            if (d.CommentId.Length == 0)
             {
-                cover = Normalize(FirstGroup(CoverRegex, region));
-                cardLabel = "投稿视频";
+                d.CommentId = d.DynamicId;
             }
-            else
+
+            JsonValue modules = item["modules"];
+            JsonValue author = modules["module_author"];
+            d.Mid = author["mid"].AsString();
+            d.Author = author["name"].AsString();
+            d.AvatarUrl = Normalize(author["face"].AsString());
+            d.PubTime = author["pub_time"].AsString();
+
+            if (d.Type == "DYNAMIC_TYPE_NONE")
             {
-                Match pic = PicRegex.Match(region);
-                if (pic.Success)
+                d.Content = "[动态不存在]";
+                return d;
+            }
+
+            JsonValue mdyn = modules["module_dynamic"];
+            if (mdyn.IsObject)
+            {
+                d.Content = ParseRichText(mdyn["desc"]);
+                JsonValue major = mdyn["major"];
+                if (major.IsObject && major.Count > 0)
                 {
-                    cover = Normalize(pic.Groups[1].Value);
-                }
-                Match room = RoomIdRegex.Match(region);
-                if (room.Success)
-                {
-                    roomId = ParseLong(room.Groups[1].Value);
-                    cardLabel = "直播间";
+                    ParseMajor(d, major);
                 }
             }
 
-            if (text.Length == 0 && bvid.Length == 0 && roomId <= 0 && cover.Length == 0)
+            JsonValue stat = modules["module_stat"];
+            if (stat.IsObject)
             {
-                return null;
+                JsonValue like = stat["like"];
+                d.LikeCount = like["count"].AsInt();
+                d.Liked = like["status"].AsBool();
             }
 
-            VideoItem item = new VideoItem();
-            item.Bvid = bvid;
-            item.RoomId = roomId;
-            item.Pic = cover;
+            JsonValue orig = item["orig"];
+            if (orig.IsObject && orig.Count > 0)
+            {
+                d.Forward = ParseItem(orig);
+            }
 
-            string head = author.Length > 0 ? author + "：" : "";
-            string main = text.Length > 0 ? text : (bvid.Length > 0 ? "发布了视频" : "开播了");
-            item.Title = head + main;
-            item.Subtitle = pubTime + (cardLabel.Length > 0 ? "  " + cardLabel : "");
-            return item;
+            return d;
         }
 
-        private static string ExtractDescText(string region)
+        private static void ParseMajor(DynamicItem d, JsonValue major)
         {
-            int mdyn = region.IndexOf("\"module_dynamic\":", StringComparison.Ordinal);
-            if (mdyn < 0)
+            string type = major["type"].AsString();
+
+            if (type == "MAJOR_TYPE_ARCHIVE")
+            {
+                ApplyCard(d, major["archive"], "投稿视频");
+            }
+            else if (type == "MAJOR_TYPE_UGC_SEASON")
+            {
+                ApplyCard(d, major["ugc_season"], "视频合集");
+            }
+            else if (type == "MAJOR_TYPE_PGC")
+            {
+                JsonValue pgc = major["pgc"];
+                d.CardTitle = pgc["title"].AsString();
+                d.CardCoverUrl = Normalize(pgc["cover"].AsString());
+                d.CardEpid = pgc["epid"].AsString();
+                d.CardLabel = "番剧";
+                d.CardInfo = JoinInfo("番剧", pgc["stat"]["play"].AsString());
+            }
+            else if (type == "MAJOR_TYPE_ARTICLE")
+            {
+                JsonValue article = major["article"];
+                JsonValue covers = article["covers"];
+                d.CardTitle = article["title"].AsString();
+                d.CardCoverUrl = covers.Count > 0 ? Normalize(covers[0].AsString()) : "";
+                d.CardArticleId = article["id"].AsString();
+                d.CardLabel = "专栏文章";
+                d.CardInfo = "专栏文章";
+            }
+            else if (type == "MAJOR_TYPE_DRAW")
+            {
+                AddPics(d, major["draw"]["items"], "src");
+            }
+            else if (type == "MAJOR_TYPE_OPUS")
+            {
+                JsonValue opus = major["opus"];
+                AddPics(d, opus["pics"], "url");
+                string summary = ParseRichText(opus["summary"]);
+                if (summary.Length > 0)
+                {
+                    d.Content = d.Content.Length > 0 ? d.Content + "\n" + summary : summary;
+                }
+            }
+            else if (type == "MAJOR_TYPE_LIVE_RCMD")
+            {
+                JsonValue liveRcmd = major["live_rcmd"];
+                JsonValue info = JsonValue.Parse(liveRcmd["content"].AsString())["live_play_info"];
+                ApplyLive(d, info);
+            }
+            else if (type == "MAJOR_TYPE_LIVE")
+            {
+                ApplyLive(d, major["live"]);
+            }
+            else if (type.Length > 0)
+            {
+                d.Content = d.Content + "\n[暂时无法显示此动态的附加内容]";
+            }
+        }
+
+        private static void ApplyCard(DynamicItem d, JsonValue value, string label)
+        {
+            d.CardTitle = value["title"].AsString();
+            d.CardCoverUrl = Normalize(value["cover"].AsString());
+            d.CardBvid = value["bvid"].AsString();
+            d.CardAid = value["aid"].AsString();
+            d.CardLabel = label;
+            d.CardInfo = JoinInfo(label, value["stat"]["play"].AsString());
+        }
+
+        private static void ApplyLive(DynamicItem d, JsonValue info)
+        {
+            if (info == null || info.IsNull)
+            {
+                return;
+            }
+
+            d.CardRoomId = info["room_id"].AsString();
+            if (d.CardRoomId.Length == 0)
+            {
+                d.CardRoomId = info["id"].AsString();
+            }
+            d.CardTitle = info["title"].AsString();
+            d.CardCoverUrl = Normalize(info["cover"].AsString());
+            d.CardLabel = "直播间";
+            d.CardInfo = "直播间";
+        }
+
+        private static void AddPics(DynamicItem d, JsonValue array, string field)
+        {
+            int total = array.Count;
+            int show = total > 3 ? 3 : total;
+            for (int i = 0; i < show; i++)
+            {
+                string url = Normalize(array[i][field].AsString());
+                if (url.Length == 0)
+                {
+                    continue;
+                }
+
+                PictureItem picture = new PictureItem();
+                picture.Url = url;
+                d.Pics.Add(picture);
+                picture.Group = d.Pics;
+            }
+        }
+
+        private static string ParseRichText(JsonValue text)
+        {
+            if (text == null || text.IsNull)
             {
                 return "";
             }
 
-            int nodes = region.IndexOf("\"rich_text_nodes\":", mdyn, StringComparison.Ordinal);
-            if (nodes < 0)
+            JsonValue nodes = text["rich_text_nodes"];
+            if (nodes.IsArray && nodes.Count > 0)
             {
-                return "";
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < nodes.Count; i++)
+                {
+                    sb.Append(nodes[i]["text"].AsString());
+                }
+                if (sb.Length > 0)
+                {
+                    return sb.ToString();
+                }
             }
-
-            int end = region.IndexOf(']', nodes);
-            string area = end > nodes ? region.Substring(nodes, end - nodes) : region.Substring(nodes);
-
-            System.Text.StringBuilder sb = new System.Text.StringBuilder();
-            MatchCollection texts = TextRegex.Matches(area);
-            for (int i = 0; i < texts.Count; i++)
-            {
-                sb.Append(JsonText.Unescape(texts[i].Groups[1].Value));
-            }
-            return sb.ToString();
+            return text["text"].AsString();
         }
 
-        private static string FirstGroup(Regex regex, string text)
+        private static string JoinInfo(string label, string play)
         {
-            Match match = regex.Match(text);
-            return match.Success ? match.Groups[1].Value : "";
-        }
-
-        private static long ParseLong(string s)
-        {
-            long value;
-            return long.TryParse(s, out value) ? value : 0;
+            if (string.IsNullOrEmpty(play) || play == "0")
+            {
+                return label;
+            }
+            return label + "  " + VideoItem.FormatCount(play) + " 播放";
         }
 
         private static string Normalize(string url)
         {
-            if (url != null && url.StartsWith("//", StringComparison.Ordinal))
+            if (!string.IsNullOrEmpty(url) && url.StartsWith("//", StringComparison.Ordinal))
             {
                 return "https:" + url;
             }
