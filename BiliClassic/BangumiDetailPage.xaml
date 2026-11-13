@@ -43,10 +43,10 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,6">
+        <StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,8">
             <TextBlock Text="番剧" Style="{StaticResource PhoneTextNormalStyle}"/>
-            <TextBlock x:Name="PageTitle" Text="" Margin="9,-7,0,0"
-                       Style="{StaticResource PhoneTextTitle1Style}"/>
+            <TextBlock x:Name="PageTitle" Text="" TextWrapping="Wrap" Margin="9,-7,0,0"
+                       Style="{StaticResource PhoneTextTitle2Style}"/>
         </StackPanel>
 
         <Grid Grid.Row="1" Margin="12,0,12,0">
