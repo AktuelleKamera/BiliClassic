@@ -39,10 +39,17 @@ namespace BiliClassic.Api
 
         public static void GetText(string url, string referer, Action<HttpResult> onDone)
         {
-            GetText(url, referer, onDone, 2);
+            GetText(url, referer, Origin, onDone);
         }
 
-        private static void GetText(string url, string referer, Action<HttpResult> onDone, int attemptsLeft)
+        public static void GetText(string url, string referer, string origin,
+                                   Action<HttpResult> onDone)
+        {
+            GetText(url, referer, origin, onDone, 2);
+        }
+
+        private static void GetText(string url, string referer, string origin,
+                                    Action<HttpResult> onDone, int attemptsLeft)
         {
             if (url != null && url.StartsWith("//"))
             {
@@ -105,7 +112,7 @@ namespace BiliClassic.Api
 
                 if (!result.Ok && attemptsLeft > 1)
                 {
-                    GetText(retryUrl, retryReferer, onDone, attemptsLeft - 1);
+                    GetText(retryUrl, retryReferer, origin, onDone, attemptsLeft - 1);
                     return;
                 }
 
@@ -360,9 +367,15 @@ namespace BiliClassic.Api
 
         private static void ApplyCommonHeaders(HttpWebRequest request, string referer)
         {
+            ApplyCommonHeaders(request, referer, Origin);
+        }
+
+        private static void ApplyCommonHeaders(HttpWebRequest request, string referer,
+                                               string origin)
+        {
             TrySetHeader(request, "Accept", "application/json, text/plain, */*");
             TrySetHeader(request, "Referer", string.IsNullOrEmpty(referer) ? Referer : referer);
-            TrySetHeader(request, "Origin", Origin);
+            TrySetHeader(request, "Origin", string.IsNullOrEmpty(origin) ? Origin : origin);
 
             try
             {
