@@ -81,6 +81,12 @@ namespace BiliClassic.Api
         public static void FetchVideos(string mid, int page,
                                        Action<List<VideoItem>, bool, string> onDone)
         {
+            FetchVideos(mid, page, 0, onDone);
+        }
+
+        private static void FetchVideos(string mid, int page, int attempt,
+                                        Action<List<VideoItem>, bool, string> onDone)
+        {
             if (string.IsNullOrEmpty(mid))
             {
                 onDone(new List<VideoItem>(), false, "缺少mid");
@@ -102,24 +108,45 @@ namespace BiliClassic.Api
 
                 Dictionary<string, string> parameters = new Dictionary<string, string>();
                 parameters["mid"] = mid;
+                parameters["order_avoided"] = "true";
+                parameters["order"] = "pubdate";
+                parameters["platform"] = "web";
                 parameters["pn"] = page.ToString();
                 parameters["ps"] = PageSize.ToString();
                 parameters["tid"] = "0";
-                parameters["order"] = "pubdate";
-                parameters["keyword"] = "";
-                parameters["order_avoided"] = "true";
-                parameters["web_location"] = "333.999";
+                parameters["web_location"] = "333.1387";
 
                 string url = WbiSigner.Shared.SignUrl(ApiRoot + "/x/space/wbi/arc/search", parameters);
 
-                Http.GetText(url, Http.Referer, delegate(HttpResult http)
+                Http.GetText(url,
+                    "https://space.bilibili.com/" + mid,
+                    "https://space.bilibili.com",
+                    delegate(HttpResult http)
                 {
                     List<VideoItem> items = new List<VideoItem>();
                     bool hasMore = false;
                     string error = ParseVideos(http, items, out hasMore);
+
+                    if (attempt < 1 && IsRiskControl(error))
+                    {
+                        // 风控：刷新 WBI 后重试一次
+                        WbiSigner.Shared.FetchKeys(delegate(string refreshError)
+                        {
+                            FetchVideos(mid, page, attempt + 1, onDone);
+                        });
+                        return;
+                    }
+
                     onDone(items, hasMore, error);
                 });
             });
+        }
+
+        private static bool IsRiskControl(string error)
+        {
+            return !string.IsNullOrEmpty(error)
+                && (error.IndexOf("-352", StringComparison.Ordinal) >= 0
+                    || error.IndexOf("-412", StringComparison.Ordinal) >= 0);
         }
 
         private static string ParseVideos(HttpResult http, List<VideoItem> items, out bool hasMore)
@@ -137,24 +164,25 @@ namespace BiliClassic.Api
                 return "接口返回 code=" + code.Groups[1].Value;
             }
 
-            MatchCollection bvids = BvidRegex.Matches(body);
-            for (int i = 0; i < bvids.Count; i++)
+            // 只取 vlist 数组，逐对象解析，避免混入合集等其它块
+            string array = ExtractArray(body, "vlist");
+            if (array == null)
             {
-                string bvid = bvids[i].Groups[1].Value;
+                return "接口返回里没有 vlist";
+            }
+
+            List<string> objects = SplitObjects(array);
+            for (int i = 0; i < objects.Count; i++)
+            {
+                string obj = objects[i];
+
+                string bvid = FirstGroup(BvidRegex, obj);
                 if (bvid.Length == 0)
                 {
                     continue;
                 }
 
-                int start = bvids[i].Index;
-                int end = (i + 1 < bvids.Count) ? bvids[i + 1].Index : body.Length;
-                if (end - start > 2000)
-                {
-                    end = start + 2000;
-                }
-                string region = body.Substring(start, end - start);
-
-                string pic = FirstGroup(PicRegex, region);
+                string pic = FirstGroup(PicRegex, obj);
                 if (pic.Length == 0)
                 {
                     continue;
@@ -167,14 +195,125 @@ namespace BiliClassic.Api
                 VideoItem item = new VideoItem();
                 item.Bvid = bvid;
                 item.Pic = pic;
-                item.Title = JsonText.StripHtml(JsonText.Unescape(FirstGroup(TitleRegex, region)));
-                item.Author = FirstGroup(AuthorRegex, region);
-                item.View = FirstGroup(PlayRegex, region);
+                item.Title = JsonText.StripHtml(JsonText.Unescape(FirstGroup(TitleRegex, obj)));
+                item.Author = FirstGroup(AuthorRegex, obj);
+                item.View = FirstGroup(PlayRegex, obj);
                 items.Add(item);
             }
 
             hasMore = items.Count >= PageSize;
             return "";
+        }
+
+        private static string ExtractArray(string json, string key)
+        {
+            int k = json.IndexOf("\"" + key + "\"", StringComparison.Ordinal);
+            if (k < 0)
+            {
+                return null;
+            }
+            int colon = json.IndexOf(':', k);
+            if (colon < 0)
+            {
+                return null;
+            }
+            int start = json.IndexOf('[', colon);
+            if (start < 0)
+            {
+                return null;
+            }
+
+            int depth = 0;
+            bool inString = false;
+            bool escape = false;
+            for (int i = start; i < json.Length; i++)
+            {
+                char c = json[i];
+                if (inString)
+                {
+                    if (escape)
+                    {
+                        escape = false;
+                    }
+                    else if (c == '\\')
+                    {
+                        escape = true;
+                    }
+                    else if (c == '"')
+                    {
+                        inString = false;
+                    }
+                    continue;
+                }
+                if (c == '"')
+                {
+                    inString = true;
+                }
+                else if (c == '[')
+                {
+                    depth++;
+                }
+                else if (c == ']')
+                {
+                    depth--;
+                    if (depth == 0)
+                    {
+                        return json.Substring(start, i - start + 1);
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static List<string> SplitObjects(string array)
+        {
+            List<string> objects = new List<string>();
+            int depth = 0;
+            bool inString = false;
+            bool escape = false;
+            int start = -1;
+            for (int i = 0; i < array.Length; i++)
+            {
+                char c = array[i];
+                if (inString)
+                {
+                    if (escape)
+                    {
+                        escape = false;
+                    }
+                    else if (c == '\\')
+                    {
+                        escape = true;
+                    }
+                    else if (c == '"')
+                    {
+                        inString = false;
+                    }
+                    continue;
+                }
+                if (c == '"')
+                {
+                    inString = true;
+                }
+                else if (c == '{')
+                {
+                    if (depth == 0)
+                    {
+                        start = i;
+                    }
+                    depth++;
+                }
+                else if (c == '}')
+                {
+                    depth--;
+                    if (depth == 0 && start >= 0)
+                    {
+                        objects.Add(array.Substring(start, i - start + 1));
+                        start = -1;
+                    }
+                }
+            }
+            return objects;
         }
 
         private static long ReadNumber(string text, string field)
