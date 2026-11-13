@@ -762,6 +762,17 @@ namespace BiliClassic
             }
         }
 
+        private void CommentPicture_Click(object sender, RoutedEventArgs e)
+        {
+            FrameworkElement element = sender as FrameworkElement;
+            PictureItem picture = element == null ? null : element.DataContext as PictureItem;
+            if (picture == null || picture.Group == null || picture.Group.Count == 0)
+            {
+                return;
+            }
+            ImageViewerPage.Show(picture.Group, picture.Group.IndexOf(picture));
+        }
+
         private void MoreCommentButton_Click(object sender, RoutedEventArgs e)
         {
             if (_commentLoading || !_commentHasMore)
@@ -929,6 +940,12 @@ namespace BiliClassic
             {
                 _comments.Add(items[i]);
                 AvatarLoader.Request(items[i].Author);
+                for (int p = 0; p < items[i].Thumbs.Count; p++)
+                {
+                    PictureItem picture = items[i].Thumbs[p];
+                    ImageLoader.Load(VideoItem.BuildThumbUrl(picture.Url, 240, 240),
+                        delegate(BitmapImage bitmap) { picture.Image = bitmap; });
+                }
                 added++;
             }
 

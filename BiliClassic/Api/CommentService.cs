@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Windows;
 
 namespace BiliClassic.Api
 {
@@ -16,17 +17,31 @@ namespace BiliClassic.Api
 
         public string InfoLine { get; set; }
 
+        public List<PictureItem> Pictures { get; set; }
+
+        public List<PictureItem> Thumbs { get; set; }
+
+        public Visibility ThumbsVisibility
+        {
+            get { return Thumbs.Count == 0 ? Visibility.Collapsed : Visibility.Visible; }
+        }
+
         public CommentItem()
         {
             Author = new UserItem();
             Rpid = "";
             Message = "";
             InfoLine = "";
+            Pictures = new List<PictureItem>();
+            Thumbs = new List<PictureItem>();
         }
     }
 
     public static class CommentService
     {
+        private static readonly Regex ImgSrcRegex =
+            new Regex(@"""img_src"":\s*""([^""]+)""");
+
         private const string WbiUrl = "https://api.bilibili.com/x/v2/reply/wbi/main";
         private const string LegacyUrl = "https://api.bilibili.com/x/v2/reply";
 
@@ -34,25 +49,55 @@ namespace BiliClassic.Api
 
         private const string SortMode = "3";
 
-        private static string _offset = "";
-        private static bool _ended;
+        private sealed class PagingState
+        {
+            public string Offset = "";
+            public bool Ended;
+        }
 
-        public static void Fetch(string aid, int page,
+        private static readonly Dictionary<string, PagingState> States =
+            new Dictionary<string, PagingState>();
+
+        private static PagingState GetState(string key)
+        {
+            PagingState state;
+            if (!States.TryGetValue(key, out state))
+            {
+                state = new PagingState();
+                States[key] = state;
+            }
+            return state;
+        }
+
+        public static void Fetch(string oid, int page,
                                  Action<List<CommentItem>, bool, string> onDone)
         {
-            if (string.IsNullOrEmpty(aid))
+            Fetch(oid, page, 1, onDone);
+        }
+
+        public static void Fetch(string oid, int page, int replyType,
+                                 Action<List<CommentItem>, bool, string> onDone)
+        {
+            if (string.IsNullOrEmpty(oid))
             {
-                onDone(new List<CommentItem>(), false, "缺少aid，取不了评论");
+                onDone(new List<CommentItem>(), false, "缺少oid，取不了评论");
                 return;
             }
 
-            if (page <= 1)
+            if (replyType <= 0)
             {
-                _offset = "";
-                _ended = false;
+                replyType = 1;
             }
 
-            if (_ended)
+            PagingState state = GetState(replyType + ":" + oid);
+
+            if (page <= 1)
+            {
+                state.Offset = "";
+                state.Ended = false;
+            }
+
+            if (state.Ended)
             {
                 onDone(new List<CommentItem>(), false, "");
                 return;
@@ -62,7 +107,8 @@ namespace BiliClassic.Api
             {
                 if (!string.IsNullOrEmpty(keyError))
                 {
-                    FetchLegacy(aid, page, delegate(List<CommentItem> legacy, bool more, string legacyError)
+                    FetchLegacy(oid, page, replyType,
+                        delegate(List<CommentItem> legacy, bool more, string legacyError)
                     {
                         if (legacy.Count == 0 && legacyError.Length == 0)
                         {
@@ -73,24 +119,25 @@ namespace BiliClassic.Api
                     });
                     return;
                 }
-                FetchWbi(aid, onDone);
+                FetchWbi(oid, state, replyType, onDone);
             });
         }
 
-        private static void FetchWbi(string aid, Action<List<CommentItem>, bool, string> onDone)
+        private static void FetchWbi(string oid, PagingState state, int replyType,
+                                     Action<List<CommentItem>, bool, string> onDone)
         {
             Dictionary<string, string> parameters = new Dictionary<string, string>();
-            parameters["type"] = "1";
-            parameters["oid"] = aid;
+            parameters["type"] = replyType.ToString();
+            parameters["oid"] = oid;
             parameters["plat"] = "1";
             parameters["web_location"] = "1315875";
             parameters["mode"] = SortMode;
-            parameters["pagination_str"] = "{\"offset\":" + JsonQuote(_offset) + "}";
+            parameters["pagination_str"] = "{\"offset\":" + JsonQuote(state.Offset) + "}";
 
             string query = WbiSigner.Shared.SignQuery(parameters);
             if (query.Length == 0)
             {
-                FetchLegacy(aid, 1, onDone);
+                FetchLegacy(oid, 1, replyType, onDone);
                 return;
             }
 
@@ -98,12 +145,13 @@ namespace BiliClassic.Api
             {
                 List<CommentItem> items = new List<CommentItem>();
                 bool hasMore = false;
-                string error = Parse(http, items, out hasMore, true);
+                string error = Parse(http, items, out hasMore, true, state);
 
                 if (items.Count == 0 && !string.IsNullOrEmpty(error))
                 {
                     string wbiError = error;
-                    FetchLegacy(aid, 1, delegate(List<CommentItem> legacy, bool more, string legacyError)
+                    FetchLegacy(oid, 1, replyType,
+                        delegate(List<CommentItem> legacy, bool more, string legacyError)
                     {
                         if (legacy.Count == 0 && legacyError.Length == 0)
                         {
@@ -119,17 +167,17 @@ namespace BiliClassic.Api
             });
         }
 
-        private static void FetchLegacy(string aid, int page,
+        private static void FetchLegacy(string oid, int page, int replyType,
                                         Action<List<CommentItem>, bool, string> onDone)
         {
-            string url = LegacyUrl + "?type=1&oid=" + aid
+            string url = LegacyUrl + "?type=" + replyType + "&oid=" + oid
                 + "&pn=" + page + "&ps=" + PageSize + "&sort=2";
 
             Http.GetText(url, Http.Referer, delegate(HttpResult http)
             {
                 List<CommentItem> items = new List<CommentItem>();
                 bool hasMore = false;
-                string error = Parse(http, items, out hasMore, false);
+                string error = Parse(http, items, out hasMore, false, null);
                 onDone(items, hasMore, error);
             });
         }
@@ -207,7 +255,7 @@ namespace BiliClassic.Api
         }
 
         private static string Parse(HttpResult http, List<CommentItem> items, out bool hasMore,
-                                    bool cursorPaging)
+                                    bool cursorPaging, PagingState state)
         {
             hasMore = false;
             if (http == null || string.IsNullOrEmpty(http.Body))
@@ -231,18 +279,21 @@ namespace BiliClassic.Api
                     return "有评论数据但解析到0条：" + JsonText.Head(body, 150);
                 }
 
-                _offset = "";
-                _ended = true;
+                if (state != null)
+                {
+                    state.Offset = "";
+                    state.Ended = true;
+                }
                 return "";
             }
 
-            if (cursorPaging)
+            if (cursorPaging && state != null)
             {
                 string next = JsonText.ReadString(body, "next_offset");
                 bool isEnd = Regex.IsMatch(body, @"""is_end"":\s*true");
-                _offset = next;
-                _ended = isEnd || next.Length == 0;
-                hasMore = !_ended;
+                state.Offset = next;
+                state.Ended = isEnd || next.Length == 0;
+                hasMore = !state.Ended;
             }
             else
             {
@@ -283,6 +334,25 @@ namespace BiliClassic.Api
                 item.Author.Mid = ReadMid(region);
                 item.Author.AvatarUrl = Normalize(JsonText.ReadString(region, "avatar"));
                 item.Message = message;
+
+                MatchCollection pictures = ImgSrcRegex.Matches(region);
+                for (int p = 0; p < pictures.Count; p++)
+                {
+                    string src = Normalize(pictures[p].Groups[1].Value);
+                    if (src.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    PictureItem picture = new PictureItem();
+                    picture.Url = src;
+                    picture.Group = item.Pictures;
+                    item.Pictures.Add(picture);
+                    if (item.Thumbs.Count < 3)
+                    {
+                        item.Thumbs.Add(picture);
+                    }
+                }
 
                 string time = FormatTimeAgo(ReadNumber(region, "ctime"));
                 long like = ReadNumber(region, "like");

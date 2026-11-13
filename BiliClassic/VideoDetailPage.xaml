@@ -38,6 +38,26 @@
         </toolkit:NavigationOutTransition>
     </toolkit:TransitionService.NavigationOutTransition>
 
+    <phone:PhoneApplicationPage.Resources>
+        <Style x:Key="PlainButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </phone:PhoneApplicationPage.Resources>
+
     <Grid x:Name="LayoutRoot" Background="Transparent">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -102,6 +122,7 @@
                                     Margin="10,0,0,0" VerticalAlignment="Center"
                                     Background="#D86DA5" Foreground="White"
                                     BorderThickness="0"
+                                    Tag="accent_keep"
                                     Click="PlayButton_Click"/>
                         </Grid>
 
@@ -255,6 +276,31 @@
                                         <TextBlock Text="{Binding Message}" TextWrapping="Wrap"
                                                    Margin="0,2,0,0"
                                                    Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                        <ItemsControl ItemsSource="{Binding Thumbs}"
+                                                      Visibility="{Binding ThumbsVisibility}"
+                                                      Margin="0,6,0,0">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <toolkit:WrapPanel/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Button Style="{StaticResource PlainButtonStyle}"
+                                                            Click="CommentPicture_Click"
+                                                            Width="72" Height="72"
+                                                            Margin="0,0,6,6">
+                                                        <Grid>
+                                                            <Image Stretch="Uniform"
+                                                                   VerticalAlignment="Center"
+                                                                   Source="/Res/Icon/localcover.png"/>
+                                                            <Image Stretch="UniformToFill"
+                                                                   Source="{Binding Image}"/>
+                                                        </Grid>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                         <TextBlock Text="{Binding InfoLine}" Margin="0,4,0,0"
                                                    Style="{StaticResource PhoneTextSubtleStyle}"/>
                                     </StackPanel>
