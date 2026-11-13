@@ -79,6 +79,10 @@ namespace BiliClassic
         {
             base.OnNavigatedTo(e);
 
+            // 全局登录态变化时即时刷新
+            BiliSession.Changed -= OnSessionChanged;
+            BiliSession.Changed += OnSessionChanged;
+
             if (!IsFirstLoad.IsLoaded && !isLoaded)
             {
                 isLoaded = true;
@@ -121,7 +125,24 @@ namespace BiliClassic
         {
             base.OnNavigatedFrom(e);
 
+            BiliSession.Changed -= OnSessionChanged;
             Is_Updating = false;
+        }
+
+        /// <summary>登录态变了（含 NFC 同步），即时刷新界面</summary>
+        private void OnSessionChanged()
+        {
+            Dispatcher.BeginInvoke(new Action(delegate
+            {
+                _loggedIn = BiliSession.IsLoggedIn;
+                BuildAppBar();
+                _mineLoaded = false;
+                if (HomePivot.SelectedIndex == 0)
+                {
+                    _mineLoaded = true;
+                    LoadMineCard();
+                }
+            }));
         }
 
         protected override void OnBackKeyPress(System.ComponentModel.CancelEventArgs e)
@@ -214,27 +235,27 @@ namespace BiliClassic
 
         public void UpdateNewDynamicsMessege()
         {
-            DynamicService.FetchFeed("", delegate(List<VideoItem> items, string nextOffset, string error)
+            DynamicService.FetchFeed("", delegate(List<DynamicItem> items, string nextOffset, string error)
             {
                 if (!app.Is_DY_Reading)
                 {
                     if (!(!string.IsNullOrEmpty(error) || items.Count == 0))
                     {
-                        if (Api.DynamicsMessegeTemp.DYI != items[0].Title)
+                        string newest = items[0].DynamicId;
+                        if (Api.DynamicsMessegeTemp.DYI != newest)
                         {
                             int dyn_temp = 0;
                             for (int i = 0; i < items.Count; i++)
                             {
                                 dyn_temp++;
-                                if (Api.DynamicsMessegeTemp.DYI == items[0].Title)
+                                if (Api.DynamicsMessegeTemp.DYI == items[i].DynamicId)
                                 {
                                     break;
                                 }
                             }
                             Api.DynamicsMessegeTemp.DYN = dyn_temp;
-                            Api.DynamicsMessegeTemp.DYI = items[0].Title;
+                            Api.DynamicsMessegeTemp.DYI = newest;
                         }
-                        //Api.DynamicsMessegeTemp.DYI = items[0].Title;
                     }
                 }
                 else

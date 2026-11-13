@@ -65,11 +65,31 @@ namespace BiliClassic.Api
             return Container;
         }
 
+        /// <summary>登录态变化，界面自行刷新</summary>
+        public static event Action Changed;
+
+        private static void NotifyChanged()
+        {
+            Action handler = Changed;
+            if (handler == null)
+            {
+                return;
+            }
+            try
+            {
+                handler();
+            }
+            catch (Exception)
+            {
+            }
+        }
+
         public static void SetCookieString(string cookieString)
         {
             _cookieString = cookieString ?? "";
             RebuildContainer();
             SyncLoginState();
+            NotifyChanged();
         }
 
         public static void MergeCookieString(string cookieString)
@@ -93,6 +113,7 @@ namespace BiliClassic.Api
             _cookieString = string.Join("; ", parts.ToArray());
             RebuildContainer();
             SyncLoginState();
+            NotifyChanged();
         }
 
         public static void Clear()
@@ -103,6 +124,7 @@ namespace BiliClassic.Api
             Csrf = "";
             RebuildContainer();
             Save();
+            NotifyChanged();
         }
 
         public static void Load()
