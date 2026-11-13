@@ -95,20 +95,13 @@
         {
             get
             {
-                double readtemp_;
-                if (double.TryParse(LocalStore.Get(YinLiangValueKey), out readtemp_))
+                double value;
+                if (!double.TryParse(LocalStore.Get(YinLiangValueKey), out value)
+                    || value < 0 || value > 1)
                 {
-                    if (readtemp_ < 0 && readtemp_ > 1)
-                    {
-                        readtemp_ = 0.5;
-                    }
+                    return 1.0;
                 }
-                else
-                {
-                    readtemp_ = 0.5;
-                }
-                return readtemp_;
-
+                return value;
             }
             set { LocalStore.Set(YinLiangValueKey, value.ToString()); }
         }
