@@ -8,7 +8,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import tv.biliclassic.util.KeyBindingUtil;
+import tv.biliclassic.util.KeyBindingRecorder;
 import tv.biliclassic.util.SharedPreferencesUtil;
 
 /**
@@ -26,32 +26,8 @@ public class KeyBindingSetupActivity extends BaseActivity {
     private View mPageRecord;
     private TextView mPromptText;
     private TextView mProgressText;
+    private KeyBindingRecorder mRecorder;
 
-    // 防抖：记录上一次成功录入的时间（毫秒），1 秒内忽略后续按键
-    private long mLastRecordTime = 0L;
-
-    // 录制顺序：菜单→返回→上→下→左→右→确认→上一页→下一页→刷新
-    private static final int[] RECORD_ORDER = {
-        KeyBindingUtil.ACTION_MENU,
-        KeyBindingUtil.ACTION_RETURN,
-        KeyBindingUtil.ACTION_UP,
-        KeyBindingUtil.ACTION_DOWN,
-        KeyBindingUtil.ACTION_LEFT,
-        KeyBindingUtil.ACTION_RIGHT,
-        KeyBindingUtil.ACTION_CONFIRM,
-        KeyBindingUtil.ACTION_PAGE_UP,
-        KeyBindingUtil.ACTION_PAGE_DOWN,
-        KeyBindingUtil.ACTION_REFRESH
-    };
-
-    private static final String[] RECORD_NAMES = {
-        "菜单键", "返回键", "上键", "下键",
-        "左键", "右键", "确认键",
-        "上一页", "下一页", "刷新键"
-    };
-
-    private int mRecordIndex = 0;
-    private boolean mRecording = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +38,17 @@ public class KeyBindingSetupActivity extends BaseActivity {
         mPageRecord = findViewById(R.id.page_record);
         mPromptText = (TextView) findViewById(R.id.prompt_text);
         mProgressText = (TextView) findViewById(R.id.progress_text);
+        mRecorder = new KeyBindingRecorder(new KeyBindingRecorder.Listener() {
+            @Override
+            public void onRecordingChanged() {
+                updatePrompt();
+            }
+
+            @Override
+            public void onFinished() {
+                updatePrompt();
+            }
+        });
 
         // 右下角小电视水印：与 MetroHome / Setup 完全一致的尺寸算法（70% 屏幕长边 + 12% 溢出）
         ImageView wm = (ImageView) findViewById(R.id.tv_watermark);
@@ -121,7 +108,6 @@ public class KeyBindingSetupActivity extends BaseActivity {
 
         if (isRebind) {
             // 从设置进入：先清空旧绑定，直接进入录制页
-            KeyBindingUtil.clearAll();
             mPageAsk.setVisibility(View.GONE);
             mPageRecord.setVisibility(View.VISIBLE);
             startRecording();
@@ -137,61 +123,40 @@ public class KeyBindingSetupActivity extends BaseActivity {
     }
 
     private void startRecording() {
-        mRecording = true;
-        mRecordIndex = 0;
-        mLastRecordTime = 0L; // 重置防抖计时，第一个键立即可录
-        KeyBindingUtil.clearAll();
         mPageAsk.setVisibility(View.GONE);
         mPageRecord.setVisibility(View.VISIBLE);
-        updatePrompt();
+        mRecorder.start();
     }
 
     private void updatePrompt() {
-        if (mRecordIndex >= RECORD_ORDER.length) {
-            // 录制完成
+        if (mRecorder.isFinished()) {
             mPromptText.setText(getString(R.string.keybinding_done));
             mProgressText.setText("");
             finishSetup();
             return;
         }
-        String keyName = RECORD_NAMES[mRecordIndex];
-        mPromptText.setText(getString(R.string.keybinding_prompt_prefix) + " " + keyName);
+        mPromptText.setText(getString(R.string.keybinding_prompt_prefix) + " "
+                + mRecorder.getCurrentName());
         mProgressText.setText(getString(R.string.keybinding_progress,
-                mRecordIndex + 1, RECORD_ORDER.length));
+                mRecorder.getIndex() + 1, mRecorder.getTotal()));
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        // 录制页：任何一个按键都只被录入，不参与界面操作。
-        // 使用 dispatchKeyEvent（在 view 焦点分发之前）确保 DPAD 方向键也能被捕获，
-        // 而不是被系统的焦点遍历消费掉。
-        // 防抖：每次录入只取第一个捕获的 keycode；录入完成一个键后，1 秒内
-        // 再按下的键一律忽略（消费但不录入），防止连续快速按键录错。
-        if (mRecording && event.getAction() == KeyEvent.ACTION_DOWN
-                && event.getRepeatCount() == 0 && mRecordIndex < RECORD_ORDER.length) {
-            // 返回键只在录制「返回键」时允许录入；其他步骤仍按返回退出
-            if (event.getKeyCode() == KeyEvent.KEYCODE_BACK
-                    && RECORD_ORDER[mRecordIndex] != KeyBindingUtil.ACTION_RETURN) {
-                if (isRebindMode()) {
-                    finish();
-                } else {
-                    SharedPreferencesUtil.putBoolean("setup_shown", true);
-                    saveVersion();
-                    toast(getString(R.string.keybinding_toast_skip));
-                    enterMain();
-                }
-                return true;
+        if (mRecorder == null) return super.dispatchKeyEvent(event);
+        int result = mRecorder.handleKeyEvent(event);
+        if (result == KeyBindingRecorder.RESULT_ABORT) {
+            if (isRebindMode()) {
+                finish();
+            } else {
+                SharedPreferencesUtil.putBoolean("setup_shown", true);
+                saveVersion();
+                toast(getString(R.string.keybinding_toast_skip));
+                enterMain();
             }
-            long now = System.currentTimeMillis();
-            if (now - mLastRecordTime < 1000L) {
-                // 距上次录入不足 1 秒：忽略本次按键，等待下一次
-                return true;
-            }
-            mLastRecordTime = now;
-            int action = RECORD_ORDER[mRecordIndex];
-            KeyBindingUtil.saveKey(action, event.getKeyCode());
-            mRecordIndex++;
-            updatePrompt();
+            return true;
+        }
+        if (result != KeyBindingRecorder.RESULT_NOT_HANDLED) {
             return true;
         }
         return super.dispatchKeyEvent(event);
@@ -199,11 +164,8 @@ public class KeyBindingSetupActivity extends BaseActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        // 低版本(API<5)框架根本不回调 onBackPressed，只会在 onKeyDown 里直接 finish；
-        // 这里统一在 onKeyDown 接管 BACK，全版本行为一致
         if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
-            // 询问页允许返回（等同跳过）；录制页 BACK 会在 dispatchKeyEvent 被录入，不会走到这里
-            if (!mRecording) {
+            if (!mRecorder.isRecording()) {
                 finish();
             }
             return true;

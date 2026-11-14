@@ -35,6 +35,7 @@ import java.util.List;
 import tv.biliclassic.BaseActivity;
 import tv.biliclassic.MainActivity;
 import tv.biliclassic.R;
+import tv.biliclassic.util.KeyBindingRecorder;
 import tv.biliclassic.util.KeyBindingUtil;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.SharedPreferencesUtil;
@@ -86,26 +87,18 @@ public class MetroSetupActivity extends BaseActivity {
     private TextView mBtnStart = null; // 磁贴页"开始使用/下一页"按钮（按键导航最后一站）
 
     // ===== 按键绑定（Setup 第三页，复用 KeyBindingSetupActivity 的录制逻辑） =====
-    private static final int[] RECORD_ORDER = {
-        KeyBindingUtil.ACTION_MENU,
-        KeyBindingUtil.ACTION_RETURN,
-        KeyBindingUtil.ACTION_UP,
-        KeyBindingUtil.ACTION_DOWN,
-        KeyBindingUtil.ACTION_LEFT,
-        KeyBindingUtil.ACTION_RIGHT,
-        KeyBindingUtil.ACTION_CONFIRM,
-        KeyBindingUtil.ACTION_PAGE_UP,
-        KeyBindingUtil.ACTION_PAGE_DOWN,
-        KeyBindingUtil.ACTION_REFRESH
-    };
-    private static final String[] RECORD_NAMES = {
-        "菜单键", "返回键", "上键", "下键",
-        "左键", "右键", "确认键",
-        "上一页", "下一页", "刷新键"
-    };
-    private boolean mRecording = false;
-    private int mRecordIndex = 0;
-    private long mLastRecordTime = 0L;
+    private final KeyBindingRecorder mRecorder = new KeyBindingRecorder(
+            new KeyBindingRecorder.Listener() {
+                @Override
+                public void onRecordingChanged() {
+                    updatePrompt();
+                }
+
+                @Override
+                public void onFinished() {
+                    updatePrompt();
+                }
+            });
 
     // 绑定页询问页按键导航
     // 按键机在询问页可用方向键选择"是/否"，确认键触发；BACK 回磁贴页
@@ -1090,35 +1083,26 @@ public class MetroSetupActivity extends BaseActivity {
     }
 
     private void startRecording() {
-        mRecording = true;
-        mRecordIndex = 0;
-        mLastRecordTime = 0L;
-        KeyBindingUtil.clearAll();
         findViewById(R.id.page_ask).setVisibility(View.GONE);
         findViewById(R.id.page_record).setVisibility(View.VISIBLE);
-        updatePrompt();
+        mRecorder.start();
     }
 
     private void updatePrompt() {
         TextView promptText = (TextView) findViewById(R.id.prompt_text);
         TextView progressText = (TextView) findViewById(R.id.progress_text);
-        if (mRecordIndex >= RECORD_ORDER.length) {
+        if (mRecorder.isFinished()) {
             promptText.setText(getString(R.string.keybinding_done));
             progressText.setText("");
             finishBinding();
             return;
         }
-        String keyName = RECORD_NAMES[mRecordIndex];
-        promptText.setText(getString(R.string.keybinding_prompt_prefix) + " " + keyName);
+        promptText.setText(getString(R.string.keybinding_prompt_prefix) + " "
+                + mRecorder.getCurrentName());
         progressText.setText(getString(R.string.keybinding_progress,
-                mRecordIndex + 1, RECORD_ORDER.length));
+                mRecorder.getIndex() + 1, mRecorder.getTotal()));
     }
 
-    /**
-     * 询问页按键导航高亮：当前选择项（是/否）背景变深粉，另一项恢复原样。
-     * 用 state_selected selector + setSelected 驱动，避免 setBackgroundColor/
-     * setBackgroundResource 混用导致老设备上高亮残留或尺寸跳动。
-     */
     private void applyAskHighlight() {
         TextView btnYes = (TextView) findViewById(R.id.btn_yes);
         TextView btnNo = (TextView) findViewById(R.id.btn_no);
@@ -1197,30 +1181,16 @@ public class MetroSetupActivity extends BaseActivity {
                 return true;
             }
         }
-        if (mOnPage3 && mRecording && event.getAction() == android.view.KeyEvent.ACTION_DOWN
+        if (mOnPage3 && mRecorder.isRecording()
+                && event.getAction() == android.view.KeyEvent.ACTION_DOWN
                 && event.getRepeatCount() == 0) {
-            if (event.getKeyCode() == android.view.KeyEvent.KEYCODE_BACK
-                    && (mRecordIndex >= RECORD_ORDER.length
-                    || RECORD_ORDER[mRecordIndex] != KeyBindingUtil.ACTION_RETURN)) {
+            int result = mRecorder.handleKeyEvent(event);
+            if (result == KeyBindingRecorder.RESULT_ABORT) {
                 finishBinding();
-                return true;
-            }
-            if (mRecordIndex < RECORD_ORDER.length) {
-                long now = System.currentTimeMillis();
-                if (now - mLastRecordTime < 1000L) {
-                    return true;
-                }
-                mLastRecordTime = now;
-                int action = RECORD_ORDER[mRecordIndex];
-                KeyBindingUtil.saveKey(action, event.getKeyCode());
-                mRecordIndex++;
-                updatePrompt();
-                return true;
             }
             return true;
         }
-        // 绑定页询问页按键导航（按键机）：方向键切换"是/否"，确认键触发
-        if (mOnPage3 && !mRecording
+        if (mOnPage3 && !mRecorder.isRecording()
                 && event.getAction() == android.view.KeyEvent.ACTION_DOWN
                 && event.getRepeatCount() == 0) {
             int act = KeyBindingUtil.classify(event.getKeyCode());
@@ -1299,7 +1269,7 @@ public class MetroSetupActivity extends BaseActivity {
             }
             if (mOnPage3) {
                 // 录制中按 BACK：退出向导（dispatchKeyEvent 已处理，但还是保留XD）
-                if (mRecording) {
+                if (mRecorder.isRecording()) {
                     finishBinding();
                     return true;
                 }
