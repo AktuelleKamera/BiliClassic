@@ -3166,7 +3166,7 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         // TextureView 不需要 adjustVideoSize
-        if (!(mRendererType == RENDERER_TEXTUREVIEW && mRendererType == RENDERER_TEXTUREVIEW)) {
+        if (mRendererType != RENDERER_TEXTUREVIEW) {
             adjustVideoSize();
         }
         updateTopBarForOrientation();
@@ -3582,7 +3582,7 @@ public class BiliPlayerActivity extends Activity implements
 
     private void adjustVideoSize() {
         // TextureView 不在这里处理，由 applyVideoScale 的 Matrix 控制
-        if (mRendererType == RENDERER_TEXTUREVIEW && mRendererType == RENDERER_TEXTUREVIEW) {
+        if (mRendererType == RENDERER_TEXTUREVIEW) {
             return;
         }
 
@@ -3630,7 +3630,7 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         // TextureView 通过 Matrix 控制
-        if (mRendererType == RENDERER_TEXTUREVIEW && mRendererType == RENDERER_TEXTUREVIEW) {
+        if (mRendererType == RENDERER_TEXTUREVIEW) {
             // 重新应用缩放
             if (mGestureController != null) {
                 applyVideoScale(mGestureController.getCurrentScale(),
