@@ -618,4 +618,5 @@
     <string name="common_deleted">已刪除</string>
     <string name="common_favorite_videos">收藏影片</string>
     <string name="common_favorite_folder_name">收藏夾名稱</string>
+    <string name="dash_requires_ijk">DASH需要IJK解碼器</string>
 </resources>

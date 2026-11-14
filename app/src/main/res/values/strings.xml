@@ -743,4 +743,5 @@
     <string name="common_favorite_videos">收藏视频</string>
     <string name="common_favorite_folder_name">收藏夹名称</string>
     <string translatable="false" name="common_surface_view">SurfaceView</string>
+    <string name="dash_requires_ijk">DASH需要IJK解码器</string>
 </resources>

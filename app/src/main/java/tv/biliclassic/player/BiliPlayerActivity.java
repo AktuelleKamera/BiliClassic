@@ -576,6 +576,7 @@ public class BiliPlayerActivity extends Activity implements
                 && SettingsActivity.getPlayStreamFormat() == 16
                 && decoderType == DECODER_SYSTEM) {
             decoderType = SdkHelper.getSdkInt() >= 16 ? DECODER_IJK_HARD : DECODER_IJK_SOFT;
+            Toast.makeText(this, getString(R.string.dash_requires_ijk), Toast.LENGTH_LONG).show();
         }
         if (mForceHwDecode && SdkHelper.getSdkInt() >= 16) {
             decoderType = DECODER_IJK_HARD;
