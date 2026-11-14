@@ -1,5 +1,7 @@
 package tv.biliclassic.download;
 
+import tv.biliclassic.util.Quality;
+
 import android.app.Notification;
 import android.app.Service;
 import android.content.Context;
@@ -157,7 +159,7 @@ public class VideoDownloadService extends Service {
         String pageTitle = intent.getStringExtra("page_title");
         long cid = intent.getLongExtra("cid", 0);
         int page = intent.getIntExtra("page", 1);
-        int quality = intent.getIntExtra("quality", 16);
+        int quality = intent.getIntExtra("quality", Quality.Q360P);
         String qualityName = intent.getStringExtra("quality_name");
         String coverUrl = intent.getStringExtra("cover_url");
         String upName = intent.getStringExtra("up_name");

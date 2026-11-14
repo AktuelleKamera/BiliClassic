@@ -1,5 +1,7 @@
 package tv.biliclassic.download;
 
+import tv.biliclassic.util.Quality;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -231,7 +233,7 @@ public class VideoDownloadEnvironment {
     public static String getTypeTagFromQuality(int qn) {
         // qn <= 16 → flv (360P以下)
         // qn > 16 → mp4
-        return qn > 16 ? "mp4" : "flv";
+        return qn > Quality.Q360P ? "mp4" : "flv";
     }
 
     /**
@@ -239,15 +241,15 @@ public class VideoDownloadEnvironment {
      */
     public static String getQualityName(int qn) {
         switch (qn) {
-            case 6: return "240P 极速";
-            case 16: return "360P 流畅";
-            case 32: return "480P 清晰";
-            case 64: return "720P 高清";
-            case 74: return "720P60 高帧率";
-            case 80: return "1080P 超清";
-            case 112: return "1080P+ 高码率";
-            case 116: return "1080P60 高帧率";
-            case 120: return "4K 超高清";
+            case Quality.Q240P: return "240P 极速";
+            case Quality.Q360P: return "360P 流畅";
+            case Quality.Q480P: return "480P 清晰";
+            case Quality.Q720P: return "720P 高清";
+            case Quality.Q720P60: return "720P60 高帧率";
+            case Quality.Q1080P: return "1080P 超清";
+            case Quality.Q1080P_PLUS: return "1080P+ 高码率";
+            case Quality.Q1080P60: return "1080P60 高帧率";
+            case Quality.Q4K: return "4K 超高清";
             default: return qn + "P";
         }
     }

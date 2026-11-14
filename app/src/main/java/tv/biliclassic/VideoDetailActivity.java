@@ -1,5 +1,7 @@
 package tv.biliclassic;
 
+import tv.biliclassic.util.Quality;
+
 import tv.biliclassic.util.DeviceUtil;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -91,7 +93,7 @@ public class VideoDetailActivity extends BaseActivity {
     // 下载对话框数据
     private List<VideoDetailFragment.VideoPage> mPages;
     private boolean[] mPageChecked;
-    private int mSelectedQuality = 64;
+    private int mSelectedQuality = Quality.Q720P;
     private String mSelectedQualityName = "";
     private Dialog mDownloadDialog;
 
@@ -2464,15 +2466,15 @@ public class VideoDetailActivity extends BaseActivity {
         }
 
         int defaultQuality = SettingsActivity.getVideoQuality();
-        if (defaultQuality == 16) {
+        if (defaultQuality == Quality.Q360P) {
             qualityGroup.check(R.id.quality_360);
-        } else if (defaultQuality == 32) {
+        } else if (defaultQuality == Quality.Q480P) {
             qualityGroup.check(R.id.quality_480);
-        } else if (defaultQuality == 80) {
+        } else if (defaultQuality == Quality.Q1080P) {
             qualityGroup.check(R.id.quality_1080);
-        } else if (dashMode && defaultQuality == 112) {
+        } else if (dashMode && defaultQuality == Quality.Q1080P_PLUS) {
             qualityGroup.check(R.id.quality_1080_plus);
-        } else if (dashMode && defaultQuality == 120) {
+        } else if (dashMode && defaultQuality == Quality.Q4K) {
             qualityGroup.check(R.id.quality_4k);
         } else {
             qualityGroup.check(R.id.quality_720);
@@ -2503,22 +2505,22 @@ public class VideoDetailActivity extends BaseActivity {
             public void onClick(View v) {
                 int checkedId = qualityGroup.getCheckedRadioButtonId();
                 if (checkedId == R.id.quality_360) {
-                    mSelectedQuality = 16;
+                    mSelectedQuality = Quality.Q360P;
                     mSelectedQualityName = getString(R.string.quality_360p);
                 } else if (checkedId == R.id.quality_480) {
-                    mSelectedQuality = 32;
+                    mSelectedQuality = Quality.Q480P;
                     mSelectedQualityName = getString(R.string.videodetail_q_480p);
                 } else if (checkedId == R.id.quality_720) {
-                    mSelectedQuality = 64;
+                    mSelectedQuality = Quality.Q720P;
                     mSelectedQualityName = getString(R.string.quality_720p);
                 } else if (checkedId == R.id.quality_1080) {
-                    mSelectedQuality = 80;
+                    mSelectedQuality = Quality.Q1080P;
                     mSelectedQualityName = getString(R.string.quality_1080p);
                 } else if (checkedId == R.id.quality_1080_plus) {
-                    mSelectedQuality = 112;
+                    mSelectedQuality = Quality.Q1080P_PLUS;
                     mSelectedQualityName = getString(R.string.quality_1080p_plus);
                 } else {
-                    mSelectedQuality = 120;
+                    mSelectedQuality = Quality.Q4K;
                     mSelectedQualityName = getString(R.string.quality_4k);
                 }
 

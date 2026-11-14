@@ -1,5 +1,7 @@
 package tv.biliclassic.player;
 
+import tv.biliclassic.util.Quality;
+
 import android.app.Activity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -199,18 +201,18 @@ public class PlayerQualityManager {
 
     public static String getQualityShortName(int qn) {
         switch (qn) {
-            case 6:  return "极速"; //240P
-            case 16: return "流畅"; //360P
-            case 32: return "清晰"; //480P
-            case 64: return "高清"; //720P
-            case 74: return "高清60帧"; //720P60
-            case 80: return "超清"; //1080P
-            case 112: return "超清+"; //1080P+
-            case 116: return "超清60帧"; //1080P60
-            case 120: return "超高清"; //4K
-            case 125: return "HDR"; //HDR 真彩
-            case 126: return "杜比"; //杜比视界
-            case 127: return "8K"; //8K 超高清
+            case Quality.Q240P:  return "极速"; //240P
+            case Quality.Q360P: return "流畅"; //360P
+            case Quality.Q480P: return "清晰"; //480P
+            case Quality.Q720P: return "高清"; //720P
+            case Quality.Q720P60: return "高清60帧"; //720P60
+            case Quality.Q1080P: return "超清"; //1080P
+            case Quality.Q1080P_PLUS: return "超清+"; //1080P+
+            case Quality.Q1080P60: return "超清60帧"; //1080P60
+            case Quality.Q4K: return "超高清"; //4K
+            case Quality.QHDR: return "HDR"; //HDR 真彩
+            case Quality.QDOLBY: return "杜比"; //杜比视界
+            case Quality.Q8K: return "8K"; //8K 超高清
             default: return qn > 0 ? (qn + "P") : "画质";
         }
     }

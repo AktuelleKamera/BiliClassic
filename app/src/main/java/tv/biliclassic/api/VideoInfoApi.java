@@ -16,6 +16,8 @@
  */
 package tv.biliclassic.api;
 
+import tv.biliclassic.util.Quality;
+
 import android.text.SpannableStringBuilder;
 
 import org.json.JSONArray;
@@ -40,10 +42,6 @@ import tv.biliclassic.util.StringUtil;
 public class VideoInfoApi {
 
     // 画质常量
-    private static final int QUALITY_360P = 16;
-    private static final int QUALITY_480P = 32;
-    private static final int QUALITY_720P = 64;
-    private static final int QUALITY_1080P = 80;
 
     // 视频信息短缓存：VideoDetailActivity.checkAndSetup 与 VideoDetailFragment.loadVideoData
     // 会在同一页面几乎同时各取一次视频信息，用 5 秒 TTL 去重，避免两条完全相同的请求。
@@ -338,9 +336,9 @@ public class VideoInfoApi {
 
         // 如果还是没有，使用默认值
         if (videoInfo.qualities.size() == 0) {
-            videoInfo.qualities.add(QUALITY_360P);
-            videoInfo.qualities.add(QUALITY_480P);
-            videoInfo.qualities.add(QUALITY_720P);
+            videoInfo.qualities.add(Quality.Q360P);
+            videoInfo.qualities.add(Quality.Q480P);
+            videoInfo.qualities.add(Quality.Q720P);
         }
 
         // 排序（从低到高）

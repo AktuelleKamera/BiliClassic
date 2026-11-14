@@ -1,5 +1,7 @@
 package tv.biliclassic.player;
 
+import tv.biliclassic.util.Quality;
+
 import tv.biliclassic.util.DeviceUtil;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -2236,7 +2238,7 @@ public class BiliPlayerActivity extends Activity implements
 
     private void switchQuality(final int newQn) {
         // 转码播放时强制360P
-        final int effectiveQn = tv.biliclassic.util.ConvertPlayUtil.isConvertEnabled() ? 16 : newQn;
+        final int effectiveQn = tv.biliclassic.util.ConvertPlayUtil.isConvertEnabled() ? Quality.Q360P : newQn;
         if (mediaPlayer != null && isPrepared) {
             try {
                 mQualitySwitchSeekPos = (int) mediaPlayer.getCurrentPosition();
@@ -2994,9 +2996,9 @@ public class BiliPlayerActivity extends Activity implements
             if (isLiveStream) {
                 maxBufferSize = SdkHelper.isHighMemoryDevice()
                         ? 8 * 1024 * 1024L : 4 * 1024 * 1024L;
-            } else if (mCurrentQn >= 120) {
+            } else if (mCurrentQn >= Quality.Q4K) {
                 maxBufferSize = 10 * 1024 * 1024L;
-            } else if (mCurrentQn >= 80) {
+            } else if (mCurrentQn >= Quality.Q1080P) {
                 maxBufferSize = 2 * 1024 * 1024L;
             } else {
                 maxBufferSize = SdkHelper.isHighMemoryDevice()

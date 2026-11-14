@@ -1,5 +1,7 @@
 package tv.biliclassic;
 
+import tv.biliclassic.util.Quality;
+
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -71,14 +73,6 @@ public class SettingsActivity extends BaseActivity {
     private static final String CONVERT_REGION = "us-east-005";
 
     // 视频画质（B站 API 标准值）
-    private static final int QUALITY_360P = 16;
-    private static final int QUALITY_480P = 32;
-    private static final int QUALITY_720P = 64;
-    private static final int QUALITY_1080P = 80;
-    private static final int QUALITY_1080P60 = 116;
-    private static final int QUALITY_1080P_PLUS = 112;
-    private static final int QUALITY_4K = 120;
-    private static final int QUALITY_8K = 127;
 
     // 播放器偏好值
     private static final int PLAYER_AUTO = -1;
@@ -1386,8 +1380,8 @@ public class SettingsActivity extends BaseActivity {
                 getString(R.string.quality_8k)
         };
         final int[] allValues = {
-                QUALITY_360P, QUALITY_480P, QUALITY_720P, QUALITY_1080P,
-                QUALITY_1080P_PLUS, QUALITY_1080P60, QUALITY_4K, QUALITY_8K
+                Quality.Q360P, Quality.Q480P, Quality.Q720P, Quality.Q1080P,
+                Quality.Q1080P_PLUS, Quality.Q1080P60, Quality.Q4K, Quality.Q8K
         };
         int count = dash ? allQualities.length : 4;
         final String[] qualities = new String[count];
@@ -1426,19 +1420,19 @@ public class SettingsActivity extends BaseActivity {
 
     private void updateVideoQualityDisplay() {
         int quality = getVideoQuality();
-        if (quality == QUALITY_8K) {
+        if (quality == Quality.Q8K) {
             videoQualityText.setText(getString(R.string.quality_8k));
-        } else if (quality == QUALITY_4K) {
+        } else if (quality == Quality.Q4K) {
             videoQualityText.setText(getString(R.string.quality_4k));
-        } else if (quality == QUALITY_1080P_PLUS) {
+        } else if (quality == Quality.Q1080P_PLUS) {
             videoQualityText.setText(getString(R.string.quality_1080p_plus));
-        } else if (quality == QUALITY_1080P60) {
+        } else if (quality == Quality.Q1080P60) {
             videoQualityText.setText(getString(R.string.quality_1080p60));
-        } else if (quality == QUALITY_1080P) {
+        } else if (quality == Quality.Q1080P) {
             videoQualityText.setText(getString(R.string.quality_1080p));
-        } else if (quality == QUALITY_720P) {
+        } else if (quality == Quality.Q720P) {
             videoQualityText.setText(getString(R.string.quality_720p));
-        } else if (quality == QUALITY_480P) {
+        } else if (quality == Quality.Q480P) {
             videoQualityText.setText(getString(R.string.videodetail_q_480p));
         } else {
             videoQualityText.setText(getString(R.string.quality_360p));
@@ -1448,16 +1442,16 @@ public class SettingsActivity extends BaseActivity {
     public static int getVideoQuality() {
         if (getPlayStreamFormat() == 16) {
             if (!SharedPreferencesUtil.contains(KEY_VIDEO_QUALITY_DASH)) {
-                int old = SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY, QUALITY_480P);
-                int dashDefault = old == QUALITY_1080P_PLUS || old == QUALITY_1080P60
-                        || old == QUALITY_4K || old == QUALITY_8K
-                        ? old : QUALITY_480P;
+                int old = SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY, Quality.Q480P);
+                int dashDefault = old == Quality.Q1080P_PLUS || old == Quality.Q1080P60
+                        || old == Quality.Q4K || old == Quality.Q8K
+                        ? old : Quality.Q480P;
                 SharedPreferencesUtil.putInt(KEY_VIDEO_QUALITY_DASH, dashDefault);
             }
-            return SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY_DASH, QUALITY_480P);
+            return SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY_DASH, Quality.Q480P);
         }
-        int quality = SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY, QUALITY_360P);
-        return quality > QUALITY_1080P ? QUALITY_1080P : quality;
+        int quality = SharedPreferencesUtil.getInt(KEY_VIDEO_QUALITY, Quality.Q360P);
+        return quality > Quality.Q1080P ? Quality.Q1080P : quality;
     }
 
     // 获取渲染方式

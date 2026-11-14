@@ -16,6 +16,8 @@
  */
 package tv.biliclassic.model;
 
+import tv.biliclassic.util.Quality;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -84,7 +86,7 @@ public class VideoInfo implements Serializable {
             data.title = title;
         }
         data.mid = SharedPreferencesUtil.getLong("mid", 0);
-        data.qn = SharedPreferencesUtil.getInt("play_qn", 16);
+        data.qn = SharedPreferencesUtil.getInt("play_qn", Quality.Q360P);
         return data;
     }
 }

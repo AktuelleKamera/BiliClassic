@@ -17,6 +17,8 @@
  */
 package tv.biliclassic.api;
 
+import tv.biliclassic.util.Quality;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -357,10 +359,10 @@ public class PlayerApi {
         }
         playerData.qnStrList = qnStrList;
         playerData.qnValueList = qnValueList;
-        appendDashQuality(playerData, data, 127, "8K 超高清");
-        appendDashQuality(playerData, data, 126, "杜比视界");
-        appendDashQuality(playerData, data, 125, "HDR 真彩");
-        appendDashQuality(playerData, data, 116, "1080P60 高帧率");
+        appendDashQuality(playerData, data, Quality.Q8K, "8K 超高清");
+        appendDashQuality(playerData, data, Quality.QDOLBY, "杜比视界");
+        appendDashQuality(playerData, data, Quality.QHDR, "HDR 真彩");
+        appendDashQuality(playerData, data, Quality.Q1080P60, "1080P60 高帧率");
 
         // 写入静态缓存
         if (!download && videoUrl.length() > 0) {
@@ -526,10 +528,10 @@ public class PlayerApi {
         }
         playerData.qnStrList = qnStrList;
         playerData.qnValueList = qnValueList;
-        appendDashQuality(playerData, data, 127, "8K 超高清");
-        appendDashQuality(playerData, data, 126, "杜比视界");
-        appendDashQuality(playerData, data, 125, "HDR 真彩");
-        appendDashQuality(playerData, data, 116, "1080P60 高帧率");
+        appendDashQuality(playerData, data, Quality.Q8K, "8K 超高清");
+        appendDashQuality(playerData, data, Quality.QDOLBY, "杜比视界");
+        appendDashQuality(playerData, data, Quality.QHDR, "HDR 真彩");
+        appendDashQuality(playerData, data, Quality.Q1080P60, "1080P60 高帧率");
 
         android.util.Log.e("PlayerApi", "getBangumi 结束");
     }
