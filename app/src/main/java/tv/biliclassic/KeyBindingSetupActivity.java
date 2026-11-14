@@ -169,8 +169,9 @@ public class KeyBindingSetupActivity extends BaseActivity {
         // 再按下的键一律忽略（消费但不录入），防止连续快速按键录错。
         if (mRecording && event.getAction() == KeyEvent.ACTION_DOWN
                 && event.getRepeatCount() == 0 && mRecordIndex < RECORD_ORDER.length) {
-            // 返回键是系统保留键，不作为可绑定键录入；按下即退出/跳过向导
-            if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+            // 返回键只在录制「返回键」时允许录入；其他步骤仍按返回退出
+            if (event.getKeyCode() == KeyEvent.KEYCODE_BACK
+                    && RECORD_ORDER[mRecordIndex] != KeyBindingUtil.ACTION_RETURN) {
                 if (isRebindMode()) {
                     finish();
                 } else {

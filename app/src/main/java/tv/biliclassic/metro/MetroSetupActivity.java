@@ -1199,7 +1199,9 @@ public class MetroSetupActivity extends BaseActivity {
         }
         if (mOnPage3 && mRecording && event.getAction() == android.view.KeyEvent.ACTION_DOWN
                 && event.getRepeatCount() == 0) {
-            if (event.getKeyCode() == android.view.KeyEvent.KEYCODE_BACK) {
+            if (event.getKeyCode() == android.view.KeyEvent.KEYCODE_BACK
+                    && (mRecordIndex >= RECORD_ORDER.length
+                    || RECORD_ORDER[mRecordIndex] != KeyBindingUtil.ACTION_RETURN)) {
                 finishBinding();
                 return true;
             }
