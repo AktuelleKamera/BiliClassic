@@ -995,6 +995,23 @@ public class BiliPlayerActivity extends Activity implements
      * 应用视频缩放
      * @param scale 缩放倍数 (1.0 = 原始大小)
      */
+    private float resolveTargetRatio(int mode, float videoRatio, float containerRatio) {
+        switch (mode) {
+            case ASPECT_RATIO_ADJUST_SCREEN:
+                return containerRatio;
+            case ASPECT_RATIO_4_3_INSIDE:
+                return 4f / 3f;
+            case ASPECT_RATIO_16_9_INSIDE:
+                return 16f / 9f;
+            case ASPECT_RATIO_9_16_INSIDE:
+                return 9f / 16f;
+            case ASPECT_RATIO_ADJUST_CONTENT:
+            case ASPECT_RATIO_FILL:
+            default:
+                return videoRatio;
+        }
+    }
+
     private void applyVideoScale(float scale, float translateX, float translateY) {
         if (videoView == null) return;
         if (videoWidth == 0 || videoHeight == 0) {
@@ -1022,30 +1039,7 @@ public class BiliPlayerActivity extends Activity implements
         float containerRatio = (float) containerWidth / containerHeight;
         float videoRatio = (float) videoWidth / videoHeight;
 
-        float targetRatio;
-        switch (currentAspectRatio) {
-            case ASPECT_RATIO_ADJUST_CONTENT:
-                targetRatio = videoRatio;
-                break;
-            case ASPECT_RATIO_ADJUST_SCREEN:
-                targetRatio = containerRatio;
-                break;
-            case ASPECT_RATIO_4_3_INSIDE:
-                targetRatio = 4f / 3f;
-                break;
-            case ASPECT_RATIO_16_9_INSIDE:
-                targetRatio = 16f / 9f;
-                break;
-            case ASPECT_RATIO_9_16_INSIDE:
-                targetRatio = 9f / 16f;
-                break;
-            case ASPECT_RATIO_FILL:
-                targetRatio = videoRatio;
-                break;
-            default:
-                targetRatio = videoRatio;
-                break;
-        }
+        float targetRatio = resolveTargetRatio(currentAspectRatio, videoRatio, containerRatio);
 
         float baseScaleX = (float) containerWidth / videoWidth;
         float baseScaleY = (float) containerHeight / videoHeight;
@@ -1102,30 +1096,7 @@ public class BiliPlayerActivity extends Activity implements
                     float containerRatio = (float) containerWidth / containerHeight;
                     float videoRatio = (float) videoWidth / videoHeight;
 
-                    float targetRatio;
-                    switch (currentAspectRatio) {
-                        case ASPECT_RATIO_ADJUST_CONTENT:
-                            targetRatio = videoRatio;
-                            break;
-                        case ASPECT_RATIO_ADJUST_SCREEN:
-                            targetRatio = containerRatio;
-                            break;
-                        case ASPECT_RATIO_4_3_INSIDE:
-                            targetRatio = 4f / 3f;
-                            break;
-                        case ASPECT_RATIO_16_9_INSIDE:
-                            targetRatio = 16f / 9f;
-                            break;
-                        case ASPECT_RATIO_9_16_INSIDE:
-                            targetRatio = 9f / 16f;
-                            break;
-                        case ASPECT_RATIO_FILL:
-                            targetRatio = videoRatio;
-                            break;
-                        default:
-                            targetRatio = videoRatio;
-                            break;
-                    }
+                    float targetRatio = resolveTargetRatio(currentAspectRatio, videoRatio, containerRatio);
 
                     int baseWidth, baseHeight;
                     if (targetRatio > containerRatio) {
@@ -1209,30 +1180,7 @@ public class BiliPlayerActivity extends Activity implements
             float svContainerRatio = (float) containerWidth / containerHeight;
             float svVideoRatio = (float) videoWidth / videoHeight;
 
-            float svTargetRatio;
-            switch (currentAspectRatio) {
-                case ASPECT_RATIO_ADJUST_CONTENT:
-                    svTargetRatio = svVideoRatio;
-                    break;
-                case ASPECT_RATIO_ADJUST_SCREEN:
-                    svTargetRatio = svContainerRatio;
-                    break;
-                case ASPECT_RATIO_4_3_INSIDE:
-                    svTargetRatio = 4f / 3f;
-                    break;
-                case ASPECT_RATIO_16_9_INSIDE:
-                    svTargetRatio = 16f / 9f;
-                    break;
-                case ASPECT_RATIO_9_16_INSIDE:
-                    svTargetRatio = 9f / 16f;
-                    break;
-                case ASPECT_RATIO_FILL:
-                    svTargetRatio = svVideoRatio;
-                    break;
-                default:
-                    svTargetRatio = svVideoRatio;
-                    break;
-            }
+            float svTargetRatio = resolveTargetRatio(currentAspectRatio, svVideoRatio, svContainerRatio);
 
             int svTargetWidth, svTargetHeight;
             if (svTargetRatio > svContainerRatio) {
@@ -3648,30 +3596,7 @@ public class BiliPlayerActivity extends Activity implements
         float containerRatio = (float) containerWidth / containerHeight;
         float videoRatio = (float) videoWidth / videoHeight;
 
-        float targetRatio;
-        switch (mode) {
-            case ASPECT_RATIO_ADJUST_CONTENT:
-                targetRatio = videoRatio;
-                break;
-            case ASPECT_RATIO_ADJUST_SCREEN:
-                targetRatio = containerRatio;
-                break;
-            case ASPECT_RATIO_4_3_INSIDE:
-                targetRatio = 4f / 3f;
-                break;
-            case ASPECT_RATIO_16_9_INSIDE:
-                targetRatio = 16f / 9f;
-                break;
-            case ASPECT_RATIO_9_16_INSIDE:
-                targetRatio = 9f / 16f;
-                break;
-            case ASPECT_RATIO_FILL:
-                targetRatio = videoRatio;
-                break;
-            default:
-                targetRatio = videoRatio;
-                break;
-        }
+        float targetRatio = resolveTargetRatio(mode, videoRatio, containerRatio);
 
         int targetWidth, targetHeight;
         if (mode == ASPECT_RATIO_FILL) {
