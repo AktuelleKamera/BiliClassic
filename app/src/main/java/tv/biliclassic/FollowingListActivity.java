@@ -151,7 +151,7 @@ public class FollowingListActivity extends BaseActivity {
     private void loadFirstPage() {
         long mid = SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0);
         if (mid == 0) {
-            showEmpty(getString(R.string.following_list_not_login));
+            showEmpty(getString(R.string.please_login_first));
             return;
         }
         page = 1;

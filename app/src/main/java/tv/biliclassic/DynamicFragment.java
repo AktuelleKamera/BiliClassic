@@ -188,7 +188,7 @@ public class DynamicFragment extends Fragment {
             offset = null;
             feedList.clear();
             if (adapter != null) adapter.notifyDataSetChanged();
-            showEmpty(getString(R.string.dynamicfragment_settext_login));
+            showEmpty(getString(R.string.please_login_first));
             return;
         }
         isLoading = true;
@@ -219,7 +219,7 @@ public class DynamicFragment extends Fragment {
                                 feedList.clear();
                                 if (adapter != null) adapter.notifyDataSetChanged();
                                 if (listView != null) listView.setVisibility(View.GONE);
-                                showEmpty(getString(R.string.dynamicfragment_settext_login));
+                                showEmpty(getString(R.string.please_login_first));
                                 return;
                             }
                             if (feedList.size() == 0) {
@@ -297,7 +297,7 @@ public class DynamicFragment extends Fragment {
 
     private void doLike(final Dynamic d) {
         if (!isLoggedIn()) {
-            showToast(getString(R.string.dynamicfragment_settext_login));
+            showToast(getString(R.string.please_login_first));
             return;
         }
         final boolean target = !d.liked;
@@ -381,7 +381,7 @@ public class DynamicFragment extends Fragment {
     private void showPublishDialog() {
         if (getActivity() == null) return;
         if (!isLoggedIn()) {
-            showToast(getString(R.string.dynamicfragment_settext_login));
+            showToast(getString(R.string.please_login_first));
             startActivity(new Intent(getActivity(), LoginActivity.class));
             return;
         }

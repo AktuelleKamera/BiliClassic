@@ -74,7 +74,6 @@
     <string name="bili_about_steven">斯蒂芬電池</string>
     <string name="biliplayeractivity_toast_65e0_1">無影片源</string>
     <string name="following_list_empty">還沒有關注任何人</string>
-    <string name="following_list_not_login">請先登入</string>
     <string name="following_list_load_fail">載入失敗，請重試</string>
     <string name="following_list_unfollow">取消關注</string>
     <string name="following_list_unfollow_msg">確定要取消關注 %1$s 嗎？</string>
@@ -108,7 +107,6 @@
     <string name="mainactivity_tab_home">分區導航</string>
     <string name="dynamicfragment_btn_send">發送動態</string>
     <string name="dynamicfragment_btn_refresh">重新整理</string>
-    <string name="dynamicfragment_settext_login">請先登入後查看動態</string>
     <string name="dynamicfragment_hint_input">分享新鮮事...</string>
     <string name="dynamicfragment_btn_ok">發送</string>
     <string name="dynamicfragment_toast_empty">動態內容不能為空</string>

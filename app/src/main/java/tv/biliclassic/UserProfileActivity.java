@@ -1191,7 +1191,7 @@ public class UserProfileActivity extends BaseActivity {
     private void doLikeDynamic(final Dynamic d) {
         if (d == null) return;
         if (!isLoggedIn()) {
-            Toast.makeText(this, getString(R.string.dynamicfragment_settext_login),
+            Toast.makeText(this, getString(R.string.please_login_first),
                     Toast.LENGTH_SHORT).show();
             return;
         }

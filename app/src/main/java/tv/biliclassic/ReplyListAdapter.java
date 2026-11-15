@@ -241,6 +241,11 @@ public class ReplyListAdapter extends BaseObservableAdapter<ReplyListActivity.Re
             h2.likeIcon.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    if (SharedPreferencesUtil.getLong("mid", 0L) <= 0L) {
+                        Toast.makeText(context, context.getString(R.string.please_login_first),
+                                Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                     final boolean wasLiked = rd.liked;
                     rd.liked = !wasLiked;
                     if (rd.liked) {

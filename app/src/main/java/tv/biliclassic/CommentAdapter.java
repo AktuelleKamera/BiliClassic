@@ -144,7 +144,6 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
                             tv.biliclassic.util.UiSkin.setBgColorKeepPadding(v, 0x40D86DA5);
                             h.copyText = ((TextView) h.message).getText().toString();
                             h.downRpid = h.rpid;
-                            Log.e("CommentClick", "DOWN rpid=" + h.rpid + " downRpid=" + h.downRpid);
                             h.longPressFired = false;
                             h.longPressRunnable = new Runnable() {
                                 @Override
@@ -263,14 +262,12 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
         holder.mid = item.mid;
         holder.oid = mAid;
         holder.rpid = item.rpid;
-        Log.e("CommentClick", "bind pos=" + position + " rpid=" + item.rpid + " msg=" + (item.message != null ? item.message.substring(0, Math.min(20, item.message.length())) : "null"));
 
         convertView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 ViewHolder h = (ViewHolder) v.getTag();
                 long clickedRpid = h.downRpid;
-                Log.e("CommentClick", "click downRpid=" + clickedRpid);
                 for (int i = 0; i < list.size(); i++) {
                     if (list.get(i).rpid == clickedRpid) {
                         CommentFragment.CommentItem ci = list.get(i);
@@ -311,6 +308,11 @@ public class CommentAdapter extends BaseObservableAdapter<CommentFragment.Commen
             h2.likeIcon.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
+                    if (SharedPreferencesUtil.getLong("mid", 0L) <= 0L) {
+                        Toast.makeText(context, context.getString(R.string.please_login_first),
+                                Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                     final int pos = list.indexOf(item);
                     if (pos < 0) return;
                     final boolean wasLiked = item.liked;

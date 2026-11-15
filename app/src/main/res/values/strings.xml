@@ -102,7 +102,6 @@
     <string translatable="false" name="bili_about_not_shikieimaru">不是射命丸文</string>
     <string name="biliplayeractivity_toast_65e0_1">无视频源</string>
     <string name="following_list_empty">还没有关注任何人</string>
-    <string name="following_list_not_login">请先登录</string>
     <string name="following_list_load_fail">加载失败，请重试</string>
     <string name="following_list_unfollow">取消关注</string>
     <string name="following_list_unfollow_msg">确定要取消关注 %1$s 吗？</string>
@@ -138,7 +137,6 @@
     <string name="mainactivity_tab_home">分区导航</string>
     <string name="dynamicfragment_btn_send">发送动态</string>
     <string name="dynamicfragment_btn_refresh">刷新</string>
-    <string name="dynamicfragment_settext_login">请先登录后查看动态</string>
     <string name="dynamicfragment_hint_input">分享新鲜事...</string>
     <string name="dynamicfragment_btn_ok">发送</string>
     <string name="dynamicfragment_toast_empty">动态内容不能为空</string>

@@ -2029,7 +2029,7 @@ public class VideoDetailActivity extends BaseActivity {
         long mid = SharedPreferencesUtil.getLong("mid", 0);
         String cookies = SharedPreferencesUtil.getString("cookies", "");
         if (mid == 0 || cookies == null || cookies.length() == 0) {
-            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.favorite_need_login), Toast.LENGTH_SHORT).show();
+            Toast.makeText(VideoDetailActivity.this, VideoDetailActivity.this.getString(R.string.please_login_first), Toast.LENGTH_SHORT).show();
             return;
         }
         final String[] items = {

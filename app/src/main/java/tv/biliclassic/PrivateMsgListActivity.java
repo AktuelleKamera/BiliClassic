@@ -103,7 +103,7 @@ public class PrivateMsgListActivity extends BaseActivity {
         if (isLoading) return;
         final long mid = SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0);
         if (mid == 0) {
-            showEmpty("请先登录");
+            showEmpty(getString(R.string.please_login_first));
             return;
         }
         isLoading = true;

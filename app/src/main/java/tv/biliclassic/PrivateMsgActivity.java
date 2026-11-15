@@ -98,7 +98,7 @@ public class PrivateMsgActivity extends BaseActivity {
             return;
         }
         if (myUid == 0) {
-            MsgUtil.showMsg(this, "请先登录");
+            MsgUtil.showMsg(this, getString(R.string.please_login_first));
             finish();
             return;
         }
