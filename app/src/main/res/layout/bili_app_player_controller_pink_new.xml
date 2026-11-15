@@ -75,8 +75,10 @@
                 android:textColor="@color/videoplay__video_title_text"
                 android:gravity="center"
                 android:id="@+id/media_quality"
-                android:paddingLeft="14dp"
-                android:layout_width="@dimen/player_status_bar_options_menu_items_layout_width"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp"
+                android:layout_width="wrap_content"
+                android:minWidth="@dimen/player_status_bar_options_menu_items_layout_width"
                 android:layout_height="match_parent"
                 android:singleLine="true"
                 style="@style/PlayerControlBarSpinner"/>

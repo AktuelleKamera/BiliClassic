@@ -125,13 +125,25 @@ public class PlayerQualityManager {
         mQualityListView.post(new Runnable() {
             @Override
             public void run() {
-                // 还没完成布局（宽度为 0）→ 下一帧再试，否则会算错水平偏移（时对时不对）
                 if (mQualityListView.getWidth() == 0 || mQualityButton.getWidth() == 0) {
                     if (mListVisible) {
                         mQualityListView.post(this);
                     }
                     return;
                 }
+                int buttonWidth = mQualityButton.getWidth();
+                android.view.ViewGroup.LayoutParams lp = mQualityListView.getLayoutParams();
+                if (lp != null && lp.width != buttonWidth) {
+                    lp.width = buttonWidth;
+                    mQualityListView.setLayoutParams(lp);
+                    if (mListVisible) {
+                        mQualityListView.post(this);
+                    }
+                    return;
+                }
+                // Always start from the layout position. Otherwise getLocationOnScreen()
+                // includes the previous translation and the menu drifts right on each open.
+                setQualityListOffset(0f);
                 try {
                     int[] btnLoc = new int[2];
                     int[] listLoc = new int[2];
@@ -139,27 +151,9 @@ public class PlayerQualityManager {
                     mQualityListView.getLocationOnScreen(listLoc);
                     int btnRight = btnLoc[0] + mQualityButton.getWidth();
                     int listRight = listLoc[0] + mQualityListView.getWidth();
-                    int offset = btnRight - listRight;
-                    // setTranslationX 是 API 11 才加入。注意 2.1 及以下 Dalvik 校验器为
-                    // 硬失败模式，字节码里保留直接引用会导致整类被拒载（运行时守卫无效），
-                    // 必须走反射：低版本抛 NoSuchMethodException 后用 Margin 对齐
-                    try {
-                        mQualityListView.getClass()
-                                .getMethod("setTranslationX", float.class)
-                                .invoke(mQualityListView, Float.valueOf(offset));
-                    } catch (NoSuchMethodException e) {
-                        android.view.ViewGroup.LayoutParams lp = mQualityListView.getLayoutParams();
-                        if (lp instanceof android.view.ViewGroup.MarginLayoutParams) {
-                            ((android.view.ViewGroup.MarginLayoutParams) lp).leftMargin = offset;
-                            mQualityListView.setLayoutParams(lp);
-                        }
-                    } catch (Exception e) {
-                        // ignore
-                    }
+                    setQualityListOffset(btnRight - listRight);
                 } catch (Exception e) {
-                    // ignore
                 }
-                // 对齐完成后再显示，避免先按默认位置绘制一帧的闪烁
                 if (mListVisible) {
                     mQualityListView.setVisibility(View.VISIBLE);
                 }
@@ -167,8 +161,25 @@ public class PlayerQualityManager {
         });
     }
 
+    private void setQualityListOffset(float offset) {
+        if (mQualityListView == null) return;
+        try {
+            mQualityListView.getClass()
+                    .getMethod("setTranslationX", float.class)
+                    .invoke(mQualityListView, Float.valueOf(offset));
+        } catch (NoSuchMethodException e) {
+            android.view.ViewGroup.LayoutParams lp = mQualityListView.getLayoutParams();
+            if (lp instanceof android.view.ViewGroup.MarginLayoutParams) {
+                ((android.view.ViewGroup.MarginLayoutParams) lp).leftMargin = (int) offset;
+                mQualityListView.setLayoutParams(lp);
+            }
+        } catch (Exception e) {
+        }
+    }
+
     public void hideQualityList() {
         if (mQualityListView == null) return;
+        setQualityListOffset(0f);
         mQualityListView.setVisibility(View.GONE);
         mListVisible = false;
     }
