@@ -64,8 +64,8 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
             android:background="#F3F3F3"
+            android:orientation="vertical"
             android:padding="0dp">
 
             <!-- 按键设置向导  -->
@@ -73,12 +73,12 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/help_section"
                 android:background="#F3F3F3"
+                android:paddingBottom="4dp"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:paddingTop="10dp"
-                android:paddingBottom="4dp"
+                android:text="@string/help_section"
                 android:textColor="#666666"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -107,12 +107,12 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/activity_settings_keyboard"
                 android:background="#F3F3F3"
+                android:paddingBottom="4dp"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:paddingTop="10dp"
-                android:paddingBottom="4dp"
+                android:text="@string/activity_settings_keyboard"
                 android:textColor="#666666"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -151,25 +151,18 @@
 
                 </LinearLayout>
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/common_settings"
-                    android:src="@android:drawable/ic_menu_edit" />
-
             </LinearLayout>
 
             <!-- 图片加载设置 -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/image_load_settings"
                 android:background="#F3F3F3"
+                android:paddingBottom="4dp"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:paddingTop="10dp"
-                android:paddingBottom="4dp"
+                android:text="@string/image_load_settings"
                 android:textColor="#666666"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -200,12 +193,6 @@
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
-
             </LinearLayout>
 
             <!-- 分隔线 -->
@@ -220,12 +207,12 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/landscape_adaptation"
                 android:background="#F3F3F3"
+                android:paddingBottom="4dp"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:paddingTop="10dp"
-                android:paddingBottom="4dp"
+                android:text="@string/landscape_adaptation"
                 android:textColor="#666666"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -249,11 +236,11 @@
                     android:textSize="15sp" />
 
                 <CheckBox
-                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_landscape"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:clickable="false"
                     android:focusable="false"
                     android:minHeight="0dp"
@@ -294,12 +281,12 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/data_source"
                 android:background="#F3F3F3"
+                android:paddingBottom="4dp"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:paddingTop="10dp"
-                android:paddingBottom="4dp"
+                android:text="@string/data_source"
                 android:textColor="#666666"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -338,11 +325,11 @@
                 </LinearLayout>
 
                 <CheckBox
-                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_modern_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:clickable="false"
                     android:focusable="false"
                     android:minHeight="0dp"
@@ -372,12 +359,12 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/lab_section"
                 android:background="#F3F3F3"
+                android:paddingBottom="4dp"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:paddingTop="10dp"
-                android:paddingBottom="4dp"
+                android:text="@string/lab_section"
                 android:textColor="#666666"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -418,11 +405,11 @@
                 </LinearLayout>
 
                 <CheckBox
-                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_tablet_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:clickable="false"
                     android:focusable="false"
                     android:minHeight="0dp"
@@ -465,11 +452,11 @@
                 </LinearLayout>
 
                 <CheckBox
-                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_nfc_sync"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:clickable="false"
                     android:focusable="false"
                     android:minHeight="0dp"
@@ -515,8 +502,8 @@
                     android:id="@+id/nfc_transport_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginRight="8dp"
                     android:layout_gravity="center_vertical"
+                    android:layout_marginRight="8dp"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
@@ -585,11 +572,11 @@
                 </LinearLayout>
 
                 <CheckBox
-                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_convert_play"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:clickable="false"
                     android:focusable="false"
                     android:minHeight="0dp"
@@ -635,18 +622,11 @@
                     android:id="@+id/convert_format_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginRight="8dp"
                     android:layout_gravity="center_vertical"
+                    android:layout_marginRight="8dp"
                     android:text="H.264 Baseline"
                     android:textColor="#999999"
                     android:textSize="13sp" />
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -685,11 +665,11 @@
                 </LinearLayout>
 
                 <CheckBox
-                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_round_screen_center"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:clickable="false"
                     android:focusable="false"
                     android:minHeight="0dp"
@@ -733,11 +713,11 @@
                 </LinearLayout>
 
                 <CheckBox
-                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_portrait_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:clickable="false"
                     android:focusable="false"
                     android:minHeight="0dp"
@@ -781,11 +761,11 @@
                 </LinearLayout>
 
                 <CheckBox
-                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_cast"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:clickable="false"
                     android:focusable="false"
                     android:minHeight="0dp"
@@ -829,11 +809,11 @@
                 </LinearLayout>
 
                 <CheckBox
-                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_night_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:clickable="false"
                     android:focusable="false"
                     android:minHeight="0dp"
@@ -879,22 +859,15 @@
                     android:id="@+id/play_stream_format_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginRight="8dp"
                     android:layout_gravity="center_vertical"
+                    android:layout_marginRight="8dp"
                     android:text="MP4"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
-
             </LinearLayout>
 
-                        <LinearLayout
+            <LinearLayout
                 android:id="@+id/dash_codec_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -931,14 +904,14 @@
                     android:id="@+id/dash_codec_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginRight="8dp"
                     android:layout_gravity="center_vertical"
+                    android:layout_marginRight="8dp"
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
             </LinearLayout>
 
-<!-- 分隔线 -->
+            <!-- 分隔线 -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
@@ -952,10 +925,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="#F3F3F3"
+                android:paddingBottom="4dp"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:paddingTop="10dp"
-                android:paddingBottom="4dp"
                 android:text="@string/network_settings"
                 android:textColor="#666666"
                 android:textSize="13sp"
@@ -996,11 +969,11 @@
                 </LinearLayout>
 
                 <CheckBox
-                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_tls12"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:clickable="false"
                     android:focusable="false"
                     android:minHeight="0dp"
@@ -1010,12 +983,12 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/player_settings"
                 android:background="#F3F3F3"
+                android:paddingBottom="4dp"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:paddingTop="10dp"
-                android:paddingBottom="4dp"
+                android:text="@string/player_settings"
                 android:textColor="#666666"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -1058,18 +1031,11 @@
                     android:id="@+id/online_play_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginRight="8dp"
                     android:layout_gravity="center_vertical"
+                    android:layout_marginRight="8dp"
                     android:text="@string/online_playback"
                     android:textColor="#999999"
                     android:textSize="13sp" />
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -1100,12 +1066,6 @@
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
-
             </LinearLayout>
 
             <!-- 解码方式选择 -->
@@ -1135,12 +1095,6 @@
                     android:text="@string/ijk_player"
                     android:textColor="#999999"
                     android:textSize="13sp" />
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -1177,13 +1131,6 @@
                         android:textSize="11sp" />
 
                 </LinearLayout>
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/common_settings"
-                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -1231,13 +1178,6 @@
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
-
             </LinearLayout>
 
             <!-- 弹幕引擎选择 -->
@@ -1269,13 +1209,6 @@
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
-
             </LinearLayout>
 
             <!-- 弹幕渲染方式 -->
@@ -1306,13 +1239,6 @@
                     android:text="@string/danmaku_render_mode_auto"
                     android:textColor="#999999"
                     android:textSize="13sp" />
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -1380,12 +1306,12 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/ui_settings"
                 android:background="#F3F3F3"
+                android:paddingBottom="4dp"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:paddingTop="10dp"
-                android:paddingBottom="4dp"
+                android:text="@string/ui_settings"
                 android:textColor="#666666"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -1433,13 +1359,6 @@
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
-
             </LinearLayout>
 
             <LinearLayout
@@ -1485,16 +1404,9 @@
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
-
             </LinearLayout>
 
-<LinearLayout
+            <LinearLayout
                 android:id="@+id/theme_item"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -1520,13 +1432,6 @@
                     android:layout_marginRight="8dp"
                     android:textColor="#999999"
                     android:textSize="13sp" />
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -1557,13 +1462,6 @@
                     android:layout_marginRight="8dp"
                     android:textColor="#999999"
                     android:textSize="13sp" />
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -1610,12 +1508,6 @@
                     android:text="@string/lang_simplified_chinese"
                     android:textColor="#999999"
                     android:textSize="13sp" />
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -1666,12 +1558,6 @@
                     android:textSize="13sp" />
 
                 <!-- 最右：图标 -->
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -1718,12 +1604,6 @@
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
-
             </LinearLayout>
 
             <!-- 分隔线 -->
@@ -1738,12 +1618,12 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/device_info"
                 android:background="#F3F3F3"
+                android:paddingBottom="4dp"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:paddingTop="10dp"
-                android:paddingBottom="4dp"
+                android:text="@string/device_info"
                 android:textColor="#666666"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -1793,12 +1673,12 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/cache_manager"
                 android:background="#F3F3F3"
+                android:paddingBottom="4dp"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:paddingTop="10dp"
-                android:paddingBottom="4dp"
+                android:text="@string/cache_manager"
                 android:textColor="#666666"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -1832,20 +1712,13 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
+                        android:ellipsize="middle"
+                        android:maxLines="2"
                         android:text="@string/download_location_internal"
                         android:textColor="#999999"
-                        android:textSize="11sp"
-                        android:maxLines="2"
-                        android:ellipsize="middle" />
+                        android:textSize="11sp" />
 
                 </LinearLayout>
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center_vertical"
-                    android:contentDescription="@string/common_select"
-                    android:src="@android:drawable/ic_menu_edit" />
 
             </LinearLayout>
 
@@ -1969,12 +1842,6 @@
                     android:textColor="#333333"
                     android:textSize="15sp" />
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/manage"
-                    android:src="@android:drawable/ic_menu_edit" />
-
             </LinearLayout>
 
             <TextView
@@ -1999,12 +1866,12 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/echo_cave"
                 android:background="#F3F3F3"
+                android:paddingBottom="4dp"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:paddingTop="10dp"
-                android:paddingBottom="4dp"
+                android:text="@string/echo_cave"
                 android:textColor="#666666"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -2070,12 +1937,6 @@
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/echo_submit"
-                    android:src="@android:drawable/ic_menu_edit" />
-
             </LinearLayout>
 
             <!-- 分隔线 -->
@@ -2090,12 +1951,12 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/crash_log"
                 android:background="#F3F3F3"
+                android:paddingBottom="4dp"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:paddingTop="10dp"
-                android:paddingBottom="4dp"
+                android:text="@string/crash_log"
                 android:textColor="#666666"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -2157,12 +2018,12 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/privacy_and_data"
                 android:background="#F3F3F3"
+                android:paddingBottom="4dp"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:paddingTop="10dp"
-                android:paddingBottom="4dp"
+                android:text="@string/privacy_and_data"
                 android:textColor="#666666"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -2202,11 +2063,11 @@
                 </LinearLayout>
 
                 <CheckBox
-                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_no_image_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:clickable="false"
                     android:focusable="false"
                     android:minHeight="0dp"
@@ -2248,11 +2109,11 @@
                 </LinearLayout>
 
                 <CheckBox
-                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_privacy_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:clickable="false"
                     android:focusable="false"
                     android:minHeight="0dp"
@@ -2295,11 +2156,11 @@
                 </LinearLayout>
 
                 <CheckBox
-                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_incognito_mode"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:clickable="false"
                     android:focusable="false"
                     android:minHeight="0dp"
@@ -2319,12 +2180,12 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/update_notify_checking_title"
                 android:background="#F3F3F3"
+                android:paddingBottom="4dp"
                 android:paddingLeft="12dp"
                 android:paddingRight="12dp"
                 android:paddingTop="10dp"
-                android:paddingBottom="4dp"
+                android:text="@string/update_notify_checking_title"
                 android:textColor="#666666"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -2383,11 +2244,11 @@
                     android:textSize="15sp" />
 
                 <CheckBox
-                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:id="@+id/checkbox_auto_update"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
+                    android:button="@drawable/ic_btn_holo_pink_checkbox"
                     android:clickable="false"
                     android:focusable="false"
                     android:minHeight="0dp"

@@ -505,8 +505,6 @@ public class BiliPlayerActivity extends Activity implements
             hideSystemUI();
             // OnSystemUiVisibilityChangeListener 是 API 11+ 接口，硬失败平台上
             // 匿名实现会导致整类拒载，统一走 PlayerCompat 的 Proxy 实现
-            PlayerCompat.setAutoRehideSystemUiListener(
-                    getWindow().getDecorView(), handler, mRehideNavRunnable);
         }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0xFF000000));
@@ -4988,7 +4986,6 @@ public class BiliPlayerActivity extends Activity implements
         if (mQualityManager != null) mQualityManager.hideQualityList();
         controlsVisible = false;
         handler.removeMessages(MSG_HIDE_CONTROLS);
-        hideSystemUI();
     }
 
     private void showControlsWithAutoHide() {
