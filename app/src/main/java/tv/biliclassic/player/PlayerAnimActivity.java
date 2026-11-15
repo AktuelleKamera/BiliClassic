@@ -86,6 +86,8 @@ public class PlayerAnimActivity extends Activity {
     private long aid;
     private long cid;
     private File cacheFile;
+    private String danmakuCachePath;
+    private String upName;
 
     private boolean hasShownPreferenceToast = false;
     private boolean isOnlineMode = false;
@@ -110,6 +112,9 @@ public class PlayerAnimActivity extends Activity {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         }
         setContentView(R.layout.activity_player_anim);
+        if (SdkHelper.getSdkInt() < 4) {
+            SdkHelper.disableSoundEffects(getWindow().getDecorView());
+        }
         if (SdkHelper.getSdkInt() >= 11
                 && SdkHelper.getSdkInt() < 21) {
             View content = findViewById(android.R.id.content);
@@ -153,6 +158,9 @@ public class PlayerAnimActivity extends Activity {
         mQualityValues = getIntent().getIntArrayExtra("qn_value_array");
         mCurrentQn = getIntent().getIntExtra("current_qn", 0);
         resumePosition = getIntent().getIntExtra("resume_position", 0);
+        if (resumePosition <= 0 && aid > 0 && cid > 0) {
+            resumePosition = tv.biliclassic.util.LocalHistoryStore.getProgress(aid, cid);
+        }
 
         // 打印日志确认 videoUrl
         android.util.Log.e("PlayerAnim", "videoUrl: " + videoUrl);
@@ -281,6 +289,12 @@ public class PlayerAnimActivity extends Activity {
         intent.putExtra("cache_path", (String) null);
         intent.putExtra("aid", aid);
         intent.putExtra("cid", cid);
+        if (danmakuCachePath != null && danmakuCachePath.length() > 0) {
+            intent.putExtra("danmaku_cache_path", danmakuCachePath);
+        }
+        if (upName != null && upName.length() > 0) {
+            intent.putExtra("up_name", upName);
+        }
         intent.putExtra("part_index", getIntent().getIntExtra("part_index", 0));
         if (getIntent().hasExtra("cids")) {
             intent.putExtra("cids", getIntent().getLongArrayExtra("cids"));
@@ -446,78 +460,98 @@ public class PlayerAnimActivity extends Activity {
         if (parentDir != null && !parentDir.exists()) {
             parentDir.mkdirs();
         }
-
-        if (cacheFile.exists()) {
+        if (cacheFile.exists() && cacheFile.length() > 0) {
             return;
         }
-
-        // 检查是否被取消
         if (isDownloadCancelled) {
             return;
         }
 
+        File partFile = new File(cacheFile.getAbsolutePath() + ".part");
+        long existing = partFile.exists() ? partFile.length() : 0;
         String url = videoUrl;
-
         HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-
         if (url.startsWith("https") && conn instanceof javax.net.ssl.HttpsURLConnection) {
             javax.net.ssl.SSLSocketFactory sslFactory = tv.biliclassic.util.NetWorkUtil.getTrustAllSSLSocketFactory();
             if (sslFactory != null) {
                 ((javax.net.ssl.HttpsURLConnection) conn).setSSLSocketFactory(sslFactory);
             }
             ((javax.net.ssl.HttpsURLConnection) conn).setHostnameVerifier(
-                    tv.biliclassic.util.NetWorkUtil.TRUST_ALL_HOSTNAMES
-            );
+                    tv.biliclassic.util.NetWorkUtil.TRUST_ALL_HOSTNAMES);
         }
-
         conn.setRequestProperty("Referer", "https://www.bilibili.com/");
         conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
+        if (existing > 0) {
+            conn.setRequestProperty("Range", "bytes=" + existing + "-");
+        }
         conn.setConnectTimeout(15000);
         conn.setReadTimeout(15000);
         conn.connect();
 
-        int contentLength = conn.getContentLength();
+        int response = conn.getResponseCode();
+        boolean append = existing > 0 && response == 206;
+        if (existing > 0 && response == 200) {
+            existing = 0;
+        }
+        if (response == 416) {
+            conn.disconnect();
+            partFile.delete();
+            existing = 0;
+            conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setRequestProperty("Referer", "https://www.bilibili.com/");
+            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(15000);
+            conn.connect();
+            response = conn.getResponseCode();
+        }
+
+        long contentLength = conn.getContentLength();
+        long expected = contentLength >= 0 ? existing + contentLength : -1;
         InputStream is = conn.getInputStream();
-        FileOutputStream fos = new FileOutputStream(cacheFile);
+        FileOutputStream fos = new FileOutputStream(partFile, append);
         byte[] buffer = new byte[32768];
         int len;
-        long total = 0;
-        int lastProgress = 0;
-
-        while ((len = is.read(buffer)) != -1) {
-            // 检查是否被取消
-            if (isDownloadCancelled) {
-                fos.close();
-                is.close();
-                conn.disconnect();
-                // 删除未完成的文件
-                if (cacheFile.exists()) {
-                    cacheFile.delete();
+        long total = existing;
+        int lastProgress = -1;
+        try {
+            while ((len = is.read(buffer)) != -1) {
+                if (isDownloadCancelled) {
+                    return;
                 }
-                return;
-            }
-
-            fos.write(buffer, 0, len);
-            total += len;
-
-            if (contentLength > 0) {
-                final int percent = (int) (total * 100 / contentLength);
-                if (percent - lastProgress >= 2) {
-                    lastProgress = percent;
-                    final int p = percent;
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            progressBar.setProgress(p);
-                            tvProgress.setText(p + "%");
-                        }
-                    });
+                fos.write(buffer, 0, len);
+                total += len;
+                if (expected > 0) {
+                    final int percent = (int) (total * 100 / expected);
+                    if (percent - lastProgress >= 2) {
+                        lastProgress = percent;
+                        runOnUiThread(new Runnable() {
+                            public void run() {
+                                progressBar.setProgress(percent);
+                                tvProgress.setText(percent + "%");
+                            }
+                        });
+                    }
                 }
             }
+            fos.flush();
+        } finally {
+            try { fos.close(); } catch (Exception ignored) {}
+            try { is.close(); } catch (Exception ignored) {}
+            conn.disconnect();
         }
-        fos.close();
-        is.close();
-        conn.disconnect();
+        if (isDownloadCancelled) {
+            return;
+        }
+        if (expected > 0 && total < expected) {
+            throw new java.io.IOException("download incomplete");
+        }
+        if (cacheFile.exists()) {
+            cacheFile.delete();
+        }
+        if (!partFile.renameTo(cacheFile)) {
+            throw new java.io.IOException("rename cache failed");
+        }
     }
 
     private void playWithPlayer() {
@@ -615,6 +649,7 @@ public class PlayerAnimActivity extends Activity {
             try { Intent.class.getMethod("setPackage", String.class).invoke(intent, new Object[]{packageName}); } catch (Exception ignored) {};
             // 直接尝试启动；queryIntentActivities 对 FileProvider content URI 会因权限过滤误判 0，
             // 导致装了播放器也被降级。改为 try-catch，装了就播，没装/启动失败才降级。
+            putLocalExternalExtras(intent);
             startActivity(intent);
             finish();
             return true;
@@ -654,6 +689,16 @@ public class PlayerAnimActivity extends Activity {
         intent.putExtra("cache_path", cacheFile.getAbsolutePath());
         intent.putExtra("aid", aid);
         intent.putExtra("cid", cid);
+        intent.putExtra("resume_position", resumePosition);
+        if (mDurationMs > 0) {
+            intent.putExtra("duration_ms", mDurationMs);
+        }
+        if (danmakuCachePath != null && danmakuCachePath.length() > 0) {
+            intent.putExtra("danmaku_cache_path", danmakuCachePath);
+        }
+        if (upName != null && upName.length() > 0) {
+            intent.putExtra("up_name", upName);
+        }
         intent.putExtra("online_mode", false);
         intent.putExtra("offline_mode", true);
         intent.putExtra("part_index", getIntent().getIntExtra("part_index", 0));
@@ -704,7 +749,11 @@ public class PlayerAnimActivity extends Activity {
         }
         // 2.1+ 优先使用内置东风播放器，而不是跳系统播放器
         // 默认回退到内置系统 MediaPlayer 播放
-        playWithBuiltinPlayer(videoUrl);
+        if (cacheFile != null && cacheFile.exists() && cacheFile.length() > 0) {
+            tryBuiltinPlayerWithCache();
+        } else {
+            playWithBuiltinPlayer(videoUrl);
+        }
         return;
     }
 
@@ -717,7 +766,8 @@ public class PlayerAnimActivity extends Activity {
             }
             try { Intent.class.getMethod("setPackage", String.class).invoke(intent, new Object[]{packageName}); } catch (Exception ignored) {};
             if (getPackageManager().queryIntentActivities(intent, 0).size() > 0) {
-                startActivity(intent);
+                putLocalExternalExtras(intent);
+            startActivity(intent);
                 finish();
                 return true;
             }
@@ -741,6 +791,21 @@ public class PlayerAnimActivity extends Activity {
         }
         stopTvAnimation();
         handler.removeCallbacksAndMessages(null);
+    }
+
+    private void putLocalExternalExtras(Intent intent) {
+        if (resumePosition > 0) {
+            intent.putExtra("progress", resumePosition);
+        }
+        if (videoTitle != null) {
+            intent.putExtra("name", videoTitle);
+        }
+        if (danmakuCachePath != null && danmakuCachePath.length() > 0) {
+            intent.putExtra("danmaku", danmakuCachePath);
+        } else if (cid > 0) {
+            intent.putExtra("danmaku", "https://comment.bilibili.com/" + cid + ".xml");
+        }
+        intent.putExtra("live_mode", false);
     }
 
     private void putQualityExtras(Intent intent) {
