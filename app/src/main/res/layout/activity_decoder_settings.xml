@@ -63,16 +63,22 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="12dp">
+            android:background="#F3F3F3"
+            android:padding="0dp">
 
             <!-- 软件解码 -->
             <TextView
                 android:id="@+id/category_sw_decode"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="#F3F3F3"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="4dp"
                 android:text="@string/decoder_pref_category_sw_decode"
-                android:textSize="15sp"
-                android:textColor="#D86DA5"
+                android:textSize="13sp"
+                android:textColor="#666666"
                 android:textStyle="bold" />
 
             <!-- 画面队列大小 -->
@@ -81,10 +87,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#FFFFFF"
+                android:background="@drawable/settings_item_bg"
                 android:padding="12dp"
                 android:clickable="true"
-                android:layout_marginTop="6dp">
+                android:layout_marginBottom="12dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -107,12 +113,6 @@
                         android:textColor="#999999"
                         android:layout_marginRight="8dp" />
 
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="@string/common_select" />
-
                 </LinearLayout>
 
                 <TextView
@@ -131,10 +131,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#FFFFFF"
+                android:background="@drawable/settings_item_bg"
                 android:padding="12dp"
                 android:clickable="true"
-                android:layout_marginTop="1dp">
+                android:layout_marginBottom="12dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -157,12 +157,6 @@
                         android:textColor="#999999"
                         android:layout_marginRight="8dp" />
 
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="@string/common_select" />
-
                 </LinearLayout>
 
                 <TextView
@@ -181,10 +175,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#FFFFFF"
+                android:background="@drawable/settings_item_bg"
                 android:padding="12dp"
                 android:clickable="true"
-                android:layout_marginTop="1dp">
+                android:layout_marginBottom="12dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -207,12 +201,6 @@
                         android:textColor="#999999"
                         android:layout_marginRight="8dp" />
 
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="@string/common_select" />
-
                 </LinearLayout>
 
                 <TextView
@@ -226,6 +214,7 @@
             </LinearLayout>
 
             <!-- 分隔线 -->
+            <!-- 播放控制 -->
             <View
                 android:id="@+id/divider_playctl"
                 android:layout_width="match_parent"
@@ -234,14 +223,18 @@
                 android:layout_marginBottom="12dp"
                 android:background="#E0E0E0" />
 
-            <!-- 播放控制 -->
             <TextView
                 android:id="@+id/category_playctl"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="#F3F3F3"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="4dp"
                 android:text="@string/decoder_pref_category_playctl"
-                android:textSize="15sp"
-                android:textColor="#D86DA5"
+                android:textSize="13sp"
+                android:textColor="#666666"
                 android:textStyle="bold" />
 
             <!-- 最大帧率（player 层选项，硬解同样生效） -->
@@ -250,10 +243,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#FFFFFF"
+                android:background="@drawable/settings_item_bg"
                 android:padding="12dp"
                 android:clickable="true"
-                android:layout_marginTop="6dp">
+                android:layout_marginBottom="12dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -276,12 +269,6 @@
                         android:textColor="#999999"
                         android:layout_marginRight="8dp" />
 
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="@string/common_select" />
-
                 </LinearLayout>
 
                 <TextView
@@ -300,10 +287,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#FFFFFF"
+                android:background="@drawable/settings_item_bg"
                 android:padding="12dp"
                 android:clickable="true"
-                android:layout_marginTop="1dp">
+                android:layout_marginBottom="12dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -326,12 +313,6 @@
                         android:textColor="#999999"
                         android:layout_marginRight="8dp" />
 
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@android:drawable/ic_menu_edit"
-                        android:contentDescription="@string/common_select" />
-
                 </LinearLayout>
 
                 <TextView
@@ -350,10 +331,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#FFFFFF"
+                android:background="@drawable/settings_item_bg"
                 android:padding="12dp"
                 android:clickable="true"
-                android:layout_marginTop="6dp">
+                android:layout_marginBottom="12dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -394,10 +375,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#FFFFFF"
+                android:background="@drawable/settings_item_bg"
                 android:padding="12dp"
                 android:clickable="true"
-                android:layout_marginTop="1dp">
+                android:layout_marginBottom="12dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -439,10 +420,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#FFFFFF"
+                android:background="@drawable/settings_item_bg"
                 android:padding="12dp"
                 android:clickable="true"
-                android:layout_marginTop="1dp">
+                android:layout_marginBottom="12dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -490,9 +471,14 @@
                 android:id="@+id/category_audio"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="#F3F3F3"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="4dp"
                 android:text="@string/decoder_pref_category_audio"
-                android:textSize="15sp"
-                android:textColor="#D86DA5"
+                android:textSize="13sp"
+                android:textColor="#666666"
                 android:textStyle="bold" />
 
             <!-- OpenSL ES -->
@@ -501,10 +487,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#FFFFFF"
+                android:background="@drawable/settings_item_bg"
                 android:padding="12dp"
                 android:clickable="true"
-                android:layout_marginTop="6dp">
+                android:layout_marginBottom="12dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -539,6 +525,78 @@
 
             </LinearLayout>
 
+            <LinearLayout
+                android:id="@+id/item_opensles_buffer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/settings_item_bg"
+                android:padding="12dp"
+                android:clickable="true"
+                android:layout_marginBottom="12dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/decoder_title_opensles_buffer"
+                        android:textSize="15sp"
+                        android:textColor="#333333" />
+                    <TextView
+                        android:id="@+id/text_opensles_buffer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="14sp"
+                        android:textColor="#D86DA5" />
+                </LinearLayout>
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/decoder_summary_opensles_buffer"
+                    android:textSize="12sp"
+                    android:textColor="#999999" />
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:id="@+id/item_audiotrack_buffer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/settings_item_bg"
+                android:padding="12dp"
+                android:clickable="true"
+                android:layout_marginBottom="12dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/decoder_title_audiotrack_buffer"
+                        android:textSize="15sp"
+                        android:textColor="#333333" />
+                    <TextView
+                        android:id="@+id/text_audiotrack_buffer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="14sp"
+                        android:textColor="#D86DA5" />
+                </LinearLayout>
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/decoder_summary_audiotrack_buffer"
+                    android:textSize="12sp"
+                    android:textColor="#999999" />
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
 

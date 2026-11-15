@@ -43,7 +43,7 @@
     <string name="Player_options_title_auto_rotation">重力自动旋屏</string>
     <string name="Player_options_title_enable_gesture">启用播放手势</string>
     <string name="Player_options_title_comment_swipe">侧滑呼出评论区</string>
-    <string name="Player_options_title_keep_background">背景恢复播放</string>
+    <string name="Player_options_title_keep_background">后台播放音频</string>
     <string name="Player_options_title_portrait_rotation">允许旋转至竖屏</string>
     <string name="PreloadingView_press_back_to_exit">再次按后退可以结束播放</string>
     <string name="VideoView_danmaku_input_hint">在这里输入弹幕</string>
@@ -744,4 +744,8 @@
     <string name="common_favorite_folder_name">收藏夹名称</string>
     <string translatable="false" name="common_surface_view">SurfaceView</string>
     <string name="dash_requires_ijk">DASH需要IJK解码器</string>
+    <string name="decoder_title_opensles_buffer">OpenSL缓冲大小</string>
+    <string name="decoder_summary_opensles_buffer">仅OpenSL生效；自动按机型选择</string>
+    <string name="decoder_title_audiotrack_buffer">AudioTrack缓冲大小</string>
+    <string name="decoder_summary_audiotrack_buffer">仅AudioTrack有效；启用OpenSL时忽略</string>
 </resources>

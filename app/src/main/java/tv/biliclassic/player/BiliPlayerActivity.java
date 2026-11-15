@@ -2961,13 +2961,19 @@ public class BiliPlayerActivity extends Activity implements
 
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "opensles",
                 DecoderSettingsActivity.isOpenSLESEnabled() ? 1L : 0L);
-        ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "enable-accurate-seek", 1L);
-        int framedrop = DecoderSettingsActivity.getFramedrop();
-        // DASH 音视频分离流：seek 后视频从关键帧（最多落后一个 GOP）追赶音频，
-        // 不丢帧的话慢设备上永远追不上，表现为持续音画不同步
-        if (audioUrl != null && audioUrl.length() > 0 && framedrop < 1) {
-            framedrop = 1;
+        int openslesBufferMs = DecoderSettingsActivity.getOpenSLESBufferMs();
+        if (openslesBufferMs >= 5 && openslesBufferMs <= 50) {
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "opensles-buffer", (long) openslesBufferMs);
         }
+        int audioTrackBuffer = DecoderSettingsActivity.getAudioTrackBufferSize();
+        if (audioTrackBuffer >= 512 && audioTrackBuffer <= 32768) {
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "audiotrack-buffer", (long) audioTrackBuffer);
+        }
+        ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "enable-accurate-seek", 1L);
+        if (decoderType == DECODER_IJK_HARD && isExynos4412Device()) {
+            ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "mediacodec-reorder", 1L);
+        }
+        int framedrop = DecoderSettingsActivity.getFramedrop();
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "framedrop", (long) framedrop);
         ijkPlayer.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER, "max-fps",
                 (long) DecoderSettingsActivity.getMaxFps());

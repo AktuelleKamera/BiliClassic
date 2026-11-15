@@ -175,4 +175,36 @@
         <item>3</item>
     </string-array>
 
+    <string-array name="decoder_opensles_buffer_entries">
+        <item>@string/common_auto</item>
+        <item>10 ms</item>
+        <item>15 ms</item>
+        <item>20 ms</item>
+        <item>30 ms</item>
+        <item>40 ms</item>
+    </string-array>
+    <string-array name="decoder_opensles_buffer_values">
+        <item>-1</item>
+        <item>10</item>
+        <item>15</item>
+        <item>20</item>
+        <item>30</item>
+        <item>40</item>
+    </string-array>
+    <string-array name="decoder_audiotrack_buffer_entries">
+        <item>512 B</item>
+        <item>1 KB</item>
+        <item>2 KB</item>
+        <item>4 KB</item>
+        <item>8 KB</item>
+        <item>16 KB</item>
+    </string-array>
+    <string-array name="decoder_audiotrack_buffer_values">
+        <item>512</item>
+        <item>1024</item>
+        <item>2048</item>
+        <item>4096</item>
+        <item>8192</item>
+        <item>16384</item>
+    </string-array>
 </resources>

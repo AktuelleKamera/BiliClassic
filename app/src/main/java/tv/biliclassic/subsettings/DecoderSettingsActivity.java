@@ -24,12 +24,16 @@ public class DecoderSettingsActivity extends BaseActivity {
     private static final String KEY_VIDEO_DISABLED = "player_vn";
     private static final String KEY_AUDIO_DISABLED = "player_an";
     private static final String KEY_OPENSLES = "aout_opensles";
+    private static final String KEY_OPENSLES_BUFFER = "aout_opensles_buffer";
+    private static final String KEY_AUDIOTRACK_BUFFER = "aout_audiotrack_buffer";
     private static final String KEY_SPLIT_AUDIO = "player_split_audio";
 
     // ---- UI ----
     private TextView textPictqSize;
     private TextView textMaxFps;
     private TextView textFramedrop;
+    private TextView textOpenSLESBuffer;
+    private TextView textAudioTrackBuffer;
     private TextView textSkipLoopFilter;
     private TextView textSkipFrame;
     private CheckBox checkboxVideoDisabled;
@@ -76,7 +80,7 @@ public class DecoderSettingsActivity extends BaseActivity {
         setVisible(R.id.item_skip_loop_filter, showSwDecode);
         setVisible(R.id.item_skip_frame, showSwDecode);
 
-        setVisible(R.id.divider_playctl, showPlayCtl);
+        setVisible(R.id.divider_playctl, showSwDecode && showPlayCtl);
         setVisible(R.id.category_playctl, showPlayCtl);
         setVisible(R.id.item_video_disabled, showPlayCtl);
         setVisible(R.id.item_audio_disabled, showPlayCtl);
@@ -85,6 +89,8 @@ public class DecoderSettingsActivity extends BaseActivity {
         setVisible(R.id.category_audio, showAudio);
         setVisible(R.id.item_split_audio, showSwDecode);
         setVisible(R.id.item_opensles, showAudio);
+        setVisible(R.id.item_opensles_buffer, showAudio);
+        setVisible(R.id.item_audiotrack_buffer, showAudio);
     }
 
     private void setVisible(int id, boolean visible) {
@@ -98,6 +104,8 @@ public class DecoderSettingsActivity extends BaseActivity {
         textPictqSize = (TextView) findViewById(R.id.text_pictq_size);
         textMaxFps = (TextView) findViewById(R.id.text_maxfps);
         textFramedrop = (TextView) findViewById(R.id.text_framedrop);
+        textOpenSLESBuffer = (TextView) findViewById(R.id.text_opensles_buffer);
+        textAudioTrackBuffer = (TextView) findViewById(R.id.text_audiotrack_buffer);
         textSkipLoopFilter = (TextView) findViewById(R.id.text_skip_loop_filter);
         textSkipFrame = (TextView) findViewById(R.id.text_skip_frame);
 
@@ -107,6 +115,12 @@ public class DecoderSettingsActivity extends BaseActivity {
                 R.array.decoder_maxfps_entries, R.array.decoder_maxfps_values, defaultMaxFps(), textMaxFps, "最大帧率");
         setupListClick(R.id.item_framedrop, KEY_FRAMEDROP,
                 R.array.decoder_framedrop_entries, R.array.decoder_framedrop_values, "0", textFramedrop, "丢帧策略");
+        setupListClick(R.id.item_opensles_buffer, KEY_OPENSLES_BUFFER,
+                R.array.decoder_opensles_buffer_entries, R.array.decoder_opensles_buffer_values,
+                "-1", textOpenSLESBuffer, "OpenSL ??");
+        setupListClick(R.id.item_audiotrack_buffer, KEY_AUDIOTRACK_BUFFER,
+                R.array.decoder_audiotrack_buffer_entries, R.array.decoder_audiotrack_buffer_values,
+                "4096", textAudioTrackBuffer, "AudioTrack缓冲大小");
         setupListClick(R.id.item_skip_loop_filter, KEY_SKIP_LOOP_FILTER,
                 R.array.decoder_skip_loop_filter_entries, R.array.decoder_skip_loop_filter_values, defaultSkipLoopFilter(), textSkipLoopFilter, "跳过循环滤波");
         setupListClick(R.id.item_skip_frame, KEY_SKIP_FRAME,
@@ -209,6 +223,12 @@ public class DecoderSettingsActivity extends BaseActivity {
                 R.array.decoder_maxfps_entries, R.array.decoder_maxfps_values, textMaxFps);
         updateOneList(KEY_FRAMEDROP, "0",
                 R.array.decoder_framedrop_entries, R.array.decoder_framedrop_values, textFramedrop);
+        updateOneList(KEY_OPENSLES_BUFFER, "-1",
+                R.array.decoder_opensles_buffer_entries, R.array.decoder_opensles_buffer_values,
+                textOpenSLESBuffer);
+        updateOneList(KEY_AUDIOTRACK_BUFFER, "4096",
+                R.array.decoder_audiotrack_buffer_entries, R.array.decoder_audiotrack_buffer_values,
+                textAudioTrackBuffer);
         updateOneList(KEY_SKIP_LOOP_FILTER, defaultSkipLoopFilter(),
                 R.array.decoder_skip_loop_filter_entries, R.array.decoder_skip_loop_filter_values, textSkipLoopFilter);
         updateOneList(KEY_SKIP_FRAME, defaultSkipFrame(),
@@ -248,6 +268,14 @@ public class DecoderSettingsActivity extends BaseActivity {
     public static int getSkipFrame() {
         String def = defaultSkipFrame();
         return parseInt(SharedPreferencesUtil.getString(KEY_SKIP_FRAME, def), parseInt(def, -16));
+    }
+
+    public static int getOpenSLESBufferMs() {
+        return parseInt(SharedPreferencesUtil.getString(KEY_OPENSLES_BUFFER, "-1"), -1);
+    }
+
+    public static int getAudioTrackBufferSize() {
+        return parseInt(SharedPreferencesUtil.getString(KEY_AUDIOTRACK_BUFFER, "4096"), 4096);
     }
 
     public static boolean isOpenSLESEnabled() {
