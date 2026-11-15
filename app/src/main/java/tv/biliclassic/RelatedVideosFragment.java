@@ -374,7 +374,6 @@ public class RelatedVideosFragment extends Fragment {
                         url = "https://api.bilibili.com/x/web-interface/archive/related?bvid=" + bvid;
                     }
 
-                    android.util.Log.e("RelatedVideos", "请求URL: " + url);
 
                                         String response = NetWorkUtil.get(url);
 
@@ -459,7 +458,6 @@ public class RelatedVideosFragment extends Fragment {
                     items.add(video);
                 }
             } catch (Exception e) {
-                android.util.Log.e("RelatedVideos", "解析单个视频失败: " + e.getMessage());
             }
         }
 

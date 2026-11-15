@@ -179,13 +179,9 @@ public class PlayerApi {
      * @param download 是否下载模式（影响画质参数）
      */
     public static void getVideo(PlayerData playerData, boolean download) throws JSONException, IOException {
-        android.util.Log.e("PlayerApi", "getVideo 开始");
-        android.util.Log.e("PlayerApi", "aid=" + playerData.aid + ", cid=" + playerData.cid + ", qn=" + playerData.qn);
-        android.util.Log.e("PlayerApi", "timeStamp=" + playerData.timeStamp + ", currentTime=" + System.currentTimeMillis());
 
         // if上一次获取在十分钟内就无需再次获取
         if (System.currentTimeMillis() - playerData.timeStamp < 600000) {
-            android.util.Log.e("PlayerApi", "使用缓存的播放地址，跳过获取");
             return;
         }
 
@@ -197,7 +193,6 @@ public class PlayerApi {
             }
             if (cached != null && cached.videoUrl != null && cached.videoUrl.length() > 0
                     && System.currentTimeMillis() - cached.timestamp < URL_CACHE_TTL) {
-                android.util.Log.e("PlayerApi", "命中静态缓存: " + cached.videoUrl);
                 playerData.videoUrl = cached.videoUrl;
                 playerData.audioUrl = cached.audioUrl;
                 if (cached.actualQn > 0) {
@@ -214,16 +209,11 @@ public class PlayerApi {
         }
 
         playerData.timeStamp = System.currentTimeMillis();
-        android.util.Log.e("PlayerApi", "开始获取新地址，timeStamp 已更新");
 
-        android.util.Log.e("PlayerApi", "getPlayStreamFormat=" + tv.biliclassic.SettingsActivity.getPlayStreamFormat()
-                + " (1=MP4 durl, 16=DASH)");
 
         playerData.danmakuUrl = "https://comment.bilibili.com/" + playerData.cid + ".xml";
-        android.util.Log.e("PlayerApi", "danmakuUrl=" + playerData.danmakuUrl);
 
         boolean html5 = !download && "mtvPlayer".equals(SharedPreferencesUtil.getString("player", ""));
-        android.util.Log.e("PlayerApi", "html5模式=" + html5);
 
         // bvid 优先（推荐流卡片没有 aid，avid=0 会被 API 拒绝 -400）
         String idParam = (playerData.bvid != null && playerData.bvid.length() > 0)
@@ -247,23 +237,17 @@ public class PlayerApi {
                 + "&gaia_source=pre-load"
                 + "&isGaiaAvoided=true";
 
-        android.util.Log.e("PlayerApi", "原始URL: " + url);
 
         url = ConfInfoApi.signWBI(url);
-        android.util.Log.e("PlayerApi", "签名后URL: " + url);
 
         JSONObject body = NetWorkUtil.getJson(url, NetWorkUtil.webHeaders);
         int code = body.optInt("code", -1);
-        android.util.Log.e("PlayerApi", "API响应码: " + code);
-        android.util.Log.e("PlayerApi", "API响应消息: " + body.optString("message", ""));
 
         if (code != 0) {
-            android.util.Log.e("PlayerApi", "API返回错误，code=" + code);
             throw new JSONException("API错误: " + body.optString("message", "未知错误"));
         }
 
         JSONObject data = body.getJSONObject("data");
-        android.util.Log.e("PlayerApi", "data 对象存在");
 
         String videoUrl = null;
         String audioUrl = "";
@@ -272,7 +256,6 @@ public class PlayerApi {
         // 优先解析DASH
         if (dashRequested && data.has("dash")) {
             JSONObject dash = data.getJSONObject("dash");
-            android.util.Log.e("PlayerApi", "使用 dash 格式");
             JSONArray video = dash.optJSONArray("video");
             JSONArray audio = dash.optJSONArray("audio");
             JSONObject videoEntry = null;
@@ -282,8 +265,6 @@ public class PlayerApi {
                 videoEntry = selectDashVideoEntry(video, playerData.qn);
             }
             if (videoEntry != null) {
-                android.util.Log.e("PlayerApi", "dash video codecs=" + videoEntry.optString("codecs", "?")
-                        + " id=" + videoEntry.optString("id", "?"));
                 videoUrl = dashUrl(videoEntry);
                 JSONArray backupUrl = videoEntry.optJSONArray("backupUrl");
                 if ((videoUrl == null || videoUrl.length() == 0) && backupUrl != null && backupUrl.length() > 0) {
@@ -291,33 +272,27 @@ public class PlayerApi {
                 }
                 // 实际画质以选中流为准（目标画质不可用时会被降级），回写保证 UI/续播一致
                 playerData.qn = videoEntry.optInt("id", playerData.qn);
-                android.util.Log.e("PlayerApi", "视频地址: " + videoUrl);
             }
             if (audio != null && audio.length() > 0) {
                 JSONObject firstAudio = audio.getJSONObject(0);
-                android.util.Log.e("PlayerApi", "dash audio codecs=" + firstAudio.optString("codecs", "?"));
                 audioUrl = dashUrl(firstAudio);
                 JSONArray backupUrl = firstAudio.optJSONArray("backupUrl");
                 if ((audioUrl == null || audioUrl.length() == 0) && backupUrl != null && backupUrl.length() > 0) {
                     audioUrl = backupUrl.getString(0);
                 }
-                android.util.Log.e("PlayerApi", "音频地址: " + audioUrl);
             }
         }
 
         // 尝试解析durl
         if ((videoUrl == null || videoUrl.length() == 0) && data.has("durl")) {
             JSONArray durl = data.getJSONArray("durl");
-            android.util.Log.e("PlayerApi", "durl 数组长度: " + durl.length());
             if (durl.length() > 0) {
                 JSONObject videoUrlObj = durl.getJSONObject(0);
                 videoUrl = directUrl(videoUrlObj);
-                android.util.Log.e("PlayerApi", "使用 durl 格式, codec=" + videoUrlObj.optString("codecs", "?"));
             }
         }
 
         if (videoUrl == null || videoUrl.length() == 0) {
-            android.util.Log.e("PlayerApi", "无法获取视频地址");
             if (download) {
                 throw new JSONException("该视频仅提供 DASH 格式，不支持下载为 MP4");
             }
@@ -327,19 +302,15 @@ public class PlayerApi {
         playerData.videoUrl = videoUrl;
         playerData.audioUrl = audioUrl;
         playerData.durationMs = data.optLong("timelength", 0);
-        android.util.Log.e("PlayerApi", "videoUrl: " + playerData.videoUrl
-                + ", durationMs=" + playerData.durationMs);
 
         // B 站 playurl 接口返回的 last_play_time 单位是「毫秒」，last_play_cid 是上次播放分P。
         // progress<0 表示已看完（从 0 开始），=0 表示无历史（从 0 开始）。
         playerData.cidHistory = data.optLong("last_play_cid", 0);
         playerData.progress = data.optInt("last_play_time", 0);
-        android.util.Log.e("PlayerApi", "cidHistory=" + playerData.cidHistory + ", progress=" + playerData.progress);
 
         if (playerData.cidHistory == 0) {
             playerData.cidHistory = playerData.cid;
             playerData.progress = 0;
-            android.util.Log.e("PlayerApi", "重置 cidHistory 为 " + playerData.cidHistory);
         }
 
         // 解析可用画质列表
@@ -348,14 +319,12 @@ public class PlayerApi {
         int len = acceptDescription == null ? 0
                 : (acceptQuality == null ? 0 : Math.min(acceptDescription.length(),
                         acceptQuality.length()));
-        android.util.Log.e("PlayerApi", "可用画质数量: " + len);
 
         String[] qnStrList = new String[len];
         int[] qnValueList = new int[len];
         for (int i = 0; i < len; i++) {
             qnStrList[i] = acceptDescription.optString(i);
             qnValueList[i] = acceptQuality.optInt(i);
-            android.util.Log.e("PlayerApi", "画质[" + i + "]: " + qnStrList[i] + " (" + qnValueList[i] + ")");
         }
         playerData.qnStrList = qnStrList;
         playerData.qnValueList = qnValueList;
@@ -373,7 +342,6 @@ public class PlayerApi {
             }
         }
 
-        android.util.Log.e("PlayerApi", "getVideo 结束，videoUrl=" + playerData.videoUrl);
     }
 
     /**
@@ -421,8 +389,6 @@ public class PlayerApi {
      * 获取番剧播放地址（与普通视频 API 不同）
      */
     public static void getBangumi(PlayerData playerData) throws JSONException, IOException {
-        android.util.Log.e("PlayerApi", "getBangumi 开始");
-        android.util.Log.e("PlayerApi", "aid=" + playerData.aid + ", cid=" + playerData.cid + ", qn=" + playerData.qn);
 
         NetWorkUtil.FormData reqData = new NetWorkUtil.FormData()
                 .setUrlParam(true)
@@ -436,14 +402,11 @@ public class PlayerApi {
                 .put("platform", "pc");
 
         String url = "https://api.bilibili.com/pgc/player/web/playurl" + reqData.toString();
-        android.util.Log.e("PlayerApi", "请求URL: " + url);
 
         JSONObject body = NetWorkUtil.getJson(url);
         int code = body.optInt("code", -1);
-        android.util.Log.e("PlayerApi", "API响应码: " + code);
 
         if (code != 0) {
-            android.util.Log.e("PlayerApi", "API返回错误");
             return;
         }
 
@@ -457,7 +420,6 @@ public class PlayerApi {
 
         // 优先解析DASH
         if (dashRequested && dash != null) {
-            android.util.Log.e("PlayerApi", "番剧使用 dash 格式");
             JSONArray video = dash.optJSONArray("video");
             JSONArray audio = dash.optJSONArray("audio");
             JSONObject videoEntry = null;
@@ -465,8 +427,6 @@ public class PlayerApi {
                 videoEntry = selectDashVideoEntry(video, playerData.qn);
             }
             if (videoEntry != null) {
-                android.util.Log.e("PlayerApi", "dash video codecs=" + videoEntry.optString("codecs", "?")
-                        + " id=" + videoEntry.optString("id", "?"));
                 videoUrl = dashUrl(videoEntry);
                 JSONArray backupUrl = videoEntry.optJSONArray("backupUrl");
                 if ((videoUrl == null || videoUrl.length() == 0) && backupUrl != null && backupUrl.length() > 0) {
@@ -477,13 +437,11 @@ public class PlayerApi {
             }
             if (audio != null && audio.length() > 0) {
                 JSONObject firstAudio = audio.getJSONObject(0);
-                android.util.Log.e("PlayerApi", "dash audio codecs=" + firstAudio.optString("codecs", "?"));
                 audioUrl = dashUrl(firstAudio);
                 JSONArray backupUrl = firstAudio.optJSONArray("backupUrl");
                 if ((audioUrl == null || audioUrl.length() == 0) && backupUrl != null && backupUrl.length() > 0) {
                     audioUrl = backupUrl.getString(0);
                 }
-                android.util.Log.e("PlayerApi", "番剧音频地址: " + audioUrl);
             }
         }
 
@@ -493,12 +451,10 @@ public class PlayerApi {
             if (durl.length() > 0) {
                 JSONObject videoUrlObj = durl.getJSONObject(0);
                 videoUrl = directUrl(videoUrlObj);
-                android.util.Log.e("PlayerApi", "番剧使用 durl 格式, codec=" + videoUrlObj.optString("codecs", "?"));
             }
         }
 
         if (videoUrl == null || videoUrl.length() == 0) {
-            android.util.Log.e("PlayerApi", "番剧无法获取视频地址");
             return;
         }
 
@@ -510,8 +466,6 @@ public class PlayerApi {
             // dash.duration 单位是秒
             playerData.durationMs = dash.optLong("duration", 0) * 1000L;
         }
-        android.util.Log.e("PlayerApi", "videoUrl=" + playerData.videoUrl
-                + ", audioUrl=" + playerData.audioUrl + ", durationMs=" + playerData.durationMs);
 
         playerData.danmakuUrl = "https://comment.bilibili.com/" + playerData.cid + ".xml";
 
@@ -533,6 +487,5 @@ public class PlayerApi {
         appendDashQuality(playerData, data, Quality.QHDR, "HDR 真彩");
         appendDashQuality(playerData, data, Quality.Q1080P60, "1080P60 高帧率");
 
-        android.util.Log.e("PlayerApi", "getBangumi 结束");
     }
 }

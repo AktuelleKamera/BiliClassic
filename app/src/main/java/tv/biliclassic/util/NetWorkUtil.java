@@ -868,7 +868,6 @@ public class NetWorkUtil {
         }
 
         String location = resolveRedirect(conn, originalUrl);
-        Log.d("NetWorkUtil", "重定向到: " + location + " (第 " + retryCount + " 次)");
 
         // 303 一律转 GET；其余保留原方法，Content-Type 必须跟着走（JSON 接口不能被改写）
         if ("POST".equals(method) && postData != null && responseCode != 303) {
@@ -910,7 +909,6 @@ public class NetWorkUtil {
                 if (!location.startsWith("http://") && !location.startsWith("https://")) {
                     location = new URL(new URL(current), location).toString();
                 }
-                Log.d("NetWorkUtil", "短链跳转 " + hostOf(current) + " -> " + hostOf(location));
                 current = location;
             } finally {
                 if (conn != null) {
@@ -934,7 +932,6 @@ public class NetWorkUtil {
         InputStream is;
         if (responseCode >= 400) {
             is = conn.getErrorStream();
-            Log.e("NetWorkUtil", "HTTP错误: " + responseCode);
         } else {
             is = conn.getInputStream();
         }
@@ -1078,7 +1075,6 @@ public class NetWorkUtil {
                     throw new IOException("重定向次数超过上限 (" + MAX_REDIRECT_COUNT + " 次)，可能陷入循环重定向。URL: " + url);
                 }
                 String next = resolveRedirect(conn, url);
-                Log.d("NetWorkUtil", "JSON 重定向到: " + next + " (第 " + (redirectCount + 1) + " 次)");
                 conn = null;
                 return doGetJsonStreamOnce(next, headers, redirectCount + 1);
             }
@@ -1292,13 +1288,11 @@ public class NetWorkUtil {
                             allCookies.append(clean);
                         }
                         if (sc.contains("bili_ticket") || sc.contains("sid=") || sc.contains("DedeUserID__ckMd5")) {
-                            Log.d("NetWorkUtil", "首页Set-Cookie关键: " + extractCookiePairs(sc));
                         }
                     }
                 }
                 String merged = allCookies.toString();
                 if (merged.length() > 0) {
-                    Log.d("NetWorkUtil", "首页Set-Cookie全部: " + merged);
                     String existing = SharedPreferencesUtil.getString("cookies", "");
                     String newCookie = mergeCookies(existing, merged);
                     SharedPreferencesUtil.putString("cookies", newCookie);
@@ -1307,7 +1301,6 @@ public class NetWorkUtil {
                     ensureBrowserCookies();
                     String buvid3 = getInfoFromCookie("buvid3", merged);
                     if (buvid3 != null && buvid3.length() > 0) {
-                        Log.d("NetWorkUtil", "获取到 buvid3: " + buvid3);
                         return buvid3;
                     }
                 }
