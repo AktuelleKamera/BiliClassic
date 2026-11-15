@@ -134,7 +134,8 @@ public final class UiSkin {
         }
         boolean night = isNight();
         boolean trans = BgUtil.hasImage();
-        boolean settings = a instanceof SettingsActivity;
+        boolean settings = a instanceof SettingsActivity
+                || a instanceof tv.biliclassic.subsettings.DecoderSettingsActivity;
         // 白天、无自定义背景、且没有任何已套过皮肤的痕迹时无需遍历
         if (!night && !trans && !settings && BG_ORIG.isEmpty() && TEXT_ORIG.isEmpty()) {
             return;
@@ -461,7 +462,7 @@ public final class UiSkin {
         if (c == 0xFF000000 || c == 0xFF333333 || c == 0xFF525252) {
             return 0xFFE6E6E6;
         }
-        if (c == 0xFF555555 || c == 0xFF666666 || c == 0xFF999999) {
+        if (c == 0xFF555555 || c == 0xFF616161 || c == 0xFF666666 || c == 0xFF999999) {
             return 0xFFB0B0B0;
         }
         return c;
