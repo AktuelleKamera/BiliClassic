@@ -836,11 +836,11 @@ public class BiliPlayerActivity extends Activity implements
                 ? getString(R.string.player_loading_mode_system)
                 : getString(R.string.player_loading_mode_ijk);
         setLoadingStep1(getString(R.string.player_loading_device_info,
-                DeviceUtils.getDeviceManufacturer(), Build.MODEL, Build.VERSION.RELEASE,
+                DeviceUtils.getDeviceManufacturer(), DeviceUtils.getDeviceModel(), DeviceUtils.getDeviceRelease(),
                 String.valueOf(SdkHelper.getSdkInt()), mode));
         mStageEcho = new PlayerStageEcho(mLoadingStep1);
         mStageEcho.appendFinished(getString(R.string.player_loading_device_info,
-                DeviceUtils.getDeviceManufacturer(), Build.MODEL, Build.VERSION.RELEASE,
+                DeviceUtils.getDeviceManufacturer(), DeviceUtils.getDeviceModel(), DeviceUtils.getDeviceRelease(),
                 String.valueOf(SdkHelper.getSdkInt()), mode));
         mStageEcho.appendFinished("\u68c0\u67e5\u6a21\u5f0f: \u81ea\u52a8\u9009\u62e9");
         mStageEcho.setPending(getString(R.string.player_loading_step_get_url));
@@ -2801,14 +2801,17 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     private static boolean isExynos4412Device() {
-        String hw = Build.HARDWARE == null ? "" : Build.HARDWARE.toUpperCase(java.util.Locale.US);
-        String board = Build.BOARD == null ? "" : Build.BOARD.toUpperCase(java.util.Locale.US);
+        String hw = tv.biliclassic.util.DeviceUtils.getHardware()
+                .toUpperCase(java.util.Locale.US);
+        String board = tv.biliclassic.util.DeviceUtils.getBoard()
+                .toUpperCase(java.util.Locale.US);
         if (hw.contains("SMDK4X12") || board.contains("SMDK4X12")
                 || hw.contains("EXYNOS4") || board.contains("EXYNOS4")
                 || hw.contains("MIDAS") || board.contains("MIDAS")) {
             return true;
         }
-        String m = Build.MODEL == null ? "" : Build.MODEL.toUpperCase(java.util.Locale.US);
+        String m = tv.biliclassic.util.DeviceUtils.getDeviceModel()
+                .toUpperCase(java.util.Locale.US);
         return m.equals("GT-I9300") || m.equals("GT-I9305")
                 || m.equals("GT-N7100") || m.startsWith("GT-N710")
                 || m.startsWith("GT-N8000") || m.startsWith("GT-N801")
