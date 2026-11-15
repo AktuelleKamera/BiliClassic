@@ -3291,6 +3291,15 @@ public class BiliPlayerActivity extends Activity implements
         applyVideoScale(1.0f, 0, 0);
         mp.start();
         isPlaying = true;
+        if (decoderType == DECODER_SYSTEM) {
+            handler.postDelayed(new Runnable() {
+                public void run() {
+                    if (isPrepared && !isFinishing()) {
+                        hideLoadingOverlay();
+                    }
+                }
+            }, 300L);
+        }
         startSplitAudioIfReady();
         setupNfcSync();
         if (mDanmakuManager != null) mDanmakuManager.onVideoStarted();
