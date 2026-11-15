@@ -214,12 +214,19 @@ public class BiliPlayerActivity extends Activity implements
     private int mSeekWhenPrepared = 0;
     private boolean mStartAfterSeek = false;
     private int mInitialSeekTarget = 0;
+    private boolean mInitialSeekHold = false;
+    private boolean mInitialSeekAccurateDone = false;
+    private boolean mInitialSeekVideoRendered = false;
+    private final Runnable mInitialSeekTimeout = new Runnable() {
+        public void run() { finishInitialSeekHold(); }
+    };
 
     private boolean mSeekPending = false;
     private long mSeekTarget = 0L;
     private long mSeekDisplayTarget = 0L;
     private long mSeekDisplayHoldUntil = 0L;
     private boolean mShowResumeTipOnPrepare = false;
+
     private boolean mTextureViewConfigured = false;
     private static int sPendingSeekPosition = 0;
     private boolean playerLocked = false;
@@ -919,6 +926,19 @@ public class BiliPlayerActivity extends Activity implements
             }
         } catch (Throwable t) {
         }
+    }
+
+    private void finishInitialSeekHold() {
+        if (!mInitialSeekHold) return;
+        mInitialSeekHold = false;
+        handler.removeCallbacks(mInitialSeekTimeout);
+        try {
+            if (mediaPlayer != null) mediaPlayer.setVolume(1f, 1f);
+        } catch (Throwable ignored) {
+        }
+        hideLoadingOverlay();
+        showBuffering(false);
+        updateTimeDisplay();
     }
 
     private void hideLoadingOverlay() {
@@ -3086,7 +3106,6 @@ public class BiliPlayerActivity extends Activity implements
 
         int initialTarget = mSeekWhenPrepared;
         if (initialTarget > 0 && mDuration > 0 && initialTarget <= mDuration) {
-            mInitialSeekTarget = initialTarget;
             mSeekDisplayTarget = initialTarget;
             mSeekDisplayHoldUntil = android.os.SystemClock.elapsedRealtime() + 2500L;
             mLastKnownPosition = initialTarget;
@@ -3101,8 +3120,13 @@ public class BiliPlayerActivity extends Activity implements
             if (seekBar != null) seekBar.setProgress(0);
             if (tvCurrentTime != null) tvCurrentTime.setText("00:00");
         }
-        hideLoadingOverlay();
-
+        mInitialSeekHold = decoderType != DECODER_SYSTEM && initialTarget > 0;
+        mInitialSeekAccurateDone = false;
+        mInitialSeekVideoRendered = false;
+        if (mInitialSeekHold) {
+            try { mp.setVolume(0f, 0f); } catch (Throwable ignored) {}
+            handler.postDelayed(mInitialSeekTimeout, 5000L);
+        }
         if (mGestureController != null) {
             mGestureController.setDuration(mDuration);
         }
@@ -3129,7 +3153,6 @@ public class BiliPlayerActivity extends Activity implements
         mShowResumeTipOnPrepare = false;
         if (mSeekWhenPrepared > 0 && mDuration > 0
                 && mSeekWhenPrepared <= mDuration) {
-            mInitialSeekTarget = mSeekWhenPrepared;
             mSeekDisplayTarget = mSeekWhenPrepared;
             mSeekDisplayHoldUntil = android.os.SystemClock.elapsedRealtime() + 2500L;
             if (mDanmakuManager != null) mDanmakuManager.seekTo(mSeekWhenPrepared);
@@ -3160,15 +3183,8 @@ public class BiliPlayerActivity extends Activity implements
         } else {
             mLastKnownPosition = 0;
         }
-        if (resumeTipPosition > 0 && mGestureController != null) {
-            mGestureController.showResumeTip(
-                    getString(R.string.player_resume_tip_fmt, formatTime(resumeTipPosition)),
-                    getString(R.string.player_resume_from_start),
-                    new Runnable() {
-                        public void run() {
-                            cancelAutoResume();
-                        }
-                    });
+        if (resumeTipPosition > 0) {
+            showResumeTipForPosition(resumeTipPosition);
         }
 
         aspectRatioFixed = false;
@@ -3284,14 +3300,21 @@ public class BiliPlayerActivity extends Activity implements
         switch (completionAction) {
             case COMPLETION_ACTION_LOOP:
                 if (mediaPlayer != null) {
-                    mediaPlayer.seekTo(0L);
-                    mediaPlayer.start();
-                    seekSplitAudio(0);
-                    isPlaying = true;
-                    startSplitAudioIfReady();
-                    updatePlayPauseButton();
+                    mStartAfterSeek = true;
+                    mSeekPending = true;
+                    mSeekTarget = 0L;
+                    try {
+                        mediaPlayer.seekTo(0L);
+                    } catch (Throwable ignored) {
+                        mStartAfterSeek = false;
+                        try {
+                            mediaPlayer.start();
+                            isPlaying = true;
+                        } catch (Throwable ignored2) {
+                        }
+                    }
                     if (mDanmakuManager != null) mDanmakuManager.seekTo(0L);
-                    if (mDanmakuManager != null) mDanmakuManager.resume();
+                    updatePlayPauseButton();
                 }
                 break;
             case COMPLETION_ACTION_EXIT:
@@ -3507,7 +3530,11 @@ public class BiliPlayerActivity extends Activity implements
                 if (mDanmakuManager != null && isPlaying) mDanmakuManager.resume();
                 break;
             case IMediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START:
-                hideLoadingOverlay();
+                mInitialSeekVideoRendered = true;
+                if (!mInitialSeekHold || mInitialSeekAccurateDone) {
+                    if (mInitialSeekHold) finishInitialSeekHold();
+                    else hideLoadingOverlay();
+                }
                 showBuffering(false);
                 if (!aspectRatioFixed) {
                     aspectRatioFixed = true;
@@ -3522,6 +3549,10 @@ public class BiliPlayerActivity extends Activity implements
                     } catch (Throwable ignored) {
                     }
                 }
+                break;
+            case IMediaPlayer.MEDIA_INFO_MEDIA_ACCURATE_SEEK_COMPLETE:
+                mInitialSeekAccurateDone = true;
+                if (mInitialSeekVideoRendered) finishInitialSeekHold();
                 break;
         }
         return false;
@@ -4310,6 +4341,18 @@ public class BiliPlayerActivity extends Activity implements
         if (mediaSessionHelper != null) {
             mediaSessionHelper.setPlaying(isPlaying);
         }
+    }
+
+    private void showResumeTipForPosition(final int position) {
+        if (position <= 0 || mGestureController == null) return;
+        mGestureController.showResumeTip(
+                getString(R.string.player_resume_tip_fmt, formatTime(position)),
+                getString(R.string.player_resume_from_start),
+                new Runnable() {
+                    public void run() {
+                        cancelAutoResume();
+                    }
+                });
     }
 
     private void updateProgress() {

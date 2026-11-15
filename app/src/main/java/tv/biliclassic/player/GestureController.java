@@ -74,6 +74,7 @@ public class GestureController {
     private Object mToastViewHolder;
     private boolean mToastViewHolderChecked;
     private Object mResumeToastViewHolder;
+    private android.widget.TextView mSeekHintView;
     private boolean mResumeToastViewHolderChecked;
     private String mProgreesFmt;
 
@@ -148,6 +149,13 @@ public class GestureController {
     }
 
     private OnGestureActionListener mListener;
+
+    private final Runnable mHideToastRunnable = new Runnable() {
+        @Override
+        public void run() {
+            hideToastHint();
+        }
+    };
 
     private Runnable mHideBarsRunnable = new Runnable() {
         public void run() {
@@ -423,6 +431,11 @@ public class GestureController {
         if (mResumeToastViewHolder != null) {
             toastHolderRelease(mResumeToastViewHolder);
             mResumeToastViewHolder = null;
+        }
+        if (mSeekHintView != null) {
+            ViewGroup parent = (ViewGroup) mSeekHintView.getParent();
+            if (parent != null) parent.removeView(mSeekHintView);
+            mSeekHintView = null;
         }
         mLongPressHandler.removeCallbacksAndMessages(null);
         mHandler.removeCallbacks(mHideSpeedTipRunnable);
@@ -1026,12 +1039,9 @@ public class GestureController {
     }
 
     private void showSeekProgressHint(int progressMs) {
-        Object holder = getToastViewHolder();
-        if (holder == null) return;
         android.widget.FrameLayout rootView = (android.widget.FrameLayout)
                 mActivity.findViewById(android.R.id.content);
         if (rootView == null) return;
-        toastHolderInitView(holder, rootView);
 
         int beginMs = mSeekBarUsesMillis
                 ? mSeekBeginPosition
@@ -1039,12 +1049,29 @@ public class GestureController {
                         / (mSeekBar != null && mSeekBar.getMax() > 0 ? mSeekBar.getMax() : 1000));
         String timeText = formatTime(progressMs);
         String durationText = formatTime(mDuration);
-
         long diff = (progressMs - beginMs) / 1000;
         String diffTime = (diff >= 0 ? "+" : "") + diff;
-
         String text = String.format(mProgreesFmt, timeText, durationText, diffTime);
-        toastHolderShow(holder, text, 500000, false);
+
+        if (mSeekHintView == null) {
+            android.widget.TextView tv = new android.widget.TextView(mActivity);
+            tv.setTextColor(0xFFFFFFFF);
+            tv.setTextSize(16f);
+            tv.setGravity(android.view.Gravity.CENTER);
+            tv.setPadding(24, 10, 24, 10);
+            tv.setBackgroundColor(0x99000000);
+            android.widget.FrameLayout.LayoutParams lp = new android.widget.FrameLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.gravity = android.view.Gravity.CENTER;
+            rootView.addView(tv, lp);
+            mSeekHintView = tv;
+        }
+        mSeekHintView.setText(text);
+        mSeekHintView.setVisibility(android.view.View.VISIBLE);
+        mSeekHintView.bringToFront();
+        mHandler.removeCallbacks(mHideToastRunnable);
+        mHandler.postDelayed(mHideToastRunnable, 1200L);
     }
 
     // MotionEvent.getPointerCount 是 API5(Android 2.0)+ 才有的方法，
@@ -1156,7 +1183,8 @@ public class GestureController {
         }
         mInHorizontalMoving = false;
         mInVerticalMoving = false;
-        hideToastHint();
+        mHandler.removeCallbacks(mHideToastRunnable);
+        mHandler.postDelayed(mHideToastRunnable, 800L);
     }
 
     public void showResumeTip(String text, String cancelText, Runnable cancelAction) {
@@ -1187,6 +1215,9 @@ public class GestureController {
     }
 
     private void hideToastHint() {
+        if (mSeekHintView != null) {
+            mSeekHintView.setVisibility(android.view.View.GONE);
+        }
         if (mToastViewHolder != null) {
             try {
                 mToastViewHolder.getClass().getMethod("dismiss").invoke(mToastViewHolder);
