@@ -147,12 +147,21 @@
                 <data android:host="*.b23.com" />
                 <data android:host="bili2233.cn" />
                 <data android:host="*.bili2233.cn" />
+                <data android:host="bili2233.com" />
+                <data android:host="*.bili2233.com" />
+                <data android:host="b23.wtf" />
+                <data android:host="*.b23.wtf" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="bilibili" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
 
@@ -324,9 +333,28 @@
 
         <activity
             android:name=".player.BiliPlayerActivity"
+            android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="sensorLandscape"
-            android:theme="@style/PlayerTheme" />
+            android:theme="@style/PlayerTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:mimeType="video/*" />
+                <data android:mimeType="application/x-mpegURL" />
+                <data android:mimeType="application/vnd.apple.mpegurl" />
+                <data android:mimeType="application/dash+xml" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" />
+                <data android:mimeType="video/*" />
+            </intent-filter>
+        </activity>
 
         <!-- 视频下载后台服务 -->
         <service

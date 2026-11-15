@@ -368,6 +368,7 @@ public class BiliPlayerActivity extends Activity implements
     private int[] mQualityValues;
     private int mCurrentQn;
     private boolean mOfflineMode;
+    private boolean mExternalViewIntent;
     private boolean mHideControls;
     private boolean mHideLoading;
     private boolean mForceHwDecode;
@@ -539,6 +540,24 @@ public class BiliPlayerActivity extends Activity implements
         mProxyDurationMs = getIntent().getLongExtra("duration_ms", 0);
         videoTitle = getIntent().getStringExtra("video_title");
         cachePath = getIntent().getStringExtra("cache_path");
+        Uri viewData = getIntent() == null ? null : getIntent().getData();
+        if ((videoUrl == null || videoUrl.length() == 0) && viewData != null) {
+            mExternalViewIntent = true;
+            String scheme = viewData.getScheme() == null ? "" : viewData.getScheme();
+            if ("file".equalsIgnoreCase(scheme)) {
+                cachePath = viewData.getPath();
+                videoUrl = cachePath;
+            } else {
+                videoUrl = viewData.toString();
+            }
+            if (videoTitle == null || videoTitle.length() == 0) {
+                videoTitle = getIntent().getStringExtra(Intent.EXTRA_TITLE);
+            }
+            if (videoTitle == null || videoTitle.length() == 0) {
+                String last = viewData.getLastPathSegment();
+                videoTitle = last == null || last.length() == 0 ? "Video" : last;
+            }
+        }
         final String coverUrl = getIntent().getStringExtra("cover_url");
 
         mediaSessionHelper = new MediaSessionHelper(this, BiliPlayerActivity.class);
@@ -617,7 +636,8 @@ public class BiliPlayerActivity extends Activity implements
         loadSubtitles();
 
         // 非内置播放器且在线模式 → 自动关闭在线播放，交给外部播放器
-        if (!mOfflineMode && !getIntent().getBooleanExtra("_from_external_redirect", false)) {
+        if (!mOfflineMode && !mExternalViewIntent
+                && !getIntent().getBooleanExtra("_from_external_redirect", false)) {
             int pref = SettingsActivity.getPlayerPreference();
             if (pref != 8) {
                 String playerPkg = SettingsActivity.getPlayerPackageName();

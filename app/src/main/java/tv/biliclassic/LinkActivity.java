@@ -24,6 +24,9 @@ public class LinkActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Uri uri = getIntent() != null ? getIntent().getData() : null;
+        if (uri == null && getIntent() != null) {
+            uri = extractUri(getIntent().getStringExtra(Intent.EXTRA_TEXT));
+        }
         if (uri == null) {
             goHome();
             return;
@@ -50,6 +53,22 @@ public class LinkActivity extends BaseActivity {
         if (epid > 0) {
             resolveEpid(uri, epid);
             return;
+        }
+        if (custom && "pgc".equals(lower(uri.getHost()))) {
+            String p = uri.getPath() == null ? "" : uri.getPath();
+            if (p.contains("/ep/")) {
+                long id = parseLong(lastSeg(uri.getPathSegments()));
+                if (id > 0) {
+                    resolveEpid(uri, id);
+                    return;
+                }
+            } else {
+                long id = parseLong(lastSeg(uri.getPathSegments()));
+                if (id > 0) {
+                    startTarget(seasonIntent(id));
+                    return;
+                }
+            }
         }
 
         if (custom) {
@@ -123,9 +142,43 @@ public class LinkActivity extends BaseActivity {
             }
             return kw != null && kw.length() > 0 ? searchIntent(kw) : null;
         }
+        if ("pgc".equals(host)) {
+            long season = parseLong(lastSeg(segs));
+            return season > 0 ? seasonIntent(season) : null;
+        }
+        if ("opus".equals(host) || "album".equals(host) || "following".equals(host)) {
+            long id = parseLong(lastSeg(segs));
+            return id > 0 ? dynamicIntent(id) : null;
+        }
+        if ("browser".equals(host)) {
+            String url = query(uri, "url");
+            if (url == null || url.length() == 0) return null;
+            Intent web = new Intent(this, WebViewActivity.class);
+            web.putExtra("url", url);
+            return web;
+        }
+        if ("history".equals(host)) {
+            return new Intent(this, HistoryActivity.class);
+        }
+        if ("livearea".equals(host)) {
+            return new Intent(this, LiveRoomListActivity.class);
+        }
+        if ("download".equals(host)) {
+            return new Intent(this, OfflineActivity.class);
+        }
+        if ("login".equals(host)) {
+            return new Intent(this, LoginActivity.class);
+        }
+        if ("main".equals(host) && uri.getPath() != null
+                && uri.getPath().startsWith("/favorite")) {
+            return new Intent(this, FavoriteFolderListActivity.class);
+        }
         if ("bangumi".equals(host)) {
             String token = lastSeg(segs);
-            return seasonFromToken(token);
+            Intent season = seasonFromToken(token);
+            if (season != null) return season;
+            long sid = parseLong(token);
+            return sid > 0 ? seasonIntent(sid) : null;
         }
         if ("dynamic".equals(host) || "feed".equals(host)) {
             long id = parseLong(lastSeg(segs));
@@ -147,6 +200,14 @@ public class LinkActivity extends BaseActivity {
 
         if (host != null && (host.equals("space.bilibili.com")
                 || host.endsWith(".space.bilibili.com"))) {
+            if (path.startsWith("/h5/follow")) {
+                long followMid = parseLong(query(uri, "mid"));
+                return followMid > 0 ? userIntent(followMid) : null;
+            }
+            if (path.contains("/lists/") || path.startsWith("/channel/")
+                    || path.contains("/collectiondetail")) {
+                return null;
+            }
             long mid = parseLong(first);
             return mid > 0 ? userIntent(mid) : null;
         }
@@ -165,6 +226,32 @@ public class LinkActivity extends BaseActivity {
                 kw = first;
             }
             return kw != null && kw.length() > 0 ? searchIntent(kw) : null;
+        }
+        if (host != null && host.startsWith("space.")
+                && path.startsWith("/h5/follow")) {
+            long mid = parseLong(query(uri, "mid"));
+            return mid > 0 ? userIntent(mid) : null;
+        }
+        if (path.startsWith("/note") || path.startsWith("/note-app")) {
+            long cv = parseLong(query(uri, "cvid"));
+            return cv > 0 ? articleIntent(cv) : null;
+        }
+        if (path.startsWith("/opus/") || path.startsWith("/album/")) {
+            long id = parseLong(lastSeg(segs));
+            return id > 0 ? dynamicIntent(id) : null;
+        }
+        if (path.startsWith("/playlist/")) {
+            String bvid = query(uri, "bvid");
+            if (bvid == null || bvid.length() == 0) {
+                for (int i = 0; i < segs.size(); i++) {
+                    String seg = (String) segs.get(i);
+                    if (seg != null && (seg.startsWith("BV") || seg.startsWith("bv"))) {
+                        bvid = seg;
+                        break;
+                    }
+                }
+            }
+            return bvid != null && bvid.length() > 0 ? videoIntent(bvid) : null;
         }
         if (path.startsWith("/video/") && segs.size() > 1) {
             return videoIntent((String) segs.get(1));
@@ -347,6 +434,30 @@ public class LinkActivity extends BaseActivity {
 
     // 工具
 
+    private Uri extractUri(String text) {
+        if (text == null) return null;
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("(?:https?://|bilibili://)[^\\s]+",
+                        java.util.regex.Pattern.CASE_INSENSITIVE)
+                .matcher(text);
+        if (!m.find()) return null;
+        String value = m.group();
+        while (value.length() > 0) {
+            char c = value.charAt(value.length() - 1);
+            if (c == '.' || c == ',' || c == ';' || c == ')' || c == ']'
+                    || c == '>' || c == '/' || c == '"' || c == '\'') {
+                value = value.substring(0, value.length() - 1);
+            } else {
+                break;
+            }
+        }
+        try {
+            return Uri.parse(value);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private String lower(String s) {
         if (s == null) {
             return "";
@@ -375,7 +486,9 @@ public class LinkActivity extends BaseActivity {
         }
         return host.equals("b23.tv") || host.endsWith(".b23.tv")
                 || host.equals("b23.com") || host.endsWith(".b23.com")
-                || host.equals("bili2233.cn") || host.endsWith(".bili2233.cn");
+                || host.equals("b23.wtf") || host.endsWith(".b23.wtf")
+                || host.equals("bili2233.cn") || host.endsWith(".bili2233.cn")
+                || host.equals("bili2233.com") || host.endsWith(".bili2233.com");
     }
 
     private long epidOf(Uri uri) {
