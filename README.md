@@ -1,4 +1,4 @@
-﻿# BiliClassic for Mymobile
+# BiliClassic for Mymobile
 
 一个面向魅族M8的第三方哔哩哔哩客户端，让经典的魅族M8重新获得观看哔哩哔哩视频的能力。
 
