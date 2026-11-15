@@ -61,6 +61,13 @@ public class DecoderSettingsActivity extends BaseActivity {
         initCheckBoxItems();
         updateVisibilityByDecoder();
         updateAllDisplays();
+        tv.biliclassic.util.UiSkin.applyDecoderSettings(this);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        tv.biliclassic.util.UiSkin.applyDecoderSettings(this);
     }
 
     // 按当前解码方式动态显示/隐藏设置项：

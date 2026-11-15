@@ -149,6 +149,58 @@ public final class UiSkin {
         }
     }
 
+    /** ??????????????? id ?????????????????????????? */
+    public static void applyDecoderSettings(Activity a) {
+        if (a == null || !isNight()) return;
+        try {
+            View content = a.findViewById(R.id.decoder_content);
+            if (content != null) content.setBackgroundColor(0xFF171717);
+            View scroll = a.findViewById(R.id.decoder_scroll);
+            if (scroll != null) scroll.setBackgroundColor(0xFF171717);
+            int[] items = {
+                    R.id.item_pictq_size, R.id.item_skip_loop_filter,
+                    R.id.item_skip_frame, R.id.item_maxfps,
+                    R.id.item_framedrop, R.id.item_video_disabled,
+                    R.id.item_audio_disabled, R.id.item_split_audio,
+                    R.id.item_opensles, R.id.item_opensles_buffer,
+                    R.id.item_audiotrack_buffer
+            };
+            for (int id : items) {
+                View v = a.findViewById(id);
+                if (v != null) {
+                    markBgRes(v, R.drawable.settings_item_bg_night, 1);
+                    forceDecoderTextNight(v);
+                }
+            }
+            int[] cats = {
+                    R.id.category_sw_decode, R.id.category_playctl,
+                    R.id.category_audio
+            };
+            for (int id : cats) {
+                View v = a.findViewById(id);
+                if (v != null) {
+                    v.setBackgroundColor(0xFF171717);
+                    if (v instanceof TextView) {
+                        ((TextView) v).setTextColor(0xFFB0B0B0);
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void forceDecoderTextNight(View v) {
+        if (v instanceof TextView) {
+            ((TextView) v).setTextColor(0xFFE6E6E6);
+        }
+        if (v instanceof android.view.ViewGroup) {
+            android.view.ViewGroup g = (android.view.ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                forceDecoderTextNight(g.getChildAt(i));
+            }
+        }
+    }
+
     private static void applyBars(Activity a, boolean night, boolean trans) {
         try {
             View tb = a.findViewById(R.id.title_bar);
@@ -332,7 +384,7 @@ public final class UiSkin {
                         && v.getId() != View.NO_ID) {
                     try {
                         String entry = v.getResources().getResourceEntryName(v.getId());
-                        settingsItemBg = entry != null && entry.endsWith("_item");
+                        settingsItemBg = entry != null && (entry.startsWith("item_") || entry.endsWith("_item"));
                     } catch (Throwable ignored) {
                     }
                 }

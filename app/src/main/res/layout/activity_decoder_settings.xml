@@ -55,11 +55,13 @@
         android:contentDescription="@null" />
 
     <ScrollView
+        android:id="@+id/decoder_scroll"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scrollbars="none">
 
         <LinearLayout
+            android:id="@+id/decoder_content"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
