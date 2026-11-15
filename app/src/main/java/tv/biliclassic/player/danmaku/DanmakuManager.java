@@ -70,7 +70,7 @@ public class DanmakuManager {
     private static final String KEY_BLOCK_GUEST = "danmaku_block_guest";
     private static final String KEY_BLOCK_COLORFUL = "danmaku_block_colorful";
     private static final String KEY_DUP_MERGE = "danmaku_duplicate_merge";
-    private static final float DEFAULT_TEXT_SIZE = 1.8f;
+    private static final float DEFAULT_TEXT_SIZE = 1.0f;
     public static final String KEY_ENGINE_MANUAL = "danmaku_engine_mode_manual";
 
     private static final String KEY_RENDER_MODE = "danmaku_render_mode";
@@ -422,8 +422,7 @@ public class DanmakuManager {
 
     private void initSimpleEngine() {
         mSimpleEngine = new SimpleDanmakuEngine(mActivity);
-        mSimpleEngine.setScaleTextSize(
-                SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE));
+        mSimpleEngine.setScaleTextSize(getSavedTextSize());
         mContainer.removeAllViews();
         String mode = resolveRenderMode();
         View host;
@@ -506,7 +505,7 @@ public class DanmakuManager {
             }
         });
 
-        float textSize = SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE);
+        float textSize = getSavedTextSize();
         float transparency = SharedPreferencesUtil.getFloat(KEY_TRANSPARENCY, 0.4f);
         float speed = SharedPreferencesUtil.getFloat(KEY_SPEED, 1.0f);
         int maxScreen = SharedPreferencesUtil.getInt(KEY_MAX_SCREEN, -1);
@@ -541,6 +540,10 @@ public class DanmakuManager {
         if (mDanmakuUrl != null || (mDanmakuCacheFile != null && mDanmakuCacheFile.exists())) {
             startLoadDanmaku();
         }
+    }
+
+    private static float getSavedTextSize() {
+        return SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE);
     }
 
     private void applyDanmakuTransparency(float v) {
@@ -1322,7 +1325,7 @@ public class DanmakuManager {
 
         hideSectionHeaders(panel);
 
-        float textScale = SharedPreferencesUtil.getFloat(KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE);
+        float textScale = getSavedTextSize();
         float speed = SharedPreferencesUtil.getFloat(KEY_SPEED, 1.0f);
         float alpha = 1.0f - SharedPreferencesUtil.getFloat(KEY_TRANSPARENCY, 0.4f);
         int maxScreen = SharedPreferencesUtil.getInt(KEY_MAX_SCREEN, 50);
