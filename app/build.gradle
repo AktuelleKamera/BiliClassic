@@ -69,3 +69,59 @@ task cleanBuildCache(type: Delete) {
 }
 
 clean.dependsOn cleanBuildCache
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file('keystore.properties')
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+def sdkDir = android.sdkDirectory
+def buildToolsDir = new File(sdkDir, 'build-tools/33.0.1')
+def zipalignExe = new File(buildToolsDir, 'zipalign.exe')
+def apksignerJar = new File(buildToolsDir, 'lib/apksigner.jar')
+def javaExe = new File(System.getProperty('java.home'), 'bin/java.exe')
+def zopfliUnsigned = new File(buildDir, 'outputs/apk/app-release-zopfli-unsigned.apk')
+def zopfliAligned = new File(buildDir, 'outputs/apk/app-release-zopfli-aligned.apk')
+def finalApk = project.file('app-release.apk')
+
+task zopfliRepack(type: Exec) {
+    group = 'build'
+    dependsOn 'assembleRelease'
+    workingDir rootProject.projectDir
+    commandLine 'python', 'tools/zopfli_apk.py',
+            '--input', new File(buildDir, 'outputs/apk/app-release-unsigned.apk').absolutePath,
+            '--output', zopfliUnsigned.absolutePath
+}
+
+task zopfliAlign(type: Exec) {
+    group = 'build'
+    dependsOn 'zopfliRepack'
+    commandLine zipalignExe.absolutePath, '-f', '4',
+            zopfliUnsigned.absolutePath, zopfliAligned.absolutePath
+}
+
+task zopfliSign(type: Exec) {
+    group = 'build'
+    dependsOn 'zopfliAlign'
+    doFirst {
+        if (!keystorePropsFile.exists()) {
+            throw new GradleException('Missing keystore.properties')
+        }
+        finalApk.delete()
+    }
+    commandLine javaExe.absolutePath, '-jar', apksignerJar.absolutePath, 'sign',
+            '--ks', rootProject.file(keystoreProps.getProperty('storeFile')).absolutePath,
+            '--ks-pass', 'pass:' + keystoreProps.getProperty('storePassword'),
+            '--key-pass', 'pass:' + keystoreProps.getProperty('keyPassword'),
+            '--ks-key-alias', keystoreProps.getProperty('keyAlias'),
+            '--v1-signing-enabled', 'true',
+            '--v2-signing-enabled', 'true',
+            '--v3-signing-enabled', 'true',
+            '--v4-signing-enabled', 'false',
+            '--out', finalApk.absolutePath, zopfliAligned.absolutePath
+}
+
+task zopfliRelease {
+    group = 'build'
+    description = 'Build, zopfli-repack, zipalign and V1+V2+V3 sign app-release.apk.'
+    dependsOn 'zopfliSign'
+}
