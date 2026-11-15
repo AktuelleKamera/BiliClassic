@@ -2321,15 +2321,28 @@ public class BiliPlayerActivity extends Activity implements
     private void switchToPart(final int newPartIndex) {
         if (mCids == null || newPartIndex < 0 || newPartIndex >= mCids.length) return;
 
-        if (mediaPlayer != null && isPrepared) {
-            try { mQualitySwitchSeekPos = (int) mediaPlayer.getCurrentPosition(); } catch (Exception e) {}
-        }
-
-        showBuffering(true);
-
         final long newCid = mCids[newPartIndex];
         final String newTitle = (mPartNames != null && newPartIndex < mPartNames.length)
                 ? mPartNames[newPartIndex] : videoTitle;
+        final String upName = getIntent().getStringExtra("up_name");
+        final String cover = getIntent().getStringExtra("cover_url");
+
+        if (mediaPlayer != null && isPrepared) {
+            try {
+                int oldPosition = (int) mediaPlayer.getCurrentPosition();
+                tv.biliclassic.util.LocalHistoryStore.record(
+                        mAid, mCid, videoTitle, cover, upName, oldPosition);
+            } catch (Exception ignored) {
+            }
+        }
+
+        int newPosition = tv.biliclassic.util.LocalHistoryStore.getProgress(mAid, newCid);
+        mQualitySwitchSeekPos = newPosition;
+        mLastReportProgress = -1;
+        tv.biliclassic.util.LocalHistoryStore.record(
+                mAid, newCid, newTitle, cover, upName, newPosition);
+
+        showBuffering(true);
 
         new Thread(new Runnable() {
             public void run() {
@@ -2382,7 +2395,8 @@ public class BiliPlayerActivity extends Activity implements
                                 if (tvTitle != null) tvTitle.setText(videoTitle);
                                 if (decoderType == DECODER_SYSTEM) {
                                     releasePlayer();
-                                    sPendingSeekPosition = 0;
+                                    sPendingSeekPosition = mQualitySwitchSeekPos;
+                                    mQualitySwitchSeekPos = 0;
                                     Intent intent = getIntent();
                                     intent.putExtra("video_url", newUrl);
                                     if (newAudioUrl != null && newAudioUrl.length() > 0) {

@@ -61,6 +61,11 @@ public final class LocalHistoryStore {
         SharedPreferencesUtil.putString(KEY, LocalJsonCrypto.encrypt(out.toString()));
     }
 
+    public static synchronized int getProgress(long aid, long cid) {
+        JSONObject item = find(readArray(), aid, cid);
+        return item == null ? 0 : Math.max(0, item.optInt("progress", 0));
+    }
+
     public static synchronized void updateProgress(long aid, long cid, int progressMs) {
         if (aid <= 0 && cid <= 0) return;
         JSONArray old = readArray();
@@ -183,7 +188,8 @@ public final class LocalHistoryStore {
     private static boolean same(JSONObject item, long aid, long cid) {
         long oldAid = item.optLong("aid", 0);
         long oldCid = item.optLong("cid", 0);
+        if (cid > 0 && oldCid > 0) return oldCid == cid;
         if (aid > 0 && oldAid > 0) return oldAid == aid;
-        return cid > 0 && oldCid == cid;
+        return false;
     }
 }
