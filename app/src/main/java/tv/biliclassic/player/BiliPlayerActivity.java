@@ -223,9 +223,11 @@ public class BiliPlayerActivity extends Activity implements
 
     private boolean mSeekPending = false;
     private long mSeekTarget = 0L;
+    private long mPausedSeekTarget = -1L;
     private long mSeekDisplayTarget = 0L;
     private long mSeekDisplayHoldUntil = 0L;
     private boolean mShowResumeTipOnPrepare = false;
+    private int mPendingResumeTipPosition = 0;
 
     private boolean mTextureViewConfigured = false;
     private static int sPendingSeekPosition = 0;
@@ -991,6 +993,7 @@ public class BiliPlayerActivity extends Activity implements
                         if (mediaPlayer != null && isPrepared && mDuration > 0) {
                             mSeekPending = true;
                             mSeekTarget = position;
+                            if (!isPlaying) mPausedSeekTarget = position;
                             mediaPlayer.seekTo(position);
                             if (mDanmakuManager != null) mDanmakuManager.seekTo(position);
                             if (!isPlaying && mDanmakuManager != null) mDanmakuManager.pause();
@@ -1620,6 +1623,7 @@ public class BiliPlayerActivity extends Activity implements
                                     long position = ((long) newProgress) * mDuration / 1000;
                                     mSeekPending = true;
                                     mSeekTarget = position;
+                                    if (!isPlaying) mPausedSeekTarget = position;
                                     mediaPlayer.seekTo(position);
                                     if (mDanmakuManager != null) {
                                         mDanmakuManager.seekTo(position);
@@ -1667,6 +1671,7 @@ public class BiliPlayerActivity extends Activity implements
                         Log.d("SeekBarDebug", "��ת��: " + position + "ms");
                                         mSeekPending = true;
                         mSeekTarget = position;
+                        if (!isPlaying) mPausedSeekTarget = position;
                         mediaPlayer.seekTo(position);
                         if (mDanmakuManager != null) mDanmakuManager.seekTo(position);
                         if (!isPlaying && mDanmakuManager != null) mDanmakuManager.pause();
@@ -4400,8 +4405,23 @@ public class BiliPlayerActivity extends Activity implements
                 if (mDanmakuManager != null) mDanmakuManager.seekTo(0L);
             }
             isPrepared = true;
+            boolean pendingSeek = mSeekPending;
+            long pendingSeekTarget = mSeekTarget;
+            long pausedSeekTarget = mPausedSeekTarget;
+            mPausedSeekTarget = -1L;
             mediaPlayer.start();
             isPlaying = true;
+            if (pausedSeekTarget >= 0) {
+                try {
+                    mediaPlayer.seekTo(pausedSeekTarget);
+                } catch (Throwable ignored) {
+                }
+            } else if (pendingSeek) {
+                try {
+                    mediaPlayer.seekTo(pendingSeekTarget);
+                } catch (Throwable ignored) {
+                }
+            }
             startSplitAudioIfReady();
             if (mDanmakuManager != null) mDanmakuManager.resume();
         }
@@ -5515,6 +5535,7 @@ public class BiliPlayerActivity extends Activity implements
         }
 
         mStartAfterSeek = false;
+        mPausedSeekTarget = -1L;
         mInitialSeekTarget = 0;
         releaseSplitAudio();
         splitAudioEnabled = false;
