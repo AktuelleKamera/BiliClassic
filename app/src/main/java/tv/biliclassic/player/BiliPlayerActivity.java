@@ -2795,7 +2795,29 @@ public class BiliPlayerActivity extends Activity implements
         }
     }
 
+    private static boolean isExynos4412Device() {
+        String hw = Build.HARDWARE == null ? "" : Build.HARDWARE.toUpperCase(java.util.Locale.US);
+        String board = Build.BOARD == null ? "" : Build.BOARD.toUpperCase(java.util.Locale.US);
+        if (hw.contains("SMDK4X12") || board.contains("SMDK4X12")
+                || hw.contains("EXYNOS4") || board.contains("EXYNOS4")
+                || hw.contains("MIDAS") || board.contains("MIDAS")) {
+            return true;
+        }
+        String m = Build.MODEL == null ? "" : Build.MODEL.toUpperCase(java.util.Locale.US);
+        return m.equals("GT-I9300") || m.equals("GT-I9305")
+                || m.equals("GT-N7100") || m.startsWith("GT-N710")
+                || m.startsWith("GT-N8000") || m.startsWith("GT-N801")
+                || m.startsWith("GT-N802") || m.startsWith("GT-N510")
+                || m.startsWith("GT-N511") || m.startsWith("GT-N512");
+    }
+
     private void preparePlayer() {
+        if (mStageEcho != null) {
+            mStageEcho.appendFinished(decoderType == DECODER_SYSTEM
+                    ? "\u521d\u59cb\u5316\u64ad\u653e\u5668: \u7cfb\u7edf\u786c\u89e3"
+                    : "\u521d\u59cb\u5316\u64ad\u653e\u5668: IJK");
+            mStageEcho.setPending(getString(R.string.player_loading_step_loading_video));
+        }
         releasePlayer();
         mErrorToastShown = false;
 
