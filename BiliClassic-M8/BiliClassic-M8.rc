@@ -6,30 +6,30 @@ IDI_BILICLASSICM8       ICON    "BiliClassic-M8.ico"
 
 IDR_MENU MENU
 BEGIN
-    POPUP "²Ëµ¥"
+    POPUP "ï¿½Ëµï¿½"
     BEGIN
-        MENUITEM "ÍÆ¼ö",          1008
-        MENUITEM "ÖØ²¥ÉÏ´Î",      1006
-        MENUITEM "µ±Ç°ÊÓÆµÏêÇé",  1007
+        MENUITEM "ï¿½Æ¼ï¿½",          1008
+        MENUITEM "ï¿½Ø²ï¿½ï¿½Ï´ï¿½",      1006
+        MENUITEM "ï¿½ï¿½Ç°ï¿½ï¿½Æµï¿½ï¿½ï¿½ï¿½",  1007
     END
-    POPUP "ÎÒµÄ"
+    POPUP "ï¿½Òµï¿½"
     BEGIN
-        MENUITEM "µÇÂ¼ÕËºÅ",      1010
-        MENUITEM "ÎÒµÄÊÕ²Ø",      1011
-        MENUITEM "ÎÒµÄ×ÊÁÏ",      1012
+        MENUITEM "ï¿½ï¿½Â¼ï¿½Ëºï¿½",      1010
+        MENUITEM "ï¿½Òµï¿½ï¿½Õ²ï¿½",      1011
+        MENUITEM "ï¿½Òµï¿½ï¿½ï¿½ï¿½ï¿½",      1012
     END
-    POPUP "ÉèÖÃ"
+    POPUP "ï¿½ï¿½ï¿½ï¿½"
     BEGIN
-        POPUP "Á¬½ÓÊý"
+        POPUP "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½"
         BEGIN
             MENUITEM "1",         1001
             MENUITEM "2",         1002
             MENUITEM "4",         1003
         END
-        MENUITEM "×ªÂë¿ª/¹Ø",     1005
-        MENUITEM "ÀëÏß²¥·Å¿ª/¹Ø", 1004
+        MENUITEM "×ªï¿½ë¿ª/ï¿½ï¿½",     1005
+        MENUITEM "ï¿½ï¿½ï¿½ß²ï¿½ï¿½Å¿ï¿½/ï¿½ï¿½", 1004
     END
-    MENUITEM "ÍË³ö",              1013
+    MENUITEM "ï¿½Ë³ï¿½",              1013
 END
 
 /////////////////////////////////////////////////////////////////////////////
@@ -38,8 +38,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,2,1,0
- PRODUCTVERSION 0,2,1,0
+ FILEVERSION 0,2,2,0
+ PRODUCTVERSION 0,2,2,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -56,11 +56,11 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "BiliClassic"
             VALUE "FileDescription", "BiliClassic for Mymobile"
-            VALUE "FileVersion", "0.2.1.0"
+            VALUE "FileVersion", "0.2.2.0"
             VALUE "InternalName", "BiliClassic-M8"
             VALUE "OriginalFilename", "BiliClassic-M8.exe"
             VALUE "ProductName", "BiliClassic for Mymobile"
-            VALUE "ProductVersion", "0.2.1.0"
+            VALUE "ProductVersion", "0.2.2.0"
         END
     END
     BLOCK "VarFileInfo"

@@ -230,7 +230,8 @@ void bili_config_init(BcConfig *cfg)
 
     /* 旧版把转码服务器写进了 ini（老 SCF 域名）；统一迁到新的原生接口 */
     if (cfg->relay_host[0] == '\0' ||
-        strstr(cfg->relay_host, "tencentscf.com") != NULL) {
+        strstr(cfg->relay_host, "tencentscf.com") != NULL ||
+        strcmp(cfg->relay_host, BC_RELAY_FALLBACK_HOST) == 0) {
         str_copy(cfg->relay_host, (int)sizeof(cfg->relay_host),
                  BC_RELAY_DEFAULT_HOST);
         cfg->relay_port = BC_RELAY_DEFAULT_PORT;
@@ -378,9 +379,10 @@ static int bili_ensure_token(BcConfig *cfg, char *err, int errcap)
     char reqbody[512];
     int rc;
 
-    if (cfg->token_ok) {
+    if (cfg->token_ok && strcmp(cfg->token_host, cfg->relay_host) == 0) {
         return 0;
     }
+    cfg->token_ok = 0;
     if (bili_sync_time(cfg, err, errcap) != 0) {
         return -1;
     }
@@ -417,6 +419,7 @@ static int bili_ensure_token(BcConfig *cfg, char *err, int errcap)
     }
     free(body);
     cfg->token_ok = 1;
+    str_copy(cfg->token_host, (int)sizeof(cfg->token_host), cfg->relay_host);
     save_token(cfg);
     return 0;
 }
@@ -1404,67 +1407,92 @@ int bili_transcode(BcConfig *cfg, const char *src_url, const char *name,
     (void)name;   /* 新接口不传 name：服务端按 src_url 生成唯一 out_key */
 
     last_err[0] = '\0';
-    /* token 可能是按旧 bucket/region 注册的（换接口后会失效）：
-     * 遇到 403/token 错误就清掉重注册，再试一次。 */
-    for (attempt = 0; attempt < 2; attempt++) {
-        if (bili_ensure_token(cfg, err, errcap) != 0) {
-            return -1;
-        }
-        sprintf(reqbody,
-                "{\"bucket\":\"%s\",\"region\":\"%s\",\"token\":\"%s\","
-                "\"src_url\":\"%s\",\"format\":\"%s\"}",
-                BC_REG_BUCKET, BC_REG_REGION, cfg->token, src_url,
-                cfg->transcode_fmt);
+    {
+        /* 与安卓一致：先主服务器，失败再回退备服务器 */
+        static const char *kBases[2] = {
+            BC_RELAY_DEFAULT_HOST, BC_RELAY_FALLBACK_HOST
+        };
+        int bi;
+        int too_large = 0;
 
-        body = NULL;
-        len = 0;
-        status = 0;
-        /* 转码是同步长耗时（几百秒），收发超时放宽到 15 分钟 */
-        http_set_timeout(900000);
-        rc = http_request(cfg->relay_host, cfg->relay_port, "POST", "/transcode",
-                          "Content-Type: application/json\r\n",
-                          reqbody, (int)strlen(reqbody),
-                          &body, &len, &status);
-        http_set_timeout(30000);
-
-        if (rc == 0 && status == 200 && body != NULL &&
-            json_get_string(body, "url", out_url, out_cap)) {
-            json_unescape(out_url);
-            free(body);
-            /* 服务端已经返回 cdn.biliclassic.cn；老设备没有 TLS，https 降级成 http */
-            url_downgrade_https(out_url);
-            return 0;
-        }
-
-        /* 失败：先记错误，再判断是不是 token 失效 */
-        token_err = (status == 401 || status == 403) ? 1 : 0;
-        if (body != NULL && strstr(body, "token") != NULL) {
-            token_err = 1;
-        }
-        if (rc != 0) {
-            str_copy(last_err, (int)sizeof(last_err), "转码请求失败（连不上服务器）");
-        } else if (status != 200) {
-            if (!bili_pick_string(body, "error", last_err, (int)sizeof(last_err))) {
-                sprintf(last_err, "转码服务器 HTTP %d", status);
+        for (bi = 0; bi < 2 && !too_large; bi++) {
+            /* token 是按服务器发的，换服务器要重注册 */
+            if (strcmp(cfg->relay_host, kBases[bi]) != 0) {
+                str_copy(cfg->relay_host, (int)sizeof(cfg->relay_host),
+                         kBases[bi]);
+                cfg->relay_port = BC_RELAY_DEFAULT_PORT;
+                cfg->token_ok = 0;
+                cfg->token[0] = '\0';
             }
-        } else {
-            str_copy(last_err, (int)sizeof(last_err), "转码响应里没有 url");
+            /* token 可能因 bucket/region 变更失效：403/token 错误重注册重试 */
+            for (attempt = 0; attempt < 2; attempt++) {
+                if (bili_ensure_token(cfg, err, errcap) != 0) {
+                    break;  /* 这台连不上/注册失败：换下一台 */
+                }
+                sprintf(reqbody,
+                        "{\"bucket\":\"%s\",\"region\":\"%s\",\"token\":\"%s\","
+                        "\"src_url\":\"%s\",\"format\":\"%s\"}",
+                        BC_REG_BUCKET, BC_REG_REGION, cfg->token, src_url,
+                        cfg->transcode_fmt);
+
+                body = NULL;
+                len = 0;
+                status = 0;
+                /* 转码是同步长耗时（几百秒），收发超时放宽到 15 分钟 */
+                http_set_timeout(900000);
+                rc = http_request(cfg->relay_host, cfg->relay_port, "POST",
+                                  "/transcode",
+                                  "Content-Type: application/json\r\n",
+                                  reqbody, (int)strlen(reqbody),
+                                  &body, &len, &status);
+                http_set_timeout(30000);
+
+                if (rc == 0 && status == 200 && body != NULL &&
+                    json_get_string(body, "url", out_url, out_cap)) {
+                    json_unescape(out_url);
+                    free(body);
+                    /* 服务端返回 cdn.biliclassic.cn；老设备没有 TLS，降级成 http */
+                    url_downgrade_https(out_url);
+                    return 0;
+                }
+
+                /* 失败：先记错误，再判断是不是 token 失效 */
+                token_err = (status == 401 || status == 403) ? 1 : 0;
+                if (body != NULL && strstr(body, "token") != NULL) {
+                    token_err = 1;
+                }
+                if (body != NULL && strstr(body, "过长") != NULL) {
+                    too_large = 1;  /* 源视频过大，换服务器也没用 */
+                }
+                if (rc != 0) {
+                    str_copy(last_err, (int)sizeof(last_err),
+                             "转码请求失败（连不上服务器）");
+                } else if (status != 200) {
+                    if (!bili_pick_string(body, "error", last_err,
+                                          (int)sizeof(last_err))) {
+                        sprintf(last_err, "转码服务器 HTTP %d", status);
+                    }
+                } else {
+                    str_copy(last_err, (int)sizeof(last_err),
+                             "转码响应里没有 url");
+                }
+                if (body != NULL) {
+                    free(body);
+                    body = NULL;
+                }
+                if (out_url != NULL && out_cap > 0) {
+                    out_url[0] = '\0';
+                }
+                if (attempt == 0 && token_err) {
+                    BLOG("transcode: token 失效，清掉重新注册后重试");
+                    cfg->token_ok = 0;
+                    cfg->token[0] = '\0';
+                    save_token(cfg);   /* 写空文件，下次启动也不会再拿旧 token */
+                    continue;
+                }
+                break;
+            }
         }
-        if (body != NULL) {
-            free(body);
-            body = NULL;
-        }
-        if (out_url != NULL && out_cap > 0) {
-            out_url[0] = '\0';
-        }
-        if (attempt == 0 && token_err) {
-            BLOG("transcode: token 失效，清掉重新注册后重试");
-            cfg->token_ok = 0;
-            cfg->token[0] = '\0';
-            save_token(cfg);   /* 写空文件，下次启动也不会再拿旧 token */
-            continue;
-        }
-        break;
     }
     set_err(err, errcap, last_err);
     return -1;
