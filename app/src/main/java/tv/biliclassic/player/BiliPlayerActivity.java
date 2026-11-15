@@ -732,7 +732,7 @@ public class BiliPlayerActivity extends Activity implements
         initPlayer();
         initGestureController();
         if (mGestureController != null) {
-            mGestureController.setEnableGesture(enableGesture);
+            mGestureController.setEnableGesture(mLoadingOverlay == null && enableGesture);
         }
     }
 
@@ -995,6 +995,14 @@ public class BiliPlayerActivity extends Activity implements
         mLoadingOverlay = null;
         mLoadingIcon = null;
         mLoadingStep1 = null;
+        if (mGestureController != null) {
+            mGestureController.setEnableGesture(enableGesture);
+        }
+        if (mPendingResumeTipPosition > 0) {
+            int position = mPendingResumeTipPosition;
+            mPendingResumeTipPosition = 0;
+            showResumeTipForPosition(position);
+        }
     }
 
     private void initGestureController() {
@@ -3299,7 +3307,11 @@ public class BiliPlayerActivity extends Activity implements
             mLastKnownPosition = 0;
         }
         if (resumeTipPosition > 0) {
-            showResumeTipForPosition(resumeTipPosition);
+            if (mLoadingOverlay != null) {
+                mPendingResumeTipPosition = resumeTipPosition;
+            } else {
+                showResumeTipForPosition(resumeTipPosition);
+            }
         }
 
         aspectRatioFixed = false;
@@ -5675,4 +5687,23 @@ public class BiliPlayerActivity extends Activity implements
             }, 100);
         }
     }
+    @Override
+    public void startActivity(android.content.Intent intent) {
+        try {
+            super.startActivity(tv.biliclassic.util.OrientationAlias.wrap(this, intent));
+        } catch (android.content.ActivityNotFoundException e) {
+            super.startActivity(intent);
+        }
+    }
+
+    @Override
+    public void startActivityForResult(android.content.Intent intent, int requestCode) {
+        try {
+            super.startActivityForResult(
+                    tv.biliclassic.util.OrientationAlias.wrap(this, intent), requestCode);
+        } catch (android.content.ActivityNotFoundException e) {
+            super.startActivityForResult(intent, requestCode);
+        }
+    }
+
 }

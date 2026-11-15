@@ -112,18 +112,12 @@ public abstract class BaseActivity extends FragmentActivity {
         } else {
             // 判断是否为平板
             boolean isTablet = SdkHelper.getBooleanResource(getResources(), R.bool.is_tablet);
-            if (isTablet) {
-                // 平板：自动旋转（横竖屏都可）
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
-            } else if (shouldEnableLandscape()) {
-                // 横屏设备（如 ChaCha 等）：横屏
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-            } else if (isHardwareKeyboardDevice()) {
-                // 带滑出式物理键盘的手机（HTC Dream 等）：不锁定方向
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-            } else {
-                // 手机：强制竖屏
+            if (!shouldEnableLandscape()) {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            } else if (isTablet) {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
+            } else {
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
             }
         }
 

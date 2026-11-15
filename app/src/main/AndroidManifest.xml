@@ -38,39 +38,39 @@
         <activity
             android:name=".CropActivity"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <activity
             android:name=".CrashReportActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <activity
             android:name=".ImageViewerActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <activity
             android:name=".DynamicDetailActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <activity
             android:name=".ReplyListActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <activity
             android:name=".ArticleActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <activity
             android:name=".HelpListActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <activity
             android:name=".LiveRoomListActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <activity
             android:name=".KeyBindingSetupActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <activity
             android:name=".WebViewActivity"
@@ -79,7 +79,7 @@
         <!-- MainActivity -->
         <activity
             android:name=".MainActivity"
-            android:screenOrientation="portrait"
+            android:screenOrientation="sensor"
             android:configChanges="keyboardHidden|orientation|screenSize" />
 
         <activity-alias
@@ -132,7 +132,7 @@
         <activity
             android:name=".LinkActivity"
             android:exported="true"
-            android:screenOrientation="portrait">
+            android:screenOrientation="sensor">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -171,13 +171,13 @@
 
         <activity
             android:name=".LiveInfoActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <!-- AboutActivity -->
         <activity
             android:name=".AboutActivity"
             android:theme="@android:style/Theme.Black.NoTitleBar"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <!-- 彩蛋：星战字幕 -->
         <activity
@@ -225,16 +225,16 @@
 
         <activity
             android:name=".DeviceInfoActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <activity
             android:name=".UserProfileActivity"
-            android:screenOrientation="portrait"/>
+            android:screenOrientation="sensor"/>
 
         <!-- 注册 LoginActivity -->
         <activity
             android:name=".LoginActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <!-- 注册 HistoryActivity -->
         <activity
@@ -255,23 +255,23 @@
         <!-- 注册 FollowingListActivity（关注的人） -->
         <activity
             android:name=".FollowingListActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <!-- 私信会话列表 -->
         <activity
             android:name=".PrivateMsgListActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <!-- 私信聊天 -->
         <activity
             android:name=".PrivateMsgActivity"
-            android:screenOrientation="portrait"
+            android:screenOrientation="sensor"
             android:windowSoftInputMode="adjustPan" />
 
         <!-- 注册 SettingsActivity -->
         <activity
             android:name=".SettingsActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <!-- 解码设置 -->
         <activity
@@ -286,12 +286,12 @@
         <!-- 注册 LoginActivity -->
         <activity
             android:name=".FavoriteVideoListActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <!-- 注册 FavoriteFolderActivity -->
         <activity
             android:name=".FavoriteFolderListActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="sensor" />
 
         <!-- 注册 PlayerAnimActivity -->
         <activity
@@ -434,6 +434,16 @@
         <activity-alias
             android:name=".OfflineActivitySensor"
             android:targetActivity=".OfflineActivity"
+            android:exported="false"
+            android:screenOrientation="sensor" />
+        <activity-alias
+            android:name=".LinkActivityLandscape"
+            android:targetActivity=".LinkActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+        <activity-alias
+            android:name=".LinkActivitySensor"
+            android:targetActivity=".LinkActivity"
             android:exported="false"
             android:screenOrientation="sensor" />
 
