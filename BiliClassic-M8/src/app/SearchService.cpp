@@ -57,7 +57,8 @@ void SearchService::ShowItems(const char *json, const char *what,
     }
     if (base < BC_MAX_ITEMS) {
         n = bili_parse_items(json, g_app.Items() + base,
-                             BC_MAX_ITEMS - base, pic_field);
+                             BC_MAX_ITEMS - base, pic_field,
+                             (s_kind == QK_HISTORY) ? 1 : 0);
     }
     g_app.ItemCount() = base + n;
 

@@ -55,7 +55,17 @@ typedef struct {
     char title[BC_TITLE_LEN];
     char author[BC_AUTHOR_LEN];
     char pic[BC_PIC_LEN];      /* 封面 URL（//i0.hdslb.com/... 或 http(s)://） */
+    char cid[24];              /* 来源带的分P cid（观看历史），空=未知 */
+    int  page;                 /* 分P序号（1 基，0=未知） */
 } BcItem;
+
+/* 分P（pagelist.pages 里的一条） */
+#define BC_MAX_PAGES    200
+#define BC_PART_LEN     128
+typedef struct {
+    char cid[24];
+    char part[BC_PART_LEN];
+} BcPage;
 
 /* 运行配置/会话状态 */
 typedef struct {

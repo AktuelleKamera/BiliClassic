@@ -35,6 +35,10 @@ public:
     /* 业务层把「要播放的媒体」交给界面层（界面层决定内嵌/系统播放器） */
     virtual void OnPlayMedia(const char *path) = 0;
 
+    /* 多分P视频：让用户选一个分P，返回下标（0 基）；取消返回 -1。
+     * 在后台线程调用，实现方需切到 UI 线程并等待用户选择。 */
+    virtual int OnSelectPage(const char *title, const BcPage *pages, int count) = 0;
+
     /* 业务层在同步等待期间要求界面层泵消息，保持界面响应 */
     virtual void PumpMessages() = 0;
 };

@@ -49,6 +49,8 @@ int  bili_popular(BcConfig *cfg, int page,
                   char **out_body, int *out_len, char *err, int errcap);
 int  bili_pagelist(BcConfig *cfg, const char *bvid,
                    char **out_body, int *out_len, char *err, int errcap);
+/* 把 pagelist 的 pages[] 解成 BcPage 数组（cid + 分P标题），返回条数 */
+int  bili_parse_pages(const char *json, BcPage *out, int max);
 int  bili_playurl(BcConfig *cfg, const char *bvid, const char *cid,
                   char **out_body, int *out_len, char *err, int errcap);
 
@@ -62,7 +64,7 @@ int  bili_pick_number(const char *json, const char *key, char *out, int cap);
 /* 把 search/popular 的 result[] 解成 BcItem 数组，返回条数 */
 /* pic_field：封面字段名（搜索/热门用 "pic"，观看历史用 "cover"，NULL 视为 "pic"） */
 int  bili_parse_items(const char *json, BcItem *items, int max,
-                      const char *pic_field);
+                      const char *pic_field, int want_cid);
 
 /* 收藏夹文件夹列表 -> BcItem：bvid=media_id，title=名字，author=视频数 */
 int  bili_parse_fav_folders(const char *json, BcItem *items, int max);

@@ -31,8 +31,8 @@ MZ_IMPLEMENT_DYNAMIC(MainWindow)
 
 /* =====================================================================
  * 检查更新：拉 version.json 和本机版本比（version_code 比大小）。
- *   {"version":"0.1.0.0","version_code":100,
- *    "download_url":"http://.../BiliClassic-0.1.0.0.cab",
+ *   {"version":"0.2.2.0","version_code":202,
+ *    "download_url":"http://.../BiliClassic-0.2.2.0.cab",
  *    "force_update":false,"changelog":["...","..."]}
  * ===================================================================== */
 static const char kUpdateUrl[] =
@@ -619,6 +619,15 @@ void UiResultList::DrawItem(HDC hdc, int nIndex, RECT *prcItem,
     }
 }
 
+/* 后台线程 -> UI 线程「选分P」请求（SendMessage 同步，结构体在调用者栈上） */
+struct PageReq
+{
+    const char   *title;
+    const BcPage *pages;
+    int           count;
+    int           result;
+};
+
 /* ===================== MainSink ===================== */
 
 MainSink::MainSink()
@@ -831,6 +840,28 @@ void MainSink::OnPlayMedia(const char *path)
     Post(UI_EVT_PLAY, path, NULL, 0, 0, 0, 0, 0);
 }
 
+int MainSink::OnSelectPage(const char *title, const BcPage *pages, int count)
+{
+    PageReq req;
+
+    if (m_w == NULL || pages == NULL || count <= 0) {
+        return -1;
+    }
+    if (OnUiThread()) {
+        return m_w->SelectPage(title, pages, count);
+    }
+    if (m_hwnd == NULL) {
+        return -1;
+    }
+    req.title = title;
+    req.pages = pages;
+    req.count = count;
+    req.result = -1;
+    /* 同步阻塞后台线程，等 UI 线程弹窗选完 */
+    ::SendMessage(m_hwnd, WM_APP_SELECT_PAGE, 0, (LPARAM)&req);
+    return req.result;
+}
+
 void MainSink::PumpMessages()
 {
     if (m_w == NULL) {
@@ -1032,6 +1063,15 @@ LRESULT MainWindow::MzDefWndProc(UINT message, WPARAM wParam, LPARAM lParam)
         ShowEchoResult();
         return 0;
     }
+    if (message == WM_APP_SELECT_PAGE) {
+        PageReq *req = (PageReq *)lParam;
+
+        if (req != NULL) {
+            req->result = SelectPage(req->title, req->pages, req->count);
+            return req->result;
+        }
+        return -1;
+    }
     if (message == WM_APP_STARTUP) {
         g_app.GetLogger().Log("UI: WM_APP_STARTUP -> 拉推荐");
         DoSearch(1);    /* 启动自动拉推荐 */
@@ -1129,8 +1169,6 @@ void MainWindow::DoPlay(int forceTranscode)
         SetStatus("请先在列表里点选一条");
         return;
     }
-    LoadingWnd::Show();
-    LoadingWnd::SetStatus(L"获取播放地址…");
     PlayService::PlaySelected(idx, forceTranscode);
 }
 
@@ -1167,8 +1205,6 @@ void MainWindow::OnListDoubleTap(int index)
         SearchService::OpenFolder(index);
         return;
     }
-    LoadingWnd::Show();
-    LoadingWnd::SetStatus(L"获取播放地址…");
     PlayService::PlaySelected(index, 0);
 }
 
@@ -1386,6 +1422,158 @@ private:
 };
 
 MZ_IMPLEMENT_DYNAMIC(TextWindow)
+
+/* ---------------- 分P选择窗口（可滚动列表） ---------------- */
+
+class PageSelectWindow;
+
+class PageList : public UiList
+{
+public:
+    PageList() { m_owner = NULL; }
+    PageSelectWindow *m_owner;
+    virtual int OnLButtonUp(UINT fwKeys, int xPos, int yPos);
+};
+
+class PageSelectWindow : public CMzWndEx
+{
+    MZ_DECLARE_DYNAMIC(PageSelectWindow);
+public:
+    PageSelectWindow()
+    {
+        m_title = NULL;
+        m_pages = NULL;
+        m_count = 0;
+        m_result = -1;
+        m_parent = NULL;
+    }
+
+    void SetParent(HWND p) { m_parent = p; }
+
+    void SetContent(const wchar_t *title, const BcPage *pages, int count)
+    {
+        m_title = title;
+        m_pages = pages;
+        m_count = count;
+    }
+
+    int Result() { return m_result; }
+
+    void Choose(int idx)
+    {
+        m_result = idx;
+        EndModal(1);
+    }
+
+    virtual int DoModal()
+    {
+        int sw = GetSystemMetrics(SM_CXSCREEN);
+        int sh = GetSystemMetrics(SM_CYSCREEN);
+
+        if (sw <= 0) {
+            sw = 480;
+        }
+        if (sh <= 0) {
+            sh = 720;
+        }
+        if (!Create(0, 0, sw, sh, m_parent, 0, WS_POPUP, WS_EX_TOPMOST)) {
+            Create(0, 0, sw, sh, NULL, 0, WS_POPUP, WS_EX_TOPMOST);
+        }
+        return CMzWndEx::DoModal();
+    }
+
+protected:
+    virtual BOOL OnInitDialog()
+    {
+        int i;
+
+        if (!CMzWndEx::OnInitDialog()) {
+            return FALSE;
+        }
+        SetBgColor(RGB(236, 236, 236));
+
+        m_cap.SetPos(0, 0, GetWidth(), MZM_HEIGHT_CAPTION);
+        m_cap.SetText((m_title != NULL && m_title[0] != L'\0')
+                      ? m_title : L"选择分P");
+        AddUiWin(&m_cap);
+
+        m_list.m_owner = this;
+        m_list.SetID(1);
+        m_list.SetPos(10, MZM_HEIGHT_CAPTION + 6, GetWidth() - 20,
+                      GetHeight() - MZM_HEIGHT_CAPTION - 96);
+
+        for (i = 0; i < m_count; i++) {
+            ListItem li;
+            std::wstring t;
+            char pbuf[24];
+
+            sprintf(pbuf, "P%d  ", i + 1);
+            t = gbk2w(pbuf);
+            t += gbk2w(m_pages[i].part);
+            li.Text = t.c_str();
+            li.Data = (void *)(INT_PTR)i;
+            m_list.AddItem(li);
+        }
+        AddUiWin(&m_list);
+
+        m_ok.SetButtonType(MZC_BUTTON_PELLUCID);
+        m_ok.SetID(2);
+        m_ok.SetText(L"取消");
+        m_ok.SetPos(20, GetHeight() - 70, GetWidth() - 40, 54);
+        AddUiWin(&m_ok);
+        return TRUE;
+    }
+
+    virtual void OnMzCommand(WPARAM wParam, LPARAM lParam)
+    {
+        if (LOWORD(wParam) == 2) {
+            EndModal(0);
+        }
+        (void)lParam;
+    }
+
+private:
+    const wchar_t *m_title;
+    const BcPage  *m_pages;
+    int            m_count;
+    int            m_result;
+    HWND           m_parent;
+    UiCaption      m_cap;
+    PageList       m_list;
+    UiButton       m_ok;
+};
+
+MZ_IMPLEMENT_DYNAMIC(PageSelectWindow)
+
+int PageList::OnLButtonUp(UINT fwKeys, int xPos, int yPos)
+{
+    int r = UiList::OnLButtonUp(fwKeys, xPos, yPos);
+    int idx = CalcIndexOfPos(xPos, yPos);
+
+    if (m_owner != NULL && idx >= 0 && idx < GetItemCount()) {
+        m_owner->Choose(idx);
+    }
+    return r;
+}
+
+int MainWindow::SelectPage(const char *title, const BcPage *pages, int count)
+{
+    PageSelectWindow w;
+    std::wstring t = gbk2w(title != NULL ? title : "");
+    int r;
+
+    /* 加载层是 WS_EX_TOPMOST 的 Win32 窗口，不收起会把选择框盖住 */
+    if (LoadingWnd::IsShowing()) {
+        LoadingWnd::Hide();
+    }
+    w.SetParent(m_hWnd);
+    w.SetContent(t.c_str(), pages, count);
+    r = w.DoModal();
+    if (r == 1) {
+        return w.Result();
+    }
+    return -1;
+}
 
 void MainWindow::CheckUpdate()
 {

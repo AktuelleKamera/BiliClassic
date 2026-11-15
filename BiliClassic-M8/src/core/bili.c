@@ -1139,8 +1139,55 @@ static int item_pick_str(const char *ws, int wlen, const char *vend,
     return 1;
 }
 
+/* 在 [buf, buf+len) 里找 "key":<数字>（容忍引号），取原始数字串 */
+static int scan_num_bounded(const char *buf, int len, const char *key,
+                            char *out, int cap)
+{
+    char pat[64];
+    int klen;
+    int i;
+
+    if (cap <= 1 || buf == NULL || len <= 0) {
+        return 0;
+    }
+    out[0] = '\0';
+    str_copy(pat, (int)sizeof(pat), "\"");
+    str_append(pat, (int)sizeof(pat), key);
+    str_append(pat, (int)sizeof(pat), "\"");
+    klen = (int)strlen(pat);
+
+    for (i = 0; i + klen < len; i++) {
+        const char *q;
+        int j = 0;
+
+        if (strncmp(buf + i, pat, klen) != 0) {
+            continue;
+        }
+        q = buf + i + klen;
+        while (q < buf + len && (*q == ' ' || *q == '\t')) {
+            q++;
+        }
+        if (q >= buf + len || *q != ':') {
+            continue;
+        }
+        q++;
+        while (q < buf + len && (*q == ' ' || *q == '\t')) {
+            q++;
+        }
+        if (q < buf + len && *q == '"') {
+            q++;
+        }
+        while (q < buf + len && *q >= '0' && *q <= '9' && j < cap - 1) {
+            out[j++] = *q++;
+        }
+        out[j] = '\0';
+        return j > 0;
+    }
+    return 0;
+}
+
 int bili_parse_items(const char *json, BcItem *items, int max,
-                     const char *pic_field)
+                     const char *pic_field, int want_cid)
 {
     const char *p = json;
     int n = 0;
@@ -1245,6 +1292,19 @@ int bili_parse_items(const char *json, BcItem *items, int max,
             str_copy(items[n].pic, BC_PIC_LEN, raw);
         }
 
+        /* 观看历史等来源带分P cid/page：记住，播放时直接用（不再让用户选） */
+        items[n].cid[0] = '\0';
+        items[n].page = 0;
+        if (want_cid) {
+            char pb[16];
+
+            scan_num_bounded(vend, awlen, "cid", items[n].cid,
+                             (int)sizeof(items[n].cid));
+            if (scan_num_bounded(vend, awlen, "page", pb, (int)sizeof(pb))) {
+                items[n].page = atoi(pb);
+            }
+        }
+
         n++;
         p = vend;
     }
@@ -1305,6 +1365,8 @@ int bili_parse_fav_folders(const char *json, BcItem *items, int max)
         items[n].title[0] = '\0';
         items[n].author[0] = '\0';
         items[n].pic[0] = '\0';
+        items[n].cid[0] = '\0';
+        items[n].page = 0;
         if (!bili_pick_string(idp, "title", items[n].title, BC_TITLE_LEN)) {
             p = idp;
             continue;
@@ -1565,6 +1627,88 @@ int bili_parse_media_urls(const char *json, char (*urls)[BC_URL_LEN], int max)
                 }
             }
         }
+    }
+    return n;
+}
+
+/* 把 pagelist 的 pages[] 解成 BcPage 数组（cid + 分P标题），返回条数。
+ * 结构：{"data":{"pages":[{"cid":123,"page":1,"part":"P1 ..."}, ...]}} */
+int bili_parse_pages(const char *json, BcPage *out, int max)
+{
+    const char *p;
+    const char *end;
+    int n = 0;
+
+    if (json == NULL || out == NULL || max <= 0) {
+        return 0;
+    }
+    end = json + strlen(json);
+    p = json;
+
+    /* 不依赖 "pages" 键：逐个 "cid": 找，只有同一段里还带 "part" 的
+     * 才算一个分P（data.cid 那条没有 part，会被跳过）。 */
+    while (n < max) {
+        const char *cidp;
+        const char *lim;
+        const char *q;
+        char cidbuf[24];
+        char seg[1024];
+        char part[BC_PART_LEN];
+        int ci = 0;
+        int seglen;
+
+        cidp = strstr(p, "\"cid\"");
+        if (cidp == NULL) {
+            break;
+        }
+        q = cidp + 5;
+        while (*q == ' ' || *q == '\t') {
+            q++;
+        }
+        if (*q != ':') {
+            p = cidp + 5;
+            continue;
+        }
+        q++;
+        while (*q == ' ' || *q == '\t') {
+            q++;
+        }
+        if (*q == '"') {
+            q++;
+        }
+        while (*q >= '0' && *q <= '9' && ci < (int)sizeof(cidbuf) - 1) {
+            cidbuf[ci++] = *q++;
+        }
+        cidbuf[ci] = '\0';
+        if (ci == 0) {
+            p = cidp + 5;
+            continue;
+        }
+
+        lim = strstr(cidp + 5, "\"cid\"");
+        if (lim == NULL) {
+            lim = end;
+        }
+        seglen = (int)(lim - cidp);
+        if (seglen > (int)sizeof(seg) - 1) {
+            seglen = (int)sizeof(seg) - 1;
+        }
+        memcpy(seg, cidp, (size_t)seglen);
+        seg[seglen] = '\0';
+
+        part[0] = '\0';
+        if (json_get_string(seg, "part", part, (int)sizeof(part)) &&
+            part[0] != '\0') {
+            char ansi[BC_PART_LEN];
+
+            str_copy(out[n].cid, (int)sizeof(out[n].cid), cidbuf);
+            json_unescape(part);
+            /* JSON 里 part 是 UTF-8，界面按 GBK(ACP) 用，这里转一次 */
+            utf8_to_ansi(part, ansi, (int)sizeof(ansi));
+            str_copy(out[n].part, (int)sizeof(out[n].part), ansi);
+            n++;
+        }
+        p = lim;
     }
     return n;
 }

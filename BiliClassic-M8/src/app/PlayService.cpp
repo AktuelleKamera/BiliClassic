@@ -368,13 +368,10 @@ void PlayService::PlayJob(void *arg)
     g_app.GetLogger().Log("播放：%s（%s）%s", items[index].title, bvid,
                           use_trans ? "[转码 H.264 Baseline]" : "[原片]");
     g_app.GetLogger().Status("正在解析 %s 的播放地址…", bvid);
-    if (g_app.Sink() != NULL) {
-        g_app.Sink()->OnLoading("获取播放地址…");
-    }
 
     err[0] = '\0';
 
-    /* 1) pagelist -> cid */
+    /* 1) pagelist -> 分P列表 -> cid（多分P一律弹选择，观看历史也一样） */
     cid[0] = '\0';
     if (bili_pagelist(cfg, bvid, &body, &len, err, (int)sizeof(err)) != 0) {
         g_app.GetLogger().Log("pagelist 失败：%s", err);
@@ -382,16 +379,50 @@ void PlayService::PlayJob(void *arg)
         play_fail();
         return;
     }
-    if (!bili_pick_number(body, "cid", cid, (int)sizeof(cid))) {
-        g_app.GetLogger().Log("pagelist 无 cid：%.160s", body);
-        g_app.GetLogger().Status("取分P信息失败（响应里没有 cid）");
-        free(body);
-        play_fail();
-        return;
+    {
+            static BcPage pages[BC_MAX_PAGES];
+            int page_count;
+
+            g_app.GetLogger().Log("pagelist 长度=%d pages=%d part=%d",
+                                  (int)strlen(body),
+                                  (strstr(body, "\"pages\"") != NULL) ? 1 : 0,
+                                  (strstr(body, "\"part\"") != NULL) ? 1 : 0);
+            page_count = bili_parse_pages(body, pages, BC_MAX_PAGES);
+            g_app.GetLogger().Log("pagelist 分P数=%d", page_count);
+        if (page_count > 1) {
+            int sel = 0;
+
+            g_app.GetLogger().Log("该视频有 %d 个分P，请选择", page_count);
+            if (g_app.Sink() != NULL) {
+                sel = g_app.Sink()->OnSelectPage(items[index].title,
+                                                 pages, page_count);
+            }
+            if (sel < 0 || sel >= page_count) {
+                g_app.GetLogger().Log("用户取消了分P选择");
+                free(body);
+                body = NULL;
+                play_fail();
+                return;
+            }
+            str_copy(cid, (int)sizeof(cid), pages[sel].cid);
+            g_app.GetLogger().Log("已选 P%d：%s", sel + 1, pages[sel].part);
+        } else if (page_count == 1) {
+            str_copy(cid, (int)sizeof(cid), pages[0].cid);
+        } else if (!bili_pick_number(body, "cid", cid, (int)sizeof(cid))) {
+            g_app.GetLogger().Log("pagelist 无 cid：%.160s", body);
+            g_app.GetLogger().Status("取分P信息失败（响应里没有 cid）");
+            free(body);
+            play_fail();
+            return;
+        }
     }
     free(body);
     body = NULL;
     g_app.GetLogger().Log("cid=%s", cid);
+    /* 分P选完再显示加载层（避免小电视先于分P选择出现） */
+    if (g_app.Sink() != NULL) {
+        g_app.Sink()->OnLoading("获取播放地址…");
+    }
     /* 记下在播视频（供观看历史上报用：上报线程靠它取 bvid/cid） */
     g_app.SetPlayingInfo(bvid, cid);
 

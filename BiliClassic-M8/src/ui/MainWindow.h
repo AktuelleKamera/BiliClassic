@@ -94,6 +94,7 @@ private:
 #define WM_APP_STARTUP (WM_APP + 3)
 #define WM_APP_UPDATE_DONE (WM_APP + 4)
 #define WM_APP_ECHO_DONE (WM_APP + 5)
+#define WM_APP_SELECT_PAGE (WM_APP + 6)
 
 enum UiEventType
 {
@@ -133,6 +134,7 @@ public:
     virtual void OnBusyChanged(int busy);
     virtual void OnDownloadProgress(long done, long total);
     virtual void OnPlayMedia(const char *path);
+    virtual int  OnSelectPage(const char *title, const BcPage *pages, int count);
     virtual void PumpMessages();
 
 private:
@@ -218,6 +220,7 @@ private:
     void DoPlay(int forceTranscode);
     int  SelectedIndex();
     void ShowMenu(int which);            /* 0=菜单 1=我的 2=设置 */
+    int  SelectPage(const char *title, const BcPage *pages, int count);
 
     UiCaption      m_caption;
     UiResultList   m_list;
