@@ -1,4 +1,4 @@
-/* =====================================================================
+﻿/* =====================================================================
  * user_settings.h - wolfSSL 精简配置（魅族 M8 / Windows CE 6.0 / ARMv4I）
  * ---------------------------------------------------------------------
  * 目标：只做 TLS 客户端，支持 TLS1.2/1.3、RSA/ECDHE、AES-GCM/CBC、
@@ -6,6 +6,12 @@
  * ===================================================================== */
 #ifndef WOLFSSL_USER_SETTINGS_H
 #define WOLFSSL_USER_SETTINGS_H
+
+/* ---- CE CRT 兼容：VS2008 没有 vsnprintf 原型 ---- */
+#if defined(_MSC_VER)
+    #include <stdio.h>
+    #define XVSNPRINTF _vsnprintf
+#endif
 
 /* ---- 平台 ---- */
 #define SINGLE_THREADED
