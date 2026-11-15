@@ -323,7 +323,21 @@ public final class UiSkin {
             return;
         }
         try {
-            if (settings && (v.getBackground() instanceof android.graphics.drawable.LayerDrawable || v.getBackground() instanceof android.graphics.drawable.StateListDrawable)) {
+            boolean settingsItemBg = false;
+            if (settings) {
+                android.graphics.drawable.Drawable bg = v.getBackground();
+                if (bg instanceof android.graphics.drawable.LayerDrawable) {
+                    settingsItemBg = true;
+                } else if (bg instanceof android.graphics.drawable.StateListDrawable
+                        && v.getId() != View.NO_ID) {
+                    try {
+                        String entry = v.getResources().getResourceEntryName(v.getId());
+                        settingsItemBg = entry != null && entry.endsWith("_item");
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+            if (settingsItemBg) {
                 int want = night ? 1 : (trans ? 2 : 3);
                 Integer cur = STATE.get(v);
                 // 默认白天且无自定义背景时不重设，避免老 ROM 重设共享 drawable 出问题
