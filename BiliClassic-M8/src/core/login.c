@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <wolfssl/wolfcrypt/sha256.h>   /* device_key 用 */
 
 #define LOGIN_REFERER "Referer: https://www.bilibili.com/\r\n"
 
@@ -17,6 +18,21 @@
     "Mozilla/5.0 BiliDroid/2.0.1 (bbcallen@gmail.com) os/android " \
     "model/android_hd mobi_app/android_hd build/2001100 channel/master " \
     "innerVer/2001100 osVer/15 network/2"
+
+/* ---- 诊断日志回调（由 AppContext 设置） ---- */
+static void (*s_login_log)(const char *msg) = NULL;
+
+void bc_login_set_log(void (*cb)(const char *msg))
+{
+    s_login_log = cb;
+}
+
+static void report_log(const char *msg)
+{
+    if (msg != NULL && s_login_log != NULL) {
+        s_login_log(msg);
+    }
+}
 
 static void get_buvid3(char *out, int cap);
 
@@ -393,6 +409,147 @@ int bc_login_report_history(BcConfig *cfg, const char *bvid, const char *cid,
         }
     }
     return 0;
+}
+
+/* ---- 设备上报（对齐 status.awmc233.cn/device_report.php） ---- */
+static void dev_form_add(char *dst, int cap, const char *k, const char *v)
+{
+    char enc[512];
+
+    if (dst[0] != '\0') {
+        str_append(dst, cap, "&");
+    }
+    url_encode(k, enc, (int)sizeof(enc));
+    str_append(dst, cap, enc);
+    str_append(dst, cap, "=");
+    url_encode(v, enc, (int)sizeof(enc));
+    str_append(dst, cap, enc);
+}
+
+/* 取 Mymobile 固件版本（设置→关于 的“固件版本”，如 0.9.9.23）。
+ * 依据 PhoneSetCPL.dll（About 页）反汇编：它调用
+ *   SystemParametersInfoW(0xE0, 0x20, buf, 1)
+ * 再用 "%d.%d.%d.%d" 格式化 buf 偏移 8/12/16/20 的四个 int。
+ * 失败时回退 "0.9"。 */
+#define M8_SPI_GET_FIRMWARE_VERSION 0xE0
+static void mymobile_version(char *out, int cap)
+{
+    DWORD buf[8];
+
+    if (out == NULL || cap <= 0) {
+        return;
+    }
+    out[0] = '\0';
+
+    memset(buf, 0, sizeof(buf));
+    if (SystemParametersInfoW(M8_SPI_GET_FIRMWARE_VERSION,
+                              (UINT)sizeof(buf), buf, 1) != 0
+        && (buf[2] | buf[3] | buf[4] | buf[5]) != 0
+        && buf[2] < 1000 && buf[3] < 1000
+        && buf[4] < 1000 && buf[5] < 1000) {
+        sprintf(out, "%d.%d.%d.%d",
+                (int)buf[2], (int)buf[3], (int)buf[4], (int)buf[5]);
+        return;
+    }
+    str_copy(out, cap, "0.9");
+}
+
+int bc_device_report(BcConfig *cfg)
+{
+    static const char kHost[] = "status.awmc233.cn";
+    static const char kPath[] = "/device_report.php";
+    char path[BC_PATH_LEN];
+    char lastbuf[32];
+    char dk[160];
+    char keyhex[65];
+    char version[48];
+    char osver[48];
+    char nb[24];
+    char body[1200];
+    char msg[900];
+    char *resp = NULL;
+    int len = 0;
+    int status = 0;
+    int rc;
+    int sw;
+    int sh;
+    long last = 0;
+    long now;
+    unsigned char digest[32];
+    wc_Sha256 sha;
+    int i;
+
+    if (cfg == NULL) {
+        return -1;
+    }
+
+    str_copy(path, (int)sizeof(path), cfg->data_dir);
+    str_append(path, (int)sizeof(path), "biliclassic_m8_devreport.txt");
+    if (file_read_all(path, lastbuf, (int)sizeof(lastbuf)) > 0) {
+        last = atol(lastbuf);
+    }
+    now = bc_unix_time();
+
+    /* device_key = sha256("biliclassic-device-v1|" + install_id) */
+    str_copy(dk, (int)sizeof(dk), "biliclassic-device-v1|");
+    str_append(dk, (int)sizeof(dk), cfg->install_id);
+    wc_InitSha256(&sha);
+    wc_Sha256Update(&sha, (const byte *)dk, (word32)strlen(dk));
+    wc_Sha256Final(&sha, digest);
+    for (i = 0; i < 32; i++) {
+        sprintf(keyhex + i * 2, "%02x", (unsigned int)digest[i]);
+    }
+    keyhex[64] = '\0';
+
+    sprintf(version, "%s-m8/%d", BC_APP_VER, BC_APP_VER_CODE);
+    mymobile_version(osver, (int)sizeof(osver));
+    sw = GetSystemMetrics(SM_CXSCREEN);
+    sh = GetSystemMetrics(SM_CYSCREEN);
+
+    body[0] = '\0';
+    dev_form_add(body, (int)sizeof(body), "device_key", keyhex);
+    dev_form_add(body, (int)sizeof(body), "platform", "mymobile");
+    dev_form_add(body, (int)sizeof(body), "brand", "Meizu");
+    dev_form_add(body, (int)sizeof(body), "manufacturer", "Meizu");
+    dev_form_add(body, (int)sizeof(body), "model", "M8");
+    dev_form_add(body, (int)sizeof(body), "os_version", osver);
+    dev_form_add(body, (int)sizeof(body), "locale", "zh_CN");
+    dev_form_add(body, (int)sizeof(body), "app_version", version);
+    sprintf(nb, "%d", sw);
+    dev_form_add(body, (int)sizeof(body), "screen_width", nb);
+    sprintf(nb, "%d", sh);
+    dev_form_add(body, (int)sizeof(body), "screen_height", nb);
+
+    /* 每次启动都先把上报字段写进日志，便于核对 */
+    sprintf(msg,
+            "device_report fields: device_key=%s platform=mymobile "
+            "brand=Meizu manufacturer=Meizu model=M8 os_version=%s "
+            "locale=zh_CN app_version=%s screen_width=%d screen_height=%d",
+            keyhex, osver, version, sw, sh);
+    report_log(msg);
+
+    if (last > 0 && now - last < 6L * 3600L) {
+        report_log("device_report: skip (6h cooldown)");
+        return 0;
+    }
+
+    rc = http_request(kHost, 80, "POST", kPath,
+                      "Content-Type: application/x-www-form-urlencoded\r\n"
+                      "X-Skip-Cookie: 1\r\n",
+                      body, (int)strlen(body), &resp, &len, &status);
+    if (resp != NULL) {
+        free(resp);
+    }
+    if (rc == 0 && status >= 200 && status < 300) {
+        sprintf(lastbuf, "%ld", now);
+        file_write_all(path, lastbuf);
+        sprintf(msg, "device_report: POST ok (status=%d)", status);
+        report_log(msg);
+        return 0;
+    }
+    sprintf(msg, "device_report: POST failed (rc=%d status=%d)", rc, status);
+    report_log(msg);
+    return -1;
 }
 
 static void cookie_append(BcConfig *cfg, const char *name, const char *val)

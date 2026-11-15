@@ -73,6 +73,15 @@ int  bc_login_history(BcConfig *cfg, long max, long view_at,
 int  bc_login_report_history(BcConfig *cfg, const char *bvid, const char *cid,
                              long progress_sec, char *err, int errcap);
 
+/* 诊断日志回调（可空）：设备上报字段/结果会通过它写进日志 */
+void bc_login_set_log(void (*cb)(const char *msg));
+
+/* ---- 设备信息上报（对齐 status.awmc233.cn/device_report.php） ----
+ * POST http://status.awmc233.cn/device_report.php（form-urlencoded，X-Skip-Cookie:1），
+ * platform=mymobile；6 小时最多一次（服务器 REPORT_COOLDOWN=21600）；成功写时间戳。
+ * 返回 0=成功/已跳过，-1=失败。 */
+int  bc_device_report(BcConfig *cfg);
+
 /* 诊断用：最近一次扫码 crossDomain URL / 短信原始响应 */
 extern char g_login_qr_cross[1400];
 extern char g_login_sms_raw[400];

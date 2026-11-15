@@ -4,6 +4,7 @@
 #include "AppContext.h"
 #include "../core/bili.h"
 #include "../core/http.h"
+#include "../core/login.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -34,6 +35,19 @@ static void HttpLogCb(const char *msg)
 static void BiliLogCb(const char *msg)
 {
     g_app.GetLogger().Log("[bili] %s", msg);
+}
+
+static void LoginLogCb(const char *msg)
+{
+    g_app.GetLogger().Log("[report] %s", msg);
+}
+
+/* 设备信息上报线程（6 小时最多一次，失败下次启动再试） */
+static DWORD WINAPI DevReportProc(LPVOID p)
+{
+    (void)p;
+    bc_device_report(&g_app.Cfg());
+    return 0;
 }
 
 AppContext::AppContext()
@@ -95,6 +109,7 @@ void AppContext::Init(IUiSink *sink)
     http_set_log(HttpLogCb);
     http_set_conns(m_cfg.conns);
     bili_set_log(BiliLogCb);
+    bc_login_set_log(LoginLogCb);
     m_log.Log("[bc] core init ok");
 
     m_log.Log("%s %s", BC_APP_TITLE, BC_APP_VER);
@@ -109,6 +124,15 @@ void AppContext::Init(IUiSink *sink)
     m_log.Status("就绪");
     m_ready = 1;
     m_log.Log("[bc] init done");
+
+    /* 设备上报：后台线程，6 小时最多一次，失败不影响启动 */
+    {
+        HANDLE h = CreateThread(NULL, 0, DevReportProc, NULL, 0, NULL);
+
+        if (h != NULL) {
+            CloseHandle(h);
+        }
+    }
 }
 
 void AppContext::Shutdown()
