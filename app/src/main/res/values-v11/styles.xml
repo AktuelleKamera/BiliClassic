@@ -1,26 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="PlayerTheme" parent="@android:style/Theme.Black.NoTitleBar.Fullscreen">
-        <item name="android:alertDialogTheme">@android:style/Theme.Holo.Dialog</item>
-    </style>
-
-    <style name="DialogStyle_Holo" parent="android:Theme.Holo.Light.Dialog">
+    <style name="DialogStyle_Classic" parent="@android:style/Theme.Light">
         <item name="android:windowMinWidthMajor">0dp</item>
         <item name="android:windowMinWidthMinor">0dp</item>
     </style>
-
-    <!-- API 11+ 下 dialogContext 不会裹此主题（沿用 Activity 的 alertDialogTheme），
-         这里仍定义一份深色弹窗，供需要时直接引用。 -->
-    <style name="AppDialog" parent="@android:style/Theme.Holo.Dialog">
-        <item name="android:windowBackground">@drawable/dialog_dark_bg</item>
-        <item name="android:textColor">#FFFFFFFF</item>
-        <item name="android:textColorPrimary">#FFFFFFFF</item>
-        <item name="android:textColorSecondary">#FFB2B2B2</item>
-        <item name="android:textColorHint">#FF888888</item>
+    <style name="DialogStyle_Holo" parent="@android:style/Theme.Holo.Light.Dialog">
+        <item name="android:windowMinWidthMajor">0dp</item>
+        <item name="android:windowMinWidthMinor">0dp</item>
+    </style>
+    <style name="DialogStyle_Material" parent="@android:style/Theme.Holo.Light.Dialog">
+        <item name="android:windowMinWidthMajor">0dp</item>
+        <item name="android:windowMinWidthMinor">0dp</item>
     </style>
     <style name="DialogStyle_Night" parent="@android:style/Theme.Holo.Dialog">
         <item name="android:windowMinWidthMajor">0dp</item>
         <item name="android:windowMinWidthMinor">0dp</item>
     </style>
-
 </resources>

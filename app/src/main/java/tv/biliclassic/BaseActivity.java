@@ -1041,6 +1041,18 @@ public abstract class BaseActivity extends FragmentActivity {
             @Override
             public void run() {
                 int right = anchor.getRight();
+                if (anchor instanceof android.widget.TextView) {
+                    android.widget.TextView tv = (android.widget.TextView) anchor;
+                    CharSequence text = tv.getText();
+                    if (text != null && text.length() > 0) {
+                        int textWidth = (int) Math.ceil(tv.getPaint()
+                                .measureText(text, 0, text.length()));
+                        int textRight = anchor.getLeft() + textWidth + tv.getPaddingRight();
+                        if (textRight > 0 && textRight < right) {
+                            right = textRight;
+                        }
+                    }
+                }
                 if (right <= 0) {
                     return;
                 }
