@@ -425,8 +425,10 @@ public class BiliPlayerActivity extends Activity implements
     };
     // 两阶段加载状态：都在左下角状态栏上，第一行（获取播放地址）显示在第二行（正在加载视频）上方
     private TextView mLoadingStep1;
+    private PlayerStageEcho mStageEcho;
     private String mLoadStep1Text;
     private String mLoadStep2Text;
+    private String mDanmakuStageText;
     private boolean mUrlResolved = false;
 
     private PlayerCompat.SurfaceTextureCallback createSurfaceTextureListener() {
@@ -836,7 +838,12 @@ public class BiliPlayerActivity extends Activity implements
         setLoadingStep1(getString(R.string.player_loading_device_info,
                 DeviceUtils.getDeviceManufacturer(), Build.MODEL, Build.VERSION.RELEASE,
                 String.valueOf(SdkHelper.getSdkInt()), mode));
-        setLoadingStep2(getString(R.string.player_loading_step_loading_video));
+        mStageEcho = new PlayerStageEcho(mLoadingStep1);
+        mStageEcho.appendFinished(getString(R.string.player_loading_device_info,
+                DeviceUtils.getDeviceManufacturer(), Build.MODEL, Build.VERSION.RELEASE,
+                String.valueOf(SdkHelper.getSdkInt()), mode));
+        mStageEcho.appendFinished("\u68c0\u67e5\u6a21\u5f0f: \u81ea\u52a8\u9009\u62e9");
+        mStageEcho.setPending(getString(R.string.player_loading_step_get_url));
         root.addView(mLoadingOverlay);
         startLoadingAnimation();
     }
@@ -1698,8 +1705,19 @@ public class BiliPlayerActivity extends Activity implements
      */
     private DanmakuManager createDanmakuManager() {
         long liveRoomId = getIntent().getLongExtra("live_room_id", mAid);
-        return new DanmakuManager(this, mDanmakuContainer, mAid, mCid,
+        DanmakuManager manager = new DanmakuManager(this, mDanmakuContainer, mAid, mCid,
                 danmakuInputStub, isLiveStream, liveRoomId);
+        manager.setOnLoadListener(new DanmakuManager.OnLoadListener() {
+            public void onLoadStarted() {
+                if (mStageEcho != null) mStageEcho.setPending("\u5168\u8230\u5f39\u5e55\u88c5\u586b");
+            }
+            public void onLoadFinished(boolean success) {
+                if (mStageEcho != null) {
+                    mStageEcho.appendFinishedWithStatus("\u5168\u8230\u5f39\u5e55\u88c5\u586b", success);
+                }
+            }
+        });
+        return manager;
     }
 
     private boolean handleCommentTouch(MotionEvent event) {
@@ -2578,8 +2596,7 @@ public class BiliPlayerActivity extends Activity implements
                             if (resolved != null && resolved.length() > 0) {
                                 videoUrl = resolved;
                             }
-                            setLoadingStep1(getString(R.string.player_loading_step_get_url)
-                                    + getString(R.string.player_loading_step_done));
+                            finishUrlStage();
                             setLoadingStep2(getString(R.string.player_loading_step_loading_video));
                             preparePlayer();
                         }
@@ -2590,27 +2607,50 @@ public class BiliPlayerActivity extends Activity implements
         }
         if (videoUrl.startsWith("http")) {
             showBuffering(true);
-            setLoadingStep1(getString(R.string.player_loading_step_get_url)
-                    + getString(R.string.player_loading_step_done));
+            finishUrlStage();
             setLoadingStep2(getString(R.string.player_loading_step_loading_video));
         }
         preparePlayer();
     }
 
+    private void finishUrlStage() {
+        String text = getString(R.string.player_loading_step_get_url)
+                + getString(R.string.player_loading_step_done);
+        if (mStageEcho != null) {
+            mStageEcho.appendFinished(text);
+        } else {
+            mLoadStep1Text = text;
+            renderLoadingStatus();
+        }
+    }
+
     private void setLoadingStep1(String text) {
-        mLoadStep1Text = text;
-        renderLoadingStatus();
+        if (mStageEcho != null) {
+            mStageEcho.setPending(text);
+        } else {
+            mLoadStep1Text = text;
+            renderLoadingStatus();
+        }
     }
 
     private void setLoadingStep2(String text) {
-        mLoadStep2Text = text;
-        renderLoadingStatus();
+        if (mStageEcho != null) {
+            mStageEcho.setPending(text);
+        } else {
+            mLoadStep2Text = text;
+            renderLoadingStatus();
+        }
     }
 
     private void markLoadingStep2Done() {
-        mLoadStep2Text = getString(R.string.player_loading_step_loading_video)
-                + getString(R.string.player_loading_step_done);
-        renderLoadingStatus();
+        if (mStageEcho != null) {
+            mStageEcho.appendFinished(getString(R.string.player_loading_step_loading_video)
+                    + getString(R.string.player_loading_step_done));
+        } else {
+            mLoadStep2Text = getString(R.string.player_loading_step_loading_video)
+                    + getString(R.string.player_loading_step_done);
+            renderLoadingStatus();
+        }
     }
 
     /** 加载失败：状态栏显示「正在加载视频……【失败】」，小电视动画停下。 */
@@ -2636,6 +2676,10 @@ public class BiliPlayerActivity extends Activity implements
         StringBuilder sb = new StringBuilder();
         if (mLoadStep1Text != null && mLoadStep1Text.length() > 0) {
             sb.append(mLoadStep1Text);
+        }
+        if (mDanmakuStageText != null && mDanmakuStageText.length() > 0) {
+            if (sb.length() > 0) sb.append('\n');
+            sb.append(mDanmakuStageText);
         }
         if (mLoadStep2Text != null && mLoadStep2Text.length() > 0) {
             if (sb.length() > 0) sb.append('\n');
