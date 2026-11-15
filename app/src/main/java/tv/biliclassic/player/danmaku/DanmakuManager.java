@@ -92,6 +92,37 @@ public class DanmakuManager {
     private File mDanmakuCacheFile;
     private boolean mEnabled = true;
     private boolean mLoaded;
+    private OnLoadListener mLoadListener;
+    private boolean mDanmakuLoadStarted;
+
+    public interface OnLoadListener {
+        void onLoadStarted();
+        void onLoadFinished(boolean success);
+    }
+
+    public void setOnLoadListener(OnLoadListener listener) {
+        mLoadListener = listener;
+    }
+
+    private void notifyLoadStarted() {
+        if (mLoadListener != null) {
+            mActivity.runOnUiThread(new Runnable() {
+                public void run() {
+                    if (mLoadListener != null) mLoadListener.onLoadStarted();
+                }
+            });
+        }
+    }
+
+    private void notifyLoadFinished(final boolean success) {
+        if (mLoadListener != null) {
+            mActivity.runOnUiThread(new Runnable() {
+                public void run() {
+                    if (mLoadListener != null) mLoadListener.onLoadFinished(success);
+                }
+            });
+        }
+    }
     private File mOfflineDanmakuFile;
     private boolean mUseSimpleEngine;
 
@@ -100,6 +131,7 @@ public class DanmakuManager {
     private boolean mVideoPrepared;
     private boolean mVideoStarted;
     private boolean mDanmakuStarted;
+    private boolean mTransparencyHidden;
     private boolean mSeekPending;
     private long mSeekTarget;
     private boolean mReleased;
@@ -485,7 +517,7 @@ public class DanmakuManager {
 
         DanmakuGlobalConfig.DEFAULT.setScrollSpeedFactor(1.0f / speed);
         DanmakuGlobalConfig.DEFAULT.setScaleTextSize(textSize);
-        DanmakuGlobalConfig.DEFAULT.setDanmakuTransparency(1.0f - transparency);
+        applyDanmakuTransparency(transparency);
         DanmakuGlobalConfig.DEFAULT.setMaximumVisibleSizeInScreen(maxScreen);
         DanmakuGlobalConfig.DEFAULT.setFTDanmakuVisibility(!blockTop);
         DanmakuGlobalConfig.DEFAULT.setR2LDanmakuVisibility(!blockScroll);
@@ -511,6 +543,29 @@ public class DanmakuManager {
         }
     }
 
+    private void applyDanmakuTransparency(float v) {
+        float alpha = 1.0f - v;
+        DanmakuGlobalConfig.DEFAULT.setDanmakuTransparency(alpha);
+        SharedPreferencesUtil.putFloat(KEY_TRANSPARENCY, v);
+        mTransparencyHidden = alpha <= 0.01f;
+        if (mContainer != null) {
+            if (mTransparencyHidden) {
+                if (mDanmakuView != null) mDanmakuView.pause();
+                if (mSimpleEngine != null) mSimpleEngine.pauseDanmaku();
+                mContainer.setVisibility(View.INVISIBLE);
+            } else if (mEnabled) {
+                mContainer.setVisibility(View.VISIBLE);
+                if (mDanmakuView != null && mVideoStarted) mDanmakuView.resume();
+                if (mSimpleEngine != null && mVideoStarted) mSimpleEngine.resumeDanmaku();
+            }
+        }
+        if (mSimpleEngine != null) mSimpleEngine.setDanmakuOpacity(alpha);
+    }
+
+    public boolean isTransparencyHidden() {
+        return mTransparencyHidden;
+    }
+
     private void applyStrokeScale() {
         float scale = SharedPreferencesUtil.getFloat(KEY_STROKE_SCALE, 1.0f);
         master.flame.danmaku.danmaku.model.android.AndroidDisplayer.setShadowRadius(4.0f * scale);
@@ -523,6 +578,7 @@ public class DanmakuManager {
 
     public void release() {
         mReleased = true;
+        mDanmakuLoadStarted = false;
         stopLivePolling();
         dismissAllPanels();
         if (mSimpleEngine != null) {
@@ -765,8 +821,7 @@ public class DanmakuManager {
         wireSeek(panel, R.id.option_danmaku_transparency, 0f, 1.0f,
                 1.0f - DanmakuGlobalConfig.DEFAULT.transparency / 255f, "弹幕透明度",
                 new SeekCallback() { public void onChanged(float v) {
-                    DanmakuGlobalConfig.DEFAULT.setDanmakuTransparency(1.0f - v);
-                    SharedPreferencesUtil.putFloat(KEY_TRANSPARENCY, v);
+                    applyDanmakuTransparency(v);
                 }});
         final float savedStroke = SharedPreferencesUtil.getFloat(KEY_STROKE_SCALE, 1.0f);
         wireSeek(panel, R.id.option_danmaku_stroke_width_scaling, 0.5f, 2.0f, savedStroke, "描边大小",
@@ -962,6 +1017,9 @@ public class DanmakuManager {
     }
 
     private void startLoadDanmaku() {
+        if (mDanmakuLoadStarted) return;
+        mDanmakuLoadStarted = true;
+        notifyLoadStarted();
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -1064,6 +1122,7 @@ public class DanmakuManager {
         try {
             mSimpleEngine.setDanmakuData(mDanmakuCacheFile);
             mLoaded = true;
+            notifyLoadFinished(true);
         } catch (Exception e) {
             android.util.Log.e("DanmakuManager", "简易弹幕初始化失败: " + e.getMessage());
         }
@@ -1097,6 +1156,7 @@ public class DanmakuManager {
                     } catch (Throwable t) {
                     }
                     mLoaded = true;
+                    notifyLoadFinished(true);
                     if (mEnabled && mVideoStarted) {
                         long pos = getCurrentVideoPosition();
                         if (pos <= 0 && mSeekPending) pos = mSeekTarget;
@@ -1270,8 +1330,7 @@ public class DanmakuManager {
         wireSimpleSeek(panel, R.id.option_danmaku_transparency,
                 0f, 1.0f, SharedPreferencesUtil.getFloat(KEY_TRANSPARENCY, 0.4f),
                 new SeekCallback() { public void onChanged(float v) {
-                    mSimpleEngine.setDanmakuOpacity(1.0f - v);
-                    SharedPreferencesUtil.putFloat(KEY_TRANSPARENCY, v);
+                    applyDanmakuTransparency(v);
                 }});
 
         wireSimpleSeek(panel, R.id.option_danmaku_textsize,

@@ -3233,7 +3233,10 @@ public class BiliPlayerActivity extends Activity implements
         startSplitAudioIfReady();
         setupNfcSync();
         if (mDanmakuManager != null) mDanmakuManager.onVideoStarted();
-        if (mDanmakuContainer != null) mDanmakuContainer.setVisibility(View.VISIBLE);
+        if (mDanmakuContainer != null
+                && (mDanmakuManager == null || !mDanmakuManager.isTransparencyHidden())) {
+            mDanmakuContainer.setVisibility(View.VISIBLE);
+        }
         if (mediaSessionHelper != null) {
             mediaSessionHelper.setMetadata(videoTitle, "");
         }
@@ -3315,7 +3318,10 @@ public class BiliPlayerActivity extends Activity implements
                 mDanmakuManager.onVideoStarted();
                 mDanmakuManager.resume();
             }
-            if (mDanmakuContainer != null) mDanmakuContainer.setVisibility(View.VISIBLE);
+            if (mDanmakuContainer != null
+                && (mDanmakuManager == null || !mDanmakuManager.isTransparencyHidden())) {
+            mDanmakuContainer.setVisibility(View.VISIBLE);
+        }
             updateTimeDisplay();
             handler.sendEmptyMessage(MSG_UPDATE_PROGRESS);
             return;
