@@ -104,6 +104,14 @@
 
             </LinearLayout>
 
+            <!-- 分隔线 -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginBottom="12dp"
+                android:layout_marginTop="12dp"
+                android:background="#E0E0E0" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -152,6 +160,14 @@
                 </LinearLayout>
 
             </LinearLayout>
+
+            <!-- 分隔线 -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginBottom="12dp"
+                android:layout_marginTop="12dp"
+                android:background="#E0E0E0" />
 
             <!-- 图片加载设置 -->
             <TextView
@@ -1653,12 +1669,6 @@
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/common_view"
-                    android:src="@android:drawable/ic_menu_info_details" />
-
             </LinearLayout>
 
             <!-- 分隔线 -->
@@ -1759,12 +1769,6 @@
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/common_clear_data"
-                    android:src="@android:drawable/ic_menu_delete" />
-
             </LinearLayout>
 
             <TextView
@@ -1804,12 +1808,6 @@
                     android:text="@string/size_zero_mb"
                     android:textColor="#999999"
                     android:textSize="13sp" />
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/common_clear_data"
-                    android:src="@android:drawable/ic_menu_delete" />
 
             </LinearLayout>
 
@@ -1902,12 +1900,6 @@
                     android:textColor="#999999"
                     android:textSize="13sp" />
 
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/echo_cave"
-                    android:src="@android:drawable/ic_menu_myplaces" />
-
             </LinearLayout>
 
             <LinearLayout
@@ -1986,12 +1978,6 @@
                     android:text="@string/no_log"
                     android:textColor="#999999"
                     android:textSize="13sp" />
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/common_clear_data"
-                    android:src="@android:drawable/ic_menu_delete" />
 
             </LinearLayout>
 
@@ -2215,12 +2201,6 @@
                     android:text="@string/click_to_check"
                     android:textColor="#999999"
                     android:textSize="13sp" />
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:contentDescription="@string/common_check"
-                    android:src="@android:drawable/ic_menu_info_details" />
 
             </LinearLayout>
 

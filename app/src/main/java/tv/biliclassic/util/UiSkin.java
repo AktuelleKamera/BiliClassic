@@ -161,6 +161,14 @@ public final class UiSkin {
                     restoreBg(tb);
                 }
             }
+            View backButton = a.findViewById(R.id.btn_back);
+            if (backButton != null) {
+                if (night) {
+                    markBgRes(backButton, R.drawable.titlebar_pink_item_bg_night, 15);
+                } else {
+                    restoreBg(backButton);
+                }
+            }
             View searchBar = a.findViewById(R.id.search_bar);
             if (searchBar != null) {
                 if (night) {
@@ -315,7 +323,7 @@ public final class UiSkin {
             return;
         }
         try {
-            if (settings && v.getBackground() instanceof android.graphics.drawable.LayerDrawable) {
+            if (settings && (v.getBackground() instanceof android.graphics.drawable.LayerDrawable || v.getBackground() instanceof android.graphics.drawable.StateListDrawable)) {
                 int want = night ? 1 : (trans ? 2 : 3);
                 Integer cur = STATE.get(v);
                 // 默认白天且无自定义背景时不重设，避免老 ROM 重设共享 drawable 出问题
