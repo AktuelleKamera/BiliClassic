@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.provider.Settings;
 import android.util.DisplayMetrics;
 
 import java.net.URLEncoder;
@@ -136,8 +135,14 @@ public final class DeviceReportUtil {
         String raw = "";
         if (SdkHelper.getSdkInt() >= 3) {
             try {
-                raw = Settings.Secure.getString(
-                        context.getContentResolver(), Settings.Secure.ANDROID_ID);
+                Class<?> secure = Class.forName("android.provider.Settings$Secure");
+                java.lang.reflect.Method getString = secure.getMethod(
+                        "getString", android.content.ContentResolver.class, String.class);
+                Object value = getString.invoke(null,
+                        context.getContentResolver(), "android_id");
+                if (value instanceof String) {
+                    raw = (String) value;
+                }
             } catch (Throwable t) {
             }
         }

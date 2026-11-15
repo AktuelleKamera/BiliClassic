@@ -49,6 +49,16 @@ public class DeviceUtils {
         return value == null ? "" : value;
     }
 
+    public static String getHardware() {
+        String value = getBuildField("HARDWARE");
+        return value == null ? "" : value;
+    }
+
+    public static String getBoard() {
+        String value = getBuildField("BOARD");
+        return value == null ? "" : value;
+    }
+
     public static String getProduct() {
         String value = getBuildField("PRODUCT");
         return value == null ? "" : value;

@@ -5,6 +5,8 @@
 -keep class android.media.AudioTrack { *; }
 -keep class android.media.PlaybackParams { *; }
 -ignorewarnings
+-dontwarn android.media.MediaPlayer
+-dontwarn android.media.PlaybackParams
 
 # Player (IjkPlayer): JNI native methods
 -keep class tv.danmaku.ijk.media.player.IjkMediaPlayer {
@@ -35,7 +37,13 @@
     <methods>;
     public <init>(boolean);
 }
+-keep class tv.biliclassic.util.PlayerToastMessageViewHolder { *; }
 
 # Metro 主题：自定义 View（布局 XML android:name 按类名反射恢复）与 Fragment，
 # 混淆会把它们改成单字母类名（如 a），导致 setContentView / FragmentManager 恢复失败；整包 keep
 -keep class tv.biliclassic.metro.** { *; }
+
+# Reflective entry points using tv.biliclassic.* class names.
+-keep class tv.biliclassic.util.MediaSessionCallbackImpl { *; }
+-keep class tv.biliclassic.nfc.NfcSyncReader { *; }
+-keep class tv.biliclassic.nfc.NfcSyncHceService { *; }

@@ -516,6 +516,9 @@ public class BiliPlayerActivity extends Activity implements
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
 
         setContentView(R.layout.bili_app_player_view_new);
+        if (SdkHelper.getSdkInt() < 4) {
+            SdkHelper.disableSoundEffects(getWindow().getDecorView());
+        }
         initSubtitleView();
         // 表冠滚动：播放器内控制音量（向下转=增大），复用手势音量 HUD（API<12 内部自动跳过）
         tv.biliclassic.util.CrownScrollHelper.attachVolume(this,
@@ -4252,7 +4255,7 @@ public class BiliPlayerActivity extends Activity implements
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
             } else if (portraitRotation) {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR);
-            } else if (SdkHelper.getSdkInt() >= Build.VERSION_CODES.GINGERBREAD) {
+            } else if (SdkHelper.getSdkInt() >= 9) {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
             } else {
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
@@ -5345,7 +5348,10 @@ public class BiliPlayerActivity extends Activity implements
             return false;
         }
         try {
-            return isInMultiWindowMode();
+            Object value = android.app.Activity.class
+                    .getMethod("isInMultiWindowMode")
+                    .invoke(this);
+            return value instanceof Boolean && ((Boolean) value).booleanValue();
         } catch (Throwable ignored) {
             return false;
         }
