@@ -193,7 +193,21 @@ public class OfflineActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        applyNightTheme();
         refreshList();
+    }
+
+    private void applyNightTheme() {
+        boolean night = tv.biliclassic.util.UiSkin.isNight();
+        if (listView != null) {
+            listView.setBackgroundColor(night ? 0xFF171717 : 0xFFF5F5F5);
+        }
+        if (emptyView != null) {
+            emptyView.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
+        }
+        if (storageText != null) {
+            storageText.setTextColor(night ? 0xFFB0B0B0 : 0xFF616161);
+        }
     }
 
     @Override
@@ -1008,6 +1022,13 @@ public class OfflineActivity extends BaseActivity {
             });
 
             tv.biliclassic.util.UiSkin.recolorItem(convertView);
+            boolean night = tv.biliclassic.util.UiSkin.isNight();
+            convertView.setBackgroundResource(night
+                    ? R.drawable.item_click_effect_grey
+                    : R.drawable.item_click_effect_white);
+            holder.title.setTextColor(night ? 0xFFE6E6E6 : 0xFF333333);
+            holder.size.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
+            holder.state.setTextColor(night ? 0xFFB0B0B0 : 0xFF999999);
             return convertView;
         }
     }

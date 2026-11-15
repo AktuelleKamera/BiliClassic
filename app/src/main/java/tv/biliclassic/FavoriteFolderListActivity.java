@@ -665,6 +665,9 @@ public class FavoriteFolderListActivity extends BaseActivity {
         for (int i = folderList.size() - 1; i >= 0; i--) {
             if (folderList.get(i).fid < 0) folderList.remove(i);
         }
+        if (SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0L) > 0L) {
+            return;
+        }
         folderList.addAll(0, LocalFavoriteStore.getFolders());
     }
 
