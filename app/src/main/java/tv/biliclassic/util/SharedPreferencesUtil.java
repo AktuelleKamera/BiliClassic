@@ -67,7 +67,7 @@ public class SharedPreferencesUtil {
     public static final String IMAGE_LOAD_THREADS = "image_load_threads";
     public static final String RECOMMEND_COLUMNS = "recommend_columns";
     public static final String PLAYER_PREFERENCE = "player_preference";
-    public static final String KEEP_BACKGROUND = "keep_background";
+    public static final String KEEP_BACKGROUND = "player_background_audio";
     public static final String PLAYER_AUTO_ROTATION = "player_auto_rotation";
     public static final String PLAYER_PORTRAIT_ROTATION = "player_portrait_rotation";
     public static final String DANMAKU_ENGINE_MODE = "danmaku_engine_mode"; // 0=完整, 1=简易

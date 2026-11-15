@@ -701,7 +701,7 @@ public class BiliPlayerActivity extends Activity implements
         }
         enableGesture = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.ENABLE_GESTURE, true);
         commentSwipeEnabled = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.COMMENT_SWIPE_ENABLE, true);
-        keepBackground = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.KEEP_BACKGROUND, true);
+        keepBackground = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.KEEP_BACKGROUND, false);
         completionAction = SharedPreferencesUtil.getInt(SharedPreferencesUtil.COMPLETION_ACTION, COMPLETION_ACTION_PAUSE);
         autoRotation = SharedPreferencesUtil.getBoolean(
                 SharedPreferencesUtil.PLAYER_AUTO_ROTATION, false);
@@ -5242,12 +5242,26 @@ public class BiliPlayerActivity extends Activity implements
             tv.biliclassic.nfc.NfcSyncCompat.detachReader(this);
         }
         super.onPause();
+        if (isInMultiWindowModeCompat() || keepBackground) {
+            return;
+        }
         if (mediaPlayer != null && isPlaying) {
             mediaPlayer.pause();
             pauseSplitAudio();
             isPlaying = false;
             updatePlayPauseButton();
             if (mDanmakuManager != null) mDanmakuManager.pause();
+        }
+    }
+
+    private boolean isInMultiWindowModeCompat() {
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() < 24) {
+            return false;
+        }
+        try {
+            return isInMultiWindowMode();
+        } catch (Throwable ignored) {
+            return false;
         }
     }
 
@@ -5280,47 +5294,47 @@ public class BiliPlayerActivity extends Activity implements
     @Override
     protected void onStop() {
         super.onStop();
-        if (!isFinishing() && keepBackground && mediaPlayer != null && isPrepared) {
+        if (!isFinishing() && mediaPlayer != null && isPrepared) {
             try {
                 sPendingSeekPosition = (int) mediaPlayer.getCurrentPosition();
             } catch (Exception e) {
                 sPendingSeekPosition = 0;
             }
         }
-        if (mDanmakuManager != null && (isFinishing() || !keepBackground)) {
+        if (isFinishing() && mDanmakuManager != null) {
             mDanmakuManager.pause();
             mDanmakuManager.release();
             mDanmakuManager = null;
         }
-        releasePlayer();
-        if (!keepBackground && !isFinishing()) {
-            finish();
+        if (isFinishing()) {
+            releasePlayer();
         }
     }
 
     @Override
     protected void onRestart() {
         super.onRestart();
-        if (keepBackground) {
-            int maxMemoryMB = (int)(Runtime.getRuntime().maxMemory() / (1024 * 1024));
-            if (maxMemoryMB >= 48) {
-                if (mDanmakuManager != null) {
-                    mDanmakuManager.pause();
-                    mDanmakuManager.release();
-                    mDanmakuManager = null;
-                }
-                mSeekWhenPrepared = sPendingSeekPosition;
-                sPendingSeekPosition = 0;
-                initPlayer();
-                if (mDanmakuContainer != null) {
-                    mDanmakuManager = createDanmakuManager();
-                    mDanmakuManager.init();
-                }
-            } else {
-                Intent intent = getIntent();
-                finish();
-                startActivity(intent);
+        if (mediaPlayer != null && isPrepared) {
+            return;
+        }
+        int maxMemoryMB = (int)(Runtime.getRuntime().maxMemory() / (1024 * 1024));
+        if (maxMemoryMB >= 48) {
+            if (mDanmakuManager != null) {
+                mDanmakuManager.pause();
+                mDanmakuManager.release();
+                mDanmakuManager = null;
             }
+            mSeekWhenPrepared = sPendingSeekPosition;
+            sPendingSeekPosition = 0;
+            initPlayer();
+            if (mDanmakuContainer != null) {
+                mDanmakuManager = createDanmakuManager();
+                mDanmakuManager.init();
+            }
+        } else {
+            Intent intent = getIntent();
+            finish();
+            startActivity(intent);
         }
     }
 
