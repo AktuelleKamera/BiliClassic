@@ -264,7 +264,7 @@ public class DecoderSettingsActivity extends BaseActivity {
     }
 
     private static String defaultSkipFrame() {
-        return tv.biliclassic.util.DeviceUtils.isModernCpu() ? "-16" : "8";
+        return tv.biliclassic.util.DeviceUtils.isMultiCoreCpu() ? "-16" : "8";
     }
 
     public static int getSkipLoopFilter() {

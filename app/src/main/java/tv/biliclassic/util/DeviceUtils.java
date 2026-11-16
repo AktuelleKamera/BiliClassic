@@ -142,6 +142,41 @@ public class DeviceUtils {
         return CpuAbi.supportsAbi(abi);
     }
 
+    private static int sCpuCoreCount = -1;
+
+    public static int getCpuCoreCount() {
+        if (sCpuCoreCount > 0) return sCpuCoreCount;
+        int count = 0;
+        try {
+            count = Runtime.getRuntime().availableProcessors();
+        } catch (Throwable ignored) {
+        }
+        if (count < 2) {
+            int infoCount = 0;
+            BufferedReader reader = null;
+            try {
+                reader = new BufferedReader(new FileReader("/proc/cpuinfo"));
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith("processor")) infoCount++;
+                }
+            } catch (Throwable ignored) {
+            } finally {
+                if (reader != null) {
+                    try { reader.close(); } catch (Throwable ignored) {}
+                }
+            }
+            if (infoCount > count) count = infoCount;
+        }
+        if (count <= 0) count = 1;
+        sCpuCoreCount = count;
+        return count;
+    }
+
+    public static boolean isMultiCoreCpu() {
+        return getCpuCoreCount() >= 2;
+    }
+
     public static boolean isModernCpu() {
         if (CpuAbi.isLegacyArm()) return false;
         if (CpuAbi.supportsAbi("armeabi-v7a") || CpuAbi.supportsAbi("arm64-v8a")
