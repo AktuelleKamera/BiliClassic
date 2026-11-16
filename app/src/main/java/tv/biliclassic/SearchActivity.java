@@ -151,7 +151,7 @@ public class SearchActivity extends BaseActivity {
         if (tv.biliclassic.util.UiSkin.isNight()) {
             if (sortButtonText != null) sortButtonText.setTextColor(0xFFE6E6E6);
             if (sortButton != null) {
-                tv.biliclassic.util.UiSkin.setBgColorKeepPadding(sortButton, 0xFF2A2A2A);
+                sortButton.setBackgroundResource(R.drawable.titlebar_pink_spinner_bg_night);
             }
             if (searchEdit != null) {
                 searchEdit.setTextColor(0xFFE6E6E6);

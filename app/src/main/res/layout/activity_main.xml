@@ -133,7 +133,7 @@
         android:id="@+id/main_search_history"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bili_texture_background"
+        android:background="@null"
         android:orientation="vertical"
         android:paddingBottom="6dp"
         android:visibility="gone">
