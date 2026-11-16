@@ -11,7 +11,12 @@ public class DialogUtil {
         int sdk = SdkHelper.getSdkInt();
         int val = SharedPreferencesUtil.getInt(SharedPreferencesUtil.DIALOG_STYLE, 0);
         if (val == 1) return new ContextThemeWrapper(base, tv.biliclassic.R.style.DialogStyle_Classic);
-        if (val == 2) return new ContextThemeWrapper(base, tv.biliclassic.R.style.DialogStyle_Holo);
+        if (val == 2) {
+            if (tv.biliclassic.util.UiSkin.isNight() && sdk >= 11) {
+                return new ContextThemeWrapper(base, tv.biliclassic.R.style.DialogStyle_Holo_Dark);
+            }
+            return new ContextThemeWrapper(base, tv.biliclassic.R.style.DialogStyle_Holo);
+        }
         if (val == 3) return new ContextThemeWrapper(base, tv.biliclassic.R.style.DialogStyle_Material);
         if (tv.biliclassic.util.UiSkin.isNight() && sdk >= 11) {
             return new ContextThemeWrapper(base, tv.biliclassic.R.style.DialogStyle_Night);

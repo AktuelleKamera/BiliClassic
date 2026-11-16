@@ -28,4 +28,8 @@
         <item name="android:windowMinWidthMinor">0dp</item>
     </style>
 
+    <style name="DialogStyle_Holo_Dark" parent="@android:style/Theme.Holo.Dialog">
+        <item name="android:windowMinWidthMajor">0dp</item>
+        <item name="android:windowMinWidthMinor">0dp</item>
+    </style>
 </resources>
