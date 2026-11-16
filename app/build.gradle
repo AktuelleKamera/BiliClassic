@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'AndResGuard'
 
 android {
     compileSdkVersion 29
@@ -29,7 +30,7 @@ android {
         release {
             minifyEnabled true
             shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 
@@ -45,6 +46,21 @@ android {
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
+
+andResGuard {
+    mappingFile = null
+    use7zip = false
+    useSign = false
+    keepRoot = false
+    whiteList = [
+            "R.drawable.ic_launcher",
+            "R.string.app_name"
+    ]
+    compressFilePattern = [
+            "*.png", "*.jpg", "*.jpeg", "*.gif"
+    ]
+}
+
 
 repositories {
     flatDir {
@@ -79,16 +95,17 @@ def buildToolsDir = new File(sdkDir, 'build-tools/33.0.1')
 def zipalignExe = new File(buildToolsDir, 'zipalign.exe')
 def apksignerJar = new File(buildToolsDir, 'lib/apksigner.jar')
 def javaExe = new File(System.getProperty('java.home'), 'bin/java.exe')
+def resguardApk = new File(buildDir, 'outputs/apk/AndResGuard_app-release-unsigned/app-release-unsigned_unsigned.apk')
 def zopfliUnsigned = new File(buildDir, 'outputs/apk/app-release-zopfli-unsigned.apk')
 def zopfliAligned = new File(buildDir, 'outputs/apk/app-release-zopfli-aligned.apk')
 def finalApk = project.file('app-release.apk')
 
 task zopfliRepack(type: Exec) {
     group = 'build'
-    dependsOn 'assembleRelease'
+    dependsOn 'resguardRelease'
     workingDir rootProject.projectDir
     commandLine 'python', 'tools/zopfli_apk.py',
-            '--input', new File(buildDir, 'outputs/apk/app-release-unsigned.apk').absolutePath,
+            '--input', resguardApk.absolutePath,
             '--output', zopfliUnsigned.absolutePath
 }
 
@@ -122,6 +139,6 @@ task zopfliSign(type: Exec) {
 
 task zopfliRelease {
     group = 'build'
-    description = 'Build, zopfli-repack, zipalign and V1+V2+V3 sign app-release.apk.'
+    description = 'Build with AndResGuard, zopfli-repack, zipalign and V1+V2+V3 sign app-release.apk.'
     dependsOn 'zopfliSign'
 }

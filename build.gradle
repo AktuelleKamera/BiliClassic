@@ -3,12 +3,14 @@
 buildscript {
     repositories {
         maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        maven { url 'https://maven.aliyun.com/repository/google' }
         maven { url 'https://maven.aliyun.com/repository/jcenter' }
         maven { url 'https://maven.aliyun.com/repository/public' }
         jcenter()
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:2.3.2'
+        classpath 'com.tencent.mm:AndResGuard-gradle-plugin:1.2.14'
     }
 }
 
