@@ -4088,7 +4088,16 @@ public class BiliPlayerActivity extends Activity implements
         });
 
         View root = getWindow().getDecorView();
-        mPlayerOptionsPannel.showAtLocation(root, Gravity.RIGHT, 0, 0);
+        int panelOffsetY = 0;
+        if (SdkHelper.getSdkInt() < 4) {
+            panelOffsetY = -getPlayerStatusBarHeight();
+            mPlayerOptionsPannel.setHeight(
+                    getWindowManager().getDefaultDisplay().getHeight()
+                            - panelOffsetY);
+            mPlayerOptionsPannel.setClippingEnabled(false);
+        }
+        mPlayerOptionsPannel.showAtLocation(root, Gravity.RIGHT | Gravity.TOP,
+                0, panelOffsetY);
         if (SdkHelper.getSdkInt() >= 28) {
             tv.biliclassic.util.SdkHelper.onViewAttached(wrapper, new Runnable() {
                 public void run() {
@@ -4194,7 +4203,16 @@ public class BiliPlayerActivity extends Activity implements
         });
 
         View root = getWindow().getDecorView();
-        mPlayerSpeedPannel.showAtLocation(root, Gravity.RIGHT, 0, 0);
+        int panelOffsetY = 0;
+        if (SdkHelper.getSdkInt() < 4) {
+            panelOffsetY = -getPlayerStatusBarHeight();
+            mPlayerSpeedPannel.setHeight(
+                    getWindowManager().getDefaultDisplay().getHeight()
+                            - panelOffsetY);
+            mPlayerSpeedPannel.setClippingEnabled(false);
+        }
+        mPlayerSpeedPannel.showAtLocation(root, Gravity.RIGHT | Gravity.TOP,
+                0, panelOffsetY);
         if (SdkHelper.getSdkInt() >= 28) {
             tv.biliclassic.util.SdkHelper.onViewAttached(wrapper, new Runnable() {
                 public void run() {
@@ -4477,6 +4495,15 @@ public class BiliPlayerActivity extends Activity implements
         if (isPlaying && !isLiveStream) {
             handler.sendEmptyMessage(MSG_UPDATE_PROGRESS);
         }
+    }
+
+    private int getPlayerStatusBarHeight() {
+        try {
+            int id = getResources().getIdentifier("status_bar_height", "dimen", "android");
+            if (id > 0) return getResources().getDimensionPixelSize(id);
+        } catch (Throwable ignored) {
+        }
+        return 0;
     }
 
     private void hideSystemUI() {
