@@ -2,8 +2,7 @@
 
 <img width="1366" height="768" alt="Android 1" src="https://github.com/user-attachments/assets/0dc69bce-f9e5-4bb6-8d15-d66c3044d342" />
 
-一个面向各种旧设备的第三方哔哩哔哩客户端项目，支持Android 1.0+、Windows Mobile 5.0+、Windows Phone 7.0+、Mymobile 0.9.3+和webOS 3.0+。致力于还原2013年前后的经典界面与交互体验，让那些在抽屉里吃灰的老设备能重新看上B站的说~
-
+一个面向各种旧设备的第三方哔哩哔哩客户端项目，支持Android 1.0+、Windows Mobile 5.0+、Windows Phone 7.0+、Mymobile 0.9.3+和webOS 3.0+。致力于还原2013年前后的经典界面与交互体验，让那些过去的经典设备也能重新看上B站的说~
 ## 免责声明
 
 本应用为第三方开源项目，与哔哩哔哩（上海宽娱数码科技有限公司）无关。
@@ -230,15 +229,15 @@ BT-5弹幕引擎为本项目原创，为armeabi设备设计。通过预渲染Bit
 本项目的网络请求、WBI签名等模块参考并引用了以下开源项目，在此表示感谢：
 
 - 哔哩终端 (BiliClient)
-- BiliBili TV 1.6.6-repair
 - WearBili
 - PiliPlus
 - WristBili
+- AndResGuard
 - DanmakuFlameMaster
 - IJKPlayer
 - WolfSSL
 
-感谢所有愿意在2026年还在折腾老设备的群友们，你们的反馈让这个项目越来越好的说~
+感谢所有愿意在现在还在折腾老设备的各位们，你们的反馈让这个项目越来越好的说~
 
 ## 许可证
 
