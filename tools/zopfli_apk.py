@@ -29,6 +29,55 @@ def _paeth(a, b, c):
     return c
 
 
+def _filter_rows(rows, row_size, bpp, mode):
+    out = bytearray()
+    previous = bytearray(row_size)
+    for row in rows:
+        if mode == "auto":
+            best = None
+            for kind in range(5):
+                candidate = bytearray(row_size)
+                for i in range(row_size):
+                    left = row[i - bpp] if i >= bpp else 0
+                    up = previous[i]
+                    up_left = previous[i - bpp] if i >= bpp else 0
+                    if kind == 0:
+                        value = row[i]
+                    elif kind == 1:
+                        value = (row[i] - left) & 255
+                    elif kind == 2:
+                        value = (row[i] - up) & 255
+                    elif kind == 3:
+                        value = (row[i] - ((left + up) >> 1)) & 255
+                    else:
+                        value = (row[i] - _paeth(left, up, up_left)) & 255
+                    candidate[i] = value
+                score = sum(min(value, 256 - value) for value in candidate)
+                if best is None or score < best[0]:
+                    best = (score, kind, candidate)
+            out.append(best[1])
+            out += best[2]
+        else:
+            out.append(mode)
+            for i in range(row_size):
+                left = row[i - bpp] if i >= bpp else 0
+                up = previous[i]
+                up_left = previous[i - bpp] if i >= bpp else 0
+                if mode == 0:
+                    value = row[i]
+                elif mode == 1:
+                    value = (row[i] - left) & 255
+                elif mode == 2:
+                    value = (row[i] - up) & 255
+                elif mode == 3:
+                    value = (row[i] - ((left + up) >> 1)) & 255
+                else:
+                    value = (row[i] - _paeth(left, up, up_left)) & 255
+                out.append(value)
+        previous = row
+    return bytes(out)
+
+
 def _png_chunks(data):
     if data[:8] != b"\x89PNG\r\n\x1a\n":
         raise ValueError("not png")
@@ -110,38 +159,15 @@ def optimize_png(data):
             rows.append(row)
             previous = row
 
-        filtered = bytearray()
-        previous = bytearray(row_size)
-        for row in rows:
-            best = None
-            for kind in range(5):
-                out = bytearray(row_size)
-                for i in range(row_size):
-                    left = row[i - bpp] if i >= bpp else 0
-                    up = previous[i]
-                    up_left = previous[i - bpp] if i >= bpp else 0
-                    if kind == 0:
-                        value = row[i]
-                    elif kind == 1:
-                        value = (row[i] - left) & 255
-                    elif kind == 2:
-                        value = (row[i] - up) & 255
-                    elif kind == 3:
-                        value = (row[i] - ((left + up) >> 1)) & 255
-                    else:
-                        value = (row[i] - _paeth(left, up, up_left)) & 255
-                    out[i] = value
-                score = sum(min(value, 256 - value) for value in out)
-                if best is None or score < best[0]:
-                    best = (score, kind, out)
-            filtered.append(best[1])
-            filtered += best[2]
-            previous = row
-
+        filtered = [raw]
+        for mode in ("auto", 0, 1, 2, 3, 4):
+            filtered.append(_filter_rows(rows, row_size, bpp, mode))
+        filtered = list(dict.fromkeys(filtered))
+        filtered.sort(key=lambda payload: len(zlib.compress(payload, 9)))
         candidates = []
-        for payload in (bytes(filtered), raw):
+        for payload in filtered[:2]:
             try:
-                candidates.append(zopfli_zlib.compress(payload, numiterations=25))
+                candidates.append(zopfli_zlib.compress(payload, numiterations=100))
             except Exception:
                 pass
         if not candidates:
@@ -191,7 +217,7 @@ def write_archive(src, dst):
         compress_it = info.filename != "resources.arsc" and (
             method == 8 or target(info.filename) or png_changed)
         if png_changed and len(data) > 64:
-            packed = zopfli_zlib.compress(data, numiterations=25)
+            packed = zopfli_zlib.compress(data, numiterations=100)
             raw = packed[2:-4]
             if len(raw) < info.compress_size:
                 method = 8
@@ -203,7 +229,7 @@ def write_archive(src, dst):
                 if comp is None:
                     comp = deflate(data)
         elif compress_it and len(data) > 64:
-            packed = zopfli_zlib.compress(data, numiterations=25)
+            packed = zopfli_zlib.compress(data, numiterations=100)
             raw = packed[2:-4]
             if len(raw) < info.compress_size or method == 0:
                 method = 8
