@@ -161,7 +161,8 @@ public abstract class BaseActivity extends FragmentActivity {
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (SdkHelper.getSdkInt() < 4 && ev.getAction() == MotionEvent.ACTION_DOWN) {
+        if (SdkHelper.getSdkInt() < 4 && (ev.getAction() == MotionEvent.ACTION_DOWN
+                || ev.getAction() == MotionEvent.ACTION_UP)) {
             SdkHelper.disableSoundEffects(getWindow().getDecorView());
         }
         return super.dispatchTouchEvent(ev);

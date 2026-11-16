@@ -379,6 +379,10 @@ public class SdkHelper {
             }
         }
         try {
+            view.setSoundEffectsEnabled(false);
+        } catch (Throwable ignored) {
+        }
+        try {
             if (sSetSoundEffectsEnabled != null) {
                 sSetSoundEffectsEnabled.invoke(view, Boolean.FALSE);
             } else if (sSoundEffectsEnabledField != null) {

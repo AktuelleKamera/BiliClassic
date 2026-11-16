@@ -10,10 +10,12 @@
     <style name="AppTheme" parent="android:Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@drawable/bili_texture_background</item>
         <item name="android:tabStripEnabled">true</item>
+        <item name="android:soundEffectsEnabled">false</item>
     </style>
 
     <style name="AppThemeNight" parent="@style/AppTheme">
         <item name="android:windowBackground">@drawable/bili_texture_background_night</item>
+            <item name="android:soundEffectsEnabled">false</item>
     </style>
 
     <style name="AppThemeNoSound" parent="@style/AppTheme">
@@ -27,24 +29,29 @@
     </style>
 
     <style name="PlayerTheme" parent="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+        <item name="android:soundEffectsEnabled">false</item>
     </style>
 
     <style name="AppDialog" parent="@android:style/Theme.Dialog">
         <item name="android:alertDialogTheme">@style/AppDialog</item>
+            <item name="android:soundEffectsEnabled">false</item>
     </style>
 
 
     <style name="DialogStyle_Classic" parent="@android:style/Theme.Light">
         <item name="android:windowMinWidthMajor">0dp</item>
         <item name="android:windowMinWidthMinor">0dp</item>
+            <item name="android:soundEffectsEnabled">false</item>
     </style>
     <style name="DialogStyle_Holo" parent="android:Theme.Dialog">
         <item name="android:windowMinWidthMajor">0dp</item>
         <item name="android:windowMinWidthMinor">0dp</item>
+            <item name="android:soundEffectsEnabled">false</item>
     </style>
     <style name="DialogStyle_Material" parent="android:Theme.Dialog">
         <item name="android:windowMinWidthMajor">0dp</item>
         <item name="android:windowMinWidthMinor">0dp</item>
+            <item name="android:soundEffectsEnabled">false</item>
     </style>
 
     <!-- 自定义 Tab 文字样式 -->
@@ -227,5 +234,6 @@
     <style name="DialogStyle_Holo_Dark" parent="android:Theme.Dialog">
         <item name="android:windowMinWidthMajor">0dp</item>
         <item name="android:windowMinWidthMinor">0dp</item>
+            <item name="android:soundEffectsEnabled">false</item>
     </style>
 </resources>

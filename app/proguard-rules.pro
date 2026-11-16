@@ -47,3 +47,7 @@
 -keep class tv.biliclassic.util.MediaSessionCallbackImpl { *; }
 -keep class tv.biliclassic.nfc.NfcSyncReader { *; }
 -keep class tv.biliclassic.nfc.NfcSyncHceService { *; }
+
+# Keep API 12-only crown-scroll implementation behind an SDK guard.
+-keep class tv.biliclassic.util.CrownScrollHelper { *; }
+-keep class tv.biliclassic.util.CrownScrollHelper$Api12Impl { *; }
