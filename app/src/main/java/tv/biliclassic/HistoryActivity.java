@@ -266,6 +266,12 @@ public class HistoryActivity extends BaseActivity {
     }
 
     private void loadHistory() {
+        long localMid = SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0L);
+        if (localMid <= 0L) {
+            progressBar.hide();
+            showLocalHistory();
+            return;
+        }
         String cookies = SharedPreferencesUtil.getString("cookies", "");
         Log.d(TAG, "loadHistory - cookies length: " + (cookies == null ? "null"
                 : String.valueOf(cookies.length())));

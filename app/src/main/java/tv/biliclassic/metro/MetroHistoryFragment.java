@@ -205,6 +205,12 @@ public class MetroHistoryFragment extends Fragment implements MetroTurnPage {
         if (mIsLoading) return;
 
         // 未登录：历史记录需要 Cookie
+        long localMid = SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0L);
+        if (localMid <= 0L) {
+            loadLocalHistory();
+            return;
+        }
+
         String cookies = SharedPreferencesUtil.getString("cookies", "");
         if (cookies == null || cookies.length() == 0) {
             loadLocalHistory();
