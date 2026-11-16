@@ -380,13 +380,9 @@ public final class UiSkin {
                 android.graphics.drawable.Drawable bg = v.getBackground();
                 if (bg instanceof android.graphics.drawable.LayerDrawable) {
                     settingsItemBg = true;
-                } else if (bg instanceof android.graphics.drawable.StateListDrawable
-                        && v.getId() != View.NO_ID) {
-                    try {
-                        String entry = v.getResources().getResourceEntryName(v.getId());
-                        settingsItemBg = entry != null && (entry.startsWith("item_") || entry.endsWith("_item"));
-                    } catch (Throwable ignored) {
-                    }
+                } else if (v instanceof android.view.ViewGroup
+                        && bg instanceof android.graphics.drawable.StateListDrawable) {
+                    settingsItemBg = true;
                 }
             }
             if (settingsItemBg) {

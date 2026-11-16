@@ -1080,11 +1080,9 @@ public class SettingsActivity extends BaseActivity {
             View child = container.getChildAt(i);
             if (child instanceof LinearLayout
                     && child.getVisibility() == View.VISIBLE
-                    && child.getId() != View.NO_ID) {
-                String name = getResources().getResourceEntryName(child.getId());
-                if (name != null && name.endsWith("_item")) {
-                    mKeyNavItems.add(child);
-                }
+                    && child.getId() != View.NO_ID
+                    && child.getBackground() instanceof android.graphics.drawable.StateListDrawable) {
+                mKeyNavItems.add(child);
             }
         }
         if (mKeyNavItems.size() > 0) {
