@@ -297,6 +297,7 @@ public class BiliPlayerActivity extends Activity implements
     // 右边缘侧滑呼出评论区开关（可在播放选项面板关闭）
     private boolean commentSwipeEnabled = true;
     private boolean keepBackground;
+    private boolean backgroundRestoreEnabled = true;
     private boolean autoRotation;
     private boolean portraitRotation;
 
@@ -418,6 +419,8 @@ public class BiliPlayerActivity extends Activity implements
     private ImageView mLoadingIcon;
     private int mLoadingFrameIndex;
     private Runnable mLoadingFrameRunnable;
+    private boolean mLoadingOverlayFading;
+    private boolean mExitCleanupDone;
     private android.graphics.drawable.Drawable[] mLoadingFrameDrawables;
     private static final int[] LOADING_FRAMES = {
             R.drawable.bili_anim_tv_chan_1,
@@ -719,12 +722,20 @@ public class BiliPlayerActivity extends Activity implements
         // 仅在没有任何其他待跳转位置（如画质切换/后台恢复）时生效；直播不续播。
         if (mSeekWhenPrepared <= 0 && !isLiveStream) {
             int resumePosition = getIntent().getIntExtra("resume_position", 0);
+            if (resumePosition <= 0 && mAid > 0 && mCid > 0) {
+                resumePosition = tv.biliclassic.util.LocalHistoryStore.getProgress(mAid, mCid);
+            }
             mSeekWhenPrepared = resumePosition;
             mShowResumeTipOnPrepare = resumePosition > 0;
         }
         enableGesture = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.ENABLE_GESTURE, true);
         commentSwipeEnabled = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.COMMENT_SWIPE_ENABLE, true);
         keepBackground = SharedPreferencesUtil.getBoolean(SharedPreferencesUtil.KEEP_BACKGROUND, false);
+        if (mRendererType != RENDERER_TEXTUREVIEW) {
+            keepBackground = false;
+        }
+        backgroundRestoreEnabled = SharedPreferencesUtil.getBoolean(
+                SharedPreferencesUtil.SURFACE_BACKGROUND_RESTORE, true);
         completionAction = SharedPreferencesUtil.getInt(SharedPreferencesUtil.COMPLETION_ACTION, COMPLETION_ACTION_PAUSE);
         autoRotation = SharedPreferencesUtil.getBoolean(
                 SharedPreferencesUtil.PLAYER_AUTO_ROTATION, false);
@@ -822,10 +833,17 @@ public class BiliPlayerActivity extends Activity implements
         FrameLayout root = (FrameLayout) findViewById(android.R.id.content);
         if (root == null) return;
 
-        mLoadingOverlay = LayoutInflater.from(this).inflate(
-                R.layout.bili_app_player_preloading, root, false);
-        mLoadingOverlay.setLayoutParams(new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        View embeddedOverlay = findViewById(R.id.preloading_view);
+        if (embeddedOverlay != null) {
+            mLoadingOverlay = embeddedOverlay;
+            mLoadingOverlay.setVisibility(View.VISIBLE);
+            mLoadingOverlay.bringToFront();
+        } else {
+            mLoadingOverlay = LayoutInflater.from(this).inflate(
+                    R.layout.bili_app_player_preloading, root, false);
+            mLoadingOverlay.setLayoutParams(new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
         mLoadingIcon = (ImageView) mLoadingOverlay.findViewById(R.id.tv_chan_animation);
         if (mLoadingIcon != null) {
             mLoadingIcon.setBackgroundColor(0x00000000);
@@ -867,7 +885,9 @@ public class BiliPlayerActivity extends Activity implements
                 String.valueOf(SdkHelper.getSdkInt()), mode));
         mStageEcho.appendFinished("\u68c0\u67e5\u6a21\u5f0f: \u81ea\u52a8\u9009\u62e9");
         mStageEcho.setPending(getString(R.string.player_loading_step_get_url));
-        root.addView(mLoadingOverlay);
+        if (mLoadingOverlay.getParent() == null) {
+            root.addView(mLoadingOverlay);
+        }
         startLoadingAnimation();
     }
 
@@ -978,8 +998,10 @@ public class BiliPlayerActivity extends Activity implements
             legacyOverlay.setVisibility(View.GONE);
         }
         if (overlay == null) return;
+        mLoadingOverlayFading = true;
         stopLoadingAnimation();
         if (mLoadingIcon != null) {
+            mLoadingIcon.setVisibility(View.GONE);
             mLoadingIcon.setImageDrawable(null);
             if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 11) {
                 PlayerCompat.setLayerType(mLoadingIcon, View.LAYER_TYPE_NONE);
@@ -988,6 +1010,7 @@ public class BiliPlayerActivity extends Activity implements
         if (tv.biliclassic.util.SdkHelper.getSdkInt() >= 11) {
             PlayerCompat.setLayerType(overlay, View.LAYER_TYPE_NONE);
         }
+        overlay.clearAnimation();
         overlay.setVisibility(View.GONE);
         android.view.ViewParent parent = overlay.getParent();
         if (parent instanceof android.view.ViewGroup) {
@@ -998,6 +1021,7 @@ public class BiliPlayerActivity extends Activity implements
         mLoadingOverlay = null;
         mLoadingIcon = null;
         mLoadingStep1 = null;
+        mLoadingOverlayFading = false;
         if (mGestureController != null) {
             mGestureController.setEnableGesture(enableGesture);
         }
@@ -3165,7 +3189,10 @@ public class BiliPlayerActivity extends Activity implements
         } else if (mediaPlayer != null) {
             setDisplayOnPlayer();
             if (isPrepared && isPlaying) {
-                mediaPlayer.start();
+                try {
+                    mediaPlayer.start();
+                } catch (Throwable ignored) {
+                }
             }
             // surface 重建（如休眠唤醒）后必须按当前比例/缩放重设 LayoutParams + setFixedSize，
             // 否则旧版 surfaceFlinger 上视频会缩到左下角（Android 2.2 Desire HD 实测）
@@ -3274,6 +3301,7 @@ public class BiliPlayerActivity extends Activity implements
         mStartAfterSeek = false;
         final int resumeTipPosition = mShowResumeTipOnPrepare ? mSeekWhenPrepared : 0;
         mShowResumeTipOnPrepare = false;
+        boolean waitForInitialSeek = false;
         if (mSeekWhenPrepared > 0 && mDuration > 0
                 && mSeekWhenPrepared <= mDuration) {
             mSeekDisplayTarget = mSeekWhenPrepared;
@@ -3283,26 +3311,28 @@ public class BiliPlayerActivity extends Activity implements
                 try {
                     mSeekPending = true;
                     mSeekTarget = mSeekWhenPrepared;
+                    mStartAfterSeek = true;
                     mp.seekTo(mSeekWhenPrepared);
+                    waitForInitialSeek = true;
                 } catch (Throwable ignored) {
+                    mStartAfterSeek = false;
                 }
             }
         }
         applyVideoScale(1.0f, 0, 0);
-        mp.start();
-        isPlaying = true;
-        if (decoderType == DECODER_SYSTEM) {
-            handler.postDelayed(new Runnable() {
-                public void run() {
-                    if (isPrepared && !isFinishing()) {
-                        hideLoadingOverlay();
-                    }
-                }
-            }, 300L);
+        if (!waitForInitialSeek) {
+            mp.start();
+            isPlaying = true;
+            if (decoderType == DECODER_SYSTEM) {
+                hideLoadingOverlay();
+            }
+            startSplitAudioIfReady();
+        } else {
+            isPlaying = false;
+            updatePlayPauseButton();
         }
-        startSplitAudioIfReady();
         setupNfcSync();
-        if (mDanmakuManager != null) mDanmakuManager.onVideoStarted();
+        if (!waitForInitialSeek && mDanmakuManager != null) mDanmakuManager.onVideoStarted();
         if (mDanmakuContainer != null
                 && (mDanmakuManager == null || !mDanmakuManager.isTransparencyHidden())) {
             mDanmakuContainer.setVisibility(View.VISIBLE);
@@ -3388,6 +3418,7 @@ public class BiliPlayerActivity extends Activity implements
             seekSplitAudio((int) mp.getCurrentPosition());
             startSplitAudioIfReady();
             updatePlayPauseButton();
+            hideLoadingOverlay();
             if (mDanmakuManager != null) {
                 mDanmakuManager.onVideoStarted();
                 mDanmakuManager.resume();
@@ -3947,6 +3978,8 @@ public class BiliPlayerActivity extends Activity implements
 
         final CheckBox enableGestureCb = (CheckBox) panel.findViewById(
                 R.id.player_options_enable_gesture);
+        final CheckBox backgroundRestoreCb = (CheckBox) panel.findViewById(
+                R.id.player_options_background_restore);
         final CheckBox keepBackgroundCb = (CheckBox) panel.findViewById(
                 R.id.player_options_keep_background);
         final CheckBox autoRotationCb = (CheckBox) panel.findViewById(
@@ -4018,7 +4051,29 @@ public class BiliPlayerActivity extends Activity implements
             });
         }
 
+        if (backgroundRestoreCb != null) {
+            View backgroundRestoreRow = panel.findViewById(
+                    R.id.player_options_background_restore_row);
+            if (backgroundRestoreRow != null) {
+                backgroundRestoreRow.setVisibility(
+                        mRendererType == RENDERER_SURFACEVIEW
+                                ? View.VISIBLE : View.GONE);
+            }
+            backgroundRestoreCb.setChecked(backgroundRestoreEnabled);
+            backgroundRestoreCb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                    backgroundRestoreEnabled = isChecked;
+                    SharedPreferencesUtil.putBoolean(
+                            SharedPreferencesUtil.SURFACE_BACKGROUND_RESTORE, isChecked);
+                }
+            });
+        }
+
         if (keepBackgroundCb != null) {
+            if (mRendererType != RENDERER_TEXTUREVIEW) {
+                View keepRow = (View) keepBackgroundCb.getParent();
+                if (keepRow != null) keepRow.setVisibility(View.GONE);
+            }
             keepBackgroundCb.setChecked(keepBackground);
             keepBackgroundCb.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                 public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -4528,7 +4583,8 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     private void showResumeTipForPosition(final int position) {
-        if (position <= 0 || mGestureController == null) return;
+        if (position <= 0 || mGestureController == null
+                || mRendererType != RENDERER_SURFACEVIEW) return;
         mGestureController.showResumeTip(
                 getString(R.string.player_resume_tip_fmt, formatTime(position)),
                 getString(R.string.player_resume_from_start),
@@ -5375,8 +5431,8 @@ public class BiliPlayerActivity extends Activity implements
             pauseSplitAudio();
             isPlaying = false;
             updatePlayPauseButton();
-            if (mDanmakuManager != null) mDanmakuManager.pause();
         }
+        if (mDanmakuManager != null) mDanmakuManager.pause();
     }
 
     private boolean isInMultiWindowModeCompat() {
@@ -5397,8 +5453,6 @@ public class BiliPlayerActivity extends Activity implements
     protected void onResume() {
         super.onResume();
         setupNfcSync();
-        // 息屏/切后台回来后，surface 有时并不重建（surfaceCreated 不触发），画面会保持错位/
-        // 缩到角落。这里兜底按当前比例+缩放重设一次（surfaceCreated 那条是主路径）
         final View vv = videoView;
         if (vv == null || mRendererType != RENDERER_SURFACEVIEW || !isPrepared
                 || videoWidth <= 0 || videoHeight <= 0) {
@@ -5436,6 +5490,19 @@ public class BiliPlayerActivity extends Activity implements
         }
         if (isFinishing()) {
             releasePlayer();
+            return;
+        }
+        if (mRendererType == RENDERER_SURFACEVIEW) {
+            if (mDanmakuManager != null) {
+                mDanmakuManager.pause();
+                mDanmakuManager.release();
+                mDanmakuManager = null;
+            }
+            releasePlayer();
+            isPrepared = false;
+            isPlaying = false;
+            mSeekWhenPrepared = sPendingSeekPosition;
+            if (!backgroundRestoreEnabled) finish();
         }
     }
 
@@ -5443,6 +5510,21 @@ public class BiliPlayerActivity extends Activity implements
     protected void onRestart() {
         super.onRestart();
         if (mediaPlayer != null && isPrepared) {
+            return;
+        }
+        if (mRendererType == RENDERER_SURFACEVIEW && backgroundRestoreEnabled) {
+            if (mDanmakuManager != null) {
+                mDanmakuManager.pause();
+                mDanmakuManager.release();
+                mDanmakuManager = null;
+            }
+            if (mSeekWhenPrepared <= 0) mSeekWhenPrepared = sPendingSeekPosition;
+            sPendingSeekPosition = 0;
+            initPlayer();
+            if (mDanmakuContainer != null) {
+                mDanmakuManager = createDanmakuManager();
+                mDanmakuManager.init();
+            }
             return;
         }
         int maxMemoryMB = (int)(Runtime.getRuntime().maxMemory() / (1024 * 1024));
@@ -5549,6 +5631,41 @@ public class BiliPlayerActivity extends Activity implements
         } catch (Throwable t) {
             return false;
         }
+    }
+
+    @Override
+    public void finish() {
+        if (!mExitCleanupDone) {
+            mExitCleanupDone = true;
+            prepareForExit();
+        }
+        super.finish();
+    }
+
+    private void prepareForExit() {
+        try {
+            if (mediaPlayer != null && isPrepared) {
+                sPendingSeekPosition = (int) mediaPlayer.getCurrentPosition();
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            if (mediaPlayer != null) {
+                if (mRendererType == RENDERER_TEXTUREVIEW && mVideoSurface != null) {
+                    mediaPlayer.setSurface(null);
+                } else {
+                    mediaPlayer.setDisplay(null);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        if (mDanmakuManager != null) {
+            try { mDanmakuManager.pause(); } catch (Throwable ignored) {}
+            try { mDanmakuManager.release(); } catch (Throwable ignored) {}
+            mDanmakuManager = null;
+        }
+        releasePlayer();
+        surfaceReady = false;
     }
 
     @Override

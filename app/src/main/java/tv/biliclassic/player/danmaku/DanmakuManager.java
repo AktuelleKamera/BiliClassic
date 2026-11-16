@@ -92,6 +92,7 @@ public class DanmakuManager {
     private File mDanmakuCacheFile;
     private boolean mEnabled = true;
     private boolean mLoaded;
+    private boolean mPaused;
     private OnLoadListener mLoadListener;
     private boolean mDanmakuLoadStarted;
 
@@ -284,7 +285,7 @@ public class DanmakuManager {
                 if (mReleased || mDanmakuView == null) return;
                 mLoaded = true;
                 flushPendingLive();
-                if (mEnabled) mDanmakuView.start();
+                if (mEnabled && !mPaused) mDanmakuView.start();
             }
 
             @Override
@@ -558,8 +559,8 @@ public class DanmakuManager {
                 mContainer.setVisibility(View.INVISIBLE);
             } else if (mEnabled) {
                 mContainer.setVisibility(View.VISIBLE);
-                if (mDanmakuView != null && mVideoStarted) mDanmakuView.resume();
-                if (mSimpleEngine != null && mVideoStarted) mSimpleEngine.resumeDanmaku();
+                if (mDanmakuView != null && mVideoStarted && !mPaused) mDanmakuView.resume();
+                if (mSimpleEngine != null && mVideoStarted && !mPaused) mSimpleEngine.resumeDanmaku();
             }
         }
         if (mSimpleEngine != null) mSimpleEngine.setDanmakuOpacity(alpha);
@@ -645,8 +646,8 @@ public class DanmakuManager {
     // 当前弹幕时钟（ms）：全引擎返回视图时钟，简易引擎直接跟随视频位置
     public void onVideoStarted() {
         mVideoStarted = true;
-        if (!mUseSimpleEngine && mLoaded && mEnabled && mDanmakuView != null
-                && !mDanmakuStarted && !mReleased) {
+        if (!mUseSimpleEngine && mLoaded && mEnabled && !mPaused
+                && mDanmakuView != null && !mDanmakuStarted && !mReleased) {
             long pos = getCurrentVideoPosition();
             if (pos <= 0 && mSeekPending) pos = mSeekTarget;
             mDanmakuView.start();
@@ -687,6 +688,7 @@ public class DanmakuManager {
     }
 
     public void pause() {
+        mPaused = true;
         if (mSimpleEngine != null && mLoaded) {
             mSimpleEngine.pauseDanmaku();
         } else if (mDanmakuView != null && mLoaded) {
@@ -695,6 +697,7 @@ public class DanmakuManager {
     }
 
     public void resume() {
+        mPaused = false;
         if (mSimpleEngine != null && mLoaded) {
             mSimpleEngine.resumeDanmaku();
         } else if (mDanmakuView != null && mLoaded) {
@@ -1160,7 +1163,7 @@ public class DanmakuManager {
                     }
                     mLoaded = true;
                     notifyLoadFinished(true);
-                    if (mEnabled && mVideoStarted) {
+                    if (mEnabled && mVideoStarted && !mPaused) {
                         long pos = getCurrentVideoPosition();
                         if (pos <= 0 && mSeekPending) pos = mSeekTarget;
                         mDanmakuView.start();

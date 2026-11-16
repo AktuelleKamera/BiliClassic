@@ -38,6 +38,7 @@
     <string name="Player_options_title_auto_rotation">重力自動旋屏</string>
     <string name="Player_options_title_enable_gesture">啟用播放手勢</string>
     <string name="Player_options_title_comment_swipe">側滑呼出評論區</string>
+    <string name="Player_options_title_background_restore">背景恢復播放</string>
     <string name="Player_options_title_keep_background">後台播放音訊</string>
     <string name="Player_options_title_portrait_rotation">允許旋轉至豎屏</string>
     <string name="PreloadingView_press_back_to_exit">再次按後退可以結束播放</string>
