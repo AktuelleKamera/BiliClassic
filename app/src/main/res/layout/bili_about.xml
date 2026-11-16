@@ -138,11 +138,11 @@
 
         <TextView
             style="@style/AboutBodyText"
-            android:text="https://github.com/wolfSSL/wolfssl" />
+            android:text="https://github.com/bilibili/ijkplayer" />
 
         <TextView
             style="@style/AboutBodyText"
-            android:text="https://github.com/bilibili/ijkplayer" />
+            android:text="https://github.com/wolfSSL/wolfssl" />
 
         <TextView
             style="@style/AboutBodyText"
@@ -150,19 +150,19 @@
 
         <TextView
             style="@style/AboutBodyText"
-            android:text="https://github.com/bggRGjQaUbCoE/PiliPlus" />
-
-        <TextView
-            style="@style/AboutBodyText"
             android:text="https://github.com/luern0313/WristBilibili" />
 
         <TextView
             style="@style/AboutBodyText"
-            android:text="https://github.com/bilibili/DanmakuFlameMaster" />
+            android:text="https://github.com/bggRGjQaUbCoE/PiliPlus" />
 
         <TextView
             style="@style/AboutBodyText"
-            android:text="https://github.com/qidian55/bilibilitv1.6.6-repair" />
+            android:text="https://github.com/shwenzhang/AndResGuard" />
+
+        <TextView
+            style="@style/AboutBodyText"
+            android:text="https://github.com/bilibili/DanmakuFlameMaster" />
 
         <TextView
             style="@style/AboutBodyText"
