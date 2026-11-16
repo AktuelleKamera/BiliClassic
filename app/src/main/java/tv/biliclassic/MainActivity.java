@@ -1384,6 +1384,9 @@ public class MainActivity extends BaseActivity {
             }
             return true;
         }
+        if (isTitleSearchExpanded()) {
+            return super.dispatchKeyEvent(event);
+        }
         // 兜底：顶栏「搜索」已获焦点时按 OK/回车 → 直接展开（防某些机型焦点对不上）
         if (event.getAction() == android.view.KeyEvent.ACTION_DOWN
                 && event.getRepeatCount() == 0
