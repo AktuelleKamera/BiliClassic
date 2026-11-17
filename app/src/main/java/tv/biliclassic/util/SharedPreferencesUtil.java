@@ -175,7 +175,12 @@ public class SharedPreferencesUtil {
 
     public static String getString(String key, String def) {
         if (sharedPreferences == null) return def;
-        return sharedPreferences.getString(key, def);
+        try {
+            return sharedPreferences.getString(key, def);
+        } catch (ClassCastException e) {
+            Object v = readRawValue(key);
+            return v == null ? def : String.valueOf(v);
+        }
     }
 
     public static void putString(String key, String value) {
@@ -185,7 +190,17 @@ public class SharedPreferencesUtil {
 
     public static int getInt(String key, int def) {
         if (sharedPreferences == null) return def;
-        return sharedPreferences.getInt(key, def);
+        try {
+            return sharedPreferences.getInt(key, def);
+        } catch (ClassCastException e) {
+            Object v = readRawValue(key);
+            if (v instanceof Number) return ((Number) v).intValue();
+            if (v instanceof Boolean) return ((Boolean) v) ? 1 : 0;
+            if (v instanceof String) {
+                try { return (int) Float.parseFloat((String) v); } catch (Throwable ignored) {}
+            }
+            return def;
+        }
     }
 
     public static void putInt(String key, int value) {
@@ -195,7 +210,16 @@ public class SharedPreferencesUtil {
 
     public static long getLong(String key, long def) {
         if (sharedPreferences == null) return def;
-        return sharedPreferences.getLong(key, def);
+        try {
+            return sharedPreferences.getLong(key, def);
+        } catch (ClassCastException e) {
+            Object v = readRawValue(key);
+            if (v instanceof Number) return ((Number) v).longValue();
+            if (v instanceof String) {
+                try { return (long) Double.parseDouble((String) v); } catch (Throwable ignored) {}
+            }
+            return def;
+        }
     }
 
     public static void putLong(String key, long value) {
@@ -205,7 +229,15 @@ public class SharedPreferencesUtil {
 
     public static boolean getBoolean(String key, boolean def) {
         if (sharedPreferences == null) return def;
-        return sharedPreferences.getBoolean(key, def);
+        try {
+            return sharedPreferences.getBoolean(key, def);
+        } catch (ClassCastException e) {
+            Object v = readRawValue(key);
+            if (v instanceof Boolean) return ((Boolean) v).booleanValue();
+            if (v instanceof Number) return ((Number) v).doubleValue() != 0d;
+            if (v instanceof String) return Boolean.parseBoolean((String) v);
+            return def;
+        }
     }
 
     public static void putBoolean(String key, boolean value) {
@@ -220,7 +252,25 @@ public class SharedPreferencesUtil {
 
     public static float getFloat(String key, float def) {
         if (sharedPreferences == null) return def;
-        return sharedPreferences.getFloat(key, def);
+        try {
+            return sharedPreferences.getFloat(key, def);
+        } catch (ClassCastException e) {
+            Object v = readRawValue(key);
+            if (v instanceof Number) return ((Number) v).floatValue();
+            if (v instanceof String) {
+                try { return Float.parseFloat((String) v); } catch (Throwable ignored) {}
+            }
+            return def;
+        }
+    }
+
+    private static Object readRawValue(String key) {
+        try {
+            java.util.Map<String, ?> values = sharedPreferences.getAll();
+            return values == null ? null : values.get(key);
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     public static void removeValue(String key) {
