@@ -272,8 +272,6 @@ public class AnnouncementUtil {
         dialogHolder[0] = dialog;
         if (night && dialog != null) {
             try {
-                dialog.getWindow().setBackgroundDrawable(
-                        new android.graphics.drawable.ColorDrawable(0xFF2A2A2A));
                 TextView title = (TextView) dialog.findViewById(android.R.id.title);
                 if (title != null) title.setTextColor(0xFFE6E6E6);
                 int[] buttonIds = {android.R.id.button1, android.R.id.button2,
@@ -282,7 +280,6 @@ public class AnnouncementUtil {
                     TextView button = (TextView) dialog.findViewById(id);
                     if (button != null) button.setTextColor(0xFFFCA3C5);
                 }
-                tv.biliclassic.util.UiSkin.recolorItem(dialog.getWindow().getDecorView());
             } catch (Throwable ignored) {
             }
         }
@@ -304,7 +301,9 @@ public class AnnouncementUtil {
         root.setPadding(pad, pad / 2, pad, pad / 2);
         // 自定义内容没有主题面板底色，部分设备上弹窗窗口底色偏深 → 白天深色字会"黑配黑"。
         // 显式给内容一个配套底色（白天白、夜间深灰），不依赖各 ROM 的弹窗主题
-        root.setBackgroundColor(night ? 0xFF2A2A2A : 0xFFFFFFFF);
+        if (tv.biliclassic.util.SdkHelper.getSdkInt() < 11) {
+            root.setBackgroundColor(night ? 0xFF2A2A2A : 0xFFFFFFFF);
+        }
 
         TextView body = new TextView(dialogContext);
         body.setText(a.getDisplayContent());
