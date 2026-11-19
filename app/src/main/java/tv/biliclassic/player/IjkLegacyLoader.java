@@ -90,7 +90,7 @@ public class IjkLegacyLoader {
             // 旧 ROM 链接器按文件名解析依赖（不看 SONAME），用 -legacy 名字会解析不到
             File out = new File(getExtractDir(ctx), "libijkffmpeg.so");
             if (!(out.exists() && out.length() > 0)) {
-                if (!extractLib(apkPath, out)) {
+                if (!extractNamedLib(apkPath, LIB_NAME, out)) {
                     return false;
                 }
             }
@@ -174,50 +174,6 @@ public class IjkLegacyLoader {
         } finally {
             zip.close();
         }
-    }
-
-    private static boolean extractLib(String apkPath, File out) throws Exception {        ZipFile zip = new ZipFile(apkPath);
-        try {
-            String entry = findLibEntry(zip);
-            if (entry == null) {
-                Log.e(TAG, "entry not found: " + LIB_NAME);
-                return false;
-            }
-            InputStream in = zip.getInputStream(zip.getEntry(entry));
-            FileOutputStream fos = new FileOutputStream(out);
-            try {
-                byte[] buf = new byte[8192];
-                int n;
-                while ((n = in.read(buf)) > 0) {
-                    fos.write(buf, 0, n);
-                }
-            } finally {
-                try {
-                    fos.close();
-                } catch (Throwable t) {
-                }
-                try {
-                    in.close();
-                } catch (Throwable t) {
-                }
-            }
-            return true;
-        } finally {
-            zip.close();
-        }
-    }
-
-    /** 兼容包里的 native 库可能放在 lib/armeabi/ 也可能别的 ABI 目录，按文件名匹配。 */
-    private static String findLibEntry(ZipFile zip) {
-        Enumeration<? extends ZipEntry> en = zip.entries();
-        while (en.hasMoreElements()) {
-            ZipEntry e = en.nextElement();
-            String name = e.getName();
-            if (name != null && name.endsWith("/" + LIB_NAME)) {
-                return name;
-            }
-        }
-        return null;
     }
 
     private static File getExtractDir(Context ctx) {

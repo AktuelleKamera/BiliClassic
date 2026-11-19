@@ -32,6 +32,10 @@ import java.util.Map;
 import tv.biliclassic.ProxyStreamService;
 import tv.biliclassic.R;
 import tv.biliclassic.SettingsActivity;
+import tv.biliclassic.download.DownloadPathUtil;
+import tv.biliclassic.download.VideoDownloadEntry;
+import tv.biliclassic.download.VideoDownloadEnvironment;
+import tv.biliclassic.download.VideoDownloadService;
 import tv.biliclassic.util.CookieGenerator;
 import tv.biliclassic.util.FileProviderCompat;
 import tv.biliclassic.util.NetWorkUtil;
@@ -70,13 +74,7 @@ public class PlayerAnimActivity extends Activity {
     private Handler handler = new Handler();
     private Handler animHandler = new Handler();
     private int animIndex = 0;
-    private int[] animDrawables = {
-            R.drawable.bili_anim_tv_chan_1,
-            R.drawable.bili_anim_tv_chan_3,
-            R.drawable.bili_anim_tv_chan_5,
-            R.drawable.bili_anim_tv_chan_7,
-            R.drawable.bili_anim_tv_chan_9
-    };
+    private int[] animDrawables = LoadingFrames.TV_CHAN;
 
     private String videoUrl;
     private String audioUrl;
@@ -101,7 +99,9 @@ public class PlayerAnimActivity extends Activity {
 
     // 下载控制
     private volatile boolean isDownloadCancelled = false;
-    private Thread downloadThread = null;
+    private VideoDownloadEnvironment downloadEnv;
+    private int downloadPage = 1;
+    private Runnable downloadPollRunnable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -200,48 +200,28 @@ public class PlayerAnimActivity extends Activity {
                 }
             });
         } else {
-            File cacheDir = getCacheDir();
-
-            if (isSDCardAvailable() && PermissionUtil.hasWriteStorage(PlayerAnimActivity.this)) {
-                try {
-                    File baseDir = Environment.getExternalStorageDirectory();
-                    File sdCacheDir = new File(baseDir, "BiliClassic/cache");
-                    if (!sdCacheDir.exists()) {
-                        sdCacheDir.mkdirs();
-                    }
-                    if (sdCacheDir.exists() && sdCacheDir.canWrite()) {
-                        cacheDir = sdCacheDir;
-                        android.util.Log.e("PlayerAnim", "使用 SD 卡缓存: " + cacheDir.getAbsolutePath());
-                    } else {
-                        android.util.Log.e("PlayerAnim", "SD 卡不可写，使用内部缓存");
-                    }
-                } catch (Exception e) {
-                    android.util.Log.e("PlayerAnim", "SD 卡访问异常: " + e.getMessage() + "，使用内部缓存");
-                }
-            } else {
-                android.util.Log.e("PlayerAnim", "SD 卡不可用，使用内部缓存");
+            if (aid <= 0 || cid <= 0) {
+                playWithBuiltinPlayer(videoUrl);
+                return;
             }
-
-            if (!cacheDir.exists()) {
-                cacheDir.mkdirs();
+            downloadPage = getIntent().getIntExtra("part_index", 0) + 1;
+            if (downloadPage < 1) downloadPage = 1;
+            downloadEnv = new VideoDownloadEnvironment(
+                    DownloadPathUtil.getDownloadDir(this), aid, downloadPage);
+            cacheFile = downloadEnv.getVideoFile();
+            File danmakuFile = downloadEnv.getDanmakuFile(false);
+            if (danmakuFile != null && danmakuFile.exists()) {
+                danmakuCachePath = danmakuFile.getAbsolutePath();
             }
-
-            String cacheFileName = aid + "_" + cid + ".mp4";
-            cacheFile = new File(cacheDir, cacheFileName);
-            android.util.Log.e("PlayerAnim", "缓存路径: " + cacheFile.getAbsolutePath());
-
-            if (cacheFile.exists()) {
-                // 缓存存在，用文件路径播放
+            android.util.Log.e("PlayerAnim", "cache path: " + cacheFile.getAbsolutePath());
+            if (cacheFile.exists() && cacheFile.length() > 0) {
                 playWithPlayer();
             } else {
-                startDownload();
+                startDownloadFromService();
             }
         }
     }
 
-    /**
-     * 获取屏幕旋转角度（兼容 Android 2.3+）
-     */
     private int getDisplayRotation() {
         Display display = getWindowManager().getDefaultDisplay();
         try {
@@ -270,53 +250,28 @@ public class PlayerAnimActivity extends Activity {
      * 使用内置播放器直接播放视频（在线模式）
      */
     private void playWithBuiltinPlayer(String url) {
-        android.util.Log.e("PlayerAnim", "playWithBuiltinPlayer, url: " + url);
         if (url == null || url.length() == 0) {
             Toast.makeText(this, this.getString(R.string.video_file_missing), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
-        Intent intent = new Intent(this, BiliPlayerActivity.class);
-        intent.putExtra("video_title", videoTitle);
-        intent.putExtra("video_url", url);
-        if (audioUrl != null && audioUrl.length() > 0) {
-            intent.putExtra("audio_url", audioUrl);
-        }
-        if (mDurationMs > 0) {
-            intent.putExtra("duration_ms", mDurationMs);
-        }
-        intent.putExtra("resume_position", resumePosition);
-        intent.putExtra("cache_path", (String) null);
-        intent.putExtra("aid", aid);
-        intent.putExtra("cid", cid);
+        int partIndex = getIntent().getIntExtra("part_index", 0);
+        long[] cids = getIntent().hasExtra("cids")
+                ? getIntent().getLongArrayExtra("cids") : null;
+        String[] pagenames = getIntent().hasExtra("pagenames")
+                ? getIntent().getStringArrayExtra("pagenames") : null;
+        Intent intent = PlayerIntentFactory.create(this, BiliPlayerActivity.class,
+                url, audioUrl, mDurationMs, videoTitle, aid, cid, partIndex,
+                resumePosition, cids, pagenames, coverUrl, upName, true);
         if (danmakuCachePath != null && danmakuCachePath.length() > 0) {
             intent.putExtra("danmaku_cache_path", danmakuCachePath);
         }
-        if (upName != null && upName.length() > 0) {
-            intent.putExtra("up_name", upName);
-        }
-        intent.putExtra("part_index", getIntent().getIntExtra("part_index", 0));
-        if (getIntent().hasExtra("cids")) {
-            intent.putExtra("cids", getIntent().getLongArrayExtra("cids"));
-            intent.putExtra("pagenames", getIntent().getStringArrayExtra("pagenames"));
-        }
-        // 用 extra 标记在线模式
-        intent.putExtra("online_mode", true);
-        if (coverUrl != null) {
-            intent.putExtra("cover_url", coverUrl);
-        }
-        if (isPortrait()) {
-            intent.putExtra("is_portrait_loading", true);
-        }
+        if (isPortrait()) intent.putExtra("is_portrait_loading", true);
         putQualityExtras(intent);
         startActivity(intent);
         finish();
     }
 
-    /**
-     * 在线播放交给外部播放器（系统/第三方）：启动本地代理（带防盗链请求头转发），
-     * 把代理地址传给外部播放器，绕过 B 站 CDN 403。
-     */
     private void playOnlineWithExternal(int pref) {
         if (videoUrl == null || videoUrl.length() == 0) {
             Toast.makeText(this, this.getString(R.string.video_file_missing), Toast.LENGTH_SHORT).show();
@@ -326,13 +281,9 @@ public class PlayerAnimActivity extends Activity {
         boolean isNet = videoUrl.startsWith("http://") || videoUrl.startsWith("https://");
         String playUrl = videoUrl;
         if (isNet) {
-            try {
-                String proxied = ProxyStreamService.startProxyForExternal(this,
-                        videoUrl, buildOnlineHeaders());
-                if (proxied != null && proxied.length() > 0) {
-                    playUrl = proxied;
-                }
-            } catch (Throwable t) {
+            String proxied = PlayerNetworkHeaders.startExternalProxy(this, videoUrl);
+            if (proxied != null && proxied.length() > 0) {
+                playUrl = proxied;
             }
         }
         Intent extIntent = new Intent(Intent.ACTION_VIEW);
@@ -352,36 +303,11 @@ public class PlayerAnimActivity extends Activity {
     }
 
     private Map<String, String> buildOnlineHeaders() {
-        Map<String, String> headers = new HashMap<String, String>();
-        headers.put("Referer", "https://www.bilibili.com/");
-        headers.put("User-Agent", NetWorkUtil.USER_AGENT_WEB);
-        String cookie = CookieGenerator.getCookieString(true);
-        if (cookie != null && cookie.length() > 0) {
-            headers.put("Cookie", cookie);
-        }
-        return headers;
+        return PlayerNetworkHeaders.build();
     }
 
     private void putOnlineExternalExtras(Intent extIntent) {
-        try {
-            String cookie = CookieGenerator.getCookieString(true);
-            String referer = "https://www.bilibili.com/";
-            if (cookie != null && cookie.length() > 0) {
-                extIntent.putExtra("cookie", cookie);
-                extIntent.putExtra("referer", referer);
-            }
-            extIntent.putExtra("agent", NetWorkUtil.USER_AGENT_WEB);
-            if (videoTitle != null) {
-                extIntent.putExtra("name", videoTitle);
-            }
-            if (cid > 0) {
-                extIntent.putExtra("danmaku", "https://comment.bilibili.com/" + cid + ".xml");
-            }
-            // 断点续播进度（毫秒）
-            extIntent.putExtra("progress", resumePosition);
-            extIntent.putExtra("live_mode", false);
-        } catch (Throwable t) {
-        }
+        ExternalPlayerExtras.putForOnline(extIntent, videoTitle, cid, resumePosition);
     }
 
     private void startTvAnimation() {
@@ -411,147 +337,48 @@ public class PlayerAnimActivity extends Activity {
         return Environment.MEDIA_MOUNTED.equals(state);
     }
 
-    private void startDownload() {
+    private void startDownloadFromService() {
         tvStatus.setText(getString(R.string.buffering));
+        handler.removeCallbacks(downloadPollRunnable);
         isDownloadCancelled = false;
-
-        downloadThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    downloadVideo();
-                    // 检查是否被取消
-                    if (isDownloadCancelled) {
-                        return;
-                    }
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            // 再次检查是否被取消
-                            if (isDownloadCancelled) {
-                                return;
-                            }
-                            stopTvAnimation();
-                            playWithPlayer();
-                        }
-                    });
-                } catch (final Exception e) {
-                    // 如果是取消导致的异常，不显示错误
-                    if (isDownloadCancelled) {
-                        return;
-                    }
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            stopTvAnimation();
-                            Toast.makeText(PlayerAnimActivity.this, "下载失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                            finish();
-                        }
-                    });
-                    e.printStackTrace();
-                }
-            }
-        });
-        downloadThread.start();
+        String bvid = getIntent().getStringExtra("bvid");
+        String description = getIntent().getStringExtra("desc");
+        String tags = getIntent().getStringExtra("tags");
+        VideoDownloadService.startDownload(this, aid, bvid, videoTitle, videoTitle,
+                cid, downloadPage, mCurrentQn,
+                VideoDownloadEnvironment.getQualityName(mCurrentQn),
+                coverUrl, upName, videoUrl, description, tags);
+        pollDownloadProgress();
     }
 
-    private void downloadVideo() throws Exception {
-        File parentDir = cacheFile.getParentFile();
-        if (parentDir != null && !parentDir.exists()) {
-            parentDir.mkdirs();
-        }
-        if (cacheFile.exists() && cacheFile.length() > 0) {
-            return;
-        }
-        if (isDownloadCancelled) {
-            return;
-        }
-
-        File partFile = new File(cacheFile.getAbsolutePath() + ".part");
-        long existing = partFile.exists() ? partFile.length() : 0;
-        String url = videoUrl;
-        HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-        if (url.startsWith("https") && conn instanceof javax.net.ssl.HttpsURLConnection) {
-            javax.net.ssl.SSLSocketFactory sslFactory = tv.biliclassic.util.NetWorkUtil.getTrustAllSSLSocketFactory();
-            if (sslFactory != null) {
-                ((javax.net.ssl.HttpsURLConnection) conn).setSSLSocketFactory(sslFactory);
-            }
-            ((javax.net.ssl.HttpsURLConnection) conn).setHostnameVerifier(
-                    tv.biliclassic.util.NetWorkUtil.TRUST_ALL_HOSTNAMES);
-        }
-        conn.setRequestProperty("Referer", "https://www.bilibili.com/");
-        conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
-        if (existing > 0) {
-            conn.setRequestProperty("Range", "bytes=" + existing + "-");
-        }
-        conn.setConnectTimeout(15000);
-        conn.setReadTimeout(15000);
-        conn.connect();
-
-        int response = conn.getResponseCode();
-        boolean append = existing > 0 && response == 206;
-        if (existing > 0 && response == 200) {
-            existing = 0;
-        }
-        if (response == 416) {
-            conn.disconnect();
-            partFile.delete();
-            existing = 0;
-            conn = (HttpURLConnection) new URL(url).openConnection();
-            conn.setRequestProperty("Referer", "https://www.bilibili.com/");
-            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
-            conn.setConnectTimeout(15000);
-            conn.setReadTimeout(15000);
-            conn.connect();
-            response = conn.getResponseCode();
-        }
-
-        long contentLength = conn.getContentLength();
-        long expected = contentLength >= 0 ? existing + contentLength : -1;
-        InputStream is = conn.getInputStream();
-        FileOutputStream fos = new FileOutputStream(partFile, append);
-        byte[] buffer = new byte[32768];
-        int len;
-        long total = existing;
-        int lastProgress = -1;
-        try {
-            while ((len = is.read(buffer)) != -1) {
-                if (isDownloadCancelled) {
+    private void pollDownloadProgress() {
+        if (isDownloadCancelled) return;
+        if (downloadPollRunnable != null) handler.removeCallbacks(downloadPollRunnable);
+        downloadPollRunnable = new Runnable() {
+            public void run() {
+                if (isDownloadCancelled || downloadEnv == null) return;
+                VideoDownloadEntry entry = downloadEnv.loadEntry();
+                if (entry != null && entry.totalBytes > 0) {
+                    int percent = entry.getProgressPercentage();
+                    if (progressBar != null) progressBar.setProgress(percent);
+                    if (tvProgress != null) tvProgress.setText(percent + "%");
+                }
+                File videoFile = downloadEnv.getVideoFile();
+                if (videoFile != null && videoFile.exists() && videoFile.length() > 0) {
+                    cacheFile = videoFile;
+                    File danmakuFile = downloadEnv.getDanmakuFile(false);
+                    if (danmakuFile != null && danmakuFile.exists()) {
+                        danmakuCachePath = danmakuFile.getAbsolutePath();
+                    }
+                    downloadPollRunnable = null;
+                    stopTvAnimation();
+                    playWithPlayer();
                     return;
                 }
-                fos.write(buffer, 0, len);
-                total += len;
-                if (expected > 0) {
-                    final int percent = (int) (total * 100 / expected);
-                    if (percent - lastProgress >= 2) {
-                        lastProgress = percent;
-                        runOnUiThread(new Runnable() {
-                            public void run() {
-                                progressBar.setProgress(percent);
-                                tvProgress.setText(percent + "%");
-                            }
-                        });
-                    }
-                }
+                handler.postDelayed(this, 1000L);
             }
-            fos.flush();
-        } finally {
-            try { fos.close(); } catch (Exception ignored) {}
-            try { is.close(); } catch (Exception ignored) {}
-            conn.disconnect();
-        }
-        if (isDownloadCancelled) {
-            return;
-        }
-        if (expected > 0 && total < expected) {
-            throw new java.io.IOException("download incomplete");
-        }
-        if (cacheFile.exists()) {
-            cacheFile.delete();
-        }
-        if (!partFile.renameTo(cacheFile)) {
-            throw new java.io.IOException("rename cache failed");
-        }
+        };
+        handler.postDelayed(downloadPollRunnable, 1000L);
     }
 
     private void playWithPlayer() {
@@ -683,35 +510,20 @@ public class PlayerAnimActivity extends Activity {
      * 使用缓存文件播放（非在线模式）
      */
     private void tryBuiltinPlayerWithCache() {
-        Intent intent = new Intent(this, BiliPlayerActivity.class);
-        intent.putExtra("video_title", videoTitle);
-        intent.putExtra("video_url", "");  // 传空，播放器会使用缓存
+        int partIndex = getIntent().getIntExtra("part_index", 0);
+        long[] cids = getIntent().hasExtra("cids")
+                ? getIntent().getLongArrayExtra("cids") : null;
+        String[] pagenames = getIntent().hasExtra("pagenames")
+                ? getIntent().getStringArrayExtra("pagenames") : null;
+        Intent intent = PlayerIntentFactory.create(this, BiliPlayerActivity.class,
+                "", null, mDurationMs, videoTitle, aid, cid, partIndex,
+                resumePosition, cids, pagenames, coverUrl, upName, false);
         intent.putExtra("cache_path", cacheFile.getAbsolutePath());
-        intent.putExtra("aid", aid);
-        intent.putExtra("cid", cid);
-        intent.putExtra("resume_position", resumePosition);
-        if (mDurationMs > 0) {
-            intent.putExtra("duration_ms", mDurationMs);
-        }
+        intent.putExtra("offline_mode", true);
         if (danmakuCachePath != null && danmakuCachePath.length() > 0) {
             intent.putExtra("danmaku_cache_path", danmakuCachePath);
         }
-        if (upName != null && upName.length() > 0) {
-            intent.putExtra("up_name", upName);
-        }
-        intent.putExtra("online_mode", false);
-        intent.putExtra("offline_mode", true);
-        intent.putExtra("part_index", getIntent().getIntExtra("part_index", 0));
-        if (getIntent().hasExtra("cids")) {
-            intent.putExtra("cids", getIntent().getLongArrayExtra("cids"));
-            intent.putExtra("pagenames", getIntent().getStringArrayExtra("pagenames"));
-        }
-        if (coverUrl != null) {
-            intent.putExtra("cover_url", coverUrl);
-        }
-        if (isPortrait()) {
-            intent.putExtra("is_portrait_loading", true);
-        }
+        if (isPortrait()) intent.putExtra("is_portrait_loading", true);
         putQualityExtras(intent);
         startActivity(intent);
         finish();
@@ -781,31 +593,17 @@ public class PlayerAnimActivity extends Activity {
         super.onDestroy();
         // 取消下载
         isDownloadCancelled = true;
-        if (downloadThread != null && downloadThread.isAlive()) {
-            downloadThread.interrupt();
-            try {
-                downloadThread.join(1000);
-            } catch (InterruptedException e) {
-                // 忽略
-            }
+        if (downloadPollRunnable != null) {
+            handler.removeCallbacks(downloadPollRunnable);
+            downloadPollRunnable = null;
         }
         stopTvAnimation();
         handler.removeCallbacksAndMessages(null);
     }
 
     private void putLocalExternalExtras(Intent intent) {
-        if (resumePosition > 0) {
-            intent.putExtra("progress", resumePosition);
-        }
-        if (videoTitle != null) {
-            intent.putExtra("name", videoTitle);
-        }
-        if (danmakuCachePath != null && danmakuCachePath.length() > 0) {
-            intent.putExtra("danmaku", danmakuCachePath);
-        } else if (cid > 0) {
-            intent.putExtra("danmaku", "https://comment.bilibili.com/" + cid + ".xml");
-        }
-        intent.putExtra("live_mode", false);
+        ExternalPlayerExtras.putForLocal(intent, videoTitle, cid,
+                resumePosition, danmakuCachePath);
     }
 
     private void putQualityExtras(Intent intent) {

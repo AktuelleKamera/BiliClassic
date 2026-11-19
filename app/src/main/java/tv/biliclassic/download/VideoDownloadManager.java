@@ -16,6 +16,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 import java.util.List;
 import java.util.ArrayList;
+import tv.biliclassic.player.PlayerNetworkHeaders;
 import tv.biliclassic.util.NetWorkUtil;
 import tv.biliclassic.util.WolfTls;
 import tv.biliclassic.util.WolfTlsConnection;
@@ -329,8 +330,10 @@ public class VideoDownloadManager {
         try {
             if (task.videoUrl.startsWith("https://") && WolfTls.isAvailable()) {
                 wolf = new WolfTlsConnection(task.videoUrl, null);
-                wolf.setRequestProperty("Referer", "https://www.bilibili.com/");
-                wolf.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
+                for (java.util.Map.Entry<String, String> header
+                        : PlayerNetworkHeaders.build().entrySet()) {
+                    wolf.setRequestProperty(header.getKey(), header.getValue());
+                }
                 wolf.setConnectTimeout(15000);
                 wolf.setReadTimeout(15000);
                 wolf.connect();
@@ -409,7 +412,7 @@ public class VideoDownloadManager {
             conn = (HttpURLConnection) new URL(coverUrl).openConnection();
             conn.setConnectTimeout(12000);
             conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
+            PlayerNetworkHeaders.apply(conn);
             conn.connect();
 
             is = conn.getInputStream();
@@ -447,7 +450,7 @@ public class VideoDownloadManager {
             conn = (HttpURLConnection) new URL(danmakuUrl).openConnection();
             conn.setConnectTimeout(12000);
             conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
+            PlayerNetworkHeaders.apply(conn);
             conn.connect();
 
             is = conn.getInputStream();

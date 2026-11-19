@@ -224,12 +224,7 @@ public class AudioPlayerActivity extends BaseActivity
     }
 
     private static String format(int ms) {
-        if (ms < 0) ms = 0;
-        int totalSeconds = ms / 1000;
-        int minutes = totalSeconds / 60;
-        int seconds = totalSeconds % 60;
-        String sec = seconds < 10 ? "0" + seconds : String.valueOf(seconds);
-        return minutes + ":" + sec;
+        return PlayerTimeUtil.format(ms);
     }
 
     @Override

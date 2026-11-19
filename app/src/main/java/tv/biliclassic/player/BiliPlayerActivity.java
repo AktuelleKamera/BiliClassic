@@ -901,7 +901,7 @@ public class BiliPlayerActivity extends Activity implements
                     public void run() {
                         if (mLoadingIcon == null) return;
                         mLoadingFrameIndex = (mLoadingFrameIndex + 1)
-                                % LOADING_FRAMES.length;
+                                % LoadingFrames.TV_CHAN.length;
                         mLoadingIcon.setImageDrawable(getLoadingFrame(mLoadingFrameIndex));
                         mLoadingIcon.invalidate();
                         handler.postDelayed(this, 220L);
@@ -923,9 +923,9 @@ public class BiliPlayerActivity extends Activity implements
 
     private android.graphics.drawable.Drawable getLoadingFrame(int index) {
         if (mLoadingFrameDrawables == null) {
-            mLoadingFrameDrawables = new android.graphics.drawable.Drawable[LOADING_FRAMES.length];
-            for (int i = 0; i < LOADING_FRAMES.length; i++) {
-                mLoadingFrameDrawables[i] = getResources().getDrawable(LOADING_FRAMES[i]);
+            mLoadingFrameDrawables = new android.graphics.drawable.Drawable[LoadingFrames.TV_CHAN.length];
+            for (int i = 0; i < LoadingFrames.TV_CHAN.length; i++) {
+                mLoadingFrameDrawables[i] = getResources().getDrawable(LoadingFrames.TV_CHAN[i]);
             }
         }
         return mLoadingFrameDrawables[index];
@@ -5180,17 +5180,7 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     private String formatTime(int ms) {
-        if (ms < 0) ms = 0;
-        int seconds = ms / 1000;
-        int minutes = seconds / 60;
-        int hours = minutes / 60;
-        seconds = seconds % 60;
-        minutes = minutes % 60;
-
-        if (hours > 0) {
-            return String.format("%02d:%02d:%02d", hours, minutes, seconds);
-        }
-        return String.format("%02d:%02d", minutes, seconds);
+        return PlayerTimeUtil.format(ms);
     }
 
     private Bitmap loadCoverBitmap(String urlStr) {
@@ -5706,14 +5696,7 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     private Map<String, String> getProxyHeaders() {
-        Map<String, String> headers = new HashMap<String, String>();
-        headers.put("Referer", "https://www.bilibili.com/");
-        headers.put("User-Agent", NetWorkUtil.USER_AGENT_WEB);
-        String cookie = CookieGenerator.getCookieString(true);
-        if (cookie != null && cookie.length() > 0) {
-            headers.put("Cookie", cookie);
-        }
-        return headers;
+        return PlayerNetworkHeaders.build();
     }
 
     private void releasePlayer() {

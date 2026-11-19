@@ -53,6 +53,7 @@ import tv.biliclassic.model.VideoInfo;
 import tv.biliclassic.model.VideoPart;
 import tv.biliclassic.model.UserInfo;
 import tv.biliclassic.player.PlayerAnimActivity;
+import tv.biliclassic.player.PlayerIntentFactory;
 import tv.biliclassic.util.FileProviderCompat;
 import tv.biliclassic.util.GlobalImageCache;
 import tv.biliclassic.util.PermissionUtil;
@@ -1077,70 +1078,13 @@ public class VideoDetailFragment extends Fragment {
                                         int syncResumeMs = takeSyncResumePosition();
                                         final int resumeMs = syncResumeMs > 0
                                                 ? syncResumeMs : computeResumeMs(playerData, targetCid);
-                                        boolean hasDashAudio = playerData.audioUrl != null
-                                                && playerData.audioUrl.length() > 0;
-                                        // 内置播放器（PLAYER_BUILTIN）直接进 BiliPlayerActivity；
-                                        // 其余（外部/系统/自动）统一走 PlayerAnimActivity 分派，
-                                        // 由 PlayerAnimActivity 按播放器偏好处理在线播放（含本地代理跳外部）
-                                        // PLAYER_BUILTIN == 8
                                         boolean useBuiltin = pref == 8;
-                                        if (useBuiltin) {
-                                            Intent intent = new Intent(getActivity(), BiliPlayerActivity.class);
-                                            intent.putExtra("video_url", videoUrl);
-                                            if (hasDashAudio) {
-                                                intent.putExtra("audio_url", playerData.audioUrl);
-                                            }
-                                            if (playerData.durationMs > 0) {
-                                                intent.putExtra("duration_ms", playerData.durationMs);
-                                            }
-                                            intent.putExtra("video_title", tempPartTitle);
-                                            intent.putExtra("aid", tempAid);
-                                            intent.putExtra("cid", targetCid);
-                                            intent.putExtra("online_mode", true);
-                                            intent.putExtra("part_index", tempPartIndex);
-                                            if (videoInfo != null) {
-                                                intent.putExtra("cover_url", videoInfo.cover);
-                                            if (videoInfo.staff != null && videoInfo.staff.size() > 0) {
-                                                intent.putExtra("up_name", videoInfo.staff.get(0).name);
-                                            }
-                                            }
-                                            if (cidArray != null) {
-                                                intent.putExtra("cids", cidArray);
-                                                intent.putExtra("pagenames", partNameArray);
-                                            }
-                                            putQualityExtras(intent, playerData);
-                                            intent.putExtra("resume_position", resumeMs);
-                                            isPlayButtonClicked = false;
-                                            startActivity(intent);
-                                            return;
-                                        }
-                                        Intent pIntent = new Intent(getActivity(), PlayerAnimActivity.class);
-                                        pIntent.putExtra("video_url", videoUrl);
-                                        if (hasDashAudio) {
-                                            pIntent.putExtra("audio_url", playerData.audioUrl);
-                                        }
-                                        if (playerData.durationMs > 0) {
-                                            pIntent.putExtra("duration_ms", playerData.durationMs);
-                                        }
-                                        pIntent.putExtra("video_title", tempPartTitle);
-                                        pIntent.putExtra("aid", tempAid);
-                                        pIntent.putExtra("cid", targetCid);
-                                        pIntent.putExtra("online_mode", true);
-                                        pIntent.putExtra("part_index", tempPartIndex);
-                                        if (videoInfo != null) {
-                                            pIntent.putExtra("cover_url", videoInfo.cover);
-                                            if (videoInfo.staff != null && videoInfo.staff.size() > 0) {
-                                                pIntent.putExtra("up_name", videoInfo.staff.get(0).name);
-                                            }
-                                        }
-                                        if (cidArray != null) {
-                                            pIntent.putExtra("cids", cidArray);
-                                            pIntent.putExtra("pagenames", partNameArray);
-                                        }
-                                        putQualityExtras(pIntent, playerData);
-                                        pIntent.putExtra("resume_position", resumeMs);
+                                        Intent playerIntent = buildPlayerIntent(
+                                                useBuiltin ? BiliPlayerActivity.class : PlayerAnimActivity.class,
+                                                videoUrl, playerData, tempPartTitle, tempAid, targetCid,
+                                                tempPartIndex, resumeMs, cidArray, partNameArray, true);
                                         isPlayButtonClicked = false;
-                                        startActivity(pIntent);
+                                        startActivity(playerIntent);
                                     } else {
                                         Toast.makeText(getActivity(), getActivity().getString(R.string.live_info_build_url_fail), Toast.LENGTH_SHORT).show();
                                         isPlayButtonClicked = false;
@@ -1192,30 +1136,9 @@ public class VideoDetailFragment extends Fragment {
                                     int syncResumeMs = takeSyncResumePosition();
                                 final int resumeMs = syncResumeMs > 0
                                         ? syncResumeMs : computeResumeMs(playerData, targetCid);
-                                    Intent intent = new Intent(getActivity(), PlayerAnimActivity.class);
-                                    intent.putExtra("video_url", videoUrl);
-                                    if (playerData.audioUrl != null && playerData.audioUrl.length() > 0) {
-                                        intent.putExtra("audio_url", playerData.audioUrl);
-                                    }
-                                    if (playerData.durationMs > 0) {
-                                        intent.putExtra("duration_ms", playerData.durationMs);
-                                    }
-                                    intent.putExtra("video_title", tempPartTitle);
-                                    intent.putExtra("aid", tempAid);
-                                    intent.putExtra("cid", targetCid);
-                                    intent.putExtra("part_index", tempPartIndex);
-                                    if (videoInfo != null) {
-                                        intent.putExtra("cover_url", videoInfo.cover);
-                                            if (videoInfo.staff != null && videoInfo.staff.size() > 0) {
-                                                intent.putExtra("up_name", videoInfo.staff.get(0).name);
-                                            }
-                                    }
-                                    if (cidArray != null) {
-                                        intent.putExtra("cids", cidArray);
-                                        intent.putExtra("pagenames", partNameArray);
-                                    }
-                                    putQualityExtras(intent, playerData);
-                                    intent.putExtra("resume_position", resumeMs);
+                                    Intent intent = buildPlayerIntent(PlayerAnimActivity.class, videoUrl,
+                                            playerData, tempPartTitle, tempAid, targetCid,
+                                            tempPartIndex, resumeMs, cidArray, partNameArray, false);
                                     isPlayButtonClicked = false;
                                     startActivity(intent);
                                 } else {
@@ -1370,6 +1293,21 @@ public class VideoDetailFragment extends Fragment {
         } catch (Exception e) {
             return 0;
         }
+    }
+
+    private Intent buildPlayerIntent(Class<?> target, String videoUrl,
+                                      PlayerData playerData, String title,
+                                      long aid, long cid, int partIndex, int resumeMs,
+                                      long[] cids, String[] partNames, boolean onlineMode) {
+        Intent intent = PlayerIntentFactory.create(getActivity(), target,
+                videoUrl, playerData.audioUrl, playerData.durationMs,
+                title, aid, cid, partIndex, resumeMs, cids, partNames,
+                videoInfo != null ? videoInfo.cover : null,
+                videoInfo != null && videoInfo.staff != null && videoInfo.staff.size() > 0
+                        ? videoInfo.staff.get(0).name : null,
+                onlineMode);
+        putQualityExtras(intent, playerData);
+        return intent;
     }
 
     private void putQualityExtras(Intent intent, PlayerData playerData) {
