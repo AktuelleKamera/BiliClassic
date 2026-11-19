@@ -18,9 +18,9 @@
 
 ## 当前版本
 
-### 0.5.2 (VK30.02M) 更新
+### 0.5.3 (Panther D) 更新
 
-一次巨大的更新……见过IJKPlayer运行在Android 1.0么？
+尝试让软件更稳定的说！
 
 ## Android版已实现功能
 
@@ -61,9 +61,9 @@
 - 目前使用Android Studio 2.3.2，其实只是用顺手了（笑）
 - Java层代码使用Java 7实现，NDK r10e编译原生代码
 - 最低支持API 1 (Android 1.0)，目标API为29
-- 二维码生成使用SwetakeQRCode魔改
+- 二维码生成使用SwetakeQRCode并进行了魔改
 - 参考bilibili-api-collect和PiliPlus实现数据获取
-- 使用的IJKPlayer经深度魔改，支持DASH与安卓1.0
+- 使用的IJKPlayer也经深度魔改，支持DASH与安卓1.0
 - DanmakuFlameMaster也是经过修改的呢
 - 独家魔改support-v4库，支持安卓1.0
 
