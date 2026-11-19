@@ -421,14 +421,8 @@ public class BiliPlayerActivity extends Activity implements
     private Runnable mLoadingFrameRunnable;
     private boolean mLoadingOverlayFading;
     private boolean mExitCleanupDone;
+    private boolean mKeepPendingSeekForNextActivity;
     private android.graphics.drawable.Drawable[] mLoadingFrameDrawables;
-    private static final int[] LOADING_FRAMES = {
-            R.drawable.bili_anim_tv_chan_1,
-            R.drawable.bili_anim_tv_chan_3,
-            R.drawable.bili_anim_tv_chan_5,
-            R.drawable.bili_anim_tv_chan_7,
-            R.drawable.bili_anim_tv_chan_9
-    };
     // 两阶段加载状态：都在左下角状态栏上，第一行（获取播放地址）显示在第二行（正在加载视频）上方
     private TextView mLoadingStep1;
     private PlayerStageEcho mStageEcho;
@@ -2282,6 +2276,40 @@ public class BiliPlayerActivity extends Activity implements
         });
     }
 
+    private void restartWithVideo(String newUrl, String newAudioUrl, long newDurationMs,
+                                   int actualQn, String newTitle, long newCid, int newPartIndex,
+                                   String[] newQnStrs, int[] newQnVals, int seekPos,
+                                   boolean isPartSwitch) {
+        if (decoderType == DECODER_SYSTEM) {
+            releasePlayer();
+            mKeepPendingSeekForNextActivity = true;
+            sPendingSeekPosition = seekPos;
+            mQualitySwitchSeekPos = 0;
+            Intent intent = getIntent();
+            intent.putExtra("video_url", newUrl);
+            if (newAudioUrl != null && newAudioUrl.length() > 0) {
+                intent.putExtra("audio_url", newAudioUrl);
+            }
+            if (newDurationMs > 0) {
+                intent.putExtra("duration_ms", newDurationMs);
+            }
+            intent.putExtra("current_qn", actualQn);
+            if (newQnStrs != null) intent.putExtra("qn_str_array", newQnStrs);
+            if (newQnVals != null) intent.putExtra("qn_value_array", newQnVals);
+            if (isPartSwitch) {
+                intent.putExtra("video_title", newTitle);
+                intent.putExtra("cid", newCid);
+                intent.putExtra("part_index", newPartIndex);
+            }
+            PlayerCompat.overridePendingTransition(BiliPlayerActivity.this, 0, 0);
+            finish();
+            startActivity(intent);
+            PlayerCompat.overridePendingTransition(BiliPlayerActivity.this, 0, 0);
+        } else {
+            cleanupAndRestartWithQuality();
+        }
+    }
+
     private void switchQuality(final int newQn) {
         // 转码播放时强制360P
         final int effectiveQn = tv.biliclassic.util.ConvertPlayUtil.isConvertEnabled() ? Quality.Q360P : newQn;
@@ -2329,28 +2357,9 @@ public class BiliPlayerActivity extends Activity implements
                                     mQualityManager.updateCurrentQuality(actualQn);
                                 }
                                 if (decoderType == DECODER_SYSTEM) {
-                                    releasePlayer();
-                                    sPendingSeekPosition = mQualitySwitchSeekPos;
-                                    mQualitySwitchSeekPos = 0;
-                                    Intent intent = getIntent();
-                                    intent.putExtra("video_url", newUrl);
-                                    if (newAudioUrl != null && newAudioUrl.length() > 0) {
-                                        intent.putExtra("audio_url", newAudioUrl);
-                                    }
-                                    if (newDurationMs > 0) {
-                                        intent.putExtra("duration_ms", newDurationMs);
-                                    }
-                                    intent.putExtra("current_qn", actualQn);
-                                    if (newQnStrs != null) {
-                                        intent.putExtra("qn_str_array", newQnStrs);
-                                    }
-                                    if (newQnVals != null) {
-                                        intent.putExtra("qn_value_array", newQnVals);
-                                    }
-                                    PlayerCompat.overridePendingTransition(BiliPlayerActivity.this, 0, 0);
-                                    finish();
-                                    startActivity(intent);
-                                    PlayerCompat.overridePendingTransition(BiliPlayerActivity.this, 0, 0);
+                                    restartWithVideo(newUrl, newAudioUrl, newDurationMs, actualQn,
+                                            videoTitle, mCid, mCurrentPartIndex, newQnStrs, newQnVals,
+                                            mQualitySwitchSeekPos, false);
                                 } else {
                                     cleanupAndRestartWithQuality();
                                 }
@@ -2454,26 +2463,9 @@ public class BiliPlayerActivity extends Activity implements
                                 }
                                 if (tvTitle != null) tvTitle.setText(videoTitle);
                                 if (decoderType == DECODER_SYSTEM) {
-                                    releasePlayer();
-                                    sPendingSeekPosition = mQualitySwitchSeekPos;
-                                    mQualitySwitchSeekPos = 0;
-                                    Intent intent = getIntent();
-                                    intent.putExtra("video_url", newUrl);
-                                    if (newAudioUrl != null && newAudioUrl.length() > 0) {
-                                        intent.putExtra("audio_url", newAudioUrl);
-                                    }
-                                    if (newDurationMs > 0) {
-                                        intent.putExtra("duration_ms", newDurationMs);
-                                    }
-                                    intent.putExtra("video_title", newTitle);
-                                    intent.putExtra("cid", newCid);
-                                    intent.putExtra("part_index", newPartIndex);
-                                    if (newQnStrs != null) intent.putExtra("qn_str_array", newQnStrs);
-                                    if (newQnVals != null) intent.putExtra("qn_value_array", newQnVals);
-                                    PlayerCompat.overridePendingTransition(BiliPlayerActivity.this, 0, 0);
-                                    finish();
-                                    startActivity(intent);
-                                    PlayerCompat.overridePendingTransition(BiliPlayerActivity.this, 0, 0);
+                                    restartWithVideo(newUrl, newAudioUrl, newDurationMs, actualQn,
+                                            newTitle, newCid, newPartIndex, newQnStrs, newQnVals,
+                                            mQualitySwitchSeekPos, true);
                                 } else {
                                     cleanupAndRestartWithQuality();
                                 }
@@ -5635,11 +5627,8 @@ public class BiliPlayerActivity extends Activity implements
     }
 
     private void prepareForExit() {
-        try {
-            if (mediaPlayer != null && isPrepared) {
-                sPendingSeekPosition = (int) mediaPlayer.getCurrentPosition();
-            }
-        } catch (Throwable ignored) {
+        if (!mKeepPendingSeekForNextActivity) {
+            sPendingSeekPosition = 0;
         }
         try {
             if (mediaPlayer != null) {
