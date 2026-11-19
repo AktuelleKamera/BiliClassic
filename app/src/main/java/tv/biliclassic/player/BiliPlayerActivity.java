@@ -3315,18 +3315,12 @@ public class BiliPlayerActivity extends Activity implements
         }
         applyVideoScale(1.0f, 0, 0);
         if (!waitForInitialSeek) {
-            mp.start();
-            isPlaying = true;
-            if (decoderType == DECODER_SYSTEM) {
-                hideLoadingOverlay();
-            }
-            startSplitAudioIfReady();
+            startPlayerAndRefresh(mp, false);
         } else {
             isPlaying = false;
             updatePlayPauseButton();
         }
         setupNfcSync();
-        if (!waitForInitialSeek && mDanmakuManager != null) mDanmakuManager.onVideoStarted();
         if (mDanmakuContainer != null
                 && (mDanmakuManager == null || !mDanmakuManager.isTransparencyHidden())) {
             mDanmakuContainer.setVisibility(View.VISIBLE);
@@ -3393,6 +3387,37 @@ public class BiliPlayerActivity extends Activity implements
         showControlsWithAutoHide();
     }
 
+    private void startPlayerAndRefresh(IMediaPlayer mp, boolean afterSeek) {
+        mStartAfterSeek = false;
+        mSeekPending = false;
+        try {
+            mp.start();
+            isPlaying = true;
+        } catch (Throwable t) {
+            isPlaying = false;
+        }
+        if (afterSeek) {
+            seekSplitAudio((int) mp.getCurrentPosition());
+        }
+        startSplitAudioIfReady();
+        updatePlayPauseButton();
+        if (afterSeek || decoderType == DECODER_SYSTEM) {
+            hideLoadingOverlay();
+        }
+        if (mDanmakuManager != null) {
+            mDanmakuManager.onVideoStarted();
+            if (afterSeek) mDanmakuManager.resume();
+        }
+        if (mDanmakuContainer != null
+                && (mDanmakuManager == null || !mDanmakuManager.isTransparencyHidden())) {
+            mDanmakuContainer.setVisibility(View.VISIBLE);
+        }
+        if (afterSeek) {
+            updateTimeDisplay();
+            handler.sendEmptyMessage(MSG_UPDATE_PROGRESS);
+        }
+    }
+
     @Override
     public void onSeekComplete(IMediaPlayer mp) {
         long completedTarget = mSeekPending ? mSeekTarget : 0L;
@@ -3402,27 +3427,7 @@ public class BiliPlayerActivity extends Activity implements
             mSeekDisplayHoldUntil = android.os.SystemClock.elapsedRealtime() + 2500L;
         }
         if (mStartAfterSeek) {
-            mStartAfterSeek = false;
-            try {
-                mp.start();
-                isPlaying = true;
-            } catch (Throwable t) {
-                isPlaying = false;
-            }
-            seekSplitAudio((int) mp.getCurrentPosition());
-            startSplitAudioIfReady();
-            updatePlayPauseButton();
-            hideLoadingOverlay();
-            if (mDanmakuManager != null) {
-                mDanmakuManager.onVideoStarted();
-                mDanmakuManager.resume();
-            }
-            if (mDanmakuContainer != null
-                && (mDanmakuManager == null || !mDanmakuManager.isTransparencyHidden())) {
-            mDanmakuContainer.setVisibility(View.VISIBLE);
-        }
-            updateTimeDisplay();
-            handler.sendEmptyMessage(MSG_UPDATE_PROGRESS);
+            startPlayerAndRefresh(mp, true);
             return;
         }
         if (!mIsDragging) {
