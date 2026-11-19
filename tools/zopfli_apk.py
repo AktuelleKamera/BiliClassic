@@ -7,6 +7,7 @@ import zipfile
 
 try:
     import zopfli.zlib as zopfli_zlib
+    import zopfli.png as zopfli_png
 except Exception as exc:
     raise SystemExit("zopfli is required: python -m pip install zopfli") from exc
 
@@ -111,7 +112,7 @@ def _png_build(chunks, idat):
     return bytes(out)
 
 
-def optimize_png(data):
+def _optimize_png_python(data):
     try:
         chunks, idat = _png_chunks(data)
         if any(kind == b"acTL" for kind, _ in chunks):
@@ -176,6 +177,30 @@ def optimize_png(data):
         return rebuilt if len(rebuilt) < len(data) else data
     except Exception:
         return data
+
+
+def optimize_png(data):
+    try:
+        chunks, _ = _png_chunks(data)
+        if any(kind == b"acTL" for kind, _ in chunks):
+            return data
+        keepchunks = sorted({
+            kind.decode("ascii")
+            for kind, _ in chunks
+            if kind not in (b"IHDR", b"PLTE", b"IDAT", b"IEND")
+        })
+        rebuilt = zopfli_png.optimize(
+            data,
+            lossy_transparent=False,
+            lossy_8bit=False,
+            keepchunks=keepchunks,
+            use_zopfli=True,
+            num_iterations=15,
+            num_iterations_large=5,
+        )
+        return rebuilt if len(rebuilt) < len(data) else data
+    except Exception:
+        return _optimize_png_python(data)
 
 
 def deflate(data, level=9):
