@@ -722,7 +722,8 @@ public class BiliPlayerActivity extends Activity implements
         // 仅在没有任何其他待跳转位置（如画质切换/后台恢复）时生效；直播不续播。
         if (mSeekWhenPrepared <= 0 && !isLiveStream) {
             int resumePosition = getIntent().getIntExtra("resume_position", 0);
-            if (resumePosition <= 0 && mAid > 0 && mCid > 0) {
+            if (resumePosition <= 0 && mAid > 0 && mCid > 0
+                    && !tv.biliclassic.util.LocalHistoryStore.isLoggedIn()) {
                 resumePosition = tv.biliclassic.util.LocalHistoryStore.getProgress(mAid, mCid);
             }
             mSeekWhenPrepared = resumePosition;
@@ -2394,7 +2395,8 @@ public class BiliPlayerActivity extends Activity implements
             }
         }
 
-        int newPosition = tv.biliclassic.util.LocalHistoryStore.getProgress(mAid, newCid);
+        int newPosition = tv.biliclassic.util.LocalHistoryStore.isLoggedIn()
+                ? 0 : tv.biliclassic.util.LocalHistoryStore.getProgress(mAid, newCid);
         mQualitySwitchSeekPos = newPosition;
         mLastReportProgress = -1;
         tv.biliclassic.util.LocalHistoryStore.record(

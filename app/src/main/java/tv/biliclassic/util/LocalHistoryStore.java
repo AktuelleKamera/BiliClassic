@@ -61,6 +61,10 @@ public final class LocalHistoryStore {
         SharedPreferencesUtil.putString(KEY, LocalJsonCrypto.encrypt(out.toString()));
     }
 
+    public static boolean isLoggedIn() {
+        return SharedPreferencesUtil.getLong(SharedPreferencesUtil.mid, 0) != 0;
+    }
+
     public static synchronized int getProgress(long aid, long cid) {
         JSONObject item = find(readArray(), aid, cid);
         return item == null ? 0 : Math.max(0, item.optInt("progress", 0));

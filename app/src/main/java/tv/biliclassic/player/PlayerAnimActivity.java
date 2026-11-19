@@ -158,7 +158,8 @@ public class PlayerAnimActivity extends Activity {
         mQualityValues = getIntent().getIntArrayExtra("qn_value_array");
         mCurrentQn = getIntent().getIntExtra("current_qn", 0);
         resumePosition = getIntent().getIntExtra("resume_position", 0);
-        if (resumePosition <= 0 && aid > 0 && cid > 0) {
+        if (resumePosition <= 0 && aid > 0 && cid > 0
+                && !tv.biliclassic.util.LocalHistoryStore.isLoggedIn()) {
             resumePosition = tv.biliclassic.util.LocalHistoryStore.getProgress(aid, cid);
         }
 
