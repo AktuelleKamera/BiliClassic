@@ -1,9 +1,12 @@
 import argparse
+import hashlib
 import os
 import re
 import struct
+import tempfile
 import zlib
 import zipfile
+from concurrent.futures import ProcessPoolExecutor
 
 try:
     import zopfli.zlib as zopfli_zlib
@@ -223,51 +226,139 @@ def original_compressed(zin, info):
         return None
 
 
-def write_archive(src, dst):
-    zin = zipfile.ZipFile(src, "r")
-    entries = []
-    for info in zin.infolist():
-        if info.filename.startswith("META-INF/") and (
-            info.filename.endswith((".SF", ".RSA", ".DSA"))
-            or info.filename == "META-INF/MANIFEST.MF"
-        ):
-            continue
-        original = zin.read(info.filename)
-        data = original
-        if info.filename.lower().endswith(".png"):
-            data = optimize_png(data)
-        png_changed = data != original
-        method = info.compress_type
-        comp = data
-        compress_it = info.filename != "resources.arsc" and (
-            method == 8 or target(info.filename) or png_changed)
-        if png_changed and len(data) > 64:
-            packed = zopfli_zlib.compress(data, numiterations=100)
-            raw = packed[2:-4]
-            if len(raw) < info.compress_size:
-                method = 8
-                comp = raw
-            else:
-                data = original
-                method = info.compress_type
-                comp = original_compressed(zin, info)
-                if comp is None:
-                    comp = deflate(data)
-        elif compress_it and len(data) > 64:
-            packed = zopfli_zlib.compress(data, numiterations=100)
-            raw = packed[2:-4]
-            if len(raw) < info.compress_size or method == 0:
-                method = 8
-                comp = raw
-            else:
-                comp = original_compressed(zin, info)
-                if comp is None:
-                    comp = raw
-        elif method == 8:
-            comp = original_compressed(zin, info)
+CACHE_VERSION = b"1"
+
+
+def cache_root():
+    root = os.environ.get("ZOPFLI_CACHE_DIR")
+    if not root:
+        root = os.path.join(tempfile.gettempdir(), "biliclassic-zopfli-cache")
+    return root
+
+
+def cache_path(kind, key):
+    return os.path.join(cache_root(), kind, key[:2], key[2:] + ".bin")
+
+
+def cache_read(kind, key):
+    try:
+        with open(cache_path(kind, key), "rb") as f:
+            return f.read()
+    except Exception:
+        return None
+
+
+def cache_write(kind, key, data):
+    path = cache_path(kind, key)
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        fd, tmp = tempfile.mkstemp(prefix=".tmp-", dir=os.path.dirname(path))
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(data)
+            os.replace(tmp, path)
+        finally:
+            try:
+                if os.path.exists(tmp):
+                    os.remove(tmp)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+def cached_png(data):
+    key = hashlib.sha256(CACHE_VERSION + b"png\0" + data).hexdigest()
+    hit = cache_read("png", key)
+    if hit is not None:
+        return hit
+    out = optimize_png(data)
+    cache_write("png", key, out)
+    return out
+
+
+def cached_zopfli(data):
+    key = hashlib.sha256(CACHE_VERSION + b"deflate\0" + data).hexdigest()
+    hit = cache_read("deflate", key)
+    if hit is not None:
+        return hit
+    packed = zopfli_zlib.compress(data, numiterations=100)
+    raw = packed[2:-4]
+    cache_write("deflate", key, raw)
+    return raw
+
+
+def process_entry(task):
+    filename, original, original_comp, compress_type, compress_size = task
+    data = original
+    if filename.lower().endswith(".png"):
+        data = cached_png(data)
+    png_changed = data != original
+    method = compress_type
+    comp = data
+    compress_it = filename != "resources.arsc" and (
+        method == 8 or target(filename) or png_changed)
+    if png_changed and len(data) > 64:
+        raw = cached_zopfli(data)
+        if len(raw) < compress_size:
+            method = 8
+            comp = raw
+        else:
+            data = original
+            method = compress_type
+            comp = original_comp
             if comp is None:
                 comp = deflate(data)
-        entries.append((info, method, comp, data))
+    elif compress_it and len(data) > 64:
+        raw = cached_zopfli(data)
+        if len(raw) < compress_size or method == 0:
+            method = 8
+            comp = raw
+        else:
+            comp = original_comp
+            if comp is None:
+                comp = raw
+    elif method == 8:
+        comp = original_comp
+        if comp is None:
+            comp = deflate(data)
+    return method, comp, data
+
+
+def write_archive(src, dst):
+    records = []
+    with zipfile.ZipFile(src, "r") as zin:
+        for info in zin.infolist():
+            if info.filename.startswith("META-INF/") and (
+                info.filename.endswith((".SF", ".RSA", ".DSA"))
+                or info.filename == "META-INF/MANIFEST.MF"
+            ):
+                continue
+            original = zin.read(info.filename)
+            original_comp = original_compressed(zin, info)
+            records.append((info, original, original_comp))
+
+    tasks = [
+        (info.filename, original, original_comp,
+         info.compress_type, info.compress_size)
+        for info, original, original_comp in records
+    ]
+    try:
+        workers = int(os.environ.get("ZOPFLI_WORKERS", "0"))
+    except Exception:
+        workers = 0
+    if workers <= 0:
+        workers = min(os.cpu_count() or 1, 8)
+    if workers > 1 and len(tasks) > 1:
+        with ProcessPoolExecutor(max_workers=workers) as pool:
+            results = list(pool.map(process_entry, tasks, chunksize=1))
+    else:
+        results = [process_entry(task) for task in tasks]
+
+    entries = [
+        (info, method, comp, data)
+        for (info, _, _), (method, comp, data) in zip(records, results)
+    ]
 
     total_before = 0
     total_after = 0
