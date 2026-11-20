@@ -96,7 +96,7 @@ public class MediaSessionHelper {
         try {
             Class<?> chClass = Class.forName("android.app.NotificationChannel");
             Object channel = chClass.getConstructor(String.class, CharSequence.class, int.class)
-                    .newInstance(CHANNEL_ID, "\u5a92\u4f53\u64ad\u653e", Integer.valueOf(IMPORTANCE_LOW));
+                    .newInstance(CHANNEL_ID, "媒体播放", Integer.valueOf(IMPORTANCE_LOW));
             chClass.getMethod("setSound", Class.forName("android.net.Uri"),
                             Class.forName("android.media.AudioAttributes"))
                     .invoke(channel, (Object) null, (Object) null);

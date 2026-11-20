@@ -1676,7 +1676,7 @@ public class MetroSetupActivity extends BaseActivity {
         mPendingChangelog = null;
         if (changelog == null) {
             TextView errorText = new TextView(MetroSetupActivity.this);
-            errorText.setText("\u83B7\u53D6\u66F4\u65B0\u65E5\u5FD7\u5931\u8D25");
+            errorText.setText("获取更新日志失败");
             errorText.setTextColor(0xFF999999);
             errorText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,
                     getResources().getDimension(R.dimen.setup_changelog_text_size));
