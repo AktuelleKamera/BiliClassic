@@ -305,6 +305,7 @@ public class BiliPlayerActivity extends Activity implements
     private ViewStub optionsMenuStub;
     private ViewGroup optionsMenuItems;
     private View optionsMenuItemPlayer;
+    private View optionsMenuItemAudio;
     private View optionsMenuItemDanmaku;
     private View optionsMenuItemSubtitle;
     private View optionsMenuItemBlock;
@@ -3871,6 +3872,7 @@ public class BiliPlayerActivity extends Activity implements
         if (inflated instanceof ViewGroup) {
             optionsMenuItems = (ViewGroup) inflated;
             optionsMenuItemPlayer = optionsMenuItems.findViewById(R.id.options_menu_item_player);
+            optionsMenuItemAudio = optionsMenuItems.findViewById(R.id.options_menu_item_audio);
             optionsMenuItemDanmaku = optionsMenuItems.findViewById(R.id.options_menu_item_danmaku);
             optionsMenuItemSubtitle = optionsMenuItems.findViewById(R.id.options_menu_item_subtitle);
             optionsMenuItemBlock = optionsMenuItems.findViewById(R.id.options_menu_item_block);
@@ -3897,6 +3899,14 @@ public class BiliPlayerActivity extends Activity implements
                     public void onClick(View v) {
                         hideOptionsMenu();
                         showPlayerOptionsPannel();
+                    }
+                });
+            }
+            if (optionsMenuItemAudio != null) {
+                optionsMenuItemAudio.setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View v) {
+                        hideOptionsMenu();
+                        openAudioOnly();
                     }
                 });
             }
@@ -4387,6 +4397,104 @@ public class BiliPlayerActivity extends Activity implements
                 })
                 .setNegativeButton("取消", null)
                 .show();
+    }
+
+    private void openAudioOnly() {
+        int position = 0;
+        if (mediaPlayer != null && isPrepared) {
+            try { position = (int) mediaPlayer.getCurrentPosition(); } catch (Throwable ignored) {}
+        }
+
+        String local = cachePath;
+        if (local != null && local.length() > 0 && new File(local).exists()) {
+            pauseForAudioOnly();
+            launchAudioPlayer(local, null, 0, position);
+            return;
+        }
+        if (audioUrl != null && audioUrl.length() > 0) {
+            pauseForAudioOnly();
+            launchAudioPlayer(audioUrl, videoUrl, mProxyDurationMs, position);
+            return;
+        }
+        if (videoUrl != null && (videoUrl.startsWith("http://") || videoUrl.startsWith("https://"))
+                && mAid > 0 && mCid > 0) {
+            pauseForAudioOnly();
+            final int startPosition = position;
+            new Thread(new Runnable() {
+                public void run() {
+                    String result = null;
+                    PlayerData data = new PlayerData();
+                    try {
+                        data.aid = mAid;
+                        data.cid = mCid;
+                        data.qn = mCurrentQn;
+                        data.type = PlayerData.TYPE_VIDEO;
+                        PlayerApi.getVideo(data, false, true);
+                        result = data.audioUrl;
+                    } catch (Throwable ignored) {
+                    }
+                    final String source = result;
+                    final String dataVideo = data.videoUrl;
+                    final long dataDuration = data.durationMs;
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            if (source != null && source.length() > 0) {
+                                launchAudioPlayer(source, dataVideo, dataDuration, startPosition);
+                            } else {
+                                Toast.makeText(BiliPlayerActivity.this,
+                                        "无法获取音频", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    });
+                }
+            }).start();
+            return;
+        }
+        if (videoUrl != null && videoUrl.length() > 0) {
+            pauseForAudioOnly();
+            launchAudioPlayer(videoUrl, null, 0, position);
+            return;
+        }
+        Toast.makeText(this, getString(R.string.video_file_missing), Toast.LENGTH_SHORT).show();
+    }
+
+    private void pauseForAudioOnly() {
+        try {
+            if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+                mediaPlayer.pause();
+                isPlaying = false;
+                updatePlayPauseButton();
+            }
+        } catch (Throwable ignored) {
+        }
+        pauseSplitAudio();
+    }
+
+    private void launchAudioPlayer(String source, String videoUrl, long durationMs, int position) {
+        if (!source.startsWith("http://") && !source.startsWith("https://")) {
+            File file = new File(source);
+            if (file.exists()) source = Uri.fromFile(file).toString();
+        }
+        Intent intent = new Intent(this, AudioPlayerActivity.class);
+        intent.putExtra("audio_url", source);
+        if (videoUrl != null && videoUrl.length() > 0) {
+            intent.putExtra("video_url", videoUrl);
+            intent.putExtra("duration_ms", durationMs);
+        }
+        intent.putExtra("title", videoTitle);
+        intent.putExtra("agent", NetWorkUtil.USER_AGENT_WEB);
+        intent.putExtra("referer", "https://www.bilibili.com/");
+        String cookie = CookieGenerator.getCookieString(true);
+        if (cookie != null && cookie.length() > 0) {
+            intent.putExtra("cookie", cookie);
+        }
+        intent.putExtra("start_position", position);
+        try {
+            startActivity(intent);
+            finish();
+        } catch (Throwable t) {
+            Toast.makeText(this, getString(R.string.no_player_found), Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void showMediaInfoDialog() {

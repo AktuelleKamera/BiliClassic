@@ -30,4 +30,5 @@
 
     <!-- 视频详情溢出菜单：稍后再看（插在「播放历史」下面） -->
     <item name="menu_watch_later" type="id" />
+    <item name="menu_listen_audio" type="id" />
 </resources>

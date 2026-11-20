@@ -12,6 +12,12 @@
         style="@style/PlayerOptionsMenuItem"/>
     <View style="@style/CommonUnderline"/>
     <TextView
+        android:id="@+id/options_menu_item_audio"
+        android:focusable="true"
+        android:text="@string/player_listen_audio"
+        style="@style/PlayerOptionsMenuItem"/>
+    <View style="@style/CommonUnderline"/>
+    <TextView
         android:id="@+id/options_menu_item_danmaku"
         android:focusable="true"
         android:text="@string/Player_option_menu_title_danmaku"

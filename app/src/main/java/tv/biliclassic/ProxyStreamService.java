@@ -24,12 +24,14 @@ public class ProxyStreamService extends Service {
 
     private static final String ACTION_START = "tv.biliclassic.action.START_PROXY";
     private static final String EXTRA_URL = "url";
+    private static final String EXTRA_AUDIO_URL = "audio_url";
+    private static final String EXTRA_DURATION_MS = "duration_ms";
     private static final String EXTRA_HEADERS = "headers";
 
     private static final long IDLE_TIMEOUT_MS = 15 * 60 * 1000; // 15 分钟无连接自动停止
 
     private static LocalStreamProxy sProxy;
-    private static String sProxyUrl;
+    private static String sProxyKey;
     private static Handler sHandler = new Handler(Looper.getMainLooper());
     private static Runnable sIdleRunnable;
 
@@ -72,25 +74,33 @@ public class ProxyStreamService extends Service {
      */
     public static String startProxyForExternal(Context context, String remoteUrl,
                                                Map<String, String> headers) {
+        return startProxyForExternal(context, remoteUrl, null, 0, headers);
+    }
+
+    public static String startProxyForExternal(Context context, String remoteUrl,
+                                               String audioUrl, long durationMs,
+                                               Map<String, String> headers) {
         if (remoteUrl == null) {
             return null;
         }
-        // 已有代理但指向不同视频：先停旧代理再重建，避免换视频后第三方播放器仍放旧视频
+        String key = remoteUrl + "\n" + (audioUrl == null ? "" : audioUrl)
+                + "\n" + durationMs;
         if (sProxy != null) {
-            if (remoteUrl.equals(sProxyUrl)) {
+            if (key.equals(sProxyKey)) {
                 return sProxy.getLocalUrl();
             }
             stopProxy();
         }
-        LocalStreamProxy proxy = new LocalStreamProxy(remoteUrl, headers);
+        LocalStreamProxy proxy = new LocalStreamProxy(remoteUrl, audioUrl, durationMs, headers);
         try {
             String localUrl = proxy.start();
             sProxy = proxy;
-            sProxyUrl = remoteUrl;
-            // 后台持有：启动 Service，空闲超时自停
+            sProxyKey = key;
             Intent svc = new Intent(context, ProxyStreamService.class);
             svc.setAction(ACTION_START);
             svc.putExtra(EXTRA_URL, remoteUrl);
+            svc.putExtra(EXTRA_AUDIO_URL, audioUrl);
+            svc.putExtra(EXTRA_DURATION_MS, durationMs);
             HashMap<String, String> headerCopy = new HashMap<String, String>();
             if (headers != null) {
                 headerCopy.putAll(headers);
@@ -99,7 +109,6 @@ public class ProxyStreamService extends Service {
             try {
                 context.startService(svc);
             } catch (Exception e) {
-                // startService 失败（如后台限制），代理仅由静态引用持有，靠空闲超时清理
             }
             scheduleIdleStop();
             return localUrl;
@@ -130,7 +139,7 @@ public class ProxyStreamService extends Service {
             try { sProxy.stop(); } catch (Throwable t) {}
             sProxy = null;
         }
-        sProxyUrl = null;
+        sProxyKey = null;
     }
 
     private static void scheduleIdleStop() {

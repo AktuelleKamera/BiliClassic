@@ -62,9 +62,9 @@ public class PlayerApi {
         }
     }
 
-    private static String buildCacheKey(PlayerData playerData) {
+    private static String buildCacheKey(PlayerData playerData, boolean forceDash) {
         int streamFormat = playerData.type == PlayerData.TYPE_VIDEO
-                ? tv.biliclassic.SettingsActivity.getPlayStreamFormat() : 1;
+                ? (forceDash ? 16 : tv.biliclassic.SettingsActivity.getPlayStreamFormat()) : 1;
         return playerData.aid + "_" + playerData.cid + "_" + playerData.qn + "_" + playerData.type + "_" + streamFormat;
     }
 
@@ -179,13 +179,17 @@ public class PlayerApi {
      * @param download 是否下载模式（影响画质参数）
      */
     public static void getVideo(PlayerData playerData, boolean download) throws JSONException, IOException {
+        getVideo(playerData, download, false);
+    }
+
+    public static void getVideo(PlayerData playerData, boolean download, boolean forceDash) throws JSONException, IOException {
 
         // if上一次获取在十分钟内就无需再次获取
         if (System.currentTimeMillis() - playerData.timeStamp < 600000) {
             return;
         }
 
-        String cacheKey = buildCacheKey(playerData);
+        String cacheKey = buildCacheKey(playerData, forceDash);
         if (!download) {
             CachedUrl cached;
             synchronized (sUrlCache) {
@@ -223,7 +227,7 @@ public class PlayerApi {
         // 4048 = DASH(16)|HDR(64)|4K(128)|杜比音频(256)|杜比视界(512)|8K(1024)|AV1(2048)，
         // 必须带上 4K 位（外加 fourk=1）接口才会在 accept_quality / dash.video 里给出 4K 及以上
         int fnval = download ? 1
-                : (tv.biliclassic.SettingsActivity.getPlayStreamFormat() == 16 ? 4048 : 1);
+                : ((forceDash || tv.biliclassic.SettingsActivity.getPlayStreamFormat() == 16) ? 4048 : 1);
         String url = "https://api.bilibili.com/x/player/wbi/playurl?"
                 + idParam
                 + "&cid=" + playerData.cid
@@ -251,7 +255,8 @@ public class PlayerApi {
 
         String videoUrl = null;
         String audioUrl = "";
-        boolean dashRequested = !download && tv.biliclassic.SettingsActivity.getPlayStreamFormat() == 16;
+        boolean dashRequested = !download
+                && (forceDash || tv.biliclassic.SettingsActivity.getPlayStreamFormat() == 16);
 
         // 优先解析DASH
         if (dashRequested && data.has("dash")) {

@@ -622,4 +622,5 @@
     <string name="decoder_summary_opensles_buffer">僅OpenSL生效；自動按機型選擇</string>
     <string name="decoder_title_audiotrack_buffer">AudioTrack緩衝大小</string>
     <string name="decoder_summary_audiotrack_buffer">僅AudioTrack有效；啟用OpenSL時忽略</string>
+    <string name="player_listen_audio">聽視頻</string>
 </resources>

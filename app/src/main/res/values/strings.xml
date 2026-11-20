@@ -67,6 +67,7 @@
     <string name="player_loading_step_fail">【失败】</string>
     <string name="player_subtitle_empty">该视频没有字幕</string>
     <string translatable="false" name="player_subtitle_menu">CC字幕</string>
+    <string name="player_listen_audio">听视频</string>
     <string name="player_subtitle_none">暂无可选字幕</string>
     <string name="player_loading_device_info">设备：%1$s %2$s，Android %3$s（API %4$s），%5$s</string>
     <string name="player_loading_mode_ijk">检查模式：内置IJK</string>

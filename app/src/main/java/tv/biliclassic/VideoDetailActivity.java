@@ -942,6 +942,11 @@ public class VideoDetailActivity extends BaseActivity {
     }
 
     private void showActionMenu() {
+        View anchor = findViewById(R.id.btn_title_more);
+        if (anchor != null) {
+            showOverflowMenu(anchor);
+            return;
+        }
         final String[] items = {
                 getString(R.string.videodetail_download),
                 getString(R.string.videodetail_tab_comment),
@@ -981,6 +986,29 @@ public class VideoDetailActivity extends BaseActivity {
      * 在右上「更多」菜单的「播放历史」下面，单独插入「稍后再看」。
      */
     @Override
+    protected boolean includeDefaultOverflowMenu() {
+        return false;
+    }
+
+    @Override
+    protected int onAppendOverflowItems(int[] ids, String[] titles, int n) {
+        if (ids == null || titles == null || ids.length - n < 6) return n;
+        ids[n] = R.id.menu_login_logout;
+        titles[n++] = "登录/注销";
+        ids[n] = R.id.menu_favorite_list;
+        titles[n++] = "我的收藏";
+        ids[n] = R.id.menu_video_history_list;
+        titles[n++] = "播放历史";
+        ids[n] = R.id.menu_watch_later;
+        titles[n++] = getString(R.string.fav_tab_watch_later);
+        ids[n] = R.id.menu_listen_audio;
+        titles[n++] = getString(R.string.player_listen_audio);
+        ids[n] = R.id.menu_preferences;
+        titles[n++] = "设置";
+        return n;
+    }
+
+    @Override
     protected int onInsertOverflowItems(int[] ids, String[] titles, int n) {
         for (int i = 0; i < n; i++) {
             if (ids[i] == R.id.menu_video_history_list && n < ids.length) {
@@ -1003,7 +1031,91 @@ public class VideoDetailActivity extends BaseActivity {
             toggleWatchLater();
             return;
         }
+        if (id == R.id.menu_listen_audio) {
+            listenVideo();
+            return;
+        }
         super.onMenuAction(id);
+    }
+
+    private void listenVideo() {
+        final VideoDetailFragment fragment = videoDetailFragment;
+        if (fragment == null || fragment.videoInfo == null) {
+            Toast.makeText(this, getString(R.string.load_video_info_failed), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final VideoInfo info = fragment.videoInfo;
+        final int part = fragment.getCurrentPartIndex();
+        final long cid = getCurrentCid();
+        if (cid <= 0) {
+            Toast.makeText(this, getString(R.string.load_video_info_failed), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String title = getCurrentTitle();
+        List<VideoDetailFragment.VideoPage> pages = fragment.getVideoPages();
+        if (pages != null && part >= 0 && part < pages.size()
+                && pages.get(part).title != null && pages.get(part).title.length() > 0) {
+            title = pages.get(part).title;
+        }
+        final String audioTitle = title;
+        if (mOfflineMode) {
+            java.io.File file = new VideoDownloadEnvironment(getDownloadDir(), info.aid, part + 1)
+                    .getVideoFile();
+            if (file != null && file.exists() && file.length() > 0) {
+                launchAudio(Uri.fromFile(file).toString(), null, 0, audioTitle, 0);
+            } else {
+                Toast.makeText(this, getString(R.string.cached_file_missing), Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+        new Thread(new Runnable() {
+            public void run() {
+                tv.biliclassic.model.PlayerData data = info.toPlayerData(part);
+                data.aid = getCorrectAid();
+                data.cid = cid;
+                data.bvid = info.bvid;
+                data.type = tv.biliclassic.model.PlayerData.TYPE_VIDEO;
+                data.qn = mSelectedQuality;
+                String result = null;
+                int start = 0;
+                try {
+                    tv.biliclassic.api.PlayerApi.getVideo(data, false, true);
+                    result = data.audioUrl;
+                    if (data.cidHistory == cid && data.progress > 0) start = data.progress;
+                } catch (Throwable ignored) {
+                }
+                final String url = result;
+                final String dataVideo = data.videoUrl;
+                final long dataDuration = data.durationMs;
+                final int position = start;
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        if (url != null && url.length() > 0) {
+                            launchAudio(url, dataVideo, dataDuration, audioTitle, position);
+                        } else {
+                            Toast.makeText(VideoDetailActivity.this,
+                                    "无法获取音频", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void launchAudio(String url, String videoUrl, long durationMs, String title, int position) {
+        Intent intent = new Intent(this, tv.biliclassic.player.AudioPlayerActivity.class);
+        intent.putExtra("audio_url", url);
+        if (videoUrl != null && videoUrl.length() > 0) {
+            intent.putExtra("video_url", videoUrl);
+            intent.putExtra("duration_ms", durationMs);
+        }
+        intent.putExtra("title", title);
+        intent.putExtra("agent", tv.biliclassic.util.NetWorkUtil.USER_AGENT_WEB);
+        intent.putExtra("referer", "https://www.bilibili.com/");
+        String cookie = tv.biliclassic.util.CookieGenerator.getCookieString(true);
+        if (cookie != null && cookie.length() > 0) intent.putExtra("cookie", cookie);
+        intent.putExtra("start_position", position);
+        startActivity(intent);
     }
 
     /** 稍后再看：不在列表里就加入，已在列表里就移除。 */
