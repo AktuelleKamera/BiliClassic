@@ -891,9 +891,9 @@ public class VideoDetailFragment extends Fragment {
             @Override
             public void run() {
                 // 磁盘缓存：同一封面不重复下载（文件按 URL hash 存于 cacheDir）
-                final java.io.File diskFile = new java.io.File(getActivity().getCacheDir(), "vd_" + finalUrl.hashCode() + ".jpg");
+                final java.io.File diskFile = new java.io.File(getActivity().getCacheDir(), "vd2_" + finalUrl.hashCode() + ".jpg");
                 Bitmap bitmap = null;
-                if (diskFile.exists()) {
+                if (diskFile.exists() && isCompleteImageFile(diskFile)) {
                     bitmap = GlobalImageCache.decodeFileSafely(diskFile, 200, 150, 1);
                 }
                 if (bitmap == null || bitmap.isRecycled()) {
@@ -946,44 +946,85 @@ public class VideoDetailFragment extends Fragment {
     }
 
     private Bitmap downloadCover(String urlStr, java.io.File diskFile) {
-        HttpURLConnection conn = null;
         java.io.File tempFile = null;
         try {
-            URL urlObj = new URL(urlStr);
-            conn = (HttpURLConnection) urlObj.openConnection();
-            tv.biliclassic.util.NetWorkUtil.applySSLCompat(conn, urlStr);
-            conn.setConnectTimeout(12000);
-            conn.setReadTimeout(12000);
-            conn.setRequestProperty("User-Agent", NetWorkUtil.USER_AGENT_WEB);
-            conn.connect();
-
-            tempFile = new java.io.File(getActivity().getCacheDir(), "vd_" + urlStr.hashCode() + ".tmp");
-            InputStream is = conn.getInputStream();
-            java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile);
-            byte[] buf = new byte[8192];
-            int readLen;
-            while ((readLen = is.read(buf)) != -1) {
-                fos.write(buf, 0, readLen);
+            tempFile = java.io.File.createTempFile("vd2_", ".tmp", getActivity().getCacheDir());
+            if (!NetWorkUtil.downloadToFile(urlStr, tempFile)) {
+                return null;
             }
-            is.close();
-            fos.close();
-            conn.disconnect();
-            conn = null;
-
-            if (!tempFile.exists() || tempFile.length() == 0) return null;
-
-            // 下载的原图直接作为磁盘缓存（同目录 renameTo 成功），下次直接解码
-            java.io.File decodeTarget = tempFile;
-            if (diskFile != null && tempFile.renameTo(diskFile)) {
-                decodeTarget = diskFile;
+            if (!tempFile.exists() || tempFile.length() == 0
+                    || !isCompleteImageFile(tempFile)) {
+                return null;
             }
-            return GlobalImageCache.decodeFileSafely(decodeTarget, 200, 150, 1);
+
+            Bitmap bitmap = GlobalImageCache.decodeFileSafely(tempFile, 200, 150, 1);
+            if (bitmap == null || bitmap.isRecycled()) {
+                return null;
+            }
+
+            if (diskFile != null) {
+                if (diskFile.exists()) diskFile.delete();
+                if (tempFile.renameTo(diskFile)) tempFile = null;
+            }
+            return bitmap;
         } catch (Exception e) {
-            e.printStackTrace();
             return null;
         } finally {
-            if (conn != null) conn.disconnect();
             if (tempFile != null && tempFile.exists()) tempFile.delete();
+        }
+    }
+
+    private static boolean isCompleteImageFile(java.io.File file) {
+        if (file == null || !file.exists() || file.length() < 12) return false;
+        java.io.RandomAccessFile raf = null;
+        try {
+            raf = new java.io.RandomAccessFile(file, "r");
+            byte[] head = new byte[12];
+            raf.readFully(head);
+
+            if (head[0] == (byte) 0x89 && head[1] == (byte) 0x50
+                    && head[2] == (byte) 0x4E && head[3] == (byte) 0x47) {
+                raf.seek(file.length() - 12);
+                byte[] tail = new byte[12];
+                raf.readFully(tail);
+                return tail[4] == (byte) 'I' && tail[5] == (byte) 'E'
+                        && tail[6] == (byte) 'N' && tail[7] == (byte) 'D';
+            }
+
+            if (head[0] == (byte) 0xFF && head[1] == (byte) 0xD8) {
+                int n = (int) Math.min(32L, file.length());
+                raf.seek(file.length() - n);
+                byte[] tail = new byte[n];
+                raf.readFully(tail);
+                for (int i = 0; i + 1 < n; i++) {
+                    if (tail[i] == (byte) 0xFF && tail[i + 1] == (byte) 0xD9) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            if (head[0] == (byte) 'G' && head[1] == (byte) 'I'
+                    && head[2] == (byte) 'F' && head[3] == (byte) '8') {
+                raf.seek(file.length() - 1);
+                return raf.read() == 0x3B;
+            }
+
+            if (head[0] == (byte) 'R' && head[1] == (byte) 'I'
+                    && head[2] == (byte) 'F' && head[3] == (byte) 'F'
+                    && head[8] == (byte) 'W' && head[9] == (byte) 'E'
+                    && head[10] == (byte) 'B' && head[11] == (byte) 'P') {
+                long size = (head[4] & 0xFFL) | ((head[5] & 0xFFL) << 8)
+                        | ((head[6] & 0xFFL) << 16) | ((head[7] & 0xFFL) << 24);
+                return size + 8 <= file.length();
+            }
+            return true;
+        } catch (Throwable t) {
+            return false;
+        } finally {
+            if (raf != null) {
+                try { raf.close(); } catch (Throwable ignored) {}
+            }
         }
     }
 
