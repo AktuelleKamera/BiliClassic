@@ -531,6 +531,24 @@ public class BiliPlayerActivity extends Activity implements
         mHideControls = getIntent().getBooleanExtra("hide_controls", false);
         mHideLoading = getIntent().getBooleanExtra("hide_loading", false);
         mForceHwDecode = getIntent().getBooleanExtra("force_hw_decode", false);
+        isLiveStream = getIntent().getBooleanExtra("live", false);
+        boolean onlineMode = getIntent().getBooleanExtra("online_mode", false);
+        decoderType = SettingsActivity.getDecoderType();
+        // Android 1.x: allow manually selected IJK software decoding.
+        if (SdkHelper.getSdkInt() < 3 && decoderType == DECODER_IJK_HARD) {
+            decoderType = DECODER_IJK_SOFT;
+        }
+        // System Stagefright cannot parse fragmented DASH MP4. Keep the
+        // original restriction and use IJK for DASH on supported systems.
+        if (SdkHelper.getSdkInt() >= 4 && onlineMode
+                && SettingsActivity.getPlayStreamFormat() == 16
+                && decoderType == DECODER_SYSTEM) {
+            decoderType = SdkHelper.getSdkInt() >= 16 ? DECODER_IJK_HARD : DECODER_IJK_SOFT;
+            Toast.makeText(this, getString(R.string.dash_requires_ijk), Toast.LENGTH_LONG).show();
+        }
+        if (mForceHwDecode && SdkHelper.getSdkInt() >= 16) {
+            decoderType = DECODER_IJK_HARD;
+        }
         if (!getIntent().getBooleanExtra("offline_mode", false) && !mHideLoading) {
             initLoadingOverlay();
         }
@@ -590,24 +608,6 @@ public class BiliPlayerActivity extends Activity implements
                     }
                 }
             }).start();
-        }
-        isLiveStream = getIntent().getBooleanExtra("live", false);
-        boolean onlineMode = getIntent().getBooleanExtra("online_mode", false);
-        decoderType = SettingsActivity.getDecoderType();
-        // Android 1.x: allow manually selected IJK software decoding.
-        if (SdkHelper.getSdkInt() < 3 && decoderType == DECODER_IJK_HARD) {
-            decoderType = DECODER_IJK_SOFT;
-        }
-        // System Stagefright cannot parse fragmented DASH MP4. Keep the
-        // original restriction and use IJK for DASH on supported systems.
-        if (SdkHelper.getSdkInt() >= 4 && onlineMode
-                && SettingsActivity.getPlayStreamFormat() == 16
-                && decoderType == DECODER_SYSTEM) {
-            decoderType = SdkHelper.getSdkInt() >= 16 ? DECODER_IJK_HARD : DECODER_IJK_SOFT;
-            Toast.makeText(this, getString(R.string.dash_requires_ijk), Toast.LENGTH_LONG).show();
-        }
-        if (mForceHwDecode && SdkHelper.getSdkInt() >= 16) {
-            decoderType = DECODER_IJK_HARD;
         }
         mRendererType = SettingsActivity.getRendererType();
         if (mRendererType == RENDERER_TEXTUREVIEW && SdkHelper.getSdkInt() < 14) {
@@ -868,7 +868,7 @@ public class BiliPlayerActivity extends Activity implements
         // 加载失败由本 Activity 自己的逻辑处理
         hidePreloadingExtraViews(mLoadingOverlay);
         // 底部状态栏文字：默认"正在加载视频……"，转码/准备阶段再逐行覆盖
-        String mode = SettingsActivity.getDecoderType() == DECODER_SYSTEM
+        String mode = decoderType == DECODER_SYSTEM
                 ? getString(R.string.player_loading_mode_system)
                 : getString(R.string.player_loading_mode_ijk);
         setLoadingStep1(getString(R.string.player_loading_device_info,
@@ -878,7 +878,6 @@ public class BiliPlayerActivity extends Activity implements
         mStageEcho.appendFinished(getString(R.string.player_loading_device_info,
                 DeviceUtils.getDeviceManufacturer(), DeviceUtils.getDeviceModel(), DeviceUtils.getDeviceRelease(),
                 String.valueOf(SdkHelper.getSdkInt()), mode));
-        mStageEcho.appendFinished("\u68c0\u67e5\u6a21\u5f0f: \u81ea\u52a8\u9009\u62e9");
         mStageEcho.setPending(getString(R.string.player_loading_step_get_url));
         if (mLoadingOverlay.getParent() == null) {
             root.addView(mLoadingOverlay);
@@ -1762,11 +1761,11 @@ public class BiliPlayerActivity extends Activity implements
                 danmakuInputStub, isLiveStream, liveRoomId);
         manager.setOnLoadListener(new DanmakuManager.OnLoadListener() {
             public void onLoadStarted() {
-                if (mStageEcho != null) mStageEcho.setPending("\u5168\u8230\u5f39\u5e55\u88c5\u586b");
+                if (mStageEcho != null) mStageEcho.setPending("全舰弹幕装填");
             }
             public void onLoadFinished(boolean success) {
                 if (mStageEcho != null) {
-                    mStageEcho.appendFinishedWithStatus("\u5168\u8230\u5f39\u5e55\u88c5\u586b", success);
+                    mStageEcho.appendFinishedWithStatus("全舰弹幕装填", success);
                 }
             }
         });
@@ -2871,8 +2870,8 @@ public class BiliPlayerActivity extends Activity implements
     private void preparePlayer() {
         if (mStageEcho != null) {
             mStageEcho.appendFinished(decoderType == DECODER_SYSTEM
-                    ? "\u521d\u59cb\u5316\u64ad\u653e\u5668: \u7cfb\u7edf\u786c\u89e3"
-                    : "\u521d\u59cb\u5316\u64ad\u653e\u5668: IJK");
+                    ? "初始化播放器: 系统硬解"
+                    : "初始化播放器: IJK");
             mStageEcho.setPending(getString(R.string.player_loading_step_loading_video));
         }
         releasePlayer();

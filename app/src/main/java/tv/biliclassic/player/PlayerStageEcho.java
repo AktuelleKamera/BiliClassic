@@ -18,15 +18,15 @@ public final class PlayerStageEcho {
 
     private static int orderOf(String text) {
         if (text == null) return 80;
-        if (text.contains("\u8bbe\u5907\u4fe1\u606f")) return 10;
-        if (text.contains("\u68c0\u67e5\u6a21\u5f0f")) return 20;
-        if (text.contains("\u5f39\u5e55\u5b57\u4f53")) return 30;
-        if (text.contains("\u5f39\u5e55\u663e\u793a")) return 31;
-        if (text.contains("\u5f39\u5e55\u88c5\u586b\u7c7b\u578b")) return 32;
-        if (text.contains("\u64ad\u653e\u5730\u5740") || text.contains("\u89e3\u6790\u89c6\u9891")) return 40;
-        if (text.contains("\u5168\u8230\u5f39\u5e55")) return 50;
-        if (text.contains("\u521d\u59cb\u5316\u64ad\u653e\u5668")) return 60;
-        if (text.contains("\u5f00\u59cb\u89c6\u9891\u7f13\u51b2")) return 70;
+        if (text.contains("设备信息")) return 10;
+        if (text.contains("检查模式")) return 20;
+        if (text.contains("弹幕字体")) return 30;
+        if (text.contains("弹幕显示")) return 31;
+        if (text.contains("弹幕装填类型")) return 32;
+        if (text.contains("播放地址") || text.contains("解析视频")) return 40;
+        if (text.contains("全舰弹幕")) return 50;
+        if (text.contains("初始化播放器")) return 60;
+        if (text.contains("开始视频缓冲")) return 70;
         return 80;
     }
 
@@ -42,12 +42,15 @@ public final class PlayerStageEcho {
                 mPending.remove(i);
             }
         }
+        for (int i = 0; i < mFinished.size(); i++) {
+            if (mFinished.get(i).text.equals(text)) return;
+        }
         mFinished.add(new Line(orderOf(text), text));
         render();
     }
 
     public void appendFinishedWithStatus(String stage, boolean success) {
-        appendFinished(stage + (success ? "\u3010\u5b8c\u6210\u3011" : "\u3010\u5931\u8d25\u3011"));
+        appendFinished(stage + (success ? "【完成】" : "【失败】"));
     }
 
     public void setPending(String text) {
@@ -80,7 +83,7 @@ public final class PlayerStageEcho {
         });
         for (int i = 0; i < pending.size(); i++) {
             if (sb.length() > 0) sb.append('\n');
-            sb.append(pending.get(i)).append("\u2026");
+            sb.append(pending.get(i)).append("…");
         }
         sb.append('>');
         mView.setText(sb.toString());
