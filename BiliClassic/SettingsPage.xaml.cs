@@ -4,6 +4,10 @@ using System.Windows.Controls;
 using System.Windows.Navigation;
 using BiliClassic.Api;
 using Microsoft.Phone.Controls;
+using Microsoft.Phone.Tasks;
+using System.IO;
+using System.IO.IsolatedStorage;
+using System.Windows.Media.Imaging;
 
 namespace BiliClassic
 {
@@ -39,7 +43,10 @@ namespace BiliClassic
             AutoCheckUpdateCheck.IsChecked = AppSettings.AutoCheckUpdate;
             LockCiTieCheck.IsChecked = AppSettings.LockCiTieEnabled;
             HideCiTieCheck.IsChecked = AppSettings.HideCiTieEnabled;
+            ShowBackgroundCheck.IsChecked = AppSettings.ShowBackgroundEnabled;
             LoadQuality(AppSettings.PlayQuality);
+            LoadCiTieType(AppSettings.CiTieTypeValue);
+            LoadBackgroundImage();
 #if WP81
             NfcSyncCheck.IsChecked = AppSettings.NfcSyncEnabled;
 #endif
@@ -62,6 +69,72 @@ namespace BiliClassic
                 default:
                     Quality32.IsChecked = true;
                     break;
+            }
+        }
+
+        private void LoadCiTieType(int type)
+        {
+            /*
+            switch (type)
+            {
+                case 0:
+                    CiTieType0.IsChecked = true;
+                    break;
+                case 1:
+                    CiTieType1.IsChecked = true;
+                    break;
+                case 2:
+                    CiTieType2.IsChecked = true;
+                    break;
+                case 3:
+                    CiTieType3.IsChecked = true;
+                    break;
+                default:
+                    CiTieType2.IsChecked = true;
+                    break;
+            }
+        */
+        }
+
+        private void LoadBackgroundImage()
+        {
+            using (IsolatedStorageFile isoStore = IsolatedStorageFile.GetUserStoreForApplication())
+            {
+                if (isoStore.FileExists("BCG.jpg"))
+                {
+                    using (IsolatedStorageFileStream fileStream = isoStore.OpenFile("BCG.jpg", FileMode.Open, FileAccess.Read))
+                    {
+                        BitmapImage bitmap = new BitmapImage();
+                        bitmap.SetSource(fileStream);
+                        BackgroundImage.Source = bitmap;
+                    }
+                }
+                else
+                {
+                    BitmapImage bitmap = new BitmapImage(new Uri("NormalBcg.png", UriKind.Relative));
+                    BackgroundImage.Source = bitmap;
+                }
+            }
+        }
+
+        private void CiTieType_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            RadioButton button = sender as RadioButton;
+            if (button == null)
+            {
+                return;
+            }
+
+            int type;
+            if (int.TryParse(button.Tag as string, out type))
+            {
+                AppSettings.CiTieTypeValue = type;
+                //StatusText.Text = "清晰度已改为 " + button.Content;
             }
         }
 
@@ -126,6 +199,16 @@ namespace BiliClassic
             AppSettings.ZiDongEnabled = ZiDongCheck.IsChecked == true;
         }
 
+
+        private void ShowBackgroundCheck_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_loading)
+            {
+                return;
+            }
+
+            AppSettings.ShowBackgroundEnabled = ShowBackgroundCheck.IsChecked == true;
+        }
 
 
         private void LockCiTieCheck_Changed(object sender, RoutedEventArgs e)
@@ -250,6 +333,36 @@ namespace BiliClassic
             StatusText.Text = freed > 0
                 ? "已清除离线缓存，释放 " + MediaCache.FormatSize(freed)
                 : "没有可清除的离线缓存。";
+        }
+
+        private void BackgroundButton_Click(object sender, RoutedEventArgs e)
+        {
+            PhotoChooserTask photoChooserTask = new PhotoChooserTask();
+            //photoChooserTask.PixelWidth = 480;
+            //photoChooserTask.PixelHeight = 800;
+            photoChooserTask.Completed += new EventHandler<PhotoResult>(photoChooserTask_Completed);
+            photoChooserTask.Show();
+        }
+
+        void photoChooserTask_Completed(object sender, PhotoResult e)
+        {
+            if (e.TaskResult == TaskResult.OK)
+            {
+                BitmapImage bitmap = new BitmapImage();
+                bitmap.SetSource(e.ChosenPhoto);
+                WriteableBitmap wb = new WriteableBitmap(bitmap);
+
+                using (IsolatedStorageFile isoStore = IsolatedStorageFile.GetUserStoreForApplication())
+                {
+                    string fileName = "BCG.jpg";
+                    using (IsolatedStorageFileStream fileStream = isoStore.CreateFile(fileName))
+                    {
+                        wb.SaveJpeg(fileStream, wb.PixelWidth, wb.PixelHeight, 0, 100);
+                    }
+                }
+
+                LoadBackgroundImage();
+            }
         }
     }
 }

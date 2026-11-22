@@ -73,6 +73,27 @@
                 <CheckBox x:Name="HideCiTieCheck" Content="隐藏磁贴图标"
                       Margin="0,20,0,0" Checked="HideCiTieCheck_Changed" Unchecked="HideCiTieCheck_Changed" />
 
+
+                <CheckBox Content="显示主页背景图片" Height="71" Name="ShowBackgroundCheck" Checked="ShowBackgroundCheck_Checked" Margin="0,20,0,0" Unchecked="ShowBackgroundCheck_Checked" />
+                <Grid Name="BcgGrid" VerticalAlignment="Top" Margin="12,0,0,0">
+                    <TextBlock Margin="171,6,40,0" TextWrapping="Wrap"
+                       Style="{StaticResource PhoneTextSubtleStyle}"
+                       Text="选一张图片作为主页背景" Width="233" VerticalAlignment="Top" />
+                    <Image Height="150" HorizontalAlignment="Left" Margin="0" Name="BackgroundImage" Stretch="UniformToFill" VerticalAlignment="Top" Width="150" Source="/BiliClassic;component/NormalBcg.png" />
+                    <Button Content="选择图片" Height="72" HorizontalAlignment="Left" Margin="158,39,0,0" Name="BackgroundButton" VerticalAlignment="Top" Width="213" Click="BackgroundButton_Click" />
+                </Grid>
+
+                <!--<TextBlock Text="开始磁贴显示内容" Margin="0,20,0,0"
+                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+                <RadioButton x:Name="CiTieType0" Content="不显示内容" Tag="0"
+                         GroupName="CiTieType" Checked="CiTieType_Checked" />
+                <RadioButton x:Name="CiTieType1" Content="动态" Tag="1"
+                         GroupName="CiTieType" Checked="CiTieType_Checked" />
+                <RadioButton x:Name="CiTieType2" Content="私信" Tag="2"
+                         GroupName="CiTieType" Checked="CiTieType_Checked" />
+                <RadioButton x:Name="CiTieType3" Content="正在播放" Tag="3"
+                         GroupName="CiTieType"/>-->
+
                 <!--被误触惹毛了说是-->
                 <CheckBox x:Name="LockCiTieCheck" Content="强制锁定主页磁贴"
                       Margin="0,20,0,0" Checked="LockCiTieCheck_Changed" Unchecked="LockCiTieCheck_Changed" />

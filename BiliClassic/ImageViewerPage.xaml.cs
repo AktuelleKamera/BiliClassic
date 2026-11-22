@@ -6,6 +6,10 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using BiliClassic.Api;
 using Microsoft.Phone.Controls;
+using Microsoft.Xna.Framework.Media;
+using System.IO;
+using System.Windows.Controls;
+using Microsoft.Phone.Shell;
 
 namespace BiliClassic
 {
@@ -43,6 +47,7 @@ namespace BiliClassic
     {
         private static List<PictureItem> _pendingImages;
         private static int _pendingIndex;
+        private static int _nowIndex;
 
         private readonly List<ViewerItem> _items = new List<ViewerItem>();
         private bool _loaded;
@@ -50,6 +55,18 @@ namespace BiliClassic
         public ImageViewerPage()
         {
             InitializeComponent();
+            this.Loaded += ImageViewerPage_Loaded;
+        }
+
+        private void ImageViewerPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            SystemTray.IsVisible = false; 
+            this.ApplicationBar.BackgroundColor = System.Windows.Media.Colors.Black;
+            Dispatcher.BeginInvoke(() =>
+            {
+                SystemTray.IsVisible = false;
+                this.ApplicationBar.BackgroundColor = System.Windows.Media.Colors.Black;
+            });
         }
 
         public static void Show(List<PictureItem> images, int index)
@@ -72,6 +89,14 @@ namespace BiliClassic
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+
+            SystemTray.IsVisible = false;
+            this.ApplicationBar.BackgroundColor = System.Windows.Media.Colors.Black;
+            Dispatcher.BeginInvoke(() =>
+            {
+                SystemTray.IsVisible = false;
+                this.ApplicationBar.BackgroundColor = System.Windows.Media.Colors.Black;
+            });
 
             if (_loaded)
             {
@@ -111,6 +136,37 @@ namespace BiliClassic
                 index = _items.Count - 1;
             }
             ViewerPivot.SelectedIndex = index;
+        }
+
+        private void SaveImage_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                WriteableBitmap wb = new WriteableBitmap(_items[_nowIndex].Image);
+                System.Diagnostics.Debug.WriteLine(_nowIndex);
+                string path_temp = "biliclassic_" + DateTime.Now.ToString("yyyy_MM_dd") + "_" + DateTime.Now.ToString("HH_mm_ss") + ".jpg";
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    wb.SaveJpeg(ms, wb.PixelWidth, wb.PixelHeight, 0, 85);
+                    ms.Position = 0;
+                    MediaLibrary library = new MediaLibrary();
+                    library.SavePicture(path_temp, ms);
+                }
+                MessageBox.Show("已保存到" + path_temp, "保存成功", MessageBoxButton.OK);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("错误：" + ex.Message, "保存失败", MessageBoxButton.OK);
+            }
+        }
+
+        private void ViewerPivot_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            Pivot pivot = sender as Pivot;
+            if (pivot != null)
+            {
+                _nowIndex = pivot.SelectedIndex;
+            }
         }
     }
 }

@@ -42,7 +42,12 @@ namespace BiliClassic
         private const int SplashDelayMilliseconds = 750;
         public bool Is_DY_Reading = false;
         public bool Is_MS_Reading = false;
+        public bool Is_BackFromDeactivated = false;
+        public bool Is_PlayingVideo = false;
+        public string Is_PlayingPage = "";
+        public double VideoValueTemp = 0;
 
+        public CommentItem _sec_comment_temp = new CommentItem();//避免在加载二级评论时重新加载原评论
         
 
         private void Application_Launching(object sender, LaunchingEventArgs e)
@@ -52,14 +57,6 @@ namespace BiliClassic
 
             System.Threading.Thread.Sleep(SplashDelayMilliseconds);
 
-            ThemeHelper.AutoApply();
-            LoadSession();
-            StartNfcIfEnabled();
-            BiliClassic.Api.DeviceReport.ReportIfNeeded();
-        }
-
-        private void Application_Activated(object sender, ActivatedEventArgs e)
-        {
             ThemeHelper.AutoApply();
             LoadSession();
             StartNfcIfEnabled();
@@ -84,9 +81,46 @@ namespace BiliClassic
             BiliClassic.Api.NfcSync.StartWithPrompt();
 #endif
         }
+        //恢复
+        private void Application_Activated(object sender, ActivatedEventArgs e)
+        {
+            //System.Diagnostics.Debug.WriteLine("UUU" + Is_PlayingVideo);
 
+            object savedValue_1;
+            if (PhoneApplicationService.Current.State.TryGetValue("Is_PlayingVideo", out savedValue_1))
+            {
+                Is_PlayingVideo = (bool)savedValue_1;
+            }
+            object savedValue_2;
+            if (PhoneApplicationService.Current.State.TryGetValue("Is_PlayingPage", out savedValue_2))
+            {
+                Is_PlayingPage = (string)savedValue_2;
+            }
+            /*
+            object savedValue_3;
+            if (PhoneApplicationService.Current.State.TryGetValue("VideoValueTemp", out savedValue_3))
+            {
+                VideoValueTemp = (double)savedValue_3;
+            }
+            */
+            //System.Diagnostics.Debug.WriteLine("UUU " + VideoValueTemp);
+            if (Is_PlayingVideo)
+            {
+                Is_BackFromDeactivated = true;
+            }
+            ThemeHelper.AutoApply();
+            LoadSession();
+            StartNfcIfEnabled();
+            BiliClassic.Api.DeviceReport.ReportIfNeeded();
+        }
+        //墓碑化
         private void Application_Deactivated(object sender, DeactivatedEventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine("ZZZ " + VideoValueTemp);
+
+            PhoneApplicationService.Current.State["Is_PlayingVideo"] = Is_PlayingVideo;
+            PhoneApplicationService.Current.State["Is_PlayingPage"] = Is_PlayingPage;
+            //PhoneApplicationService.Current.State["VideoValueTemp"] = VideoValueTemp;
 #if WP81
             // 挂起后订阅会失效，先放掉，回到前台再按开关重新订阅
             BiliClassic.Api.NfcSync.Stop();

@@ -259,7 +259,7 @@
 
 
         <!--协议-->
-        <Grid x:Name="AgreementPageG" Grid.Row="1" Margin="12,0,12,0" RenderTransformOrigin="0.5,0.5" d:IsHidden="True">
+        <Grid x:Name="AgreementPageG" Grid.Row="1" Margin="12,0,12,0" RenderTransformOrigin="0.5,0.5" d:IsHidden="True" Visibility="Collapsed">
         	<Grid.RenderTransform>
         		<CompositeTransform/>
         	</Grid.RenderTransform>
@@ -292,7 +292,7 @@
             <Button Background="Gray" BorderThickness="0" Foreground="White" HorizontalContentAlignment="Center" Margin="0,0,116,25" Name="button4" Padding="5" VerticalContentAlignment="Top" HorizontalAlignment="Right" VerticalAlignment="Bottom" Content="上一步" Click="button4_Click" />-->
 
             <!--欢迎-->
-            <Grid Height="488" HorizontalAlignment="Left" Name="G1" VerticalAlignment="Top" Width="456" RenderTransformOrigin="0.5,0.5">
+            <Grid Height="488" HorizontalAlignment="Left" Name="G1" VerticalAlignment="Top" Width="456" RenderTransformOrigin="0.5,0.5" Visibility="Collapsed">
             	<Grid.RenderTransform>
             		<CompositeTransform/>
             	</Grid.RenderTransform>
@@ -301,7 +301,7 @@
             </Grid>
             
             <!--更新-->
-            <Grid Height="488" HorizontalAlignment="Left" Name="G2" VerticalAlignment="Top" Width="456" RenderTransformOrigin="0.5,0.5">
+            <Grid Height="488" HorizontalAlignment="Left" Name="G2" VerticalAlignment="Top" Width="456" RenderTransformOrigin="0.5,0.5" Visibility="Collapsed">
             	<Grid.RenderTransform>
             		<CompositeTransform/>
             	</Grid.RenderTransform>
@@ -325,8 +325,19 @@
                 <TextBlock HorizontalAlignment="Center" Margin="12,10,60,0" Text="你可以先在这里进行一些基本的设置" VerticalAlignment="Top" FontSize="24" />
                 <ScrollViewer Height="419" HorizontalAlignment="Left" Margin="0,69,0,0" Name="scrollViewer2" VerticalAlignment="Top" Width="456">
                     <StackPanel Name="stackPanel2" VerticalAlignment="Top">
-                        <CheckBox x:Name="DanmakuCheck" Content="弹幕"
-                      Margin="0,20,0,0" Unchecked="Danmaku_Changed" Checked="Danmaku_Changed" />
+                        <!--<CheckBox x:Name="DanmakuCheck" Content="弹幕"
+                      Margin="0,20,0,0" Unchecked="Danmaku_Changed" Checked="Danmaku_Changed" />-->
+
+
+
+                        <CheckBox Content="显示主页背景图片" Height="71" Name="ShowBackgroundCheck" Checked="ShowBackgroundCheck_Checked" Margin="0,20,0,0" Unchecked="ShowBackgroundCheck_Checked" />
+                        <Grid Name="BcgGrid" VerticalAlignment="Top" Margin="12,0,0,0">
+                            <TextBlock Margin="171,6,40,0" TextWrapping="Wrap"
+                       Style="{StaticResource PhoneTextSubtleStyle}"
+                       Text="选一张图片作为主页背景" Width="233" VerticalAlignment="Top" />
+                            <Image Height="150" HorizontalAlignment="Left" Margin="0" Name="BackgroundImage" Stretch="UniformToFill" VerticalAlignment="Top" Width="150" Source="/BiliClassic;component/NormalBcg.png" />
+                            <Button Content="选择图片" Height="72" HorizontalAlignment="Left" Margin="158,39,0,0" Name="BackgroundButton" VerticalAlignment="Top" Width="213" Click="BackgroundButton_Click" />
+                        </Grid>
                         <CheckBox x:Name="HideCiTieCheck" Content="隐藏磁贴图标"
                       Margin="0,20,0,0" Checked="HideCiTieCheck_Changed" Unchecked="HideCiTieCheck_Changed" />
                         <CheckBox x:Name="LockCiTieCheck" Content="强制锁定主页磁贴"
@@ -338,7 +349,18 @@
                       Margin="0,20,0,0" Checked="XiNaoCheck_Changed" Unchecked="XiNaoCheck_Changed" />
                         <CheckBox x:Name="ZiDongCheck" Content="自动播放"
                       Margin="0,20,0,0" Checked="ZiDongCheck_Changed" Unchecked="ZiDongCheck_Changed" />
-                        <!-- 清晰度：Tag里放接口的qn值 -->
+
+                        <!--<TextBlock Text="开始磁贴显示内容" Margin="0,20,0,0"
+                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+                <RadioButton x:Name="CiTieType0" Content="不显示内容" Tag="0"
+                         GroupName="CiTieType" Checked="CiTieType_Checked" />
+                <RadioButton x:Name="CiTieType1" Content="动态" Tag="1"
+                         GroupName="CiTieType" Checked="CiTieType_Checked" />
+                <RadioButton x:Name="CiTieType2" Content="私信" Tag="2"
+                         GroupName="CiTieType" Checked="CiTieType_Checked" />
+                <RadioButton x:Name="CiTieType3" Content="正在播放" Tag="3"
+                         GroupName="CiTieType"/>-->
+                        <!--
                         <TextBlock Text="播放清晰度" Margin="0,20,0,0"
                        Style="{StaticResource PhoneTextSubtleStyle}"/>
                         <RadioButton x:Name="Quality16" Content="流畅 360P" Tag="16"
@@ -349,6 +371,7 @@
                          GroupName="Quality" Checked="Quality_Changed"/>
                         <RadioButton x:Name="Quality80" Content="超清 1080P" Tag="80"
                          GroupName="Quality" Checked="Quality_Changed"/>
+                        -->
                         <CheckBox x:Name="AutoCheckUpdateCheck" Content="自动检查更新"
                       Margin="0,20,0,0"
                       Checked="AutoCheckUpdate_Changed"
@@ -360,7 +383,7 @@
         </Grid>
 
         <!--完成-->
-        <Grid x:Name="FinishPageG" Grid.Row="1" RenderTransformOrigin="0.5,0.5" d:IsHidden="True">
+        <Grid x:Name="FinishPageG" Grid.Row="1" RenderTransformOrigin="0.5,0.5" d:IsHidden="True" Visibility="Collapsed">
         	<Grid.RenderTransform>
         		<CompositeTransform/>
         	</Grid.RenderTransform>

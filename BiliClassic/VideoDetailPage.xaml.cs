@@ -16,6 +16,7 @@ namespace BiliClassic
 {
     public partial class VideoDetailPage : PhoneApplicationPage
     {
+        App app = Application.Current as App;
         private const int CoverWidth = 352;
         private const int CoverHeight = 198;
 
@@ -96,6 +97,14 @@ namespace BiliClassic
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+            app.Is_PlayingVideo = false;
+
+            if (app.Is_BackFromDeactivated)
+            {
+                app.Is_BackFromDeactivated = false;
+                NavigationService.Navigate(new Uri(app.Is_PlayingPage, UriKind.Relative));
+            }
+
 
             if (!_loaded)
             {
@@ -558,8 +567,9 @@ namespace BiliClassic
                 return;
             }
 
-            string url = "/VideoPlayerPage.xaml?bvid=" + _detail.Bvid + "&cid=" + part.Cid;
-            NavigationService.Navigate(new Uri(url, UriKind.Relative));
+            //string url = "/VideoPlayerPage.xaml?bvid=" + _detail.Bvid + "&cid=" + part.Cid;
+            app.Is_PlayingPage = "/VideoPlayerPage.xaml?bvid=" + _detail.Bvid + "&cid=" + part.Cid + "&value=" + app.VideoValueTemp;
+            NavigationService.Navigate(new Uri(app.Is_PlayingPage, UriKind.Relative));
         }
 
         private void LikeMenuItem_Click(object sender, EventArgs e)
@@ -762,6 +772,21 @@ namespace BiliClassic
             }
         }
 
+        private void hyperlinkButton1_Click(object sender, RoutedEventArgs e)
+        {
+            var button = sender as HyperlinkButton;
+            if (button == null)
+            {
+                return;
+            }
+
+            var item = button.DataContext as CommentItem;
+
+            app._sec_comment_temp = item;
+            NavigationService.Navigate(new Uri("/SecPingLunPage.xaml", UriKind.Relative));
+                //System.Diagnostics.Debug.WriteLine("PPP rpid=" + item.Rpid + " mes=" + item.Message);
+        }
+
         private void CommentPicture_Click(object sender, RoutedEventArgs e)
         {
             FrameworkElement element = sender as FrameworkElement;
@@ -775,6 +800,7 @@ namespace BiliClassic
 
         private void MoreCommentButton_Click(object sender, RoutedEventArgs e)
         {
+            //System.Diagnostics.Debug.WriteLine("BBB");
             if (_commentLoading || !_commentHasMore)
             {
                 return;

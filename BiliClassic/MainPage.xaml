@@ -58,13 +58,17 @@
             </toolkit:NavigationOutTransition.Forward>
         </toolkit:NavigationOutTransition>
     </toolkit:TransitionService.NavigationOutTransition>
-
     <!--LayoutRoot是包含所有页面内容的根网格-->
-    <Grid x:Name="LayoutRoot" Background="Transparent">
+    <Grid x:Name="LayoutRoot">
+        <Grid.Background>
+            <ImageBrush ImageSource="NormalBcg.png" Stretch="UniformToFill" AlignmentX="Center" />
+        </Grid.Background>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
+        
+        
 
         <StackPanel x:Name="TitlePanel" Grid.Row="0" Margin="12,17,0,0"
                     Background="Transparent" MouseLeftButtonUp="TitlePanel_Tap">
@@ -72,7 +76,7 @@
                        Style="{StaticResource PhoneTextNormalStyle}"/>
         </StackPanel>
 
-        <!-- Pivot -->
+            <!-- Pivot -->
         <controls:Pivot x:Name="HomePivot" Grid.Row="1"
                         SelectionChanged="HomePivot_SelectionChanged">
 
@@ -229,9 +233,9 @@
                                             <!-- 标题截断 -->
                                             <TextBlock Text="{Binding Title}" TextWrapping="Wrap"
                                                        LineHeight="30" MaxHeight="60"
-                                                       Style="{StaticResource PhoneTextNormalStyle}"/>
+                                                       Style="{StaticResource PhoneTextNormalStyle}" Foreground="{Binding TTitle}" />
                                             <TextBlock Text="{Binding InfoLine}"
-                                                       Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                                       Style="{StaticResource PhoneTextSubtleStyle}" Foreground="{Binding LTitle}" />
                                         </StackPanel>
                                     </Grid>
                                 </DataTemplate>

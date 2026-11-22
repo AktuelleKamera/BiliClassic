@@ -76,7 +76,7 @@
 				</EasingDoubleKeyFrame>
 			</DoubleAnimationUsingKeyFrames>
 			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="QualityPanel">
-				<EasingDoubleKeyFrame KeyTime="0" Value="434"/>
+				<EasingDoubleKeyFrame KeyTime="0" Value="-242"/>
 				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="0"/>
 			</DoubleAnimationUsingKeyFrames>
 		</Storyboard>
@@ -87,12 +87,13 @@
 			</DoubleAnimationUsingKeyFrames>
 			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="QualityPanel">
 				<EasingDoubleKeyFrame KeyTime="0" Value="0"/>
-				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="444.497"/>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="-175.853"/>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.3" Value="-246.353"/>
 			</DoubleAnimationUsingKeyFrames>
 		</Storyboard>
 		<Storyboard x:Name="ShowVBar">
 			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="grid2">
-				<EasingDoubleKeyFrame KeyTime="0" Value="318">
+				<EasingDoubleKeyFrame KeyTime="0" Value="-193.5">
 					<EasingDoubleKeyFrame.EasingFunction>
 						<QuarticEase EasingMode="EaseOut"/>
 					</EasingDoubleKeyFrame.EasingFunction>
@@ -123,7 +124,35 @@
 						<QuinticEase EasingMode="EaseIn"/>
 					</EasingDoubleKeyFrame.EasingFunction>
 				</EasingDoubleKeyFrame>
-				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="318">
+				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="-193.5">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<QuinticEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="ShowMBar">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="grid4">
+				<EasingDoubleKeyFrame KeyTime="0" Value="331.5">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<QuinticEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<QuinticEase EasingMode="EaseOut"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+			</DoubleAnimationUsingKeyFrames>
+		</Storyboard>
+		<Storyboard x:Name="HideMBar">
+			<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(CompositeTransform.TranslateY)" Storyboard.TargetName="grid4">
+				<EasingDoubleKeyFrame KeyTime="0" Value="0">
+					<EasingDoubleKeyFrame.EasingFunction>
+						<QuinticEase EasingMode="EaseIn"/>
+					</EasingDoubleKeyFrame.EasingFunction>
+				</EasingDoubleKeyFrame>
+				<EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="333">
 					<EasingDoubleKeyFrame.EasingFunction>
 						<QuinticEase EasingMode="EaseIn"/>
 					</EasingDoubleKeyFrame.EasingFunction>
@@ -175,30 +204,41 @@
               MouseLeftButtonUp="TapLayer_MouseLeftButtonUp"/>
 
         <!-- 顶层 -->
-        <Grid x:Name="grid" Height="90" HorizontalAlignment="Left" VerticalAlignment="Top" RenderTransformOrigin="0.5,0.5">
-        	<Grid.RenderTransform>
-        		<CompositeTransform/>
-        	</Grid.RenderTransform>
-            <Rectangle Height="90" HorizontalAlignment="Left" Name="rectangle1" Stroke="{x:Null}" StrokeThickness="1" VerticalAlignment="Top" Width="800" Fill="#CC000000" />
-            <TextBlock x:Name="TitleText" VerticalAlignment="Top" Margin="12,12,96,0"
-                   Foreground="White" TextWrapping="Wrap" MaxHeight="50" RenderTransformOrigin="0.5,0.5" Text="">
+        <StackPanel>
+            <Grid x:Name="grid" Height="63" HorizontalAlignment="Left" VerticalAlignment="Top" RenderTransformOrigin="0.5,0.5">
+                <Grid.RenderTransform>
+                    <CompositeTransform/>
+                </Grid.RenderTransform>
+                <Rectangle Height="63" HorizontalAlignment="Stretch" Name="rectangle1" Stroke="{x:Null}" StrokeThickness="1" VerticalAlignment="Top" Width="800" Fill="#CC000000" />
+                <TextBlock x:Name="TitleText" VerticalAlignment="Top" Margin="73,21,0,0"
+                   Foreground="White" TextWrapping="NoWrap" MaxHeight="50" RenderTransformOrigin="0.5,0.5" Text="Title" Height="30" HorizontalAlignment="Left" Width="395">
         	<TextBlock.RenderTransform>
         		<CompositeTransform/>
         	</TextBlock.RenderTransform>
-            </TextBlock>
-            <TextBlock Height="30" HorizontalAlignment="Right" Margin="0,5,8,0" Name="TimeT" Text="88:88" VerticalAlignment="Top" />
-            <Image Height="20" HorizontalAlignment="Right" Margin="0,43,17,0" Name="PowerI" Stretch="Fill" VerticalAlignment="Top" Width="30" Source="/BiliClassic;component/Res/Icon/charging.png" Visibility="Collapsed" />
-        </Grid>
-        
-        <!-- 底部 -->
-        <StackPanel x:Name="stackPanel" VerticalAlignment="Bottom" RenderTransformOrigin="0.5,0.5">
-        	<StackPanel.RenderTransform>
-        		<CompositeTransform/>
-        	</StackPanel.RenderTransform>
-            <Grid Height="111" Name="grid1" Width="800" HorizontalAlignment="Left" VerticalAlignment="Bottom">
+                </TextBlock>
+                <TextBlock Height="30" HorizontalAlignment="Right" Margin="0,21,167,0" Name="TimeT" Text="88:88" VerticalAlignment="Top" Foreground="White" FontWeight="Normal" />
+                <Image Height="20" HorizontalAlignment="Right" Margin="0,43,17,0" Name="PowerI" Stretch="Fill" VerticalAlignment="Top" Width="30" Source="/BiliClassic;component/Res/Icon/charging.png" Visibility="Collapsed" />
+                <Button x:Name="QualityButton" Content="720P" MinWidth="0" Padding="0" BorderThickness="0" Click="QualityButton_Click" BorderBrush="Transparent" FontSize="20" Foreground="White" HorizontalAlignment="Right" Width="90" Margin="0,9,71,0" Height="47" VerticalAlignment="Top" />
+                <Button Background="Transparent" BorderThickness="0" MinWidth="0" Name="SoundButton" Padding="0" HorizontalAlignment="Right" Width="60" Margin="0,3,6,0" BorderBrush="{x:Null}" Foreground="{x:Null}" HorizontalContentAlignment="Left" VerticalContentAlignment="Top" Click="SoundButton_Click" Height="56" VerticalAlignment="Top">
+                    <Rectangle Fill="White" Height="40" Name="rectangle2" Width="40" StrokeThickness="0" HorizontalAlignment="Left" VerticalAlignment="Top">
+                        <Rectangle.OpacityMask>
+                            <ImageBrush x:Name="YinLiangMask" ImageSource="/BiliClassic;component/Res/Icon/sound3.png" />
+                        </Rectangle.OpacityMask>
+                    </Rectangle>
+                </Button>
+                <Button Background="Transparent" BorderBrush="{x:Null}" BorderThickness="0" Foreground="{x:Null}" Height="56" HorizontalAlignment="Left" HorizontalContentAlignment="Left" Margin="3,2,0,0" MinWidth="0" Name="button1" Padding="0" VerticalAlignment="Top" VerticalContentAlignment="Top" Width="57" Click="button1_Click">
+                    <Rectangle Fill="White" Height="40" HorizontalAlignment="Left" Name="rectangle3" StrokeThickness="0" VerticalAlignment="Top" Width="40">
+                        <Rectangle.OpacityMask>
+                            <ImageBrush x:Name="imageBrush1" ImageSource="/BiliClassic;component/Res/Icon/back.png" />
+                        </Rectangle.OpacityMask>
+                    </Rectangle>
+                </Button>
+                <TextBlock x:Name="TransportText" Text="MP4" Foreground="White" VerticalAlignment="Top" FontSize="20" Margin="0,21,254,0" HorizontalAlignment="Right" />
+            </Grid>
+            <Grid Height="111" Name="grid3" Width="800" HorizontalAlignment="Left" VerticalAlignment="Bottom">
 
                 <!-- 清晰度选单：点右下角按钮才展开 -->
-                <Border x:Name="QualityPanel" HorizontalAlignment="Right" Background="#CC000000" Padding="8,6" RenderTransformOrigin="0.5,0.5" VerticalAlignment="Bottom">
+                <Border x:Name="QualityPanel" HorizontalAlignment="Right" Background="#CC000000" Padding="8,6" RenderTransformOrigin="0.5,0.5" VerticalAlignment="Top" Margin="0,0,71,0">
                     <Border.RenderTransform>
                         <CompositeTransform />
                     </Border.RenderTransform>
@@ -209,16 +249,33 @@
                     </StackPanel>
                 </Border>
                 <!-- 音量条 -->
-                <Grid HorizontalAlignment="Left" Margin="540,0,0,0" Name="grid2" VerticalAlignment="Bottom" RenderTransformOrigin="0.5,0.5">
-                	<Grid.RenderTransform>
-                		<CompositeTransform/>
-                	</Grid.RenderTransform>
+                <Grid HorizontalAlignment="Right" Margin="0,0,9,5" Name="grid2" VerticalAlignment="Bottom" RenderTransformOrigin="0.5,0.5">
+                    <Grid.RenderTransform>
+                        <CompositeTransform/>
+                    </Grid.RenderTransform>
                     <Rectangle Height="106" HorizontalAlignment="Left" Margin="0" Name="rectangle4" Stroke="{x:Null}" StrokeThickness="1" VerticalAlignment="Top" Width="48" Fill="#CC000000" />
                     <Slider Height="106" HorizontalAlignment="Left" Margin="0" Name="slider1" VerticalAlignment="Bottom" Width="48" Orientation="Vertical" ValueChanged="slider1_ValueChanged" Value="0" />
                 </Grid>
             </Grid>
+        </StackPanel>
+
+        <!-- 底部 -->
+        <StackPanel x:Name="stackPanel" VerticalAlignment="Bottom" RenderTransformOrigin="0.5,0.5">
+        	<StackPanel.RenderTransform>
+        		<CompositeTransform/>
+            </StackPanel.RenderTransform>
+            <Grid Height="111" Name="grid1" Width="800" HorizontalAlignment="Left" VerticalAlignment="Bottom">
+                <Grid HorizontalAlignment="Right" Margin="0" Name="grid4" VerticalAlignment="Bottom" RenderTransformOrigin="0.5,0.5" Width="506">
+                    <Grid.RenderTransform>
+                        <CompositeTransform/>
+                    </Grid.RenderTransform>
+                    <Rectangle Height="106" HorizontalAlignment="Stretch" Name="rectangle5" Stroke="{x:Null}" StrokeThickness="1" VerticalAlignment="Stretch" Fill="#CC000000" />
+                    <TextBox Height="72" HorizontalAlignment="Left" Margin="15,17,0,0" Name="SendTextBox" Text="" VerticalAlignment="Top" Width="371" GotFocus="SendTextBox_GotFocus" LostFocus="SendTextBox_LostFocus" AcceptsReturn="True" KeyDown="SendTextBox_KeyDown" />
+                    <Button Content="发送" Height="72" HorizontalAlignment="Left" Margin="389,18,0,0" Name="SendButton" VerticalAlignment="Top" Width="106" Click="SendButton_Click" />
+                </Grid>
+            </Grid>
             <!-- 播放控制条 -->
-            <Border x:Name="ControlPanel" Background="#CC000000" Padding="12,4" RenderTransformOrigin="0.5,0.5">
+            <Border x:Name="ControlPanel" Background="#CC000000" Padding="12,4" RenderTransformOrigin="0.5,0.5" Height="137">
             	<Border.RenderTransform>
             		<CompositeTransform/>
             	</Border.RenderTransform>
@@ -226,21 +283,23 @@
                     <Slider x:Name="SeekBar" Minimum="0" Maximum="1" Value="0"
                             ValueChanged="SeekBar_ValueChanged"/>
                     <!-- 负上边距盖掉Slider模板自带的空白 -->
-                    <Grid Margin="0,-28,0,0">
+                    <Grid Margin="0,-28,0,0" Height="91">
                         <!-- 图标用白色蒙版，原图的颜色不影响 -->
-                        <Button x:Name="PlayPauseButton" MinWidth="0" Padding="8,4"
+                        <Button x:Name="PlayPauseButton" MinWidth="0" Padding="0"
                                 Background="Transparent" BorderThickness="0"
-                                Click="PlayPauseButton_Click" Margin="0,0,694,0" Width="80">
-                            <Rectangle Width="40" Height="40" Fill="White">
-                                <Rectangle.OpacityMask>
-                                    <ImageBrush x:Name="PlayPauseMask"
-                                                ImageSource="/Res/Icon/play.png"/>
-                                </Rectangle.OpacityMask>
-                            </Rectangle>
+                                Click="PlayPauseButton_Click" Margin="10,6,709,27" Width="55">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Image Margin="0,-1,0,1" Source="/BiliClassic;component/Res/Icon/play.png" Stretch="Uniform" Name="PlayImage" />
+                            </Grid>
                         </Button>
                         <TextBlock x:Name="PositionText" Foreground="White" VerticalAlignment="Center"
-                                   TextAlignment="Left" Text="00:00 / --:--" Margin="80,22,0,22" Width="142" HorizontalAlignment="Left" />
+                                   TextAlignment="Left" Text="00:00 / --:--" Margin="88,20,0,44" Width="142" HorizontalAlignment="Left" />
                         <!-- 实际走的是哪条路，开播前为空 -->
+                        <!--
                         <Button x:Name="DanmakuButton" MinWidth="0" Padding="8,4"
                                 Background="Transparent" BorderThickness="0"
                                 Click="DanmakuButton_Click" Margin="0,0,100,0" BorderBrush="{x:Null}" Foreground="{x:Null}" HorizontalAlignment="Right" Width="80">
@@ -249,27 +308,31 @@
                                     <ImageBrush x:Name="DanmakuMask" ImageSource="/BiliClassic;component/Res/Icon/danmuon.png"/>
                                 </Rectangle.OpacityMask>
                             </Rectangle>
-                        </Button>
+                        </Button>-->
+                        
                         <!-- 右下角：点开清晰度选单 -->
                         <!-- 宽100是固定的，边框和padding占掉就放不下"1080P"了 -->
-                        <Button x:Name="QualityButton" Content="720P"
-                                MinWidth="0" Padding="6,2" BorderThickness="0"
-                                Click="QualityButton_Click" BorderBrush="Transparent" FontSize="20" Foreground="White" HorizontalAlignment="Right" Width="100" />
-                        <Button Background="Transparent" BorderThickness="0" MinWidth="0" Name="SoundButton" Padding="8,4" HorizontalAlignment="Right" Width="80" Margin="0,0,180,0" BorderBrush="{x:Null}" Foreground="{x:Null}" HorizontalContentAlignment="Left" VerticalContentAlignment="Top" Click="SoundButton_Click">
-                            <Rectangle Fill="White" Height="40" Name="rectangle2" Width="40">
-                                <Rectangle.OpacityMask>
-                                    <ImageBrush x:Name="YinLiangMask" ImageSource="/BiliClassic;component/Res/Icon/sound3.png" />
-                                </Rectangle.OpacityMask>
-                            </Rectangle>
+                        <Button x:Name="DanmakuButton" BorderBrush="{x:Null}" BorderThickness="0" Height="86" Margin="0,-11,105,0" Padding="0" Width="106" 
+                                Click="DanmakuButton_Click" VerticalAlignment="Top" HorizontalAlignment="Right">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Image Margin="0,-1,0,1" Source="/BiliClassic;component/Res/Icon/danmaku_open.png" Stretch="Uniform" Name="DanmakuImage" />
+                                <TextBlock Grid.Row="1" HorizontalAlignment="Center" Text="弹幕开关" FontSize="20" />
+                            </Grid>
                         </Button>
-                        <Button Background="Transparent" BorderThickness="0" HorizontalAlignment="Right" Margin="0,0,260,0" MinWidth="0" Name="button2" Padding="8,4" Width="80" BorderBrush="{x:Null}" Foreground="{x:Null}" Visibility="Collapsed">
-                            <Rectangle Fill="White" Height="40" Name="rectangle3" Width="40">
-                                <Rectangle.OpacityMask>
-                                    <ImageBrush ImageSource="Res/Icon/setting_l.png" />
-                                </Rectangle.OpacityMask>
-                            </Rectangle>
+                        <Button BorderBrush="{x:Null}" BorderThickness="0" Height="86" HorizontalAlignment="Right" Margin="0,-11,2,0" Name="SendDanmakuButton" Padding="0" VerticalAlignment="Top" Width="106" Click="SendDanmakuButton_Click">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <Image Margin="0,-1,0,1" Source="/BiliClassic;component/Res/Icon/send_danmaku.png" Stretch="Uniform" />
+                                <TextBlock FontSize="20" Grid.Row="1" HorizontalAlignment="Center" Text="发射弹幕" />
+                            </Grid>
                         </Button>
-                        <TextBlock x:Name="TransportText" Text="MP4" Foreground="White" VerticalAlignment="Center" FontSize="20" Margin="235,25,0,25" HorizontalAlignment="Left" />
                     </Grid>
                 </StackPanel>
             </Border>

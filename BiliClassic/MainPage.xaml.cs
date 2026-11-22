@@ -20,6 +20,8 @@ using System.Windows.Shapes;
 using Microsoft.Xna.Framework.GamerServices;
 using System.ComponentModel;
 using System.Threading;
+using System.IO;
+using System.IO.IsolatedStorage;
 
 namespace BiliClassic
 {
@@ -70,6 +72,12 @@ namespace BiliClassic
             _loggedIn = BiliSession.IsLoggedIn;
             BuildAppBar();
             ApplyTileOrder();
+            this.Loaded += MainPagePage_Loaded;
+        }
+
+        private void MainPagePage_Loaded(object sender, RoutedEventArgs e)
+        {
+            LoadBackgroundImage();
         }
 
         App app = Application.Current as App;
@@ -143,6 +151,96 @@ namespace BiliClassic
                     LoadMineCard();
                 }
             }));
+        }
+
+        private void LoadBackgroundImage()
+        {
+            if (AppSettings.ShowBackgroundEnabled)
+            {
+                using (IsolatedStorageFile isoStore = IsolatedStorageFile.GetUserStoreForApplication())
+                {
+                    if (isoStore.FileExists("BCG.jpg"))
+                    {
+                        using (IsolatedStorageFileStream fileStream = isoStore.OpenFile("BCG.jpg", FileMode.Open, FileAccess.Read))
+                        {
+                            BitmapImage bitmap = new BitmapImage();
+                            bitmap.SetSource(fileStream);
+                            LayoutRoot.Background = new ImageBrush { ImageSource = bitmap };
+                        }
+                    }
+                    else
+                    {
+                        BitmapImage bitmap = new BitmapImage(new Uri("NormalBcg.png", UriKind.Relative));
+                        LayoutRoot.Background = new ImageBrush { ImageSource = bitmap };
+                    }
+                }
+
+                ImageBrush bgBrush = LayoutRoot.Background as ImageBrush;
+                if (bgBrush != null)
+                {
+                    bgBrush.Stretch = Stretch.UniformToFill;
+                    bgBrush.AlignmentX = AlignmentX.Center;
+                }
+
+                SystemTray.IsVisible = false;
+                Dispatcher.BeginInvoke(() =>
+                {
+                    SystemTray.IsVisible = false;
+                    this.ApplicationBar.BackgroundColor = Colors.Black;
+                    this.ApplicationBar.ForegroundColor = Colors.White;
+                    this.ApplicationBar.Opacity = 0.5;
+                    ApplicationTitle.Foreground = new SolidColorBrush(Colors.White);
+                    for (int i = 0; i < HomePivot.Items.Count; i++)
+                    {
+                        PivotItem item = HomePivot.Items[i] as PivotItem;
+                        if (item == null)
+                        {
+                            continue;
+                        }
+
+
+                        string text = item.Header as string;
+                        if (text != null)
+                        {
+                            TextBlock block = new TextBlock();
+                            block.Text = text;
+                            item.Header = block;
+                        }
+                        TextBlock header = item.Header as TextBlock;
+                        if (header != null)
+                        {
+                            header.FontWeight = FontWeights.Black;
+                            header.FontSize = 50;
+                            header.Foreground = new SolidColorBrush(Colors.White);
+                        }
+                    }
+                });
+            }
+            else
+            {
+
+                SystemTray.IsVisible = true;
+                Dispatcher.BeginInvoke(() =>
+                {
+                    SystemTray.IsVisible = true;
+                    //this.ApplicationBar.BackgroundColor = Color.FromArgb(255, 31, 31, 31);
+                    //this.ApplicationBar.ForegroundColor = Colors.White;
+                    if ((Visibility)Application.Current.Resources["PhoneLightThemeVisibility"] == System.Windows.Visibility.Visible)
+                    {
+                        this.ApplicationBar.BackgroundColor = Color.FromArgb(255, 90, 90, 90);
+                        //this.ApplicationBar.ForegroundColor = Colors.Black;
+                        this.ApplicationBar.ForegroundColor = Colors.White;
+                    }
+                    else
+                    {
+                        this.ApplicationBar.BackgroundColor = Color.FromArgb(255, 31, 31, 31);
+                        this.ApplicationBar.ForegroundColor = Colors.White;
+                    }
+                    this.ApplicationBar.Opacity = 1;
+                    LayoutRoot.Background = null;
+                });
+                ThemeHelper.ApplyPage(this);
+            }
         }
 
         protected override void OnBackKeyPress(System.ComponentModel.CancelEventArgs e)
@@ -728,7 +826,6 @@ namespace BiliClassic
             bar.MenuItems.Add(MakeMenu("关于", AboutMenuItem_Click));
 
             ApplicationBar = bar;
-            ThemeHelper.ApplyPage(this);
         }
 
         private static void AddIcon(ApplicationBar bar, string icon, string text, EventHandler handler)

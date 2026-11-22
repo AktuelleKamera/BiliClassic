@@ -8,6 +8,8 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.IO;
+using System.IO.IsolatedStorage;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Threading;
@@ -37,16 +39,17 @@ namespace BiliClassic
 
             V1.Text = "当前版本：" + UpdateService.VersionNumber;
             CheckUpdate();
-            /*
-            AgreementPageG.Visibility = Visibility.Collapsed;
-            WelcomePageG.Visibility = Visibility.Collapsed;
-            FinishPageG.Visibility = Visibility.Collapsed;
-            G1.Visibility = Visibility.Collapsed;
-            G2.Visibility = Visibility.Collapsed;
-            G3.Visibility = Visibility.Collapsed;
+
+            AgreementPageG.Visibility = Visibility.Visible;
+            WelcomePageG.Visibility = Visibility.Visible;
+            FinishPageG.Visibility = Visibility.Visible;
+
+            G1.Visibility = Visibility.Visible;
+            G2.Visibility = Visibility.Visible;
+            G3.Visibility = Visibility.Visible;
             //G4.Visibility = Visibility.Collapsed;
             //G5.Visibility = Visibility.Collapsed;
-             */
+
             AgreementHide.Begin();
             WelcomeHide.Begin();
             FinishHide.Begin();
@@ -54,15 +57,40 @@ namespace BiliClassic
             G2Hide.Begin();
             G3Hide.Begin();
 
-            DoDongHua(0, false);
+            object savedValue;
+            if (PhoneApplicationService.Current.State.TryGetValue("PageIndex", out savedValue))
+            {
+                PageIndex = (int)savedValue;
+                //System.Diagnostics.Debug.WriteLine(PageIndex);
+            }
 
-            DanmakuCheck.IsChecked = AppSettings.DanmakuEnabled;
+
+
+            if (PageIndex != 0)
+            {
+                //SwitchPage(PageIndex);
+                int i_temp = PageIndex;
+                for (int i = 0; i < i_temp + 1; i++)
+                {
+                    SwitchPage(i);
+                    System.Diagnostics.Debug.WriteLine(PageIndex);
+                }
+            }
+            else
+            {
+                DoDongHua(0, false);
+            }
+
+            //DanmakuCheck.IsChecked = AppSettings.DanmakuEnabled;
             XiNaoCheck.IsChecked = AppSettings.XiNaoEnabled;
             ZiDongCheck.IsChecked = AppSettings.ZiDongEnabled;
             AutoCheckUpdateCheck.IsChecked = AppSettings.AutoCheckUpdate;
             LockCiTieCheck.IsChecked = AppSettings.LockCiTieEnabled;
             HideCiTieCheck.IsChecked = AppSettings.HideCiTieEnabled;
-            LoadQuality(AppSettings.PlayQuality);
+            ShowBackgroundCheck.IsChecked = AppSettings.ShowBackgroundEnabled;
+            LoadBackgroundImage();
+            //LoadQuality(AppSettings.PlayQuality);
+            LoadCiTieType(AppSettings.CiTieTypeValue);
 
             if ((Visibility)Application.Current.Resources["PhoneLightThemeVisibility"] == System.Windows.Visibility.Visible)
             {//浅色
@@ -72,6 +100,16 @@ namespace BiliClassic
             {//深色
                 BcgImage.Visibility = Visibility.Collapsed;
             }
+
+        }
+
+
+        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+
+            //System.Diagnostics.Debug.WriteLine(PageIndex);
+            PhoneApplicationService.Current.State["PageIndex"] = PageIndex;
 
         }
 
@@ -347,7 +385,7 @@ namespace BiliClassic
         {
             AppSettings.AutoCheckUpdate = AutoCheckUpdateCheck.IsChecked == true;
         }
-
+        /*
         private void LoadQuality(int quality)
         {
             switch (quality)
@@ -366,6 +404,51 @@ namespace BiliClassic
                     break;
             }
         }
+        */
+
+
+        private void LoadBackgroundImage()
+        {
+            using (IsolatedStorageFile isoStore = IsolatedStorageFile.GetUserStoreForApplication())
+            {
+                if (isoStore.FileExists("BCG.jpg"))
+                {
+                    using (IsolatedStorageFileStream fileStream = isoStore.OpenFile("BCG.jpg", FileMode.Open, FileAccess.Read))
+                    {
+                        BitmapImage bitmap = new BitmapImage();
+                        bitmap.SetSource(fileStream);
+                        BackgroundImage.Source = bitmap;
+                    }
+                }
+                else
+                {
+                    BitmapImage bitmap = new BitmapImage(new Uri("NormalBcg.png", UriKind.Relative));
+                    BackgroundImage.Source = bitmap;
+                }
+            }
+        }
+
+        private void LoadCiTieType(int type)
+        {/*
+            switch (type)
+            {
+                case 0:
+                    CiTieType0.IsChecked = true;
+                    break;
+                case 1:
+                    CiTieType1.IsChecked = true;
+                    break;
+                case 2:
+                    CiTieType2.IsChecked = true;
+                    break;
+                case 3:
+                    CiTieType3.IsChecked = true;
+                    break;
+                default:
+                    CiTieType2.IsChecked = true;
+                    break;
+            }*/
+        }
 
         private void Quality_Changed(object sender, RoutedEventArgs e)
         {
@@ -380,6 +463,23 @@ namespace BiliClassic
             if (int.TryParse(button.Tag as string, out quality))
             {
                 AppSettings.PlayQuality = quality;
+            }
+        }
+
+        private void CiTieType_Checked(object sender, RoutedEventArgs e)
+        {
+
+            RadioButton button = sender as RadioButton;
+            if (button == null)
+            {
+                return;
+            }
+
+            int type;
+            if (int.TryParse(button.Tag as string, out type))
+            {
+                AppSettings.CiTieTypeValue = type;
+                //StatusText.Text = "清晰度已改为 " + button.Content;
             }
         }
 
@@ -405,7 +505,7 @@ namespace BiliClassic
 
         private void Danmaku_Changed(object sender, RoutedEventArgs e)
         {
-            AppSettings.DanmakuEnabled = DanmakuCheck.IsChecked == true;
+            //AppSettings.DanmakuEnabled = DanmakuCheck.IsChecked == true;
         }
 
         //立即更新
@@ -423,6 +523,43 @@ namespace BiliClassic
         private void button7_Click(object sender, RoutedEventArgs e)
         {
             CheckUpdate();
+        }
+
+
+
+        private void ShowBackgroundCheck_Checked(object sender, RoutedEventArgs e)
+        {
+            AppSettings.ShowBackgroundEnabled = ShowBackgroundCheck.IsChecked == true;
+        }
+
+        private void BackgroundButton_Click(object sender, RoutedEventArgs e)
+        {
+            PhotoChooserTask photoChooserTask = new PhotoChooserTask();
+            //photoChooserTask.PixelWidth = 480;
+            //photoChooserTask.PixelHeight = 800;
+            photoChooserTask.Completed += new EventHandler<PhotoResult>(photoChooserTask_Completed);
+            photoChooserTask.Show();
+        }
+
+        void photoChooserTask_Completed(object sender, PhotoResult e)
+        {
+            if (e.TaskResult == TaskResult.OK)
+            {
+                BitmapImage bitmap = new BitmapImage();
+                bitmap.SetSource(e.ChosenPhoto);
+                WriteableBitmap wb = new WriteableBitmap(bitmap);
+
+                using (IsolatedStorageFile isoStore = IsolatedStorageFile.GetUserStoreForApplication())
+                {
+                    string fileName = "BCG.jpg";
+                    using (IsolatedStorageFileStream fileStream = isoStore.CreateFile(fileName))
+                    {
+                        wb.SaveJpeg(fileStream, wb.PixelWidth, wb.PixelHeight, 0, 100);
+                    }
+                }
+
+                LoadBackgroundImage();
+            }
         }
     }
 }

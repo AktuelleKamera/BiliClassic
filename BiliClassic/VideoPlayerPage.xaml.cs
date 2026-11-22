@@ -14,6 +14,7 @@ using BiliClassic.Api;
 using BiliClassic.Danmaku;
 using Microsoft.Phone.Controls;
 using Microsoft.Phone.Info;
+using Microsoft.Phone.Shell;
 
 namespace BiliClassic
 {
@@ -26,6 +27,7 @@ namespace BiliClassic
         private readonly List<string> _allCandidates = new List<string>();
 
         private int _downloadIndex;
+        App app = Application.Current as App;
 
         private IsolatedStorageFileStream _playbackStream;
 
@@ -77,6 +79,8 @@ namespace BiliClassic
         private string _lastFetchError = "";
 
         private bool _fromCache;
+
+        private bool _IsTyping;
 
         private int _cacheRetries;
 
@@ -146,6 +150,7 @@ namespace BiliClassic
         private const int MaxDashAttempts = 3;
 
         private const int DashOpenTimeoutSeconds = 8;
+        //private double _value_temp = 0;
 
         public VideoPlayerPage()
         {
@@ -161,6 +166,12 @@ namespace BiliClassic
             BuildQualityMenu();
 
             BuildLoadingFrames();
+            this.Loaded += VideoPlayerPage_Loaded;
+        }
+
+        private void VideoPlayerPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            SystemTray.IsVisible = false;
         }
 
         private double _resumeSeconds;
@@ -186,6 +197,16 @@ namespace BiliClassic
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+            SystemTray.IsVisible = false;
+
+            //System.Diagnostics.Debug.WriteLine("NNN" + app.Is_BackFromDeactivated);
+
+            if (app.Is_BackFromDeactivated)
+            {
+                //System.Diagnostics.Debug.WriteLine("TTT");
+                NavigationService.GoBack();
+            }
+            app.Is_PlayingVideo = true;
 
             _clockTimer = new System.Windows.Threading.DispatcherTimer();
             _clockTimer.Interval = TimeSpan.FromSeconds(1);
@@ -194,6 +215,7 @@ namespace BiliClassic
 
             HideQBars.Begin();
             HideVBar.Begin();
+            HideMBar.Begin();
 
             slider1.Value = AppSettings.YinLiangValue * 10;
             change_yinliang(AppSettings.YinLiangValue);
@@ -230,6 +252,14 @@ namespace BiliClassic
             {
                 _offlineForced = value == "1";
             }
+            /*
+            if (NavigationContext.QueryString.TryGetValue("value", out value))
+            {
+                System.Diagnostics.Debug.WriteLine(_value_temp);
+                _value_temp = double.Parse(value);
+                System.Diagnostics.Debug.WriteLine(_value_temp + " TTT " + value);
+            }
+             */
             if (_bangumiTitle.Length > 0)
             {
                 TitleText.Text = _bangumiTitle;
@@ -310,7 +340,14 @@ namespace BiliClassic
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             base.OnNavigatedFrom(e);
-
+            /*
+            if (!app.Is_BackFromDeactivated)
+            {
+                System.Diagnostics.Debug.WriteLine(app.VideoValueTemp + " DDD " + SeekBar.Value);
+                //app.Is_PlayingVideo = false;
+                app.VideoValueTemp = SeekBar.Value;
+            }
+            */
             double yinliang = slider1.Value / 10;
             AppSettings.YinLiangValue = yinliang;
 
@@ -461,10 +498,12 @@ namespace BiliClassic
 
         private void Player_Play()
         {
+
             if ((Player.CurrentState != System.Windows.Media.MediaElementState.Playing) && ((_is_first_play && AppSettings.ZiDongEnabled) || (!_is_first_play && AppSettings.XiNaoEnabled)))
             {
                 Player.AutoPlay = true;
                 Player.Play();
+
                 _is_first_play = false;
             }
         }
@@ -1266,14 +1305,18 @@ namespace BiliClassic
 
         private void TapLayer_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (_qualityMenuOpen || _soundMenuOpen)
+            if (!_IsTyping)
             {
-                CloseQualityMenu();
-                CloseSoundMenu();
-            }
-            else
-            {
-                SetControlsVisible(!_controlsVisible);
+                if (_qualityMenuOpen || _soundMenuOpen || _sendMenuOpen)
+                {
+                    CloseQualityMenu();
+                    CloseSoundMenu();
+                    CloseSendMenu();
+                }
+                else
+                {
+                    SetControlsVisible(!_controlsVisible);
+                }
             }
         }
 
@@ -1343,10 +1386,10 @@ namespace BiliClassic
 
         private void UpdatePlayPauseIcon()
         {
-            PlayPauseMask.ImageSource = new BitmapImage(new Uri(
+            PlayImage.Source = new BitmapImage(new Uri(
                 Player.CurrentState == System.Windows.Media.MediaElementState.Playing
-                    ? "/Res/Icon/pause.png"
-                    : "/Res/Icon/play.png", UriKind.Relative));
+                    ? "/BiliClassic;component/Res/Icon/pause.png"
+                    : "/BiliClassic;component/Res/Icon/play.png", UriKind.Relative));
         }
 
 
@@ -1396,15 +1439,98 @@ namespace BiliClassic
             }
         }
 
+
+
+        private void SendDanmakuButton_Click(object sender, RoutedEventArgs e)
+        {
+            _sendMenuOpen = !_sendMenuOpen;
+            if (_sendMenuOpen)
+            {
+                ShowMBar.Begin();
+                return;
+            }
+            HideMBar.Begin();
+        }
+
+        private void SendTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            _IsTyping = true;
+        }
+
+        private void SendTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            _IsTyping = false;
+        }
+
+        private void SendButton_Click(object sender, RoutedEventArgs e)
+        {
+            SendDanmaku(SendTextBox.Text);
+        }
+
+        private void SendTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                SendDanmaku(SendTextBox.Text);
+            }
+        }
+        private void SendDanmaku(string inf)
+        {
+            if (string.IsNullOrEmpty(inf))
+            {
+                MessageBox.Show("内容不能为空！");
+                return;
+            }
+            //System.Diagnostics.Debug.WriteLine(inf);
+            this.Focus();
+
+            int ms = (int)Player.Position.TotalMilliseconds;
+
+            DanmakuSender.Send(_aid, _cid, inf, ms, delegate(bool ok, string error)
+            {
+                if (ok)
+                {
+                    System.Diagnostics.Debug.WriteLine("发送成功！");
+                    DanmakuItem item = new DanmakuItem();
+                    item.Text = inf;
+                    item.TimeMs = ms;
+                    item.IsSelf = true;
+                    _danmaku.Add(item);
+                }
+                else
+                {
+                    MessageBox.Show("发送失败：" + error);
+                }
+            });
+
+
+            CloseSendMenu();
+        }
+
         private void UpdateDanmakuIcon()
         {
             bool on = _danmakuContext.Enabled;
-            DanmakuMask.ImageSource = new BitmapImage(new Uri(
-                on ? "/BiliClassic;component/Res/Icon/danmuon.png" : "/BiliClassic;component/Res/Icon/danmuoff.png",
-                UriKind.Relative));
+            if (on)
+            {
+                DanmakuImage.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Icon/danmaku_open.png",
+                    UriKind.Relative));
+                SendDanmakuButton.IsEnabled = true;
+            }
+            else
+            {
+                DanmakuImage.Source = new BitmapImage(new Uri("/BiliClassic;component/Res/Icon/danmaku_closed.png",
+                    UriKind.Relative));
+                SendDanmakuButton.IsEnabled = false;
+                if(_sendMenuOpen)
+                {
+                    CloseSendMenu();
+                }
+            }
+            /*
             DanmakuIcon.Fill = on
                 ? new SolidColorBrush(Colors.White)
                 : new SolidColorBrush(Color.FromArgb(0x55, 0xFF, 0xFF, 0xFF));
+             */
         }
 
         private static readonly int[] DefaultQualities = new int[] { 16, 32, 64, 80 };
@@ -1413,6 +1539,7 @@ namespace BiliClassic
 
         private bool _qualityMenuOpen;
         private bool _soundMenuOpen;
+        private bool _sendMenuOpen;
 
         private void BuildQualityMenu()
         {
@@ -1503,6 +1630,17 @@ namespace BiliClassic
                 HideVBar.Begin();
             }
             _soundMenuOpen = false;
+            //QualityPanel.Visibility = Visibility.Collapsed;
+        }
+
+        private void CloseSendMenu()
+        {
+            if (_sendMenuOpen)
+            {
+                HideMBar.Begin();
+            }
+            _sendMenuOpen = false;
+            SendTextBox.Text = "";
             //QualityPanel.Visibility = Visibility.Collapsed;
         }
 
@@ -1890,6 +2028,11 @@ namespace BiliClassic
         {
             StatusText.Text = message;
             StatusPanel.Visibility = Visibility.Visible;
+        }
+
+        private void button1_Click(object sender, RoutedEventArgs e)
+        {
+            NavigationService.GoBack();
         }
     }
 }

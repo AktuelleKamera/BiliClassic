@@ -233,6 +233,7 @@
                     </Grid.RowDefinitions>
 
                     <ListBox x:Name="CommentList" Grid.Row="0" Margin="12,0,12,0" toolkit:TiltEffect.IsTiltEnabled="True">
+
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Grid Margin="0,0,0,14">
@@ -303,6 +304,14 @@
                                         </ItemsControl>
                                         <TextBlock Text="{Binding InfoLine}" Margin="0,4,0,0"
                                                    Style="{StaticResource PhoneTextSubtleStyle}"/>
+                                        <HyperlinkButton Content="查看评论回复"
+                                                         Name="hyperlinkButton1"
+                                                         Margin="0,10,0,0"
+                                                         HorizontalAlignment="Left"
+                                                         HorizontalContentAlignment="Left"
+                                                         Click="hyperlinkButton1_Click"
+                                                         Visibility="{Binding MoreReplyVisibility}"
+                                                         FontSize="20" />
                                     </StackPanel>
                                 </Grid>
                             </DataTemplate>

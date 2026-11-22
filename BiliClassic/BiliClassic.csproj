@@ -88,6 +88,8 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
+    <Compile Include="CiTieAndToast.cs" />
+    <Compile Include="Danmaku\DanmakuSender.cs" />
     <Compile Include="IsFirstLoad.cs" />
     <Compile Include="MainPage.xaml.cs">
       <DependentUpon>MainPage.xaml</DependentUpon>
@@ -97,6 +99,9 @@
     </Compile>
     <Compile Include="LoginPage.xaml.cs">
       <DependentUpon>LoginPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="SecPingLunPage.xaml.cs">
+      <DependentUpon>SecPingLunPage.xaml</DependentUpon>
     </Compile>
     <Compile Include="SendEcho.xaml.cs">
       <DependentUpon>SendEcho.xaml</DependentUpon>
@@ -233,6 +238,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="SecPingLunPage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="SendEcho.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -329,6 +338,14 @@
     <Resource Include="Res\Tile\xiaoxin.png" />
     <Resource Include="Res\Icon\battery.png" />
     <Resource Include="Res\Icon\charging.png" />
+    <Resource Include="Background1.png" />
+    <Resource Include="Background2.png" />
+    <Resource Include="NormalBcg.png" />
+    <Resource Include="Res\Icon\danmaku_closed.png" />
+    <Resource Include="Res\Icon\danmaku_open.png" />
+    <Resource Include="Res\Icon\back.png" />
+    <Content Include="Res\Icon\save.png" />
+    <Resource Include="Res\Icon\send_danmaku.png" />
     <Content Include="SplashScreenImage.jpg" />
     <!-- 应用栏用的图标，来自 Res\Icon -->
     <Resource Include="Res\Tile\bendi.png" />
@@ -347,8 +364,8 @@
     <Content Include="Res\Icon\login.png" />
     <Content Include="Res\Icon\logout.png" />
     <!-- 播放控制与发评论 -->
-    <Content Include="Res\Icon\play.png" />
-    <Content Include="Res\Icon\pause.png" />
+    <Resource Include="Res\Icon\play.png" />
+    <Resource Include="Res\Icon\pause.png" />
     <Resource Include="Res\Icon\danmuon.png" />
     <Resource Include="Res\Icon\danmuoff.png" />
     <Content Include="Res\Icon\comment_icon.png" />
