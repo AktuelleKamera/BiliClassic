@@ -40,7 +40,7 @@ public abstract class BaseActivity extends FragmentActivity {
 
     protected static final String KEY_LANDSCAPE_ENABLED = "landscape_enabled";
 
-    // 全局 Context，供 Qrcode 等工具类使用
+    // 全局 Context，供工具类使用
     private static Context appContext;
 
     // 运行时权限：存储权限回调
@@ -1122,28 +1122,60 @@ public abstract class BaseActivity extends FragmentActivity {
             public boolean onTouch(View v, MotionEvent e) {
                 int action = e.getAction();
                 if (action == MotionEvent.ACTION_DOWN) {
-                    v.setPressed(true);
+                    setPressState(v, true);
                     for (int i = 0; i < others.length; i++) {
-                        others[i].setPressed(true);
+                        setPressState(others[i], true);
+                        setLegacyPressBackground(others[i], true);
                     }
                 } else if (action == MotionEvent.ACTION_UP
                         || action == MotionEvent.ACTION_CANCEL) {
                     for (int i = 0; i < others.length; i++) {
-                        others[i].setPressed(false);
+                        setPressState(others[i], false);
+                        setLegacyPressBackground(others[i], false);
                     }
                     if (action == MotionEvent.ACTION_CANCEL || !v.isClickable()) {
-                        v.setPressed(false);
+                        setPressState(v, false);
                     }
                 } else {
                     boolean inside = pointInside(v, e);
-                    v.setPressed(inside);
+                    setPressState(v, inside);
                     for (int i = 0; i < others.length; i++) {
-                        others[i].setPressed(inside);
+                        setPressState(others[i], inside);
+                        setLegacyPressBackground(others[i], inside);
                     }
                 }
                 return false;
             }
         });
+    }
+
+    /**
+     * API 1 上仅 setPressed() 有时不会刷新 StateListDrawable，手动刷新一次。
+     */
+    private static void setPressState(View v, boolean pressed) {
+        if (v == null) {
+            return;
+        }
+        v.setPressed(pressed);
+        try {
+            v.refreshDrawableState();
+        } catch (Throwable t) {
+        }
+        v.invalidate();
+    }
+
+    /**
+     * API 1-3 直接改 region 背景色，绕开旧版 StateListDrawable 不重绘的问题。
+     */
+    private static void setLegacyPressBackground(View v, boolean pressed) {
+        if (v == null || SdkHelper.getSdkInt() >= 4) {
+            return;
+        }
+        try {
+            v.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(
+                    pressed ? 0x66FCA3C5 : 0x00000000));
+        } catch (Throwable t) {
+        }
     }
 
     /**
