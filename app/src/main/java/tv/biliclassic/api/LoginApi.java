@@ -54,7 +54,7 @@ public class LoginApi {
 
     /**
      * 获取登录二维码
-     * @param context 上下文（用于 QRCodeUtil 加载 assets）
+     * @param context 上下文（用于计算二维码尺寸）
      * @return 二维码 Bitmap
      */
     public static Bitmap getLoginQR(Context context) throws JSONException, IOException {

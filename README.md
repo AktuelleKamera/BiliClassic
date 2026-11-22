@@ -59,11 +59,11 @@
 ## 怎么做的？
 
 - 目前使用Android Studio 2.3.2，其实只是用顺手了（笑）
-- Java层代码使用Java 7实现，NDK r10e编译原生代码
+- Java层代码使用Java 7实现，编译原生代码是用的NDK r10e
 - 最低支持API 1 (Android 1.0)，目标API为29
-- 二维码生成使用SwetakeQRCode并进行了魔改
+- 二维码生成过去使用的是魔改的SwetakeQRCode，现在采用zxing 3.3.3
 - 参考bilibili-api-collect和PiliPlus实现数据获取
-- 使用的IJKPlayer也经深度魔改，支持DASH与安卓1.0
+- 使用经深度魔改的IJKPlayer，支持DASH与安卓1.0
 - DanmakuFlameMaster也是经过修改的呢
 - 独家魔改support-v4库，支持安卓1.0
 
@@ -235,6 +235,7 @@ BT-5弹幕引擎为本项目原创，为armeabi设备设计。通过预渲染Bit
 - AndResGuard
 - DanmakuFlameMaster
 - IJKPlayer
+- ZXing
 - WolfSSL
 
 感谢所有愿意在现在还在折腾老设备的各位们，你们的反馈让这个项目越来越好的说~

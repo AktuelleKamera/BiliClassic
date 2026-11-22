@@ -8,46 +8,35 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.util.Log;
 
-import com.swetake.util.Qrcode;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
+import com.google.zxing.qrcode.encoder.ByteMatrix;
+import com.google.zxing.qrcode.encoder.Encoder;
+import com.google.zxing.qrcode.encoder.QRCode;
 
 import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.Map;
 
 public class QRCodeUtil {
 
     private static final String TAG = "QRCodeUtil";
-    private static boolean sQrcodeInited = false;
 
-    // 缓存像素数组 (setPixels 用)
+    // 缓存像素数组 (setPixels用)
     private static int[] sCachedPixels;
     private static int sCachedWidth;
     private static int sCachedHeight;
 
-    // 缓存黑色像素行 (setPixels 用)
+    // 缓存黑色像素行 (setPixels用)
     private static int[] sCachedBlackRow;
     private static int sCachedBlackRowSize;
 
-    // 缓存 Bitmap (Canvas 用)
+    // 缓存 Bitmap (Canvas用)
     private static Bitmap sCachedBitmap;
     private static int sCachedBitmapWidth;
     private static int sCachedBitmapHeight;
 
-    // 在 Application 中调用一次
-    public static void init(Context context) {
-        if (!sQrcodeInited) {
-            Qrcode.init(context);
-            sQrcodeInited = true;
-            Log.d(TAG, "Qrcode 初始化完成");
-        }
-    }
-
     public static Bitmap createQRCodeBitmap(Context context, String content, int width, int height) {
-        // 如果没初始化，自动初始化
-        if (!sQrcodeInited) {
-            Qrcode.init(context);
-            sQrcodeInited = true;
-            Log.d(TAG, "Qrcode 自动初始化完成");
-        }
-
         if (content == null || content.length() == 0) {
             Log.w(TAG, "内容为空");
             return null;
@@ -59,15 +48,21 @@ public class QRCodeUtil {
 
         try {
 
-            Qrcode qrcode = new Qrcode();
-            qrcode.setQrcodeErrorCorrect('L');
-            qrcode.setQrcodeEncodeMode('B');
-            qrcode.setQrcodeVersion(7);
+            // 自动选择二维码版本
+            Map<EncodeHintType, Object> hints = new EnumMap<>(EncodeHintType.class);
+            hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
+            hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M);
 
-            byte[] bytes = content.getBytes("UTF-8");
-            boolean[][] code = qrcode.calQrcode(bytes);
+            QRCode qrCode = Encoder.encode(content, ErrorCorrectionLevel.M, hints);
+            ByteMatrix matrix = qrCode.getMatrix();
+            int codeSize = matrix.getWidth();
+            boolean[][] code = new boolean[codeSize][codeSize];
+            for (int y = 0; y < codeSize; y++) {
+                for (int x = 0; x < codeSize; x++) {
+                    code[y][x] = matrix.get(x, y) != 0;
+                }
+            }
 
-            int codeSize = code.length;
             int moduleSize = Math.min(width, height) / (codeSize + 4);
             if (moduleSize < 1) {
                 moduleSize = 1;
@@ -90,8 +85,8 @@ public class QRCodeUtil {
             Bitmap result = null;
             long startTime = System.currentTimeMillis();
 
-            // API 14+ 使用 Canvas drawRect 方案（利用硬件加速）
-            // API < 14 使用 setPixels 方案（更稳定）
+            // API 14+ 使用Canvas drawRect方案（利用硬件加速）
+            // API < 14 使用setPixels方案（更稳定）
             if (sdkInt >= 14) {
                 Log.d(TAG, "API " + sdkInt + "，尝试 Canvas 绘制策略");
                 result = drawWithCanvas(code, codeSize, moduleSize, offsetX, offsetY, margin, width, height);
@@ -120,7 +115,7 @@ public class QRCodeUtil {
         }
     }
 
-    // 方案一：Canvas.drawRect() 绘制（硬件加速 + Bitmap 缓存）
+    // 方案一：Canvas.drawRect() 绘制（硬件加速Bitmap缓存）
     private static Bitmap drawWithCanvas(boolean[][] code, int codeSize, int moduleSize,
                                          int offsetX, int offsetY, int margin,
                                          int width, int height) {
@@ -168,7 +163,7 @@ public class QRCodeUtil {
         }
     }
 
-    // 方案二：setPixels 批量写入（像素数组缓存 + 黑色行缓存）
+    // 方案二：setPixels批量写入（像素数组缓存 + 黑色行缓存）
     private static Bitmap drawWithSetPixels(boolean[][] code, int codeSize, int moduleSize,
                                             int offsetX, int offsetY, int margin,
                                             int width, int height) {
@@ -181,7 +176,7 @@ public class QRCodeUtil {
             int white = Color.WHITE;
             int black = Color.BLACK;
 
-            // 使用 Arrays.fill 填充白色
+            // 使用Arrays.fill填充白色
             Arrays.fill(pixels, white);
 
             // 复用黑色像素行
@@ -226,7 +221,7 @@ public class QRCodeUtil {
         }
     }
 
-    // 获取缓存的像素数组 (setPixels 用)
+    // 获取缓存的像素数组 (setPixels用)
     private static synchronized int[] getCachedPixels(int width, int height) {
         int size = width * height;
         if (sCachedPixels == null || sCachedPixels.length < size) {
@@ -244,7 +239,7 @@ public class QRCodeUtil {
         return sCachedPixels;
     }
 
-    // 获取缓存的黑色像素行 (setPixels 用)
+    // 获取缓存的黑色像素行 (setPixels用)
     private static synchronized int[] getCachedBlackRow(int moduleSize, int black) {
         if (sCachedBlackRow == null || sCachedBlackRowSize != moduleSize) {
             sCachedBlackRow = new int[moduleSize];
@@ -259,7 +254,7 @@ public class QRCodeUtil {
         return sCachedBlackRow;
     }
 
-    // 获取缓存的 Bitmap (Canvas 用)
+    // 获取缓存的Bitmap (Canvas 用)
     private static synchronized Bitmap getCachedBitmap(int width, int height) {
         if (sCachedBitmap == null || sCachedBitmapWidth != width || sCachedBitmapHeight != height) {
             sCachedBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
