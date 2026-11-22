@@ -255,7 +255,12 @@ public class MetroSetupActivity extends BaseActivity {
                 if (mAnimating) return;
                 // 首次启动（非升级）、设备有物理按键且尚未绑定任何按键 → 滑入绑定页（其后进入主题选择）
                 boolean isUpgrade = "upgrade".equals(getIntent().getStringExtra("mode"));
-                boolean needBinding = !isUpgrade && !KeyBindingUtil.anyBound()
+                if (isUpgrade) {
+                    // 升级不重新进入主题选择，保留用户当前主题，只记录新版本号。
+                    leaveToMainFromTheme();
+                    return;
+                }
+                boolean needBinding = !KeyBindingUtil.anyBound()
                         && tv.biliclassic.util.DeviceUtil.hasHardwareKeys(MetroSetupActivity.this);
                 if (needBinding) {
                     slideToBinding();
