@@ -173,9 +173,11 @@ public class RecommendFragment extends Fragment {
         if (adapter != null && getActivity() != null) {
             int columns = RecommendGridAdapter.resolveColumns(getActivity());
             if (columns != adapter.getNumColumns()) {
+                if (gridView != null) gridView.setAdapter(null);
                 adapter.setNumColumns(columns);
                 selectedPosition = 0;
                 if (gridView != null) {
+                    gridView.setAdapter(adapter);
                     gridView.setSelection(0);
                 }
             }
@@ -206,12 +208,14 @@ public class RecommendFragment extends Fragment {
         super.onConfigurationChanged(newConfig);
         if (getActivity() == null) return;
         int numColumns = RecommendGridAdapter.resolveColumns(getActivity());
+        if (gridView != null) gridView.setAdapter(null);
         adapter.setNumColumns(numColumns);
         int remainder = videoList.size() % numColumns;
         if (remainder > 0) {
             videoList.subList(videoList.size() - remainder, videoList.size()).clear();
         }
         adapter.notifyDataSetChanged();
+        if (gridView != null) gridView.setAdapter(adapter);
         gridView.post(new Runnable() {
             @Override
             public void run() {

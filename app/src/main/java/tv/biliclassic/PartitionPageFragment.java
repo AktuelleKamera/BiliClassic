@@ -142,7 +142,9 @@ public class PartitionPageFragment extends Fragment {
         super.onConfigurationChanged(newConfig);
         if (getActivity() == null) return;
         int numColumns = isTablet() ? (isLandscape() ? 4 : 3) : 2;
+        if (gridView != null) gridView.setAdapter(null);
         adapter.setNumColumns(numColumns);
+        if (gridView != null) gridView.setAdapter(adapter);
     }
 
     private boolean isTablet() {

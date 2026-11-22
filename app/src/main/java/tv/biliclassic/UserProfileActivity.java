@@ -456,6 +456,7 @@ public class UserProfileActivity extends BaseActivity {
         mSpaceNavIndex = 0;
         clearSpaceHighlight();
         listView.setSelection(0);
+        listView.setAdapter(null);
         if (mode == MODE_VIDEO) {
             listView.setAdapter(videoAdapter);
             videoEmptyView.setText(getString(R.string.user_has_no_videos));

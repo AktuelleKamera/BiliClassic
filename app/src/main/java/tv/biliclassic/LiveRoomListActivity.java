@@ -49,12 +49,12 @@ public class LiveRoomListActivity extends BaseActivity {
         emptyView = (TextView) findViewById(R.id.empty_view);
 
         adapter = new LiveRoomAdapter(this, roomList);
-        listView.setAdapter(adapter);
 
         // 加载更多 footer
         footerView = getLayoutInflater().inflate(R.layout.list_footer, null);
         footerBar = (LoadingBarView) footerView;
         listView.addFooterView(footerView);
+        listView.setAdapter(adapter);
         setFooterVisible(false);
 
         listView.setSelector(android.R.color.transparent);
