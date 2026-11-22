@@ -38,6 +38,28 @@ namespace BiliClassic.Api
             }
         }
 
+
+        public static void Txt_File_Writer_Add(string inf, string path)
+        {
+            try
+            {
+                using (IsolatedStorageFile storage = IsolatedStorageFile.GetUserStoreForApplication())
+                {
+                    using (IsolatedStorageFileStream fileStream = new IsolatedStorageFileStream(path, FileMode.Append, storage))
+                    {
+                        using (StreamWriter writer = new StreamWriter(fileStream))
+                        {
+                            //System.Diagnostics.Debug.WriteLine("WRT" + inf + " " + path);
+                            writer.Write(inf);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+        }
+
         public static string Txt_File_Reader(string path)
         {
             try
