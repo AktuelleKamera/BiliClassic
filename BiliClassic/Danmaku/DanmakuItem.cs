@@ -14,6 +14,8 @@ namespace BiliClassic.Danmaku
 
         public int TextSize = 25;
 
+        public bool IsSelf = false;
+
         public long PostTime;
 
         public long Dmid;

@@ -45,6 +45,8 @@ namespace BiliClassic.Danmaku
         private readonly Dictionary<string, double> _widthCache =
             new Dictionary<string, double>();
 
+        private readonly SolidColorBrush _selfBorderBrush = new SolidColorBrush(Color.FromArgb(0xFF, 0xAD, 0xD8, 0xE6));
+
         private DispatcherTimer _timer;
         private int _cursor;
         private double _lastMs = -1;
@@ -87,7 +89,21 @@ namespace BiliClassic.Danmaku
             }
             Clear();
         }
+        public void Add(DanmakuItem item)
+        {
+            if (item == null)
+            {
+                return;
+            }
 
+            int index = FirstIndexAtOrAfter(item.TimeMs);
+            _items.Insert(index, item);
+
+            if (index < _cursor)
+            {
+                _cursor++;
+            }
+        }
         public void Clear()
         {
             _lastMs = -1;
@@ -291,7 +307,21 @@ namespace BiliClassic.Danmaku
 
             TextBlock main;
             TextBlock shadow;
-            FrameworkElement root = Rent(out main, out shadow);
+            Border mainBorder;
+            FrameworkElement root = Rent(out main, out shadow, out mainBorder);
+
+            if (mainBorder != null)
+            {
+                if (item.IsSelf)
+                {
+                    mainBorder.BorderBrush = _selfBorderBrush;
+                    mainBorder.BorderThickness = new Thickness(4);
+                }
+                else
+                {
+                    mainBorder.BorderThickness = new Thickness(0);
+                }
+            }
 
             main.Text = item.Text;
             main.FontSize = fontSize;
@@ -310,7 +340,7 @@ namespace BiliClassic.Danmaku
                 root.RenderTransform = transform;
             }
 
-            string key = item.TextSize + "|" + item.Text;
+            string key = item.TextSize + "|" + (item.IsSelf ? "1" : "0") + "|" + item.Text;
             double width;
             if (!_widthCache.TryGetValue(key, out width))
             {
@@ -384,7 +414,7 @@ namespace BiliClassic.Danmaku
             _lineFreeAtMs[line] = now + OccupiedMs(live);
         }
 
-        private FrameworkElement Rent(out TextBlock main, out TextBlock shadow)
+        private FrameworkElement Rent(out TextBlock main, out TextBlock shadow, out Border mainBorder)
         {
             if (_pool.Count > 0)
             {
@@ -394,27 +424,35 @@ namespace BiliClassic.Danmaku
                 Grid grid = root as Grid;
                 if (grid != null && grid.Children.Count >= 2)
                 {
-                    shadow = (TextBlock)grid.Children[0];
-                    main = (TextBlock)grid.Children[1];
+                    shadow = grid.Children[0] as TextBlock;
+                    mainBorder = grid.Children[1] as Border;
+                    main = mainBorder != null ? mainBorder.Child as TextBlock : grid.Children[1] as TextBlock;
                 }
                 else
                 {
-                    main = (TextBlock)root;
                     shadow = null;
+                    mainBorder = root as Border;
+                    main = mainBorder != null ? mainBorder.Child as TextBlock : root as TextBlock;
                 }
                 return root;
             }
 
-            return CreateRoot(out main, out shadow);
+            return CreateRoot(out main, out shadow, out mainBorder);
         }
 
-        private FrameworkElement CreateRoot(out TextBlock main, out TextBlock shadow)
+        private FrameworkElement CreateRoot(out TextBlock main, out TextBlock shadow, out Border mainBorder)
         {
             main = new TextBlock();
+
+            mainBorder = new Border();
+            mainBorder.BorderBrush = _selfBorderBrush;
+            mainBorder.BorderThickness = new Thickness(0);
+            mainBorder.Child = main;
+
             if (!_context.StrokeEnabled)
             {
                 shadow = null;
-                return main;
+                return mainBorder;
             }
 
             Grid grid = new Grid();
@@ -422,7 +460,7 @@ namespace BiliClassic.Danmaku
             shadow.Foreground = BrushFor(Colors.Black);
             shadow.Margin = new Thickness(1, 1, 0, 0);
             grid.Children.Add(shadow);
-            grid.Children.Add(main);
+            grid.Children.Add(mainBorder);
             return grid;
         }
 
@@ -440,6 +478,13 @@ namespace BiliClassic.Danmaku
 
         private void Recycle(FrameworkElement element)
         {
+            // 如果当前不在 UI 线程，转发到 UI 线程执行
+            if (!_canvas.Dispatcher.CheckAccess())
+            {
+                _canvas.Dispatcher.BeginInvoke(() => Recycle(element));
+                return;
+            }
+
             _canvas.Children.Remove(element);
             if (_pool.Count < 48)
             {
