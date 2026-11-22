@@ -685,9 +685,6 @@ public class GestureController {
             }
             Log.d(TAG, "onSingleTapUp");
             mLongPressHandler.removeCallbacks(mLongPressRunnable);
-            if (!enableGesture) {
-                return true;
-            }
             if (mInGestureSeekingMode || mInHorizontalMoving || mInVerticalMoving ||
                     mIsScaling || mIsPinching || mIsDragging) {
                 return false;
@@ -701,9 +698,6 @@ public class GestureController {
         public boolean onSingleTapConfirmed(MotionEvent e) {
             Log.d(TAG, "onSingleTapConfirmed");
             mLongPressHandler.removeCallbacks(mLongPressRunnable);
-            if (!enableGesture) {
-                return true;
-            }
             if (mInGestureSeekingMode || mInHorizontalMoving || mInVerticalMoving ||
                     mIsScaling || mIsPinching || mIsDragging) {
                 return false;
