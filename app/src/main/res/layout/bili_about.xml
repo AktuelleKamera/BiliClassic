@@ -138,6 +138,10 @@
 
         <TextView
             style="@style/AboutBodyText"
+            android:text="https://github.com/zxing/zxing" />
+
+        <TextView
+            style="@style/AboutBodyText"
             android:text="https://github.com/bilibili/ijkplayer" />
 
         <TextView
