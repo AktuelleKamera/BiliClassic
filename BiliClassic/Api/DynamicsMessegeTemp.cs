@@ -64,6 +64,7 @@ namespace BiliClassic.Api
             {
                 dyn = value;
                 TXT_File.Txt_File_Writer(dyn + "", dynPath);
+                //CiTieAndToast.Update();
             }
         }
         //私信
@@ -105,6 +106,7 @@ namespace BiliClassic.Api
             {
                 msn = value;
                 TXT_File.Txt_File_Writer(msn + "", msnPath);
+                //CiTieAndToast.Update();
             }
         }
     }

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Collections.ObjectModel;
 
 namespace BiliClassic.Api
 {
@@ -13,9 +14,13 @@ namespace BiliClassic.Api
 
         public string Rpid { get; set; }
 
+        public string Oid { get; set; }
+
         public string Message { get; set; }
 
         public string InfoLine { get; set; }
+
+        public bool HaveMore { get; set; }
 
         public List<PictureItem> Pictures { get; set; }
 
@@ -25,6 +30,13 @@ namespace BiliClassic.Api
         {
             get { return Thumbs.Count == 0 ? Visibility.Collapsed : Visibility.Visible; }
         }
+
+        public Visibility MoreReplyVisibility
+        {
+            get { return HaveMore ? Visibility.Collapsed : Visibility.Visible; }
+        }
+
+        //public ObservableCollection<Sec_CommentItem> Replies { get; set; }
 
         public CommentItem()
         {
@@ -37,13 +49,32 @@ namespace BiliClassic.Api
         }
     }
 
+    public sealed class Sec_CommentItem
+    {
+        public UserItem Author { get; set; }
+
+        public string Message { get; set; }
+
+        public string InfoLine { get; set; }
+
+        public Sec_CommentItem()
+        {
+            Author = new UserItem();
+            Message = "";
+            InfoLine = "";
+        }
+    }
+
     public static class CommentService
     {
         private static readonly Regex ImgSrcRegex =
             new Regex(@"""img_src"":\s*""([^""]+)""");
 
+        //原来的先不动了
         private const string WbiUrl = "https://api.bilibili.com/x/v2/reply/wbi/main";
         private const string LegacyUrl = "https://api.bilibili.com/x/v2/reply";
+
+
 
         public const int PageSize = 20;
 
@@ -109,17 +140,104 @@ namespace BiliClassic.Api
                 {
                     FetchLegacy(oid, page, replyType,
                         delegate(List<CommentItem> legacy, bool more, string legacyError)
-                    {
-                        if (legacy.Count == 0 && legacyError.Length == 0)
                         {
-                            onDone(legacy, false, keyError);
-                            return;
-                        }
-                        onDone(legacy, more, legacyError);
-                    });
+                            if (legacy.Count == 0 && legacyError.Length == 0)
+                            {
+                                onDone(legacy, false, keyError);
+                                return;
+                            }
+                            onDone(legacy, more, legacyError);
+                        });
                     return;
                 }
                 FetchWbi(oid, state, replyType, onDone);
+            });
+        }
+
+        public static void SecFetch(string oid, string rpid, int page, //int replyType,
+                                 Action<List<Sec_CommentItem>, bool, string> onDone)
+        {
+
+            System.Diagnostics.Debug.WriteLine("BBB" + oid + " " + rpid);
+            if (string.IsNullOrEmpty(oid))
+            {
+                onDone(new List<Sec_CommentItem>(), false, "缺少oid，取不了评论");
+                return;
+            }
+
+            /*
+            //if (replyType <= 0)
+            //{
+               int replyType = 1;
+            //}
+            PagingState state = GetState(replyType + ":" + oid);
+
+            if (page <= 1)
+            {
+                state.Offset = "";
+                state.Ended = false;
+            }
+
+            if (state.Ended)
+            {
+                onDone(new List<Sec_CommentItem>(), false, "");
+                return;
+            }
+            */
+            FetchSec(oid, rpid, page,
+                        delegate(List<Sec_CommentItem> legacy, bool more, string legacyError)
+                        {
+                            System.Diagnostics.Debug.WriteLine("ZZZ" + oid + " " + rpid);
+                            if (legacy.Count == 0 && legacyError.Length == 0)
+                            {
+                                onDone(legacy, false, "");
+                                return;
+                            }
+                            onDone(legacy, more, legacyError);
+                        });
+            /*
+            WbiSigner.EnsureReady(delegate(string keyError)
+            {
+                System.Diagnostics.Debug.WriteLine("ZZZ" + oid + " " + rpid);
+                if (!string.IsNullOrEmpty(keyError))
+                {
+                    System.Diagnostics.Debug.WriteLine("CCC" + oid + " " + rpid);
+                    FetchSec(oid, rpid, page,
+                        delegate(List<Sec_CommentItem> legacy, bool more, string legacyError)
+                        {
+                            if (legacy.Count == 0 && legacyError.Length == 0)
+                            {
+                                onDone(legacy, false, keyError);
+                                return;
+                            }
+                            onDone(legacy, more, legacyError);
+                        });
+                    return;
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine(keyError);
+                }
+                //FetchWbi(oid, state, replyType, onDone);
+            });
+            */
+        }
+
+        private static void FetchSec(string oid, string rpid, int page, //int replyType,
+                                        Action<List<Sec_CommentItem>, bool, string> onDone)
+        {
+            //string url = LegacyUrl + "?type=" + replyType + "&oid=" + oid
+            //    + "&pn=" + page + "&ps=" + PageSize + "&sort=2";
+            string url = LegacyUrl + "/reply?oid=" + oid + "&type=1&root=" + rpid + "&pn=" + page;
+
+            
+
+            Http.GetText(url, Http.Referer, delegate(HttpResult http)
+            {
+                List<Sec_CommentItem> items = new List<Sec_CommentItem>();
+                bool hasMore = false;
+                string error = SecParse(http, items, out hasMore, false, null, oid);
+                onDone(items, hasMore, error);
             });
         }
 
@@ -145,7 +263,7 @@ namespace BiliClassic.Api
             {
                 List<CommentItem> items = new List<CommentItem>();
                 bool hasMore = false;
-                string error = Parse(http, items, out hasMore, true, state);
+                string error = Parse(http, items, out hasMore, true, state, oid);
 
                 if (items.Count == 0 && !string.IsNullOrEmpty(error))
                 {
@@ -177,7 +295,7 @@ namespace BiliClassic.Api
             {
                 List<CommentItem> items = new List<CommentItem>();
                 bool hasMore = false;
-                string error = Parse(http, items, out hasMore, false, null);
+                string error = Parse(http, items, out hasMore, false, null, oid);
                 onDone(items, hasMore, error);
             });
         }
@@ -255,7 +373,7 @@ namespace BiliClassic.Api
         }
 
         private static string Parse(HttpResult http, List<CommentItem> items, out bool hasMore,
-                                    bool cursorPaging, PagingState state)
+                                    bool cursorPaging, PagingState state, string oid)
         {
             hasMore = false;
             if (http == null || string.IsNullOrEmpty(http.Body))
@@ -264,13 +382,15 @@ namespace BiliClassic.Api
             }
 
             string body = http.Body;
+            //TXT_File.Txt_File_Writer_Add(body, "TEXT.txt");
             string error = DescribeCode(body);
             if (error != null)
             {
                 return error;
             }
 
-            ParseReplies(body, items);
+            ParseReplies(body, items, oid);
+            //ParseReplies(body, items);
 
             if (items.Count == 0)
             {
@@ -303,46 +423,108 @@ namespace BiliClassic.Api
             return "";
         }
 
-        private static void ParseReplies(string body, List<CommentItem> items)
+        private static string SecParse(HttpResult http, List<Sec_CommentItem> items, out bool hasMore,
+                                    bool cursorPaging, PagingState state, string oid)
         {
-            MatchCollection ids = Regex.Matches(body, @"""rpid"":\s*(\d+)");
-            for (int i = 0; i < ids.Count; i++)
+            hasMore = false;
+            if (http == null || string.IsNullOrEmpty(http.Body))
             {
-                int start = ids[i].Index;
-                int end = i + 1 < ids.Count ? ids[i + 1].Index : body.Length;
-                if (end - start > 4000)
-                {
-                    end = start + 4000;
-                }
-                string region = body.Substring(start, end - start);
+                return string.IsNullOrEmpty(http.Error) ? "没有返回内容" : http.Error;
+            }
 
-                string message = JsonText.ReadString(region, "message");
-                if (message.Length == 0)
+            string body = http.Body;
+            //TXT_File.Txt_File_Writer_Add(body, "TEXT.txt");
+            string error = DescribeCode(body);
+            if (error != null)
+            {
+                return error;
+            }
+            System.Diagnostics.Debug.WriteLine("AAAA" + items.Count);
+            SecParseReplies(body, items, oid);
+            System.Diagnostics.Debug.WriteLine("BBBB" + items.Count);
+            //ParseReplies(body, items);
+
+            if (items.Count == 0)
+            {
+                if (body.IndexOf("\"rpid\"", StringComparison.Ordinal) >= 0)
                 {
+                    return "有评论数据但解析到0条：" + JsonText.Head(body, 150);
+                }
+
+                if (state != null)
+                {
+                    state.Offset = "";
+                    state.Ended = true;
+                }
+                return "";
+            }
+
+            if (cursorPaging && state != null)
+            {
+                string next = JsonText.ReadString(body, "next_offset");
+                bool isEnd = Regex.IsMatch(body, @"""is_end"":\s*true");
+                state.Offset = next;
+                state.Ended = isEnd || next.Length == 0;
+                hasMore = !state.Ended;
+            }
+            else
+            {
+                hasMore = items.Count >= PageSize;
+            }
+
+            return "";
+        }
+
+
+
+        private static void ParseReplies(string body, List<CommentItem> items, string oid)
+        {
+            object root = Api.Json_Bili7.Parse(body);
+            if (root == null)
+                return;
+
+            int this_page_num;
+            try
+            {
+                string allCount = Api.Json_Bili7.GetValue(root, "data.all_count");
+                this_page_num = int.Parse(allCount);
+                if (this_page_num > PageSize)
+                    this_page_num = PageSize;
+            }
+            catch
+            {
+                this_page_num = PageSize;
+            }
+
+            for (int i = 0; i < this_page_num; i++)
+            {
+                string basePath = "data.replies[" + i + "]";
+
+                string message = Api.Json_Bili7.GetValue(root, basePath + ".content.message");
+                if (string.IsNullOrEmpty(message))
                     continue;
-                }
 
-                string rpid = ids[i].Groups[1].Value;
+                string rpid = Api.Json_Bili7.GetValue(root, basePath + ".rpid");
                 if (ContainsRpid(items, rpid))
-                {
                     continue;
-                }
 
                 CommentItem item = new CommentItem();
                 item.Rpid = rpid;
-                item.Author.Name = JsonText.ReadString(region, "uname");
-                item.Author.Mid = ReadMid(region);
-                item.Author.AvatarUrl = Normalize(JsonText.ReadString(region, "avatar"));
+                item.Oid = oid;
+                item.Author.Name = Api.Json_Bili7.GetValue(root, basePath + ".member.uname");
+                item.Author.Mid = Api.Json_Bili7.GetValue(root, basePath + ".member.mid");
+                item.Author.AvatarUrl = Normalize(Api.Json_Bili7.GetValue(root, basePath + ".member.avatar"));
                 item.Message = message;
 
-                MatchCollection pictures = ImgSrcRegex.Matches(region);
-                for (int p = 0; p < pictures.Count; p++)
+                for (int p = 0; p < 10; p++)
                 {
-                    string src = Normalize(pictures[p].Groups[1].Value);
+                    string src_temp = Api.Json_Bili7.GetValue(root, basePath + ".content.pictures[" + p + "].img_src");
+                    if (string.IsNullOrEmpty(src_temp))
+                        break;
+
+                    string src = Normalize(src_temp);
                     if (src.Length == 0)
-                    {
                         continue;
-                    }
 
                     PictureItem picture = new PictureItem();
                     picture.Url = src;
@@ -353,14 +535,78 @@ namespace BiliClassic.Api
                         item.Thumbs.Add(picture);
                     }
                 }
+                //string first_reply_temp = Api.Json_Bili7.GetValue(root, basePath + ".replies");
+                //System.Diagnostics.Debug.WriteLine(!string.IsNullOrEmpty(first_reply_temp)+" "+first_reply_temp);
+                //item.HaveMore = !string.IsNullOrEmpty(first_reply_temp);
+                item.HaveMore = (!string.IsNullOrEmpty(Api.Json_Bili7.GetValue(root, basePath + ".replies[0].content.message"))) || (!string.IsNullOrEmpty(Api.Json_Bili7.GetValue(root, basePath + ".replies")));
 
-                string time = FormatTimeAgo(ReadNumber(region, "ctime"));
-                long like = ReadNumber(region, "like");
+
+                int ctime = 0;
+                int.TryParse(Api.Json_Bili7.GetValue(root, basePath + ".ctime"), out ctime);
+                string time = FormatTimeAgo(ctime);
+
+                long like = 0;
+                long.TryParse(Api.Json_Bili7.GetValue(root, basePath + ".like"), out like);
                 item.InfoLine = like > 0 ? time + "   赞 " + like : time;
 
                 items.Add(item);
             }
         }
+
+        private static void SecParseReplies(string body, List<Sec_CommentItem> items, string oid)
+        {
+            object root = Api.Json_Bili7.Parse(body);
+            if (root == null)
+                return;
+            int this_page_num;
+            try
+            {
+                string allCount = Api.Json_Bili7.GetValue(root, "data.page.size");
+                this_page_num = int.Parse(allCount);
+                if (this_page_num > PageSize)
+                    this_page_num = PageSize;
+            }
+            catch
+            {
+                this_page_num = PageSize;
+            }
+            for (int i = 0; i < this_page_num; i++)
+            {
+                //System.Diagnostics.Debug.WriteLine(i);
+                string basePath = "data.replies[" + i + "]";
+
+                string message = Api.Json_Bili7.GetValue(root, basePath + ".content.message");
+                if (string.IsNullOrEmpty(message))
+                    continue;
+
+                //string rpid = Api.Json_Bili7.GetValue(root, basePath + ".rpid");
+                //if (ContainsRpid(items, rpid))
+                //    continue;
+
+                Sec_CommentItem item = new Sec_CommentItem();
+                item.Author.Name = Api.Json_Bili7.GetValue(root, basePath + ".member.uname");
+                item.Author.Mid = Api.Json_Bili7.GetValue(root, basePath + ".member.mid");
+                item.Author.AvatarUrl = Normalize(Api.Json_Bili7.GetValue(root, basePath + ".member.avatar"));
+                item.Message = message;
+                //string first_reply_temp = Api.Json_Bili7.GetValue(root, basePath + ".replies[0].content.message");
+
+                //item.HaveMore = !string.IsNullOrEmpty(first_reply_temp);
+
+
+                int ctime = 0;
+                int.TryParse(Api.Json_Bili7.GetValue(root, basePath + ".ctime"), out ctime);
+                string time = FormatTimeAgo(ctime);
+
+                long like = 0;
+                long.TryParse(Api.Json_Bili7.GetValue(root, basePath + ".like"), out like);
+                item.InfoLine = like > 0 ? time + "   赞 " + like : time;
+
+                items.Add(item);
+                //System.Diagnostics.Debug.WriteLine(items.Count + " " + this_page_num + " " + i + " " + message);
+            }
+            //System.Diagnostics.Debug.WriteLine(items.Count + " " + this_page_num);
+        }
+
 
         private static string ReadMid(string region)
         {

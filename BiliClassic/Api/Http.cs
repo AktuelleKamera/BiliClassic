@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Threading;
 
 namespace BiliClassic.Api
 {
@@ -118,6 +119,116 @@ namespace BiliClassic.Api
 
                 onDone(result);
             }, null);
+        }
+
+        private static string GetTextZuSe(string url, string referer)
+        {
+            // 如果是 UI 线程调用，先在后台线程执行阻塞逻辑，避免死锁
+            if (System.Windows.Deployment.Current.Dispatcher.CheckAccess())
+            {
+                string syncResult = null;
+                using (var uiWait = new ManualResetEvent(false))
+                {
+                    ThreadPool.QueueUserWorkItem(_ =>
+                    {
+                        try
+                        {
+                            syncResult = GetTextZuSeCore(url, referer);
+                        }
+                        finally
+                        {
+                            uiWait.Set();
+                        }
+                    });
+                    uiWait.WaitOne();
+                }
+                return syncResult;
+            }
+
+            return GetTextZuSeCore(url, referer);
+        }
+
+        public static string GetTextZuSeCore(string url, string referer)
+        {
+            if (url != null && url.StartsWith("//"))
+            {
+                url = "https:" + url;
+            }
+
+            if (string.IsNullOrEmpty(url))
+            {
+                return "URL 为空";
+            }
+
+            HttpWebRequest request;
+            try
+            {
+                request = (HttpWebRequest)WebRequest.Create(CreateUri(url));
+                request.Method = "GET";
+                request.AllowReadStreamBuffering = true;
+                request.UserAgent = UserAgent;
+                ApplyCommonHeaders(request, referer);
+            }
+            catch (Exception ex)
+            {
+                return "创建请求失败: " + ex.Message;
+            }
+
+            string body = null;
+            string error = null;
+            HttpWebRequest captured = request;
+
+            using (var waitHandle = new ManualResetEvent(false))
+            {
+                request.BeginGetResponse(delegate(IAsyncResult ar)
+                {
+                    try
+                    {
+                        HttpWebResponse response = (HttpWebResponse)captured.EndGetResponse(ar);
+                        using (Stream stream = response.GetResponseStream())
+                        {
+                            using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                            {
+                                body = reader.ReadToEnd();
+                            }
+                        }
+                        ReadSetCookie(response);
+                        response.Close();
+                    }
+                    catch (WebException wex)
+                    {
+                        string exBody = ReadWebExceptionBody(wex);
+                        if (!string.IsNullOrEmpty(exBody))
+                        {
+                            body = exBody;
+                        }
+                        else
+                        {
+                            error = DescribeWebException(wex);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        error = "读取响应失败: " + ex.Message;
+                    }
+                    finally
+                    {
+                        waitHandle.Set();
+                    }
+                }, null);
+
+                // 阻塞等待，带超时
+                if (!waitHandle.WaitOne(TimeSpan.FromSeconds(30)))
+                {
+                    return "请求超时";
+                }
+            }
+
+            if (body != null)
+            {
+                return body;
+            }
+            return error ?? "未知错误";
         }
 
         private static string DescribeWebException(WebException wex)

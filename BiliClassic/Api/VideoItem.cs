@@ -2,6 +2,8 @@ using System;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 
 namespace BiliClassic.Api
 {
@@ -27,6 +29,50 @@ namespace BiliClassic.Api
         {
             get { return _title; }
             set { _title = LimitTitle(value); }
+        }
+
+        public SolidColorBrush TTitle
+        {
+            get
+            {
+                if (AppSettings.ShowBackgroundEnabled)
+                {
+                    return new SolidColorBrush(Colors.White);
+                }
+                else
+                {
+                    if ((Visibility)Application.Current.Resources["PhoneLightThemeVisibility"] == System.Windows.Visibility.Visible)
+                    {
+                        return new SolidColorBrush(Colors.Black);
+                    }
+                    else
+                    {
+                        return new SolidColorBrush(Colors.White);
+                    }
+                }
+            }
+        }
+
+        public SolidColorBrush LTitle
+        {
+            get
+            {
+                if (AppSettings.ShowBackgroundEnabled)
+                {
+                    return new SolidColorBrush(Color.FromArgb(153, 255, 255, 255));
+                }
+                else
+                {
+                    if ((Visibility)Application.Current.Resources["PhoneLightThemeVisibility"] == System.Windows.Visibility.Visible)
+                    {
+                        return new SolidColorBrush(Color.FromArgb(102, 0, 0, 0));
+                    }
+                    else
+                    {
+                        return new SolidColorBrush(Color.FromArgb(153, 255, 255, 255));
+                    }
+                }
+            }
         }
 
         public static string LimitTitle(string title)

@@ -8,14 +8,15 @@
         private const string PlayQualityKey = "play_quality";
         private const string DashPlaybackKey = "dash_playback";
         private const string WhiteThemeKey = "white_theme";
-        //这仨是我加的——WinVistaSP
+        //这几个是我加的——WinVistaSP
         private const string XiNaoEnabledKey = "xinao_enabled";//洗脑循环
         private const string ZiDongEnabledKey = "zidong_enabled";//自动播放
         private const string NfcSyncEnabledKey = "nfc_sync_enabled";
         private const string YinLiangValueKey = "yinliang_value";//音量
-        //这个也是我加的（
         private const string LockCiTieValueKey = "lockcitie_value";
         private const string HideCiTieValueKey = "hidecitie_value";
+        private const string CiTieTypeValueKey = "citietype_value";
+        private const string ShowBackgroundKey = "showbackground_value";
         //Very Cool——毛子球
 
 
@@ -29,6 +30,19 @@
                     : 32;
             }
             set { LocalStore.Set(PlayQualityKey, value.ToString()); }
+        }
+
+
+        public static int CiTieTypeValue
+        {
+            get
+            {
+                int value;
+                return int.TryParse(LocalStore.Get(CiTieTypeValueKey), out value) && value > 0 && value != 6
+                    ? value
+                    : 0;
+            }
+            set { LocalStore.Set(CiTieTypeValueKey, value.ToString()); }
         }
 
         public static bool AutoCheckUpdate
@@ -77,6 +91,12 @@
         {
             get { return LocalStore.Get(HideCiTieValueKey) == "1"; }
             set { LocalStore.Set(HideCiTieValueKey, value ? "1" : "0"); }
+        }
+
+        public static bool ShowBackgroundEnabled
+        {
+            get { return LocalStore.Get(ShowBackgroundKey) == "1"; }
+            set { LocalStore.Set(ShowBackgroundKey, value ? "1" : "0"); }
         }
 
         public static bool XiNaoEnabled
