@@ -1458,7 +1458,9 @@ public class VideoDetailActivity extends BaseActivity {
      */
     public void notifyTagsUpdated() {
         if (!fragmentReady || videoDetailFragment == null) return;
-        videoDetailFragment.getView().post(new Runnable() {
+        View fragmentView = videoDetailFragment.getView();
+        if (fragmentView == null) return;
+        fragmentView.post(new Runnable() {
             @Override
             public void run() {
                 rebuildFocusableViews();
