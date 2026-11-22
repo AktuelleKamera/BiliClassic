@@ -68,7 +68,7 @@ public class DeviceInfoActivity extends BaseActivity {
         String product = DeviceUtils.getProduct();
         String cpuAbi = tv.biliclassic.util.CpuAbi.getCpuAbi();
         String cpuAbi2 = tv.biliclassic.util.CpuAbi.getCpuAbi2();
-        String release = DeviceUtils.getDeviceRelease();
+        String release = DeviceUtils.getAndroidVersion();
         String sdk = DeviceUtils.getSdk();
         String sdkInt = String.valueOf(DeviceUtils.getSdkInt());
 
@@ -150,7 +150,7 @@ public class DeviceInfoActivity extends BaseActivity {
 
     private String getEasterEggComment() {
         try {
-            String version = DeviceUtils.getDeviceRelease();
+            String version = DeviceUtils.getAndroidVersion();
             if (version.length() == 0) version = "未知";
 
             String abi = null;

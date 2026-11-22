@@ -14,8 +14,7 @@ public class HardwareInfoUtil {
     public static String getDeviceInfo() {
         // 真实系统版本号（API 1 也能通过 Build.VERSION.SDK 拿到，见 SdkHelper.getSdkInt）
         StringBuilder sb = new StringBuilder();
-        String release = getBuildField("RELEASE");
-        sb.append("Android ").append(release == null ? ("API " + SdkHelper.getSdkInt()) : release)
+        sb.append("Android ").append(DeviceUtils.getAndroidVersion())
                 .append(" (API ").append(SdkHelper.getSdkInt()).append(")\n");
 
         // 调试日志：打印设备信息

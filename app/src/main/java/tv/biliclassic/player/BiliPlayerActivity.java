@@ -873,11 +873,11 @@ public class BiliPlayerActivity extends Activity implements
                 ? getString(R.string.player_loading_mode_system)
                 : getString(R.string.player_loading_mode_ijk);
         setLoadingStep1(getString(R.string.player_loading_device_info,
-                DeviceUtils.getDeviceManufacturer(), DeviceUtils.getDeviceModel(), DeviceUtils.getDeviceRelease(),
+                DeviceUtils.getDeviceManufacturer(), DeviceUtils.getDeviceModel(), DeviceUtils.getAndroidVersion(),
                 String.valueOf(SdkHelper.getSdkInt()), mode));
         mStageEcho = new PlayerStageEcho(mLoadingStep1);
         mStageEcho.appendFinished(getString(R.string.player_loading_device_info,
-                DeviceUtils.getDeviceManufacturer(), DeviceUtils.getDeviceModel(), DeviceUtils.getDeviceRelease(),
+                DeviceUtils.getDeviceManufacturer(), DeviceUtils.getDeviceModel(), DeviceUtils.getAndroidVersion(),
                 String.valueOf(SdkHelper.getSdkInt()), mode));
         mStageEcho.setPending(getString(R.string.player_loading_step_get_url));
         if (mLoadingOverlay.getParent() == null) {

@@ -80,7 +80,12 @@ public class DeviceUtils {
 
     public static String getAndroidVersion() {
         String value = getDeviceRelease();
-        if (value.length() > 0) return value;
+        if (value != null) {
+            value = value.trim();
+            if (value.length() > 0 && !value.regionMatches(true, 0, "API ", 0, 4)) {
+                return value;
+            }
+        }
         return androidVersion(getSdkInt());
     }
 
@@ -122,6 +127,8 @@ public class DeviceUtils {
             case 34: return "14";
             case 35: return "15";
             case 36: return "16";
+            case 37: return "17";
+            case 38: return "18";
             default: return "API " + sdk;
         }
     }
